@@ -1,0 +1,24 @@
+{
+  "name": "nochal",
+  "version": "0.1.0",
+  "description": "Visual HAL IDE for LinuxCNC",
+  "private": true,
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "solid-js": "^1.9.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "electron": "^36.2.1",
+    "electron-vite": "^3.1.0",
+    "typescript": "^5.7.3",
+    "vite-plugin-solid": "^2.11.2"
+  }
+}
