@@ -35,8 +35,7 @@ export default function App() {
         <div class="brand">
           <div class="brand-mark">N</div>
           <div>
-            <div class="brand-name">Nochal</div>
-            <div class="brand-sub">Visual LinuxCNC HAL IDE (Electron + Solid)</div>
+            <div class="brand-name">NocHAL</div>
           </div>
         </div>
 

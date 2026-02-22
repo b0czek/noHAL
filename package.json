@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
+    "konva": "^9.3.18",
     "solid-js": "^1.9.4"
   },
   "devDependencies": {

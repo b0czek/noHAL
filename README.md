@@ -22,7 +22,7 @@ Visual LinuxCNC HAL IDE prototype (Electron + TypeScript + SolidJS).
 - Runtime HAL introspection
 - Import existing `.hal` text into diagrams
 - Array pin expansion (`foo##` style pins are detected but not expanded)
-- Full visual editor is custom Solid canvas (schematic-oriented UX)
+- Full visual editor uses a custom HAL scene on top of Konva (schematic-oriented UX)
 
 ## Why The `.comp` Parser Is Hybrid/Pragmatic
 
@@ -44,7 +44,7 @@ Reference used from the provided LinuxCNC tree:
 
 - `src/main/` Electron main process + IPC
 - `src/preload/` secure renderer API bridge
-- `src/renderer/` Solid UI (custom schematic canvas)
+- `src/renderer/` Solid UI (Konva-based schematic scene + inspector/toolbars)
 - `src/shared/` project schema, `.comp` parser, validation, HAL exporter
 
 ## Run (after installing dependencies)
