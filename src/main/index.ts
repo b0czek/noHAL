@@ -14,6 +14,36 @@ import type { ImportedComponentDefinition, NochalProject } from "../shared/types
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+async function collectCompFilesRecursive(
+  dirPath: string,
+  errors: Array<{ filePath: string; error: string }>
+): Promise<string[]> {
+  let entries;
+  try {
+    entries = await readdir(dirPath, { withFileTypes: true });
+  } catch (error) {
+    errors.push({
+      filePath: dirPath,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return [];
+  }
+
+  const files: string[] = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry.name);
+    if (entry.isSymbolicLink()) continue;
+    if (entry.isDirectory()) {
+      files.push(...(await collectCompFilesRecursive(fullPath, errors)));
+      continue;
+    }
+    if (entry.isFile() && entry.name.endsWith(".comp")) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
 function createWindow(): void {
   const preloadCandidates = [
     path.join(__dirname, "../preload/index.cjs"),
@@ -102,14 +132,20 @@ app.whenReady().then(() => {
     return parsed;
   });
 
-  ipcMain.handle("nochal:scan-comp-dir", async (_evt, dirPath: string) => {
-    const entries = await readdir(dirPath, { withFileTypes: true });
-    const files = entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith(".comp"))
-      .map((entry) => path.join(dirPath, entry.name));
+  ipcMain.handle("nochal:pick-directory", async (_evt, defaultPath?: string | null) => {
+    const res = await dialog.showOpenDialog({
+      title: "Select Directory",
+      defaultPath: defaultPath ?? undefined,
+      properties: ["openDirectory"]
+    });
+    if (res.canceled || res.filePaths.length === 0) return null;
+    return res.filePaths[0];
+  });
 
+  ipcMain.handle("nochal:scan-comp-dir", async (_evt, dirPath: string) => {
     const imported: ImportedComponentDefinition[] = [];
     const errors: Array<{ filePath: string; error: string }> = [];
+    const files = await collectCompFilesRecursive(dirPath, errors);
 
     for (const filePath of files) {
       try {

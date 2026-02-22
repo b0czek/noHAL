@@ -9,6 +9,7 @@ export interface NochalApi {
     filePath?: string | null
   ): Promise<{ filePath: string; warnings: string[] } | null>;
   importCompFile(): Promise<ImportedComponentDefinition | null>;
+  pickDirectory(defaultPath?: string | null): Promise<string | null>;
   scanCompDir(
     dirPath: string
   ): Promise<{ imported: ImportedComponentDefinition[]; errors: Array<{ filePath: string; error: string }> }>;

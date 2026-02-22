@@ -11,7 +11,7 @@ import type {
   SheetDefinition,
   SheetEndpointRef,
   SheetNode,
-  SheetNodeInstance
+  SheetNodeInstance,
 } from "../../shared/types";
 
 export type Selection =
@@ -49,23 +49,32 @@ function defaultNodePosition(sheet: SheetDefinition): { x: number; y: number } {
   const index = sheet.nodes.length;
   return {
     x: 120 + (index % 4) * 280,
-    y: 100 + Math.floor(index / 4) * 180
+    y: 100 + Math.floor(index / 4) * 180,
   };
 }
 
-function defaultLabelPosition(sheet: SheetDefinition): { x: number; y: number } {
+function defaultLabelPosition(sheet: SheetDefinition): {
+  x: number;
+  y: number;
+} {
   const index = sheet.labels.length;
   return { x: 160 + (index % 5) * 160, y: 520 + Math.floor(index / 5) * 70 };
 }
 
-function defaultPortPosition(sheet: SheetDefinition, side: "left" | "right" | "bottom"): { x: number; y: number } {
+function defaultPortPosition(
+  sheet: SheetDefinition,
+  side: "left" | "right" | "bottom",
+): { x: number; y: number } {
   const count = sheet.ports.filter((p) => p.side === side).length;
   if (side === "left") return { x: 20, y: 120 + count * 50 };
   if (side === "right") return { x: 1380, y: 120 + count * 50 };
   return { x: 220 + count * 120, y: 740 };
 }
 
-function findNode(sheet: SheetDefinition, nodeId: string): SheetNodeInstance | undefined {
+function findNode(
+  sheet: SheetDefinition,
+  nodeId: string,
+): SheetNodeInstance | undefined {
   return sheet.nodes.find((n) => n.id === nodeId);
 }
 
@@ -74,7 +83,12 @@ function ensureInstanceName(sheet: SheetDefinition, preferred: string): string {
   return nextName(slugify(preferred).replace(/-/g, "_"), used);
 }
 
-function sheetContainsSheet(project: NochalProject, rootSheetId: string, searchSheetId: string, seen = new Set<string>()): boolean {
+function sheetContainsSheet(
+  project: NochalProject,
+  rootSheetId: string,
+  searchSheetId: string,
+  seen = new Set<string>(),
+): boolean {
   if (rootSheetId === searchSheetId) return true;
   if (seen.has(rootSheetId)) return false;
   seen.add(rootSheetId);
@@ -82,7 +96,8 @@ function sheetContainsSheet(project: NochalProject, rootSheetId: string, searchS
   if (!sheet) return false;
   for (const node of sheet.nodes) {
     if (node.kind !== "sheet") continue;
-    if (sheetContainsSheet(project, node.sheetId, searchSheetId, seen)) return true;
+    if (sheetContainsSheet(project, node.sheetId, searchSheetId, seen))
+      return true;
   }
   return false;
 }
@@ -99,7 +114,7 @@ export function createEditorStore(initialProject: NochalProject) {
     selection: null,
     pendingEndpoint: null,
     status: "Ready",
-    exportWarnings: []
+    exportWarnings: [],
   });
 
   const withProject = (mutate: (project: NochalProject) => void) => {
@@ -143,7 +158,7 @@ export function createEditorStore(initialProject: NochalProject) {
         selection: null,
         pendingEndpoint: null,
         status: "Created new project",
-        exportWarnings: []
+        exportWarnings: [],
       });
     },
 
@@ -157,19 +172,25 @@ export function createEditorStore(initialProject: NochalProject) {
         selection: null,
         pendingEndpoint: null,
         status: `Opened ${result.filePath}`,
-        exportWarnings: []
+        exportWarnings: [],
       });
     },
 
     async saveProject(): Promise<void> {
-      const result = await window.nochal.saveProject(snapshotProjectForIpc(state.project), state.filePath);
+      const result = await window.nochal.saveProject(
+        snapshotProjectForIpc(state.project),
+        state.filePath,
+      );
       if (!result) return;
       setState("filePath", result.filePath);
       setState("status", `Saved ${result.filePath}`);
     },
 
     async exportHal(): Promise<void> {
-      const result = await window.nochal.exportHal(snapshotProjectForIpc(state.project), null);
+      const result = await window.nochal.exportHal(
+        snapshotProjectForIpc(state.project),
+        null,
+      );
       if (!result) return;
       setState("exportWarnings", result.warnings);
       setState("status", `Exported HAL: ${result.filePath}`);
@@ -185,7 +206,7 @@ export function createEditorStore(initialProject: NochalProject) {
     },
 
     async importCompDirectory(): Promise<void> {
-      const dirPath = window.prompt("Directory containing .comp files", "linuxcnc/src/hal/components");
+      const dirPath = await window.nochal.pickDirectory();
       if (!dirPath) return;
       const result = await window.nochal.scanCompDir(dirPath);
       withProject((project) => {
@@ -195,12 +216,12 @@ export function createEditorStore(initialProject: NochalProject) {
       });
       setState(
         "status",
-        `Imported ${result.imported.length} components (${result.errors.length} errors)`
+        `Imported ${result.imported.length} components (${result.errors.length} errors)`,
       );
       if (result.errors.length > 0) {
         setState(
           "exportWarnings",
-          result.errors.map((e) => `Import error ${e.filePath}: ${e.error}`)
+          result.errors.map((e) => `Import error ${e.filePath}: ${e.error}`),
         );
       }
     },
@@ -220,8 +241,8 @@ export function createEditorStore(initialProject: NochalProject) {
           paramValues: Object.fromEntries(
             comp.params
               .filter((p) => p.defaultValue !== undefined)
-              .map((p) => [p.key, p.defaultValue ?? ""])
-          )
+              .map((p) => [p.key, p.defaultValue ?? ""]),
+          ),
         };
         sheet.nodes.push(node);
       });
@@ -230,7 +251,9 @@ export function createEditorStore(initialProject: NochalProject) {
 
     addSheetDefinition(): void {
       const current = actions.getCurrentSheet();
-      const allNames = new Set(Object.values(state.project.sheets).map((s) => s.name));
+      const allNames = new Set(
+        Object.values(state.project.sheets).map((s) => s.name),
+      );
       const name = nextName("Sheet", allNames);
       const child = createSheet(name, current.id);
 
@@ -243,7 +266,7 @@ export function createEditorStore(initialProject: NochalProject) {
           kind: "sheet",
           sheetId: child.id,
           instanceName,
-          position: defaultNodePosition(sheet)
+          position: defaultNodePosition(sheet),
         };
         sheet.nodes.push(node);
       });
@@ -256,7 +279,9 @@ export function createEditorStore(initialProject: NochalProject) {
         setState("status", "Cannot place a sheet inside itself");
         return;
       }
-      if (sheetContainsSheet(state.project, sheetIdToPlace, state.activeSheetId)) {
+      if (
+        sheetContainsSheet(state.project, sheetIdToPlace, state.activeSheetId)
+      ) {
         setState("status", "Cannot create recursive sheet hierarchy");
         return;
       }
@@ -269,7 +294,7 @@ export function createEditorStore(initialProject: NochalProject) {
           kind: "sheet",
           sheetId: sheetIdToPlace,
           instanceName: ensureInstanceName(sheet, target.name),
-          position: defaultNodePosition(sheet)
+          position: defaultNodePosition(sheet),
         };
         sheet.nodes.push(node);
       });
@@ -296,23 +321,35 @@ export function createEditorStore(initialProject: NochalProject) {
         const sheet = getSheet(project, state.activeSheetId);
         const used = new Set(sheet.labels.map((l) => l.name));
         const base =
-          scope === "global" ? "global_sig" : scope === "hierarchical" ? "sheet_sig" : "sig";
+          scope === "global"
+            ? "global_sig"
+            : scope === "hierarchical"
+              ? "sheet_sig"
+              : "sig";
         const name = nextName(base, used);
         sheet.labels.push({
           id: createId("label"),
           name,
           scope,
-          position: defaultLabelPosition(sheet)
+          position: defaultLabelPosition(sheet),
         });
       });
       setState("status", `Added ${scope} label`);
     },
 
-    addSheetPort(direction: "in" | "out" | "io", type: "bit" | "float" | "s32" | "u32" | "s64" | "u64" | "port"): void {
+    addSheetPort(
+      direction: "in" | "out" | "io",
+      type: "bit" | "float" | "s32" | "u32" | "s64" | "u64" | "port",
+    ): void {
       withProject((project) => {
         const sheet = getSheet(project, state.activeSheetId);
         const used = new Set(sheet.ports.map((p) => p.name));
-        const base = direction === "in" ? "in_sig" : direction === "out" ? "out_sig" : "io_sig";
+        const base =
+          direction === "in"
+            ? "in_sig"
+            : direction === "out"
+              ? "out_sig"
+              : "io_sig";
         const name = nextName(base, used);
         const port = createSheetPortDraft(name, direction, type);
         port.position = defaultPortPosition(sheet, port.side);
@@ -363,7 +400,10 @@ export function createEditorStore(initialProject: NochalProject) {
       });
     },
 
-    updateLabel(labelId: string, patch: { name?: string; scope?: LabelScope }): void {
+    updateLabel(
+      labelId: string,
+      patch: { name?: string; scope?: LabelScope },
+    ): void {
       withProject((project) => {
         const sheet = getSheet(project, state.activeSheetId);
         const label = sheet.labels.find((l) => l.id === labelId);
@@ -375,7 +415,12 @@ export function createEditorStore(initialProject: NochalProject) {
 
     updateSheetPort(
       portId: string,
-      patch: { name?: string; direction?: "in" | "out" | "io"; type?: HalValueType; side?: "left" | "right" | "bottom" }
+      patch: {
+        name?: string;
+        direction?: "in" | "out" | "io";
+        type?: HalValueType;
+        side?: "left" | "right" | "bottom";
+      },
     ): void {
       withProject((project) => {
         const sheet = getSheet(project, state.activeSheetId);
@@ -398,20 +443,30 @@ export function createEditorStore(initialProject: NochalProject) {
           sheet.directConnections = sheet.directConnections.filter(
             (c) =>
               !(c.a.kind === "node-pin" && c.a.nodeId === sel.id) &&
-              !(c.b.kind === "node-pin" && c.b.nodeId === sel.id)
+              !(c.b.kind === "node-pin" && c.b.nodeId === sel.id),
           );
-          sheet.labelAnchors = sheet.labelAnchors.filter((a) => !(a.endpoint.kind === "node-pin" && a.endpoint.nodeId === sel.id));
+          sheet.labelAnchors = sheet.labelAnchors.filter(
+            (a) =>
+              !(a.endpoint.kind === "node-pin" && a.endpoint.nodeId === sel.id),
+          );
         } else if (sel.kind === "label") {
           sheet.labels = sheet.labels.filter((l) => l.id !== sel.id);
-          sheet.labelAnchors = sheet.labelAnchors.filter((a) => a.labelId !== sel.id);
+          sheet.labelAnchors = sheet.labelAnchors.filter(
+            (a) => a.labelId !== sel.id,
+          );
         } else if (sel.kind === "sheet-port") {
           sheet.ports = sheet.ports.filter((p) => p.id !== sel.id);
           sheet.directConnections = sheet.directConnections.filter(
             (c) =>
               !(c.a.kind === "sheet-port" && c.a.portId === sel.id) &&
-              !(c.b.kind === "sheet-port" && c.b.portId === sel.id)
+              !(c.b.kind === "sheet-port" && c.b.portId === sel.id),
           );
-          sheet.labelAnchors = sheet.labelAnchors.filter((a) => !(a.endpoint.kind === "sheet-port" && a.endpoint.portId === sel.id));
+          sheet.labelAnchors = sheet.labelAnchors.filter(
+            (a) =>
+              !(
+                a.endpoint.kind === "sheet-port" && a.endpoint.portId === sel.id
+              ),
+          );
         }
       });
       setState("selection", null);
@@ -424,8 +479,15 @@ export function createEditorStore(initialProject: NochalProject) {
       if (!pending) {
         setState("pendingEndpoint", endpoint);
         try {
-          const info = resolveEndpointInSheet(state.project, state.activeSheetId, endpoint);
-          setState("status", `Selected endpoint ${info.name} (${info.direction} ${info.type})`);
+          const info = resolveEndpointInSheet(
+            state.project,
+            state.activeSheetId,
+            endpoint,
+          );
+          setState(
+            "status",
+            `Selected endpoint ${info.name} (${info.direction} ${info.type})`,
+          );
         } catch {
           setState("status", "Selected endpoint");
         }
@@ -437,7 +499,7 @@ export function createEditorStore(initialProject: NochalProject) {
         state.activeSheetId,
         pending,
         endpoint,
-        actions.getCurrentSheet().directConnections
+        actions.getCurrentSheet().directConnections,
       );
       if (!validation.ok) {
         setState("status", validation.reason ?? "Invalid connection");
@@ -450,7 +512,7 @@ export function createEditorStore(initialProject: NochalProject) {
         sheet.directConnections.push({
           id: createId("conn"),
           a: pending,
-          b: endpoint
+          b: endpoint,
         });
       });
       setState("pendingEndpoint", null);
@@ -462,12 +524,16 @@ export function createEditorStore(initialProject: NochalProject) {
       if (!pending) return;
       withProject((project) => {
         const sheet = getSheet(project, state.activeSheetId);
-        const exists = sheet.labelAnchors.some((a) => a.labelId === labelId && JSON.stringify(a.endpoint) === JSON.stringify(pending));
+        const exists = sheet.labelAnchors.some(
+          (a) =>
+            a.labelId === labelId &&
+            JSON.stringify(a.endpoint) === JSON.stringify(pending),
+        );
         if (!exists) {
           sheet.labelAnchors.push({
             id: createId("anchor"),
             labelId,
-            endpoint: pending
+            endpoint: pending,
           });
         }
       });
@@ -478,7 +544,9 @@ export function createEditorStore(initialProject: NochalProject) {
     removeDirectConnection(connectionId: string): void {
       withProject((project) => {
         const sheet = getSheet(project, state.activeSheetId);
-        sheet.directConnections = sheet.directConnections.filter((c) => c.id !== connectionId);
+        sheet.directConnections = sheet.directConnections.filter(
+          (c) => c.id !== connectionId,
+        );
       });
       setState("status", "Removed connection");
     },
@@ -486,10 +554,12 @@ export function createEditorStore(initialProject: NochalProject) {
     removeLabelAnchor(anchorId: string): void {
       withProject((project) => {
         const sheet = getSheet(project, state.activeSheetId);
-        sheet.labelAnchors = sheet.labelAnchors.filter((a) => a.id !== anchorId);
+        sheet.labelAnchors = sheet.labelAnchors.filter(
+          (a) => a.id !== anchorId,
+        );
       });
       setState("status", "Removed label anchor");
-    }
+    },
   };
 
   return { state, setState, actions };

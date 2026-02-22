@@ -14,6 +14,7 @@ const api: NochalApi = {
       warnings: string[];
     } | null>,
   importCompFile: () => ipcRenderer.invoke("nochal:import-comp-file") as Promise<ImportedComponentDefinition | null>,
+  pickDirectory: (defaultPath) => ipcRenderer.invoke("nochal:pick-directory", defaultPath) as Promise<string | null>,
   scanCompDir: (dirPath) =>
     ipcRenderer.invoke("nochal:scan-comp-dir", dirPath) as Promise<{
       imported: ImportedComponentDefinition[];
