@@ -1,7 +1,8 @@
-import { createEffect, onCleanup, onMount } from "solid-js";
+import { createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import type { NochalProject, SheetDefinition, SheetEndpointRef } from "../../shared/types";
 import type { Selection } from "../state/store";
 import { KonvaSheetScene } from "../canvas/konvaSheetScene";
+import CanvasComponentMenu from "./CanvasComponentMenu";
 
 interface CanvasProps {
   project: NochalProject;
@@ -15,12 +16,18 @@ interface CanvasProps {
   onMoveNode: (id: string, x: number, y: number) => void;
   onMoveLabel: (id: string, x: number, y: number) => void;
   onMoveSheetPort: (id: string, x: number, y: number) => void;
+  onAddComponentAt: (componentId: string, x: number, y: number) => void;
 }
 
 export default function Canvas(props: CanvasProps) {
   let hostEl!: HTMLDivElement;
   let scene: KonvaSheetScene | null = null;
   let resizeObserver: ResizeObserver | null = null;
+  const [menu, setMenu] = createSignal<{ x: number; y: number; worldX: number; worldY: number } | null>(null);
+
+  const componentChoices = createMemo(() =>
+    Object.values(props.project.library.components).sort((a, b) => a.halComponentName.localeCompare(b.halComponentName))
+  );
 
   onMount(() => {
     scene = new KonvaSheetScene(hostEl, {
@@ -66,13 +73,41 @@ export default function Canvas(props: CanvasProps) {
   });
 
   return (
-    <div class="canvas-shell">
+    <div
+      class="canvas-shell"
+      onPointerDown={() => {
+        if (menu()) setMenu(null);
+      }}
+    >
       <div class="canvas-grid">
         <div
           ref={(el) => {
             hostEl = el;
           }}
           class="scene-konva-host"
+          onContextMenu={(evt) => {
+            evt.preventDefault();
+            const rect = hostEl.getBoundingClientRect();
+            const localX = Math.max(0, evt.clientX - rect.left);
+            const localY = Math.max(0, evt.clientY - rect.top);
+            const menuW = 360;
+            const menuH = 440;
+            const x = Math.max(8, Math.min(localX, rect.width - menuW - 8));
+            const y = Math.max(8, Math.min(localY, rect.height - menuH - 8));
+            const world = scene?.clientToWorld(evt.clientX, evt.clientY) ?? { x: 120, y: 120 };
+            setMenu({ x, y, worldX: world.x, worldY: world.y });
+          }}
+        />
+        <CanvasComponentMenu
+          open={menu() !== null}
+          x={menu()?.x ?? 0}
+          y={menu()?.y ?? 0}
+          components={componentChoices()}
+          onAddComponent={(componentId) => {
+            const m = menu();
+            props.onAddComponentAt(componentId, m?.worldX ?? 120, m?.worldY ?? 120);
+          }}
+          onClose={() => setMenu(null)}
         />
       </div>
     </div>

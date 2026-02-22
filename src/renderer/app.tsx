@@ -84,7 +84,6 @@ export default function App() {
         <Sidebar
           project={state.project}
           activeSheetId={state.activeSheetId}
-          onAddComponent={(id) => actions.addComponentNode(id)}
           onCreateSubsheet={() => actions.addSheetDefinition()}
           onPlaceSheet={(id) => actions.placeExistingSheetNode(id)}
           onGoToSheet={(id) => actions.setActiveSheet(id)}
@@ -102,6 +101,7 @@ export default function App() {
           onMoveNode={actions.moveNode}
           onMoveLabel={actions.moveLabel}
           onMoveSheetPort={actions.moveSheetPort}
+          onAddComponentAt={(id, x, y) => actions.addComponentNode(id, { x, y })}
         />
 
         <Inspector

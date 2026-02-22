@@ -226,7 +226,7 @@ export function createEditorStore(initialProject: NochalProject) {
       }
     },
 
-    addComponentNode(componentId: string): void {
+    addComponentNode(componentId: string, position?: { x: number; y: number }): void {
       const comp = state.project.library.components[componentId];
       if (!comp) return;
       withProject((project) => {
@@ -237,7 +237,7 @@ export function createEditorStore(initialProject: NochalProject) {
           kind: "component",
           componentId,
           instanceName,
-          position: defaultNodePosition(sheet),
+          position: position ?? defaultNodePosition(sheet),
           paramValues: Object.fromEntries(
             comp.params
               .filter((p) => p.defaultValue !== undefined)

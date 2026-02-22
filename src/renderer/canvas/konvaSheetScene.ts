@@ -142,6 +142,15 @@ export class KonvaSheetScene {
     }
   }
 
+  clientToWorld(clientX: number, clientY: number): Pt {
+    const rect = this.container.getBoundingClientRect();
+    const screen = {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+    return this.clampPos(this.screenToWorld(screen));
+  }
+
   private clampPos(pos: { x: number; y: number }): { x: number; y: number } {
     return {
       x: Math.max(10, Math.min(SCENE_WIDTH - 10, pos.x)),
