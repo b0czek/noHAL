@@ -16,6 +16,7 @@ import type {
   XY,
 } from "../../shared/types";
 import { validateDirectConnection } from "../../shared/validation";
+import type { TranslationKey } from "../i18n";
 
 export type Selection =
   | { kind: "node"; id: string }
@@ -34,6 +35,13 @@ export interface EditorState {
   status: string;
   exportWarnings: string[];
 }
+
+type TranslationParams = Record<
+  string,
+  string | number | boolean | null | undefined
+>;
+
+type TranslateFn = (key: TranslationKey, params?: TranslationParams) => string;
 
 function cloneProject(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
@@ -231,7 +239,14 @@ function syncProjectUi(project: NoHALProject, activeSheetId: string): void {
   project.ui.activeSheetId = activeSheetId;
 }
 
-export function createEditorStore(initialProject: NoHALProject) {
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+export function createEditorStore(
+  initialProject: NoHALProject,
+  t: TranslateFn,
+) {
   const [state, setState] = createStore<EditorState>({
     project: initialProject,
     componentStore: createEmptyComponentStore(),
@@ -240,7 +255,7 @@ export function createEditorStore(initialProject: NoHALProject) {
     selection: null,
     pendingEndpoint: null,
     pendingWirePoints: [],
-    status: "Ready",
+    status: t("store.status.ready"),
     exportWarnings: [],
   });
 
@@ -286,6 +301,10 @@ export function createEditorStore(initialProject: NoHALProject) {
     });
   };
 
+  const setStatusT = (key: TranslationKey, params?: TranslationParams) => {
+    setState("status", t(key, params));
+  };
+
   const actions = {
     getCurrentSheet(): SheetDefinition {
       return getSheet(state.project, state.activeSheetId);
@@ -306,10 +325,9 @@ export function createEditorStore(initialProject: NoHALProject) {
         else delete sheet.hal?.addfQueue;
         if (sheet.hal && Object.keys(sheet.hal).length === 0) delete sheet.hal;
       });
-      setState(
-        "status",
-        `Updated sheet addf queue (${normalized.length} entries)`,
-      );
+      setStatusT("store.status.updatedSheetAddfQueue", {
+        count: normalized.length,
+      });
     },
 
     async loadComponentStore(): Promise<void> {
@@ -338,22 +356,20 @@ export function createEditorStore(initialProject: NoHALProject) {
     addPendingWirePoint(point: XY): void {
       if (!state.pendingEndpoint) return;
       setState("pendingWirePoints", (points) => [...points, point]);
-      setState(
-        "status",
-        `Added wire waypoint (${state.pendingWirePoints.length + 1})`,
-      );
+      setStatusT("store.status.addedWireWaypoint", {
+        count: state.pendingWirePoints.length + 1,
+      });
     },
 
     async newProject(): Promise<boolean> {
       try {
         const project = await window.nohal.newProject();
-        replaceProjectState(project, null, "Created new project");
+        replaceProjectState(project, null, t("store.status.createdNewProject"));
         return true;
       } catch (error) {
-        setState(
-          "status",
-          `Failed to create project: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        setStatusT("store.status.failedCreateProject", {
+          error: toErrorMessage(error),
+        });
         return false;
       }
     },
@@ -370,17 +386,16 @@ export function createEditorStore(initialProject: NoHALProject) {
         replaceProjectState(
           project,
           options?.filePath ?? null,
-          options?.status ?? "Opened project",
+          options?.status ?? t("store.status.openedProject"),
         );
         if (options?.warnings) {
           setState("exportWarnings", [...options.warnings]);
         }
         return true;
       } catch (error) {
-        setState(
-          "status",
-          `Failed to load prepared project: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        setStatusT("store.status.failedLoadPreparedProject", {
+          error: toErrorMessage(error),
+        });
         return false;
       }
     },
@@ -392,14 +407,13 @@ export function createEditorStore(initialProject: NoHALProject) {
         replaceProjectState(
           result.project,
           result.filePath,
-          `Opened ${result.filePath}`,
+          t("store.status.openedFile", { filePath: result.filePath }),
         );
         return true;
       } catch (error) {
-        setState(
-          "status",
-          `Failed to open project: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        setStatusT("store.status.failedOpenProject", {
+          error: toErrorMessage(error),
+        });
         return false;
       }
     },
@@ -410,14 +424,13 @@ export function createEditorStore(initialProject: NoHALProject) {
         replaceProjectState(
           result.project,
           result.filePath,
-          `Opened ${result.filePath}`,
+          t("store.status.openedFile", { filePath: result.filePath }),
         );
         return true;
       } catch (error) {
-        setState(
-          "status",
-          `Failed to open project: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        setStatusT("store.status.failedOpenProject", {
+          error: toErrorMessage(error),
+        });
         return false;
       }
     },
@@ -429,7 +442,7 @@ export function createEditorStore(initialProject: NoHALProject) {
       );
       if (!result) return;
       setState("filePath", result.filePath);
-      setState("status", `Saved ${result.filePath}`);
+      setStatusT("store.status.savedFile", { filePath: result.filePath });
     },
 
     async exportHal(): Promise<void> {
@@ -439,7 +452,7 @@ export function createEditorStore(initialProject: NoHALProject) {
       );
       if (!result) return;
       setState("exportWarnings", result.warnings);
-      setState("status", `Exported HAL: ${result.filePath}`);
+      setStatusT("store.status.exportedHal", { filePath: result.filePath });
     },
 
     async importCompFile(): Promise<void> {
@@ -447,10 +460,9 @@ export function createEditorStore(initialProject: NoHALProject) {
       if (!entry) return;
       const componentStore = await window.nohal.loadComponentStore();
       replaceComponentStore(componentStore);
-      setState(
-        "status",
-        `Imported .comp to store: ${entry.parsed.halComponentName}`,
-      );
+      setStatusT("store.status.importedCompToStore", {
+        componentName: entry.parsed.halComponentName,
+      });
     },
 
     async addComponentDirSource(): Promise<void> {
@@ -458,14 +470,21 @@ export function createEditorStore(initialProject: NoHALProject) {
       if (!result) return;
       const componentStore = await window.nohal.loadComponentStore();
       replaceComponentStore(componentStore);
-      setState(
-        "status",
-        `Added dir source ${getComponentSourceDisplayPath(componentStore, result.sourceId)}: ${result.entries.length} components, ${result.removedComponentIds.length} removed (${result.errors.length} errors)`,
-      );
+      setStatusT("store.status.addedDirSource", {
+        path: getComponentSourceDisplayPath(componentStore, result.sourceId),
+        components: result.entries.length,
+        removed: result.removedComponentIds.length,
+        errors: result.errors.length,
+      });
       if (result.errors.length > 0) {
         setState(
           "exportWarnings",
-          result.errors.map((e) => `Import error ${e.filePath}: ${e.error}`),
+          result.errors.map((e) =>
+            t("store.warning.importError", {
+              filePath: e.filePath,
+              error: e.error,
+            }),
+          ),
         );
       }
     },
@@ -476,19 +495,27 @@ export function createEditorStore(initialProject: NoHALProject) {
           await window.nohal.refreshComponentSourceInStore(sourceId);
         const componentStore = await window.nohal.loadComponentStore();
         replaceComponentStore(componentStore);
-        setState(
-          "status",
-          `Refreshed source ${getComponentSourceDisplayPath(componentStore, sourceId)}: ${result.entries.length} components, ${result.removedComponentIds.length} removed (${result.errors.length} errors)`,
-        );
+        setStatusT("store.status.refreshedSource", {
+          path: getComponentSourceDisplayPath(componentStore, sourceId),
+          components: result.entries.length,
+          removed: result.removedComponentIds.length,
+          errors: result.errors.length,
+        });
         if (result.errors.length > 0) {
           setState(
             "exportWarnings",
-            result.errors.map((e) => `Import error ${e.filePath}: ${e.error}`),
+            result.errors.map((e) =>
+              t("store.warning.importError", {
+                filePath: e.filePath,
+                error: e.error,
+              }),
+            ),
           );
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        setState("status", `Source refresh failed: ${message}`);
+        setStatusT("store.status.sourceRefreshFailed", {
+          error: toErrorMessage(error),
+        });
       }
     },
 
@@ -502,23 +529,21 @@ export function createEditorStore(initialProject: NoHALProject) {
           await window.nohal.deleteComponentSourceFromStore(sourceId);
         const componentStore = await window.nohal.loadComponentStore();
         replaceComponentStore(componentStore);
-        setState(
-          "status",
-          `Deleted source ${previousPath} (${result.removedComponentIds.length} components removed)`,
-        );
+        setStatusT("store.status.deletedSource", {
+          path: previousPath,
+          removed: result.removedComponentIds.length,
+        });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        setState("status", `Delete source failed: ${message}`);
+        setStatusT("store.status.deleteSourceFailed", {
+          error: toErrorMessage(error),
+        });
       }
     },
 
     async refreshComponentInStore(componentId: string): Promise<void> {
       const current = state.project.library.components[componentId];
       if (!current || current.source !== "comp") {
-        setState(
-          "status",
-          "Selected component is not a stored .comp component",
-        );
+        setStatusT("store.status.selectedComponentNotStoredComp");
         return;
       }
 
@@ -535,13 +560,13 @@ export function createEditorStore(initialProject: NoHALProject) {
             entry.parsed,
           );
         });
-        setState(
-          "status",
-          `Refreshed component: ${entry.parsed.halComponentName}`,
-        );
+        setStatusT("store.status.refreshedComponent", {
+          componentName: entry.parsed.halComponentName,
+        });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        setState("status", `Refresh failed: ${message}`);
+        setStatusT("store.status.refreshFailed", {
+          error: toErrorMessage(error),
+        });
       }
     },
 
@@ -568,7 +593,9 @@ export function createEditorStore(initialProject: NoHALProject) {
         };
         sheet.nodes.push(node);
       });
-      setState("status", `Placed component ${comp.halComponentName}`);
+      setStatusT("store.status.placedComponent", {
+        componentName: comp.halComponentName,
+      });
     },
 
     addSheetDefinition(): void {
@@ -593,22 +620,22 @@ export function createEditorStore(initialProject: NoHALProject) {
         sheet.nodes.push(node);
       });
 
-      setState("status", `Created subsheet ${name}`);
+      setStatusT("store.status.createdSubsheet", { name });
     },
 
     placeExistingSheetNode(sheetIdToPlace: string): void {
       if (sheetIdToPlace === state.activeSheetId) {
-        setState("status", "Cannot place a sheet inside itself");
+        setStatusT("store.status.cannotPlaceSheetInsideItself");
         return;
       }
       if (isSheetPlacedInProject(state.project, sheetIdToPlace)) {
-        setState("status", "Sheet is already placed");
+        setStatusT("store.status.sheetAlreadyPlaced");
         return;
       }
       if (
         sheetContainsSheet(state.project, sheetIdToPlace, state.activeSheetId)
       ) {
-        setState("status", "Cannot create recursive sheet hierarchy");
+        setStatusT("store.status.cannotCreateRecursiveSheetHierarchy");
         return;
       }
       const target = state.project.sheets[sheetIdToPlace];
@@ -624,7 +651,7 @@ export function createEditorStore(initialProject: NoHALProject) {
         };
         sheet.nodes.push(node);
       });
-      setState("status", `Placed subsheet ${target.name}`);
+      setStatusT("store.status.placedSubsheet", { name: target.name });
     },
 
     enterSelectedSheet(): void {
@@ -661,7 +688,7 @@ export function createEditorStore(initialProject: NoHALProject) {
           rotation: 0,
         });
       });
-      setState("status", `Added ${scope} label`);
+      setStatusT("store.status.addedLabel", { scope });
     },
 
     addSheetPort(
@@ -682,7 +709,7 @@ export function createEditorStore(initialProject: NoHALProject) {
         port.position = defaultPortPosition(sheet, port.side);
         sheet.ports.push(port);
       });
-      setState("status", "Added sheet port");
+      setStatusT("store.status.addedSheetPort");
     },
 
     moveNode(nodeId: string, x: number, y: number): void {
@@ -823,7 +850,7 @@ export function createEditorStore(initialProject: NoHALProject) {
       setState("selection", null);
       setState("pendingEndpoint", null);
       setState("pendingWirePoints", []);
-      setState("status", "Removed selection");
+      setStatusT("store.status.removedSelection");
     },
 
     endpointClick(endpoint: SheetEndpointRef): void {
@@ -839,10 +866,14 @@ export function createEditorStore(initialProject: NoHALProject) {
           );
           setState(
             "status",
-            `Selected endpoint ${info.name} (${info.direction} ${info.type})`,
+            t("store.status.selectedEndpointDetailed", {
+              name: info.name,
+              direction: info.direction,
+              type: info.type,
+            }),
           );
         } catch {
-          setState("status", "Selected endpoint");
+          setStatusT("store.status.selectedEndpoint");
         }
         return;
       }
@@ -855,7 +886,10 @@ export function createEditorStore(initialProject: NoHALProject) {
         actions.getCurrentSheet().directConnections,
       );
       if (!validation.ok) {
-        setState("status", validation.reason ?? "Invalid connection");
+        setState(
+          "status",
+          validation.reason ?? t("store.status.invalidConnection"),
+        );
         setState("pendingEndpoint", endpoint);
         setState("pendingWirePoints", []);
         return;
@@ -874,7 +908,7 @@ export function createEditorStore(initialProject: NoHALProject) {
       });
       setState("pendingEndpoint", null);
       setState("pendingWirePoints", []);
-      setState("status", "Connected endpoints");
+      setStatusT("store.status.connectedEndpoints");
     },
 
     anchorPendingToLabel(labelId: string): void {
@@ -897,7 +931,7 @@ export function createEditorStore(initialProject: NoHALProject) {
       });
       setState("pendingEndpoint", null);
       setState("pendingWirePoints", []);
-      setState("status", "Attached endpoint to label");
+      setStatusT("store.status.attachedEndpointToLabel");
     },
 
     removeDirectConnection(connectionId: string): void {
@@ -907,7 +941,7 @@ export function createEditorStore(initialProject: NoHALProject) {
           (c) => c.id !== connectionId,
         );
       });
-      setState("status", "Removed connection");
+      setStatusT("store.status.removedConnection");
     },
 
     updateDirectConnectionWaypoints(
@@ -921,7 +955,7 @@ export function createEditorStore(initialProject: NoHALProject) {
         if (waypoints.length === 0) delete conn.waypoints;
         else conn.waypoints = waypoints.map((p) => ({ x: p.x, y: p.y }));
       });
-      setState("status", "Updated wire route");
+      setStatusT("store.status.updatedWireRoute");
     },
 
     removeLabelAnchor(anchorId: string): void {
@@ -931,7 +965,7 @@ export function createEditorStore(initialProject: NoHALProject) {
           (a) => a.id !== anchorId,
         );
       });
-      setState("status", "Removed label anchor");
+      setStatusT("store.status.removedLabelAnchor");
     },
   };
 

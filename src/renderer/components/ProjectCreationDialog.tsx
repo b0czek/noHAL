@@ -5,6 +5,7 @@ import type {
   HalImportDraft,
   HalImportPlacementHeuristic,
 } from "../../shared/types";
+import { useI18n } from "../i18n";
 
 type ProjectCreationDialogStep = "choose" | "link";
 
@@ -28,22 +29,10 @@ export interface ProjectCreationDialogProps {
   onCreateImportedProject: () => void;
 }
 
-function selectionLabel(
-  encodedValue: string,
-  componentStore: ComponentStore,
-): string {
-  if (!encodedValue || encodedValue === "local")
-    return "Project-local (generated)";
-  if (!encodedValue.startsWith("store:")) return encodedValue;
-  const componentId = encodedValue.slice("store:".length);
-  const entry = componentStore.components[componentId];
-  if (!entry) return `Store: ${componentId}`;
-  return `Store: ${entry.parsed.halComponentName}`;
-}
-
 export default function ProjectCreationDialog(
   props: ProjectCreationDialogProps,
 ) {
+  const { t } = useI18n();
   const storeEntries = createMemo(() =>
     Object.values(props.componentStore.components).sort((a, b) =>
       a.parsed.halComponentName.localeCompare(b.parsed.halComponentName),
@@ -70,6 +59,18 @@ export default function ProjectCreationDialog(
     ];
     return ordered;
   };
+  const selectionLabel = (encodedValue: string): string => {
+    if (!encodedValue || encodedValue === "local") {
+      return t("projectCreation.projectLocalGenerated");
+    }
+    if (!encodedValue.startsWith("store:")) return encodedValue;
+    const componentId = encodedValue.slice("store:".length);
+    const entry = props.componentStore.components[componentId];
+    if (!entry) return t("projectCreation.storeFallback", { componentId });
+    return t("projectCreation.storeEntry", {
+      name: entry.parsed.halComponentName,
+    });
+  };
 
   return (
     <Show when={props.open}>
@@ -83,17 +84,17 @@ export default function ProjectCreationDialog(
             class="modal new-project-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label="Create New Project"
+            aria-label={t("projectCreation.ariaCreateProject")}
             onPointerDown={(evt) => evt.stopPropagation()}
             onContextMenu={(evt) => evt.preventDefault()}
           >
             <div class="modal-header">
               <div>
-                <div class="modal-title">New Project</div>
+                <div class="modal-title">{t("projectCreation.title")}</div>
                 <div class="modal-sub">
                   {props.step === "choose"
-                    ? "Choose a blank project or import an existing HAL file."
-                    : "Verify component links before building the imported sheet."}
+                    ? t("projectCreation.subtitleChoose")
+                    : t("projectCreation.subtitleLink")}
                 </div>
               </div>
               <button
@@ -102,7 +103,7 @@ export default function ProjectCreationDialog(
                 onClick={props.onClose}
                 disabled={props.isBusy}
               >
-                Close
+                {t("common.close")}
               </button>
             </div>
 
@@ -114,10 +115,11 @@ export default function ProjectCreationDialog(
               <Show when={props.step === "choose"}>
                 <div class="new-project-choice-grid">
                   <section class="panel">
-                    <div class="panel-title">Blank Project</div>
+                    <div class="panel-title">
+                      {t("projectCreation.blankProject")}
+                    </div>
                     <div class="muted">
-                      Start with an empty top sheet and existing built-in/store
-                      components.
+                      {t("projectCreation.blankProjectHelp")}
                     </div>
                     <div class="new-project-choice-actions">
                       <button
@@ -126,16 +128,17 @@ export default function ProjectCreationDialog(
                         onClick={props.onCreateBlank}
                         disabled={props.isBusy}
                       >
-                        Create Blank
+                        {t("projectCreation.createBlank")}
                       </button>
                     </div>
                   </section>
 
                   <section class="panel">
-                    <div class="panel-title">Import Existing HAL</div>
+                    <div class="panel-title">
+                      {t("projectCreation.importExistingHal")}
+                    </div>
                     <div class="muted">
-                      Parse a `.hal` file, link components to the component
-                      store, and generate a project-local sheet.
+                      {t("projectCreation.importExistingHalHelp")}
                     </div>
                     <div class="new-project-choice-actions">
                       <button
@@ -144,7 +147,7 @@ export default function ProjectCreationDialog(
                         onClick={props.onPickHalFile}
                         disabled={props.isBusy}
                       >
-                        Pick HAL File
+                        {t("projectCreation.pickHalFile")}
                       </button>
                     </div>
                   </section>
@@ -155,32 +158,38 @@ export default function ProjectCreationDialog(
                 {(draft) => (
                   <>
                     <section class="panel">
-                      <div class="panel-title">Import Source</div>
+                      <div class="panel-title">
+                        {t("projectCreation.importSource")}
+                      </div>
                       <div class="list compact">
                         <div class="list-row">
-                          <span class="muted">File</span>
+                          <span class="muted">{t("common.file")}</span>
                           <span class="mono new-project-path">
-                            {draft().sourcePath ?? "(unspecified)"}
+                            {draft().sourcePath ?? t("common.unspecified")}
                           </span>
                         </div>
                         <div class="list-row">
-                          <span class="muted">Components</span>
+                          <span class="muted">
+                            {t("projectCreation.components")}
+                          </span>
                           <span>{draft().componentGroups.length}</span>
                         </div>
                         <div class="list-row">
-                          <span class="muted">Nets</span>
+                          <span class="muted">{t("projectCreation.nets")}</span>
                           <span>{draft().nets.length}</span>
                         </div>
                         <div class="list-row">
-                          <span class="muted">setp</span>
+                          <span class="muted">{t("projectCreation.setp")}</span>
                           <span>{draft().setps.length}</span>
                         </div>
                         <div class="list-row">
-                          <span class="muted">addf</span>
+                          <span class="muted">{t("projectCreation.addf")}</span>
                           <span>{draft().addfs.length}</span>
                         </div>
                         <div class="list-row">
-                          <span class="muted">Placement</span>
+                          <span class="muted">
+                            {t("projectCreation.placement")}
+                          </span>
                           <select
                             value={props.placementHeuristic}
                             onChange={(evt) =>
@@ -190,19 +199,19 @@ export default function ProjectCreationDialog(
                               )
                             }
                             disabled={props.isBusy}
-                            title="Component placement heuristic"
+                            title={t("projectCreation.placementTitle")}
                           >
                             <option value="related-groups">
-                              Related groups (heuristic)
+                              {t("projectCreation.placementRelatedGroups")}
                             </option>
-                            <option value="alphabetical">Alphabetical</option>
+                            <option value="alphabetical">
+                              {t("projectCreation.placementAlphabetical")}
+                            </option>
                           </select>
                         </div>
                       </div>
                       <div class="muted">
-                        Groups connected components together before laying out
-                        the imported sheet, which usually reduces long crossing
-                        wires.
+                        {t("projectCreation.placementHelp")}
                       </div>
                       <div class="new-project-choice-actions">
                         <button
@@ -211,7 +220,7 @@ export default function ProjectCreationDialog(
                           onClick={props.onBackToChoice}
                           disabled={props.isBusy}
                         >
-                          Back
+                          {t("common.back")}
                         </button>
                         <button
                           type="button"
@@ -219,17 +228,17 @@ export default function ProjectCreationDialog(
                           onClick={props.onRepickHalFile}
                           disabled={props.isBusy}
                         >
-                          Pick Different File
+                          {t("projectCreation.pickDifferentFile")}
                         </button>
                       </div>
                     </section>
 
                     <section class="panel">
-                      <div class="panel-title">Component Linking</div>
+                      <div class="panel-title">
+                        {t("projectCreation.componentLinking")}
+                      </div>
                       <div class="muted new-project-linking-help">
-                        Review automatic matches. Any group left as
-                        project-local will generate a component definition
-                        stored in this project's `.nohal.json`.
+                        {t("projectCreation.componentLinkingHelp")}
                       </div>
                       <div class="new-project-link-list">
                         <For each={draft().componentGroups}>
@@ -240,14 +249,18 @@ export default function ProjectCreationDialog(
                                   {group.inferredHalComponentName}
                                 </div>
                                 <div class="component-sub">
-                                  {group.instances.length} instances •{" "}
-                                  {group.pins.length} pins •{" "}
-                                  {group.params.length} params • runtime{" "}
-                                  {group.runtimeHint}
+                                  {t("projectCreation.groupStats", {
+                                    instances: group.instances.length,
+                                    pins: group.pins.length,
+                                    params: group.params.length,
+                                    runtime: group.runtimeHint,
+                                  })}
                                 </div>
                                 <Show when={props.linkReasons[group.id]}>
                                   <div class="component-sub">
-                                    Auto: {props.linkReasons[group.id]}
+                                    {t("projectCreation.autoReason", {
+                                      reason: props.linkReasons[group.id],
+                                    })}
                                   </div>
                                 </Show>
                                 <div class="component-sub mono">
@@ -260,7 +273,7 @@ export default function ProjectCreationDialog(
                               </div>
                               <div class="new-project-link-select">
                                 <label>
-                                  Link Target
+                                  {t("projectCreation.linkTarget")}
                                   <select
                                     value={
                                       props.linkSelections[group.id] ?? "local"
@@ -273,11 +286,12 @@ export default function ProjectCreationDialog(
                                     }
                                     title={selectionLabel(
                                       props.linkSelections[group.id] ?? "local",
-                                      props.componentStore,
                                     )}
                                   >
                                     <option value="local">
-                                      Project-local (generated)
+                                      {t(
+                                        "projectCreation.projectLocalGenerated",
+                                      )}
                                     </option>
                                     <For
                                       each={optionListForGroup(
@@ -302,7 +316,7 @@ export default function ProjectCreationDialog(
                         </For>
                         <Show when={draft().componentGroups.length === 0}>
                           <div class="muted">
-                            No component groups were detected.
+                            {t("projectCreation.noComponentGroups")}
                           </div>
                         </Show>
                       </div>
@@ -310,7 +324,9 @@ export default function ProjectCreationDialog(
 
                     <Show when={draft().warnings.length > 0}>
                       <section class="panel warn">
-                        <div class="panel-title">Parser Warnings</div>
+                        <div class="panel-title">
+                          {t("projectCreation.parserWarnings")}
+                        </div>
                         <div class="list compact">
                           <For each={draft().warnings.slice(0, 20)}>
                             {(warning) => (
@@ -320,8 +336,9 @@ export default function ProjectCreationDialog(
                         </div>
                         <Show when={draft().warnings.length > 20}>
                           <div class="muted">
-                            Showing first 20 of {draft().warnings.length}{" "}
-                            warnings.
+                            {t("projectCreation.parserWarningsTruncated", {
+                              count: draft().warnings.length,
+                            })}
                           </div>
                         </Show>
                       </section>
@@ -334,7 +351,7 @@ export default function ProjectCreationDialog(
                         onClick={props.onCreateImportedProject}
                         disabled={props.isBusy}
                       >
-                        Create Imported Project
+                        {t("projectCreation.createImportedProject")}
                       </button>
                     </div>
                   </>

@@ -4,11 +4,14 @@ import EditorScreen from "./app/EditorScreen";
 import { useLandingProjectFlow } from "./app/useLandingProjectFlow";
 import LandingPage from "./components/LandingPage";
 import ProjectCreationDialog from "./components/ProjectCreationDialog";
+import { useI18n } from "./i18n";
 import { createEditorStore } from "./state/store";
 
 export default function App() {
+  const { t } = useI18n();
   const { state, actions } = createEditorStore(
-    createEmptyProject("NoHAL Project"),
+    createEmptyProject(t("app.defaultProjectName")),
+    t,
   );
   const [isEditorOpen, setIsEditorOpen] = createSignal(false);
   const landing = useLandingProjectFlow({

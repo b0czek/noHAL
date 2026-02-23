@@ -8,6 +8,7 @@ import {
 } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { NoHALProject, SheetNodeInstance } from "../../shared/types";
+import { useI18n } from "../i18n";
 
 interface SheetSettingsDialogProps {
   open: boolean;
@@ -43,6 +44,7 @@ function reorderByIds(
 function buildSheetQueueRows(
   project: NoHALProject,
   sheetId: string | null,
+  labels: { missingSheet: string; missing: string },
 ): SheetQueueRow[] {
   if (!sheetId) return [];
   const sheet = project.sheets[sheetId];
@@ -76,7 +78,7 @@ function buildSheetQueueRows(
         instanceName: node.instanceName,
         kind: "subsheet",
         title: node.instanceName,
-        subtitle: childSheet?.name ?? "missing sheet",
+        subtitle: childSheet?.name ?? labels.missingSheet,
       };
     }
     const component = project.library.components[node.componentId];
@@ -85,12 +87,13 @@ function buildSheetQueueRows(
       instanceName: node.instanceName,
       kind: "component",
       title: node.instanceName,
-      subtitle: component?.halComponentName ?? "missing",
+      subtitle: component?.halComponentName ?? labels.missing,
     };
   });
 }
 
 export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
+  const { t } = useI18n();
   const [draggingNodeId, setDraggingNodeId] = createSignal<string | null>(null);
   const [dropTargetNodeId, setDropTargetNodeId] = createSignal<string | null>(
     null,
@@ -100,7 +103,10 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
     props.sheetId ? props.project.sheets[props.sheetId] : undefined,
   );
   const rows = createMemo(() =>
-    buildSheetQueueRows(props.project, props.sheetId),
+    buildSheetQueueRows(props.project, props.sheetId, {
+      missingSheet: t("sheetSettings.missingSheet"),
+      missing: t("sheetSettings.missing"),
+    }),
   );
 
   const commitNodeOrder = (nodeIds: string[]) => {
@@ -134,29 +140,27 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
             class="modal sheet-settings-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label="Sheet Settings"
+            aria-label={t("sheetSettings.ariaLabel")}
             onPointerDown={(evt) => evt.stopPropagation()}
             onContextMenu={(evt) => evt.preventDefault()}
           >
             <div class="modal-header">
               <div>
-                <div class="modal-title">Sheet Settings</div>
+                <div class="modal-title">{t("sheetSettings.title")}</div>
                 <div class="modal-sub mono">{sheet()?.name}</div>
               </div>
               <button type="button" class="btn subtle" onClick={props.onClose}>
-                Close
+                {t("common.close")}
               </button>
             </div>
 
             <div class="modal-body sheet-settings-body">
               <section class="panel">
-                <div class="panel-title">addf Queue (Sheet Scope)</div>
+                <div class="panel-title">
+                  {t("sheetSettings.addfQueueTitle")}
+                </div>
                 <div class="component-store-toolbar">
-                  <div class="muted">
-                    Order components and subsheets together. Subsheet entries
-                    expand using that subsheet&apos;s own queue during HAL
-                    export.
-                  </div>
+                  <div class="muted">{t("sheetSettings.addfQueueHelp")}</div>
                   <div class="toolbar-group">
                     <button
                       type="button"
@@ -168,14 +172,14 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                         commitNodeOrder(sorted.map((row) => row.nodeId));
                       }}
                     >
-                      Reset (A-Z)
+                      {t("sheetSettings.resetAZ")}
                     </button>
                   </div>
                 </div>
               </section>
 
               <section class="panel">
-                <div class="panel-title">Queue Items</div>
+                <div class="panel-title">{t("sheetSettings.queueItems")}</div>
                 <div class="addf-queue-list">
                   <For each={rows()}>
                     {(row, index) => (
@@ -199,7 +203,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                         <button
                           type="button"
                           class={`addf-drag-handle-btn ${draggingNodeId() === row.nodeId ? "is-active" : ""}`}
-                          title="Drag to reorder"
+                          title={t("sheetSettings.dragToReorder")}
                           onPointerDown={(evt) => {
                             evt.preventDefault();
                             evt.stopPropagation();
@@ -221,7 +225,9 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                           </div>
                           <div class="component-sub">
                             <span class="chip type">
-                              {row.kind === "subsheet" ? "sheet" : "rt"}
+                              {row.kind === "subsheet"
+                                ? t("sheetSettings.kindSheet")
+                                : t("sheetSettings.kindRt")}
                             </span>{" "}
                             {row.subtitle}
                           </div>
@@ -240,7 +246,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                               );
                             }}
                           >
-                            Up
+                            {t("common.up")}
                           </button>
                           <button
                             type="button"
@@ -255,7 +261,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                               );
                             }}
                           >
-                            Down
+                            {t("common.down")}
                           </button>
                         </div>
                       </div>
@@ -264,7 +270,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
 
                   <Show when={rows().length === 0}>
                     <div class="muted component-store-empty">
-                      No RT components or subsheets in this sheet.
+                      {t("sheetSettings.empty")}
                     </div>
                   </Show>
                 </div>

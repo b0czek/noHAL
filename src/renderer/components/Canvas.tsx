@@ -12,6 +12,7 @@ import type {
   XY,
 } from "../../shared/types";
 import { KonvaSheetScene } from "../canvas/konvaSheetScene";
+import { useI18n } from "../i18n";
 import type { Selection } from "../state/store";
 import CanvasComponentMenu from "./CanvasComponentMenu";
 
@@ -35,6 +36,7 @@ interface CanvasProps {
 }
 
 export default function Canvas(props: CanvasProps) {
+  const { t } = useI18n();
   let hostEl!: HTMLDivElement;
   let scene: KonvaSheetScene | null = null;
   let resizeObserver: ResizeObserver | null = null;
@@ -136,7 +138,7 @@ export default function Canvas(props: CanvasProps) {
           }}
           class="scene-konva-host"
           role="application"
-          aria-label="Canvas workspace"
+          aria-label={t("canvas.ariaWorkspace")}
           onContextMenu={(evt) => {
             evt.preventDefault();
             const rect = hostEl.getBoundingClientRect();

@@ -2,6 +2,7 @@ import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { getNodePins, getNodeTitle } from "../../shared/graph";
 import type { ComponentNode, NoHALProject } from "../../shared/types";
+import { useI18n } from "../i18n";
 
 interface ComponentNodeDialogProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface ComponentNodeDialogProps {
 }
 
 export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
+  const { t } = useI18n();
   const component = createMemo(() =>
     props.node
       ? props.project.library.components[props.node.componentId]
@@ -30,6 +32,18 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
     const mode = pinFilter();
     return mode === "all" ? pins() : pins().filter((p) => p.direction === mode);
   });
+  const pinFilterLabel = (mode: (typeof pinFilterModes)[number]) => {
+    switch (mode) {
+      case "all":
+        return t("componentDialog.pinFilter.all");
+      case "in":
+        return t("componentDialog.pinFilter.in");
+      case "out":
+        return t("componentDialog.pinFilter.out");
+      case "io":
+        return t("componentDialog.pinFilter.io");
+    }
+  };
 
   return (
     <Show when={props.open && props.node}>
@@ -43,27 +57,27 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
             class="modal component-settings-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label="Component Settings"
+            aria-label={t("componentDialog.ariaLabel")}
             onPointerDown={(evt) => evt.stopPropagation()}
             onContextMenu={(evt) => evt.preventDefault()}
           >
             <div class="modal-header">
               <div>
-                <div class="modal-title">Component Settings</div>
+                <div class="modal-title">{t("componentDialog.title")}</div>
                 <div class="modal-sub mono">
                   {props.node ? getNodeTitle(props.project, props.node) : ""}
                 </div>
               </div>
               <button type="button" class="btn subtle" onClick={props.onClose}>
-                Close
+                {t("common.close")}
               </button>
             </div>
 
             <div class="modal-body">
               <section class="panel">
-                <div class="panel-title">Instance</div>
+                <div class="panel-title">{t("componentDialog.instance")}</div>
                 <label>
-                  Instance Name
+                  {t("componentDialog.instanceName")}
                   <input
                     value={props.node?.instanceName ?? ""}
                     onInput={(evt) => props.onRename(evt.currentTarget.value)}
@@ -73,16 +87,22 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                   {(comp) => (
                     <div class="list compact">
                       <div class="list-row">
-                        <span class="muted">HAL Component</span>
+                        <span class="muted">
+                          {t("componentDialog.halComponent")}
+                        </span>
                         <span class="mono">{comp().halComponentName}</span>
                       </div>
                       <div class="list-row">
-                        <span class="muted">Source</span>
+                        <span class="muted">{t("componentDialog.source")}</span>
                         <span>{comp().source}</span>
                       </div>
                       <div class="list-row">
-                        <span class="muted">Runtime</span>
-                        <span>{comp().runtime?.kind ?? "unknown"}</span>
+                        <span class="muted">
+                          {t("componentDialog.runtime")}
+                        </span>
+                        <span>
+                          {comp().runtime?.kind ?? t("common.unknown")}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -90,10 +110,12 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
               </section>
 
               <section class="panel">
-                <div class="panel-title">Parameters</div>
+                <div class="panel-title">{t("componentDialog.parameters")}</div>
                 <Show
                   when={componentParams().length > 0}
-                  fallback={<div class="muted">No parameters.</div>}
+                  fallback={
+                    <div class="muted">{t("componentDialog.noParameters")}</div>
+                  }
                 >
                   <div class="inspector-group">
                     <For each={componentParams()}>
@@ -118,10 +140,14 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
               </section>
 
               <section class="panel">
-                <div class="panel-title">Pin Initial Values (setp)</div>
+                <div class="panel-title">
+                  {t("componentDialog.pinInitialValues")}
+                </div>
                 <Show
                   when={pins().length > 0}
-                  fallback={<div class="muted">No pins.</div>}
+                  fallback={
+                    <div class="muted">{t("componentDialog.noPins")}</div>
+                  }
                 >
                   <div class="inspector-group">
                     <For each={pins()}>
@@ -129,14 +155,18 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                         <label>
                           <span class="mono">{pin.name}</span>
                           <input
-                            value={props.node?.pinInitialValues?.[pin.key] ?? ""}
+                            value={
+                              props.node?.pinInitialValues?.[pin.key] ?? ""
+                            }
                             onInput={(evt) =>
                               props.onUpdatePinInitialValue(
                                 pin.key,
                                 evt.currentTarget.value,
                               )
                             }
-                            placeholder="(optional)"
+                            placeholder={t(
+                              "componentDialog.optionalPlaceholder",
+                            )}
                           />
                         </label>
                       )}
@@ -146,7 +176,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
               </section>
 
               <section class="panel">
-                <div class="panel-title">Pins</div>
+                <div class="panel-title">{t("componentDialog.pins")}</div>
                 <div class="toolbar-group pin-filter-row">
                   <For each={pinFilterModes}>
                     {(mode) => (
@@ -155,7 +185,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                         class={`mini ${pinFilter() === mode ? "is-active-filter" : ""}`}
                         onClick={() => setPinFilter(mode)}
                       >
-                        {mode}
+                        {pinFilterLabel(mode)}
                       </button>
                     )}
                   </For>

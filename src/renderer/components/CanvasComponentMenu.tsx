@@ -1,5 +1,6 @@
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import type { ComponentDefinition } from "../../shared/types";
+import { useI18n } from "../i18n";
 
 interface CanvasComponentMenuProps {
   open: boolean;
@@ -11,6 +12,7 @@ interface CanvasComponentMenuProps {
 }
 
 export default function CanvasComponentMenu(props: CanvasComponentMenuProps) {
+  const { t } = useI18n();
   const [query, setQuery] = createSignal("");
 
   createEffect(() => {
@@ -38,15 +40,17 @@ export default function CanvasComponentMenu(props: CanvasComponentMenuProps) {
           class="canvas-context-menu"
           role="dialog"
           aria-modal="false"
-          aria-label="Add Component"
+          aria-label={t("canvasComponentMenu.ariaLabel")}
           style={{ left: `${props.x}px`, top: `${props.y}px` }}
           onPointerDown={(evt) => evt.stopPropagation()}
           onContextMenu={(evt) => evt.preventDefault()}
         >
-          <div class="canvas-context-title">Add Component</div>
+          <div class="canvas-context-title">
+            {t("canvasComponentMenu.title")}
+          </div>
           <input
             type="text"
-            placeholder="Filter components..."
+            placeholder={t("canvasComponentMenu.filterPlaceholder")}
             value={query()}
             onInput={(evt) => setQuery(evt.currentTarget.value)}
           />
@@ -54,7 +58,9 @@ export default function CanvasComponentMenu(props: CanvasComponentMenuProps) {
             <Show
               when={filtered().length > 0}
               fallback={
-                <div class="canvas-context-empty">No matching components</div>
+                <div class="canvas-context-empty">
+                  {t("canvasComponentMenu.empty")}
+                </div>
               }
             >
               <For each={filtered()}>
@@ -66,13 +72,19 @@ export default function CanvasComponentMenu(props: CanvasComponentMenuProps) {
                       props.onAddComponent(comp.id);
                       props.onClose();
                     }}
-                    title={`${comp.halComponentName} (${comp.pins.length} pins)`}
+                    title={t("canvasComponentMenu.itemTitle", {
+                      name: comp.halComponentName,
+                      pins: comp.pins.length,
+                    })}
                   >
                     <span class="canvas-context-item-name">
                       {comp.halComponentName}
                     </span>
                     <span class="canvas-context-item-meta">
-                      {comp.source} • {comp.pins.length} pins
+                      {t("canvasComponentMenu.itemMeta", {
+                        source: comp.source,
+                        pins: comp.pins.length,
+                      })}
                     </span>
                   </button>
                 )}

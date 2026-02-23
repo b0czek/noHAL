@@ -7,6 +7,7 @@ import type {
   SheetDefinition,
   SheetNodeInstance,
 } from "../../shared/types";
+import { useI18n } from "../i18n";
 import type { EditorState } from "../state/store";
 
 interface InspectorProps {
@@ -41,18 +42,6 @@ type SelectMenuOption = {
   label: string;
 };
 
-const LABEL_SCOPE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
-  { value: "local", label: "local" },
-  { value: "hierarchical", label: "hierarchical" },
-  { value: "global", label: "global" },
-];
-
-const PORT_DIRECTION_OPTIONS: ReadonlyArray<SelectMenuOption> = [
-  { value: "in", label: "in" },
-  { value: "out", label: "out" },
-  { value: "io", label: "io" },
-];
-
 const PORT_TYPE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
   { value: "bit", label: "bit" },
   { value: "float", label: "float" },
@@ -63,13 +52,23 @@ const PORT_TYPE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
   { value: "port", label: "port" },
 ];
 
-const PORT_SIDE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
-  { value: "left", label: "left" },
-  { value: "right", label: "right" },
-  { value: "bottom", label: "bottom" },
-];
-
 export default function Inspector(props: InspectorProps) {
+  const { t } = useI18n();
+  const labelScopeOptions: ReadonlyArray<SelectMenuOption> = [
+    { value: "local", label: "local" },
+    { value: "hierarchical", label: "hierarchical" },
+    { value: "global", label: "global" },
+  ];
+  const portDirectionOptions: ReadonlyArray<SelectMenuOption> = [
+    { value: "in", label: "in" },
+    { value: "out", label: "out" },
+    { value: "io", label: "io" },
+  ];
+  const portSideOptions: ReadonlyArray<SelectMenuOption> = [
+    { value: "left", label: "left" },
+    { value: "right", label: "right" },
+    { value: "bottom", label: "bottom" },
+  ];
   const selectedNode = () =>
     props.state.selection?.kind === "node"
       ? props.currentSheet.nodes.find((n) => n.id === props.state.selection?.id)
@@ -88,21 +87,21 @@ export default function Inspector(props: InspectorProps) {
   return (
     <aside class="inspector">
       <section class="panel">
-        <div class="panel-title">Session</div>
+        <div class="panel-title">{t("inspector.session")}</div>
         <div class="kv">
-          <span>Status</span>
+          <span>{t("common.status")}</span>
           <span>{props.state.status}</span>
         </div>
         <div class="kv">
-          <span>File</span>
-          <span>{props.state.filePath ?? "(unsaved)"}</span>
+          <span>{t("common.file")}</span>
+          <span>{props.state.filePath ?? t("common.unsaved")}</span>
         </div>
       </section>
 
       <section class="panel">
-        <div class="panel-title">Selection</div>
+        <div class="panel-title">{t("inspector.selection")}</div>
         <Show when={!props.state.selection}>
-          <div class="muted">Nothing selected.</div>
+          <div class="muted">{t("inspector.nothingSelected")}</div>
         </Show>
 
         <Show when={selectedNode()}>
@@ -122,7 +121,7 @@ export default function Inspector(props: InspectorProps) {
           {(label) => (
             <div class="inspector-group">
               <label>
-                Name
+                {t("common.name")}
                 <input
                   value={label().name}
                   onInput={(e) =>
@@ -133,10 +132,10 @@ export default function Inspector(props: InspectorProps) {
                 />
               </label>
               <div class="field-label-group">
-                Scope
+                {t("common.scope")}
                 <SelectMenu
                   value={label().scope}
-                  options={LABEL_SCOPE_OPTIONS}
+                  options={labelScopeOptions}
                   onChange={(value) =>
                     props.onUpdateLabel(label().id, {
                       scope: value as LabelScope,
@@ -158,7 +157,7 @@ export default function Inspector(props: InspectorProps) {
           {(port) => (
             <div class="inspector-group">
               <label>
-                Name
+                {t("common.name")}
                 <input
                   value={port().name}
                   onInput={(e) =>
@@ -169,10 +168,10 @@ export default function Inspector(props: InspectorProps) {
                 />
               </label>
               <div class="field-label-group">
-                Direction
+                {t("common.direction")}
                 <SelectMenu
                   value={port().direction}
-                  options={PORT_DIRECTION_OPTIONS}
+                  options={portDirectionOptions}
                   onChange={(value) =>
                     props.onUpdateSheetPort(port().id, {
                       direction: value as "in" | "out" | "io",
@@ -181,7 +180,7 @@ export default function Inspector(props: InspectorProps) {
                 />
               </div>
               <div class="field-label-group">
-                Type
+                {t("common.type")}
                 <SelectMenu
                   value={port().type}
                   options={PORT_TYPE_OPTIONS}
@@ -193,10 +192,10 @@ export default function Inspector(props: InspectorProps) {
                 />
               </div>
               <div class="field-label-group">
-                Side
+                {t("common.side")}
                 <SelectMenu
                   value={port().side}
-                  options={PORT_SIDE_OPTIONS}
+                  options={portSideOptions}
                   onChange={(value) =>
                     props.onUpdateSheetPort(port().id, {
                       side: value as "left" | "right" | "bottom",
@@ -220,14 +219,14 @@ export default function Inspector(props: InspectorProps) {
             class="btn danger"
             onClick={props.onRemoveSelection}
           >
-            Delete Selection
+            {t("inspector.deleteSelection")}
           </button>
         </Show>
       </section>
 
       <section class="panel">
-        <div class="panel-title">Current Sheet Nets</div>
-        <div class="sub-title">Direct Connections</div>
+        <div class="panel-title">{t("inspector.currentSheetNets")}</div>
+        <div class="sub-title">{t("inspector.directConnections")}</div>
         <div class="list compact">
           <For each={props.currentSheet.directConnections}>
             {(conn) => (
@@ -237,7 +236,7 @@ export default function Inspector(props: InspectorProps) {
                   class="linkish"
                   onClick={() => props.onRemoveConnection(conn.id)}
                 >
-                  remove
+                  {t("common.remove")}
                 </button>
                 <span class="mono">{conn.id}</span>
               </div>
@@ -245,7 +244,7 @@ export default function Inspector(props: InspectorProps) {
           </For>
         </div>
 
-        <div class="sub-title">Label Anchors</div>
+        <div class="sub-title">{t("inspector.labelAnchors")}</div>
         <div class="list compact">
           <For each={props.currentSheet.labelAnchors}>
             {(anchor) => (
@@ -255,7 +254,7 @@ export default function Inspector(props: InspectorProps) {
                   class="linkish"
                   onClick={() => props.onRemoveLabelAnchor(anchor.id)}
                 >
-                  remove
+                  {t("common.remove")}
                 </button>
                 <span class="mono">{anchor.id}</span>
               </div>
@@ -266,7 +265,7 @@ export default function Inspector(props: InspectorProps) {
 
       <Show when={props.state.exportWarnings.length > 0}>
         <section class="panel warn">
-          <div class="panel-title">Warnings</div>
+          <div class="panel-title">{t("inspector.warnings")}</div>
           <div class="list compact">
             <For each={props.state.exportWarnings}>
               {(warning) => <div class="warning-item">{warning}</div>}
@@ -282,15 +281,16 @@ function RotationEditor(props: {
   value: number;
   onChange: (value: number) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div class="field-label-group">
-      Rotation
+      {t("common.rotation")}
       <div style={{ display: "flex", gap: "6px", "align-items": "center" }}>
         <button
           type="button"
           class="btn"
           onClick={() => props.onChange((props.value || 0) - 90)}
-          title="Rotate -90°"
+          title={t("inspector.rotateNeg90")}
         >
           -90
         </button>
@@ -307,7 +307,7 @@ function RotationEditor(props: {
           type="button"
           class="btn"
           onClick={() => props.onChange((props.value || 0) + 90)}
-          title="Rotate +90°"
+          title={t("inspector.rotatePos90")}
         >
           +90
         </button>
@@ -315,7 +315,7 @@ function RotationEditor(props: {
           type="button"
           class="btn"
           onClick={() => props.onChange(0)}
-          title="Reset rotation"
+          title={t("inspector.resetRotation")}
         >
           0
         </button>
@@ -365,6 +365,7 @@ function NodeInspector(props: {
   onEnterSelectedSheet: () => void;
   onRefreshComponentInStore: (componentId: string) => void;
 }) {
+  const { t } = useI18n();
   const pins = () => getNodePins(props.project, props.node);
   const component = () =>
     props.node.kind === "component"
@@ -379,7 +380,7 @@ function NodeInspector(props: {
         when={props.node.kind === "component"}
         fallback={
           <label>
-            Instance Name
+            {t("componentDialog.instanceName")}
             <input
               value={props.node.instanceName}
               onInput={(e) => props.onRename(e.currentTarget.value)}
@@ -388,7 +389,7 @@ function NodeInspector(props: {
         }
       >
         <button type="button" class="btn" onClick={props.onOpenComponentEditor}>
-          Open Component Settings
+          {t("inspector.openComponentSettings")}
         </button>
       </Show>
       <Show
@@ -407,15 +408,15 @@ function NodeInspector(props: {
             props.onRefreshComponentInStore(comp.id);
           }}
         >
-          Refresh Component Definition
+          {t("inspector.refreshComponentDefinition")}
         </button>
       </Show>
       <Show when={props.node.kind === "sheet"}>
         <button type="button" class="btn" onClick={props.onEnterSelectedSheet}>
-          Enter Subsheet
+          {t("inspector.enterSubsheet")}
         </button>
       </Show>
-      <div class="sub-title">Pins</div>
+      <div class="sub-title">{t("inspector.pins")}</div>
       <div class="list compact">
         <For each={pins()}>
           {(pin) => (
@@ -430,8 +431,10 @@ function NodeInspector(props: {
       <Show when={props.node.kind === "component" && component()}>
         <div class="muted">
           {componentParamCount() > 0
-            ? `${componentParamCount()} parameters available in dialog`
-            : "No parameters"}
+            ? t("inspector.parametersAvailableInDialog", {
+                count: componentParamCount(),
+              })
+            : t("inspector.noParameters")}
         </div>
       </Show>
     </div>

@@ -2,6 +2,7 @@ import { HiOutlineArrowSmallUp } from "solid-icons/hi";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { NoHALProject, SheetDefinition } from "../../shared/types";
+import { useI18n } from "../i18n";
 
 interface SidebarProps {
   project: NoHALProject;
@@ -14,6 +15,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar(props: SidebarProps) {
+  const { t } = useI18n();
   type SheetTreeNode = {
     sheet: SheetDefinition;
     children: SheetTreeNode[];
@@ -150,8 +152,12 @@ export default function Sidebar(props: SidebarProps) {
               class="sheet-tree-toggle"
               aria-label={
                 collapsed()
-                  ? `Expand ${branchProps.node.sheet.name}`
-                  : `Collapse ${branchProps.node.sheet.name}`
+                  ? t("sidebar.expandSheet", {
+                      name: branchProps.node.sheet.name,
+                    })
+                  : t("sidebar.collapseSheet", {
+                      name: branchProps.node.sheet.name,
+                    })
               }
               aria-expanded={!collapsed()}
               onClick={() => toggleCollapsed(branchProps.node.sheet.id)}
@@ -181,7 +187,7 @@ export default function Sidebar(props: SidebarProps) {
           </button>
 
           {branchProps.node.isOrphan && (
-            <span class="sheet-tree-tag">orphan</span>
+            <span class="sheet-tree-tag">{t("sidebar.orphan")}</span>
           )}
 
           {canPlace() && (
@@ -190,7 +196,7 @@ export default function Sidebar(props: SidebarProps) {
               class="mini sheet-tree-place"
               onClick={() => props.onPlaceSheet(branchProps.node.sheet.id)}
             >
-              Place
+              {t("common.place")}
             </button>
           )}
         </div>
@@ -209,15 +215,15 @@ export default function Sidebar(props: SidebarProps) {
   return (
     <aside class="sidebar">
       <section class="panel">
-        <div class="panel-title">Sheets</div>
+        <div class="panel-title">{t("sidebar.sheets")}</div>
         <div class="sidebar-actions">
           <button
             type="button"
             class="btn subtle icon-btn"
             onClick={props.onGoToParentSheet}
             disabled={!props.canGoToParentSheet}
-            aria-label="Go to parent sheet"
-            title="Go to parent sheet"
+            aria-label={t("sidebar.goToParentSheet")}
+            title={t("sidebar.goToParentSheet")}
           >
             <HiOutlineArrowSmallUp size={16} aria-hidden="true" />
           </button>
@@ -240,7 +246,7 @@ export default function Sidebar(props: SidebarProps) {
                 class="sheet-context-menu"
                 role="dialog"
                 aria-modal="false"
-                aria-label="Sheet actions"
+                aria-label={t("sidebar.sheetActions")}
                 style={{ left: `${menu().x}px`, top: `${menu().y}px` }}
                 onPointerDown={(evt) => evt.stopPropagation()}
                 onContextMenu={(evt) => evt.preventDefault()}
@@ -253,7 +259,7 @@ export default function Sidebar(props: SidebarProps) {
                     setSheetContextMenu(null);
                   }}
                 >
-                  Sheet Settings
+                  {t("sidebar.sheetSettings")}
                 </button>
               </div>
             </div>

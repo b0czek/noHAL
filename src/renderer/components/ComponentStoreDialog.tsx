@@ -1,6 +1,7 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { ComponentStore } from "../../shared/types";
+import { useI18n } from "../i18n";
 
 interface ComponentStoreDialogProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface ComponentStoreDialogProps {
 }
 
 export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
+  const { t, formatDateTime } = useI18n();
   const [query, setQuery] = createSignal("");
 
   const filteredEntries = createMemo(() => {
@@ -38,12 +40,6 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
     }),
   );
 
-  const formatDateTime = (value: string) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleString();
-  };
-
   return (
     <Show when={props.open}>
       <Portal>
@@ -56,26 +52,29 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
             class="modal component-store-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label="Component Store"
+            aria-label={t("componentStore.ariaLabel")}
             onPointerDown={(evt) => evt.stopPropagation()}
             onContextMenu={(evt) => evt.preventDefault()}
           >
             <div class="modal-header">
               <div>
-                <div class="modal-title">Component Store</div>
+                <div class="modal-title">{t("componentStore.title")}</div>
                 <div class="modal-sub">
-                  {Object.keys(props.componentStore.components).length} stored
-                  components • {componentSources().length} sources
+                  {t("componentStore.summary", {
+                    components: Object.keys(props.componentStore.components)
+                      .length,
+                    sources: componentSources().length,
+                  })}
                 </div>
               </div>
               <button type="button" class="btn subtle" onClick={props.onClose}>
-                Close
+                {t("common.close")}
               </button>
             </div>
 
             <div class="modal-body">
               <section class="panel">
-                <div class="panel-title">Component Sources</div>
+                <div class="panel-title">{t("componentStore.sources")}</div>
                 <div class="component-store-toolbar">
                   <div class="toolbar-group">
                     <button
@@ -83,14 +82,14 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                       class="btn"
                       onClick={props.onAddCompDirSource}
                     >
-                      Add Dir Source
+                      {t("componentStore.addDirSource")}
                     </button>
                     <button
                       type="button"
                       class="btn"
                       onClick={props.onImportCompFile}
                     >
-                      Import .comp
+                      {t("componentStore.importCompFile")}
                     </button>
                   </div>
                 </div>
@@ -120,9 +119,13 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                               <span class="chip type">
                                 {source.kind === "comp-dir" ? "dir" : ".comp"}
                               </span>
-                              {sourceComponentCount()} components
+                              {t("componentStore.sourceComponentsCount", {
+                                count: sourceComponentCount(),
+                              })}
                               {source.lastScanAt
-                                ? ` • last scan ${formatDateTime(source.lastScanAt)}`
+                                ? ` • ${t("componentStore.lastScan", {
+                                    time: formatDateTime(source.lastScanAt),
+                                  })}`
                                 : ""}
                               {source.lastError ? ` • ${source.lastError}` : ""}
                             </div>
@@ -135,7 +138,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                                 props.onRefreshComponentSource(source.id)
                               }
                             >
-                              Refresh
+                              {t("componentStore.refresh")}
                             </button>
                             <button
                               type="button"
@@ -144,7 +147,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                                 props.onDeleteComponentSource(source.id)
                               }
                             >
-                              Delete Source
+                              {t("componentStore.deleteSource")}
                             </button>
                           </div>
                         </div>
@@ -154,18 +157,20 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
 
                   <Show when={componentSources().length === 0}>
                     <div class="muted component-store-empty">
-                      No component sources yet.
+                      {t("componentStore.noSources")}
                     </div>
                   </Show>
                 </div>
               </section>
 
               <section class="panel">
-                <div class="panel-title">Stored Components</div>
+                <div class="panel-title">
+                  {t("componentStore.storedComponents")}
+                </div>
                 <div class="component-store-toolbar">
                   <input
                     type="text"
-                    placeholder="Filter stored components..."
+                    placeholder={t("componentStore.filterPlaceholder")}
                     value={query()}
                     onInput={(evt) => setQuery(evt.currentTarget.value)}
                   />
@@ -183,22 +188,28 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                             {entry.parsed.halComponentName}
                           </div>
                           <div class="component-sub">
-                            {entry.parsed.pins.length} pins •{" "}
-                            {entry.parsed.params.length} params
+                            {t("componentStore.componentStats", {
+                              pins: entry.parsed.pins.length,
+                              params: entry.parsed.params.length,
+                            })}
                             {entry.parsed.parseMeta.warnings.length > 0
-                              ? ` • ${entry.parsed.parseMeta.warnings.length} warnings`
+                              ? ` • ${t("componentStore.componentWarnings", {
+                                  count: entry.parsed.parseMeta.warnings.length,
+                                })}`
                               : ""}
                           </div>
                           <div class="component-sub">
                             {entry.sourceRef.kind === "comp-dir"
-                              ? "dir source"
-                              : "file import"}
+                              ? t("componentStore.dirSource")
+                              : t("componentStore.fileImport")}
                           </div>
                           <div class="component-sub component-store-path mono">
                             {entry.sourceRef.filePath}
                           </div>
                           <div class="component-sub">
-                            Updated {formatDateTime(entry.updatedAt)}
+                            {t("common.updated", {
+                              time: formatDateTime(entry.updatedAt),
+                            })}
                           </div>
                         </div>
                         <div class="component-store-actions">
@@ -209,7 +220,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                               props.onRefreshStoredComponent(entry.componentId)
                             }
                           >
-                            Refresh
+                            {t("componentStore.refresh")}
                           </button>
                         </div>
                       </div>
@@ -219,8 +230,8 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                   <Show when={filteredEntries().length === 0}>
                     <div class="muted component-store-empty">
                       {Object.keys(props.componentStore.components).length === 0
-                        ? "No stored components yet."
-                        : "No matching stored components."}
+                        ? t("componentStore.noStoredComponents")
+                        : t("componentStore.noMatchingComponents")}
                     </div>
                   </Show>
                 </div>

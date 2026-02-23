@@ -16,6 +16,7 @@ import type {
   RecentProjectEntry,
 } from "../../shared/types";
 import type { ProjectCreationDialogProps } from "../components/ProjectCreationDialog";
+import { useI18n } from "../i18n";
 import type { createEditorStore, EditorState } from "../state/store";
 
 type EditorActions = ReturnType<typeof createEditorStore>["actions"];
@@ -118,6 +119,7 @@ export function useLandingProjectFlow({
   isEditorOpen,
   setIsEditorOpen,
 }: UseLandingProjectFlowArgs) {
+  const { t } = useI18n();
   const [recentProjects, setRecentProjects] = createSignal<
     RecentProjectEntry[]
   >([]);
@@ -249,7 +251,9 @@ export function useLandingProjectFlow({
         placementHeuristic: projectCreationDialog.placementHeuristic,
       });
       const opened = actions.openPreparedProject(result.project, {
-        status: `Imported HAL${draft.sourcePath ? `: ${draft.sourcePath}` : ""}`,
+        status: t("landing.importedHalStatus", {
+          suffix: draft.sourcePath ? `: ${draft.sourcePath}` : "",
+        }),
         warnings: result.warnings,
       });
       if (opened) {

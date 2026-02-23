@@ -4,6 +4,7 @@ import {
   HiOutlineFolderOpen,
 } from "solid-icons/hi";
 import type { HalValueType, LabelScope } from "../../shared/types";
+import { useI18n } from "../i18n";
 
 interface EditorTopbarProps {
   onOpenProjectCreationDialog: () => void;
@@ -22,6 +23,8 @@ function closeToolbarMenu(el: HTMLElement) {
 }
 
 export default function EditorTopbar(props: EditorTopbarProps) {
+  const { t } = useI18n();
+
   return (
     <header class="topbar">
       <div class="brand">
@@ -36,8 +39,8 @@ export default function EditorTopbar(props: EditorTopbarProps) {
           type="button"
           class="btn subtle icon-btn"
           onClick={props.onOpenProjectCreationDialog}
-          aria-label="New project"
-          title="New project"
+          aria-label={t("topbar.newProject")}
+          title={t("topbar.newProject")}
         >
           <HiOutlineDocumentPlus size={16} aria-hidden="true" />
         </button>
@@ -45,8 +48,8 @@ export default function EditorTopbar(props: EditorTopbarProps) {
           type="button"
           class="btn subtle icon-btn"
           onClick={props.onOpenProject}
-          aria-label="Open project"
-          title="Open project"
+          aria-label={t("topbar.openProject")}
+          title={t("topbar.openProject")}
         >
           <HiOutlineFolderOpen size={16} aria-hidden="true" />
         </button>
@@ -54,28 +57,30 @@ export default function EditorTopbar(props: EditorTopbarProps) {
           type="button"
           class="btn subtle icon-btn"
           onClick={props.onSaveProject}
-          aria-label="Save project"
-          title="Save project"
+          aria-label={t("topbar.saveProject")}
+          title={t("topbar.saveProject")}
         >
           <HiOutlineArchiveBoxArrowDown size={16} aria-hidden="true" />
         </button>
         <button type="button" class="btn accent" onClick={props.onExportHal}>
-          Export HAL
+          {t("topbar.exportHal")}
         </button>
       </div>
 
       <div class="toolbar-group">
         <button type="button" class="btn" onClick={props.onOpenComponentStore}>
-          Component Store
+          {t("topbar.componentStore")}
         </button>
       </div>
 
       <div class="toolbar-group">
         <button type="button" class="btn" onClick={props.onAddSubsheet}>
-          + Subsheet
+          {t("topbar.addSubsheet")}
         </button>
         <details class="toolbar-menu">
-          <summary class="btn toolbar-menu-summary">+ Port</summary>
+          <summary class="btn toolbar-menu-summary">
+            {t("topbar.addPort")}
+          </summary>
           <div class="toolbar-menu-popover">
             <button
               type="button"
@@ -85,7 +90,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
                 closeToolbarMenu(evt.currentTarget);
               }}
             >
-              In Port (bit)
+              {t("topbar.inPortBit")}
             </button>
             <button
               type="button"
@@ -95,7 +100,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
                 closeToolbarMenu(evt.currentTarget);
               }}
             >
-              Out Port (bit)
+              {t("topbar.outPortBit")}
             </button>
             <button
               type="button"
@@ -105,12 +110,14 @@ export default function EditorTopbar(props: EditorTopbarProps) {
                 closeToolbarMenu(evt.currentTarget);
               }}
             >
-              IO Port (float)
+              {t("topbar.ioPortFloat")}
             </button>
           </div>
         </details>
         <details class="toolbar-menu">
-          <summary class="btn toolbar-menu-summary">+ Label</summary>
+          <summary class="btn toolbar-menu-summary">
+            {t("topbar.addLabel")}
+          </summary>
           <div class="toolbar-menu-popover">
             <button
               type="button"
@@ -120,7 +127,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
                 closeToolbarMenu(evt.currentTarget);
               }}
             >
-              Local Label
+              {t("topbar.localLabel")}
             </button>
             <button
               type="button"
@@ -130,7 +137,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
                 closeToolbarMenu(evt.currentTarget);
               }}
             >
-              Hier Label
+              {t("topbar.hierLabel")}
             </button>
             <button
               type="button"
@@ -140,7 +147,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
                 closeToolbarMenu(evt.currentTarget);
               }}
             >
-              Global Label
+              {t("topbar.globalLabel")}
             </button>
           </div>
         </details>

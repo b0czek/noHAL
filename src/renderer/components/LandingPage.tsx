@@ -1,6 +1,7 @@
 import { HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
 import { For, Show } from "solid-js";
 import type { RecentProjectEntry } from "../../shared/types";
+import { useI18n } from "../i18n";
 import "./LandingPage.css";
 
 interface LandingPageProps {
@@ -25,13 +26,9 @@ function recentProjectPathTail(filePath: string): string {
   return `.../${segments.slice(-3).join("/")}`;
 }
 
-function recentProjectTime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString();
-}
-
 export default function LandingPage(props: LandingPageProps) {
+  const { t, formatDateTime } = useI18n();
+
   return (
     <div class="landing-shell">
       <div class="landing-backdrop-grid" aria-hidden="true" />
@@ -41,14 +38,11 @@ export default function LandingPage(props: LandingPageProps) {
             <div class="brand-mark">N</div>
             <div>
               <div class="brand-name">NoHAL</div>
-              <div class="brand-sub">Visual HAL IDE for LinuxCNC</div>
+              <div class="brand-sub">{t("landing.brandSubtitle")}</div>
             </div>
           </div>
-          <h1 class="landing-title">Pick a project and get to work.</h1>
-          <p class="landing-copy">
-            Open an existing `.nohal.json` file or create a new project and jump
-            into the editor only when you are ready.
-          </p>
+          <h1 class="landing-title">{t("landing.title")}</h1>
+          <p class="landing-copy">{t("landing.copy")}</p>
           <div class="landing-actions">
             <button
               type="button"
@@ -57,7 +51,7 @@ export default function LandingPage(props: LandingPageProps) {
               onClick={props.onCreateProject}
             >
               <HiOutlineDocumentPlus size={18} aria-hidden="true" />
-              New Project
+              {t("landing.newProject")}
             </button>
             <button
               type="button"
@@ -66,7 +60,7 @@ export default function LandingPage(props: LandingPageProps) {
               onClick={props.onOpenProject}
             >
               <HiOutlineFolderOpen size={18} aria-hidden="true" />
-              Open Project
+              {t("landing.openProject")}
             </button>
           </div>
           <Show when={props.errorMessage}>
@@ -76,14 +70,14 @@ export default function LandingPage(props: LandingPageProps) {
 
         <section class="landing-recents panel">
           <div class="landing-recents-header">
-            <div class="panel-title">Recent Projects</div>
+            <div class="panel-title">{t("landing.recentProjects")}</div>
             <button
               type="button"
               class="mini"
               onClick={props.onRefreshRecentProjects}
               disabled={props.isRecentProjectsLoading || props.isActionPending}
             >
-              Refresh
+              {t("common.refresh")}
             </button>
           </div>
 
@@ -91,7 +85,7 @@ export default function LandingPage(props: LandingPageProps) {
             when={!props.isRecentProjectsLoading}
             fallback={
               <div class="landing-recents-empty muted">
-                Loading recent projects...
+                {t("landing.loadingRecentProjects")}
               </div>
             }
           >
@@ -99,9 +93,11 @@ export default function LandingPage(props: LandingPageProps) {
               when={props.recentProjects.length > 0}
               fallback={
                 <div class="landing-recents-empty muted">
-                  No recent projects yet. Use{" "}
-                  <span class="mono">New Project</span> or{" "}
-                  <span class="mono">Open Project</span>.
+                  {t("landing.noRecentProjectsPrefix")}
+                  <span class="mono">{t("landing.newProject")}</span>
+                  {t("landing.noRecentProjectsOr")}
+                  <span class="mono">{t("landing.openProject")}</span>
+                  {t("landing.noRecentProjectsSuffix")}
                 </div>
               }
             >
@@ -124,7 +120,7 @@ export default function LandingPage(props: LandingPageProps) {
                         </div>
                       </div>
                       <div class="landing-recent-time">
-                        {recentProjectTime(entry.lastOpenedAt)}
+                        {formatDateTime(entry.lastOpenedAt)}
                       </div>
                     </button>
                   )}
