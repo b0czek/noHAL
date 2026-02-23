@@ -1,52 +1,74 @@
+import {
+  DIRECTION_PILL_FILL_IN,
+  DIRECTION_PILL_FILL_IO,
+  DIRECTION_PILL_FILL_OUT,
+  DIR_STROKE_DEFAULT,
+  DIR_STROKE_IN,
+  DIR_STROKE_IO,
+  DIR_STROKE_OUT,
+  LABEL_FILL_DEFAULT,
+  LABEL_FILL_GLOBAL,
+  LABEL_FILL_HIERARCHICAL,
+  LABEL_FILL_LOCAL,
+  TYPE_FILL_BIT,
+  TYPE_FILL_DEFAULT,
+  TYPE_FILL_FLOAT,
+  TYPE_FILL_PORT,
+  TYPE_FILL_S32,
+  TYPE_FILL_S64,
+  TYPE_FILL_U32,
+  TYPE_FILL_U64,
+} from "./constants";
+
 export function typeFill(type: string): string {
   switch (type) {
     case "bit":
-      return "#55d48a";
+      return TYPE_FILL_BIT;
     case "float":
-      return "#f2b94b";
+      return TYPE_FILL_FLOAT;
     case "s32":
-      return "#61a9ff";
+      return TYPE_FILL_S32;
     case "u32":
-      return "#51d4ef";
+      return TYPE_FILL_U32;
     case "s64":
-      return "#9f7dff";
+      return TYPE_FILL_S64;
     case "u64":
-      return "#e178ff";
+      return TYPE_FILL_U64;
     case "port":
-      return "#9aa6ac";
+      return TYPE_FILL_PORT;
     default:
-      return "#c2d0d6";
+      return TYPE_FILL_DEFAULT;
   }
 }
 
 export function dirStroke(direction: string): string {
   switch (direction) {
     case "in":
-      return "rgba(122, 180, 255, 0.95)";
+      return DIR_STROKE_IN;
     case "out":
-      return "rgba(242, 185, 75, 0.95)";
+      return DIR_STROKE_OUT;
     case "io":
-      return "rgba(216, 122, 255, 0.95)";
+      return DIR_STROKE_IO;
     default:
-      return "rgba(255, 255, 255, 0.7)";
+      return DIR_STROKE_DEFAULT;
   }
 }
 
 export function labelFill(scope: string): string {
   switch (scope) {
     case "local":
-      return "rgba(122, 230, 208, 0.14)";
+      return LABEL_FILL_LOCAL;
     case "hierarchical":
-      return "rgba(242, 185, 75, 0.14)";
+      return LABEL_FILL_HIERARCHICAL;
     case "global":
-      return "rgba(233, 107, 255, 0.14)";
+      return LABEL_FILL_GLOBAL;
     default:
-      return "rgba(255, 255, 255, 0.06)";
+      return LABEL_FILL_DEFAULT;
   }
 }
 
 export function directionPillFill(direction: string): string {
-  if (direction === "in") return "rgba(122, 180, 255, 0.12)";
-  if (direction === "out") return "rgba(242, 185, 75, 0.12)";
-  return "rgba(216, 122, 255, 0.12)";
+  if (direction === "in") return DIRECTION_PILL_FILL_IN;
+  if (direction === "out") return DIRECTION_PILL_FILL_OUT;
+  return DIRECTION_PILL_FILL_IO;
 }
