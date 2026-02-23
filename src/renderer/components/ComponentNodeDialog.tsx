@@ -21,6 +21,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
   const pins = createMemo(() =>
     props.node ? getNodePins(props.project, props.node) : [],
   );
+  const componentParams = createMemo(() => component()?.params ?? []);
   const pinFilterModes = ["all", "in", "out", "io"] as const;
   const [pinFilter, setPinFilter] =
     createSignal<(typeof pinFilterModes)[number]>("all");
@@ -90,11 +91,11 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
               <section class="panel">
                 <div class="panel-title">Parameters</div>
                 <Show
-                  when={component() && component()!.params.length > 0}
+                  when={componentParams().length > 0}
                   fallback={<div class="muted">No parameters.</div>}
                 >
                   <div class="inspector-group">
-                    <For each={component()!.params}>
+                    <For each={componentParams()}>
                       {(param) => (
                         <label>
                           <span class="mono">{param.name}</span>

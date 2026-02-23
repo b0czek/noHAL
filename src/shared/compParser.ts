@@ -80,7 +80,6 @@ function scanString(
   start: number,
 ): { token: string; end: number } {
   if (input.startsWith('r"""', start) || input.startsWith('R"""', start)) {
-    const open = input.slice(start, start + 4);
     const end = input.indexOf('"""', start + 4);
     if (end < 0) throw new Error("Unterminated raw triple string");
     return { token: input.slice(start, end + 3), end: end + 3 };

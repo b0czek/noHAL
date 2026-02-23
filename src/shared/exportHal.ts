@@ -1,15 +1,8 @@
-import {
-  getNodePins,
-  getSheet,
-  invertDirection,
-  resolveEndpointInSheet,
-} from "./graph";
+import { getNodePins, getSheet, invertDirection } from "./graph";
 import type {
-  ComponentNode,
   NoHALProject,
   PinDirection,
   SheetDefinition,
-  SheetNode,
   SheetNodeInstance,
 } from "./types";
 
@@ -366,7 +359,7 @@ function traverseSheetInstance(
 
 function chooseNetName(hints: Hint[], fallbackIndex: number): string {
   const unique = Array.from(
-    new Map(hints.map((hint) => [hint.kind + ":" + hint.name, hint])).values(),
+    new Map(hints.map((hint) => [`${hint.kind}:${hint.name}`, hint])).values(),
   );
   const preferred =
     unique.find((h) => h.kind === "global") ??

@@ -141,7 +141,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
             <div class="modal-header">
               <div>
                 <div class="modal-title">Sheet Settings</div>
-                <div class="modal-sub mono">{sheet()!.name}</div>
+                <div class="modal-sub mono">{sheet()?.name}</div>
               </div>
               <button type="button" class="btn subtle" onClick={props.onClose}>
                 Close

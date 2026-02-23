@@ -311,6 +311,7 @@ function NodeInspector(props: {
     props.node.kind === "component"
       ? props.project.library.components[props.node.componentId]
       : undefined;
+  const componentParamCount = () => component()?.params.length ?? 0;
 
   return (
     <div class="inspector-group">
@@ -341,7 +342,11 @@ function NodeInspector(props: {
         <button
           type="button"
           class="btn subtle"
-          onClick={() => props.onRefreshComponentInStore(component()!.id)}
+          onClick={() => {
+            const comp = component();
+            if (!comp) return;
+            props.onRefreshComponentInStore(comp.id);
+          }}
         >
           Refresh Component Definition
         </button>
@@ -365,8 +370,8 @@ function NodeInspector(props: {
       </div>
       <Show when={props.node.kind === "component" && component()}>
         <div class="muted">
-          {component()!.params.length > 0
-            ? `${component()!.params.length} parameters available in dialog`
+          {componentParamCount() > 0
+            ? `${componentParamCount()} parameters available in dialog`
             : "No parameters"}
         </div>
       </Show>

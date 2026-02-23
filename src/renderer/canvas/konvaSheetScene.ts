@@ -653,10 +653,8 @@ export class KonvaSheetScene {
       this.selectedWaypointIndex !== null &&
       (selectedConn.waypoints?.length ?? 0) <= this.selectedWaypointIndex
     ) {
-      this.selectedWaypointIndex =
-        (selectedConn.waypoints?.length ?? 0) > 0
-          ? selectedConn.waypoints!.length - 1
-          : null;
+      const waypointCount = selectedConn.waypoints?.length ?? 0;
+      this.selectedWaypointIndex = waypointCount > 0 ? waypointCount - 1 : null;
     }
     this.wireWorld.destroyChildren();
 
@@ -705,7 +703,8 @@ export class KonvaSheetScene {
       });
 
       if (selected && (conn.waypoints?.length ?? 0) > 0 && wire) {
-        for (let i = 0; i < conn.waypoints!.length; i += 1) {
+        const waypoints = conn.waypoints ?? [];
+        for (let i = 0; i < waypoints.length; i += 1) {
           const isSelectedWaypoint = this.selectedWaypointIndex === i;
           const waypointIndex = i + 1;
           const p = routePoints[waypointIndex];
