@@ -13,6 +13,7 @@ export interface SheetPort {
   direction: PinDirection;
   side: PortSide;
   position: XY;
+  rotation?: number;
 }
 
 export interface ComponentNode {
@@ -40,6 +41,7 @@ export interface SheetLabel {
   name: string;
   scope: LabelScope;
   position: XY;
+  rotation?: number;
 }
 
 export interface NodePinEndpointRef {

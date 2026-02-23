@@ -442,6 +442,7 @@ export function buildProjectFromHalImport(
     pinSideIndex?: number;
     peerIndexOnPin: number;
     peerCountOnPin: number;
+    bottomStackOffsetY?: number;
   };
   type ImportNodeLayoutMetrics = {
     bodyWidth: number;
@@ -457,6 +458,7 @@ export function buildProjectFromHalImport(
     bottomLabelStepX: number;
     bottomLabelStepY: number;
     bottomLabelsPerRow: number;
+    bottomPinCount: number;
     cellWidth: number;
     cellHeight: number;
   };
@@ -687,6 +689,16 @@ export function buildProjectFromHalImport(
       const peerIndex = siblings.findIndex(
         (s) => s.anchorKey === item.anchorKey,
       );
+      let bottomStackOffsetY: number | undefined;
+      if (item.side === "bottom") {
+        bottomStackOffsetY = 0;
+        for (let i = 0; i < peerIndex; i += 1) {
+          const prev = siblings[i];
+          if (!prev) continue;
+          bottomStackOffsetY += estimateImportedLabelWidth(prev.netName);
+          bottomStackOffsetY += IMPORT_LAYOUT.bottomLabelGapY;
+        }
+      }
       labelPlacementByAnchorKey.set(item.anchorKey, {
         slot,
         pinSideIndex: pinSideIndexByNodePin.get(
@@ -694,6 +706,7 @@ export function buildProjectFromHalImport(
         ),
         peerIndexOnPin: Math.max(0, peerIndex),
         peerCountOnPin: siblings.length,
+        ...(bottomStackOffsetY !== undefined ? { bottomStackOffsetY } : {}),
       });
     });
 
@@ -713,7 +726,11 @@ export function buildProjectFromHalImport(
     const { bodyWidth, bodyHeight } = computeEstimatedBodySize(component);
     const leftLabelWidths = demand.left.map(estimateImportedLabelWidth);
     const rightLabelWidths = demand.right.map(estimateImportedLabelWidth);
-    const bottomLabelWidths = demand.bottom.map(estimateImportedLabelWidth);
+    const bottomPlannedLabels =
+      plannedLabelsByNodeSide.get(`${nodeId}:bottom`) ?? [];
+    const bottomPinCount = component.pins.filter(
+      (pin) => pin.direction === "io",
+    ).length;
 
     const leftLaneWidth =
       leftLabelWidths.length > 0
@@ -726,12 +743,19 @@ export function buildProjectFromHalImport(
         : 0;
 
     let bottomExtraRight = 0;
-    for (const [idx, width] of bottomLabelWidths.entries()) {
+    for (const item of bottomPlannedLabels) {
+      const placement = labelPlacementByAnchorKey.get(item.anchorKey);
+      const pinIndex = placement?.pinSideIndex;
       const xStart =
-        IMPORT_LAYOUT.bottomLabelStartX +
-        (idx % IMPORT_LAYOUT.bottomLabelsPerRow) *
-          IMPORT_LAYOUT.bottomLabelStepX;
-      bottomExtraRight = Math.max(bottomExtraRight, xStart + width - bodyWidth);
+        pinIndex !== undefined && bottomPinCount > 0
+          ? (bodyWidth / (bottomPinCount + 1)) * (pinIndex + 1)
+          : IMPORT_LAYOUT.bottomLabelStartX +
+            ((placement?.slot ?? 0) % IMPORT_LAYOUT.bottomLabelsPerRow) *
+              IMPORT_LAYOUT.bottomLabelStepX;
+      bottomExtraRight = Math.max(
+        bottomExtraRight,
+        xStart + IMPORT_LAYOUT.bottomLabelHalfHeight - bodyWidth,
+      );
     }
 
     const leftStackHeight =
@@ -748,15 +772,18 @@ export function buildProjectFromHalImport(
         : 0;
     const sideStackHeight = Math.max(leftStackHeight, rightStackHeight);
 
-    const bottomRows = Math.ceil(
-      demand.bottom.length / IMPORT_LAYOUT.bottomLabelsPerRow,
-    );
+    let bottomStackMaxHeight = 0;
+    for (const item of bottomPlannedLabels) {
+      const placement = labelPlacementByAnchorKey.get(item.anchorKey);
+      const stackOffsetY = placement?.bottomStackOffsetY ?? 0;
+      bottomStackMaxHeight = Math.max(
+        bottomStackMaxHeight,
+        stackOffsetY + estimateImportedLabelWidth(item.netName),
+      );
+    }
     const bottomLabelBottomY =
-      bottomRows > 0
-        ? bodyHeight +
-          IMPORT_LAYOUT.bottomLabelGapY +
-          (bottomRows - 1) * IMPORT_LAYOUT.bottomLabelStepY +
-          IMPORT_LAYOUT.bottomLabelHalfHeight
+      bottomStackMaxHeight > 0
+        ? bodyHeight + IMPORT_LAYOUT.bottomLabelGapY + bottomStackMaxHeight
         : 0;
 
     const rightExtent = Math.max(rightLaneWidth, bottomExtraRight, 0);
@@ -781,6 +808,7 @@ export function buildProjectFromHalImport(
       bottomLabelStepX: IMPORT_LAYOUT.bottomLabelStepX,
       bottomLabelStepY: IMPORT_LAYOUT.bottomLabelStepY,
       bottomLabelsPerRow: IMPORT_LAYOUT.bottomLabelsPerRow,
+      bottomPinCount,
       cellWidth,
       cellHeight,
     });
@@ -902,13 +930,18 @@ export function buildProjectFromHalImport(
     return {
       x:
         pos.x +
-        layout.bottomLabelStartX +
-        (slot % layout.bottomLabelsPerRow) * layout.bottomLabelStepX,
+        (placement?.pinSideIndex !== undefined && layout.bottomPinCount > 0
+          ? (layout.bodyWidth / (layout.bottomPinCount + 1)) *
+            (placement.pinSideIndex + 1)
+          : layout.bottomLabelStartX +
+            (slot % layout.bottomLabelsPerRow) * layout.bottomLabelStepX),
       y:
         pos.y +
         layout.bodyHeight +
         layout.bottomLabelGapY +
-        Math.floor(slot / layout.bottomLabelsPerRow) * layout.bottomLabelStepY,
+        (placement?.bottomStackOffsetY ??
+          Math.floor(slot / layout.bottomLabelsPerRow) *
+            layout.bottomLabelStepY),
     };
   };
 
@@ -944,6 +977,7 @@ export function buildProjectFromHalImport(
           id: labelId,
           name: net.name,
           scope: "global",
+          rotation: item.direction === "io" ? 90 : 0,
           position: nextImportedLabelPosition(
             item.nodeId,
             item.direction,

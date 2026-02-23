@@ -10,7 +10,6 @@ import {
 import type { SceneCallbacks, SceneRenderState } from "./konvaSheetSceneTypes";
 import {
   deleteSelectedWaypoint as deleteWireSelectedWaypoint,
-  insertWaypointOnConnection as insertWireWaypointOnConnection,
   type KonvaSheetSceneWiresContext,
   redrawWires as redrawSceneWires,
 } from "./konvaSheetSceneWires";
@@ -41,6 +40,12 @@ export class KonvaSheetScene {
   private isPanning = false;
   private panLastScreenPos: Pt | null = null;
   private spacePressed = false;
+  private sceneBounds = {
+    minX: 0,
+    minY: 0,
+    maxX: SCENE_WIDTH,
+    maxY: SCENE_HEIGHT,
+  };
   private onKeyDown: (evt: KeyboardEvent) => void;
   private onKeyUp: (evt: KeyboardEvent) => void;
 
@@ -183,8 +188,8 @@ export class KonvaSheetScene {
   private clampPos(pos: { x: number; y: number }): { x: number; y: number } {
     const minX = -SCENE_POSITION_PADDING;
     const minY = -SCENE_POSITION_PADDING;
-    const maxX = SCENE_WIDTH + SCENE_POSITION_PADDING;
-    const maxY = SCENE_HEIGHT + SCENE_POSITION_PADDING;
+    const maxX = this.sceneBounds.maxX + SCENE_POSITION_PADDING;
+    const maxY = this.sceneBounds.maxY + SCENE_POSITION_PADDING;
     return {
       x: Math.max(minX, Math.min(maxX, pos.x)),
       y: Math.max(minY, Math.min(maxY, pos.y)),
@@ -198,9 +203,15 @@ export class KonvaSheetScene {
   private centerCamera(): void {
     const stageW = this.stage.width();
     const stageH = this.stage.height();
+    const worldW = this.sceneBounds.maxX - this.sceneBounds.minX;
+    const worldH = this.sceneBounds.maxY - this.sceneBounds.minY;
     this.camera.scale = 1;
-    this.camera.x = Math.round((stageW - SCENE_WIDTH) / 2);
-    this.camera.y = Math.round((stageH - SCENE_HEIGHT) / 2);
+    this.camera.x = Math.round(
+      (stageW - worldW) / 2 - this.sceneBounds.minX * this.camera.scale,
+    );
+    this.camera.y = Math.round(
+      (stageH - worldH) / 2 - this.sceneBounds.minY * this.camera.scale,
+    );
   }
 
   private clampCamera(): void {
@@ -208,8 +219,8 @@ export class KonvaSheetScene {
     const stageH = this.stage.height();
     const minWorldX = -SCENE_POSITION_PADDING;
     const minWorldY = -SCENE_POSITION_PADDING;
-    const maxWorldX = SCENE_WIDTH + SCENE_POSITION_PADDING;
-    const maxWorldY = SCENE_HEIGHT + SCENE_POSITION_PADDING;
+    const maxWorldX = this.sceneBounds.maxX + SCENE_POSITION_PADDING;
+    const maxWorldY = this.sceneBounds.maxY + SCENE_POSITION_PADDING;
     const scaledWorldW = (maxWorldX - minWorldX) * this.camera.scale;
     const scaledWorldH = (maxWorldY - minWorldY) * this.camera.scale;
     const overscrollX = CAMERA_OVERSCROLL_PX;
@@ -249,6 +260,146 @@ export class KonvaSheetScene {
     this.wireLayer.batchDraw();
     this.mainLayer.batchDraw();
     this.callbacks.onCameraChange?.({ ...this.camera });
+  }
+
+  private estimateLabelSize(
+    scope: string,
+    name: string,
+  ): { width: number; height: number } {
+    // Cheap estimate for bounds expansion; exact rendering uses Konva text measurement.
+    const scopeW = Math.ceil(scope.length * 5.8);
+    const nameW = Math.ceil(name.length * 7.2);
+    return {
+      width: 16 + scopeW + 8 + nameW + 10,
+      height: 22,
+    };
+  }
+
+  private estimatePortBox(port: SceneRenderState["sheet"]["ports"][number]): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } {
+    const labelText = `${port.name}  ${port.type}`;
+    const width = Math.ceil(labelText.length * 7.2) + 38;
+    const height = 24;
+    let x = port.position.x + 12;
+    let y = port.position.y - height / 2;
+    if (port.side === "right") x = port.position.x - width - 12;
+    if (port.side === "bottom") {
+      x = port.position.x - width / 2;
+      y = port.position.y - height - 12;
+    }
+    return { x, y, width, height };
+  }
+
+  private expandBoundsWithRotatedRect(
+    bounds: { minX: number; minY: number; maxX: number; maxY: number },
+    rect: { x: number; y: number; width: number; height: number },
+    rotationDeg: number,
+    pivot: Pt,
+  ): void {
+    const rad = (rotationDeg * Math.PI) / 180;
+    const c = Math.cos(rad);
+    const s = Math.sin(rad);
+    const corners: Pt[] = [
+      { x: rect.x, y: rect.y },
+      { x: rect.x + rect.width, y: rect.y },
+      { x: rect.x + rect.width, y: rect.y + rect.height },
+      { x: rect.x, y: rect.y + rect.height },
+    ];
+    for (const p of corners) {
+      const dx = p.x - pivot.x;
+      const dy = p.y - pivot.y;
+      const x = pivot.x + dx * c - dy * s;
+      const y = pivot.y + dx * s + dy * c;
+      bounds.minX = Math.min(bounds.minX, x);
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxX = Math.max(bounds.maxX, x);
+      bounds.maxY = Math.max(bounds.maxY, y);
+    }
+  }
+
+  private computeSceneBounds(state: SceneRenderState): {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  } {
+    const bounds = {
+      minX: 0,
+      minY: 0,
+      maxX: SCENE_WIDTH,
+      maxY: SCENE_HEIGHT,
+    };
+    const margin = 160;
+
+    for (const node of state.sheet.nodes) {
+      const layout = this.nodeLayouts.get(node.id);
+      if (!layout) continue;
+      bounds.minX = Math.min(bounds.minX, node.position.x - margin);
+      bounds.minY = Math.min(bounds.minY, node.position.y - margin);
+      bounds.maxX = Math.max(
+        bounds.maxX,
+        node.position.x + layout.width + margin,
+      );
+      bounds.maxY = Math.max(
+        bounds.maxY,
+        node.position.y + layout.height + margin,
+      );
+    }
+
+    for (const label of state.sheet.labels) {
+      const size = this.estimateLabelSize(label.scope, label.name);
+      this.expandBoundsWithRotatedRect(
+        bounds,
+        {
+          x: label.position.x,
+          y: label.position.y - size.height / 2,
+          width: size.width,
+          height: size.height,
+        },
+        label.rotation ?? 0,
+        { x: label.position.x, y: label.position.y },
+      );
+      bounds.minX = Math.min(bounds.minX, label.position.x - margin);
+      bounds.minY = Math.min(bounds.minY, label.position.y - margin);
+      bounds.maxX = Math.max(bounds.maxX, label.position.x + margin);
+      bounds.maxY = Math.max(bounds.maxY, label.position.y + margin);
+    }
+
+    for (const port of state.sheet.ports) {
+      const rect = this.estimatePortBox(port);
+      this.expandBoundsWithRotatedRect(
+        bounds,
+        rect,
+        port.rotation ?? 0,
+        port.position,
+      );
+      bounds.minX = Math.min(bounds.minX, port.position.x - margin);
+      bounds.minY = Math.min(bounds.minY, port.position.y - margin);
+      bounds.maxX = Math.max(bounds.maxX, port.position.x + margin);
+      bounds.maxY = Math.max(bounds.maxY, port.position.y + margin);
+    }
+
+    for (const conn of state.sheet.directConnections) {
+      for (const wp of conn.waypoints ?? []) {
+        bounds.minX = Math.min(bounds.minX, wp.x - margin);
+        bounds.minY = Math.min(bounds.minY, wp.y - margin);
+        bounds.maxX = Math.max(bounds.maxX, wp.x + margin);
+        bounds.maxY = Math.max(bounds.maxY, wp.y + margin);
+      }
+    }
+
+    for (const wp of state.pendingWirePoints) {
+      bounds.minX = Math.min(bounds.minX, wp.x - margin);
+      bounds.minY = Math.min(bounds.minY, wp.y - margin);
+      bounds.maxX = Math.max(bounds.maxX, wp.x + margin);
+      bounds.maxY = Math.max(bounds.maxY, wp.y + margin);
+    }
+
+    return bounds;
   }
 
   private screenToWorld(pos: Pt): Pt {
@@ -322,19 +473,6 @@ export class KonvaSheetScene {
     return deleteWireSelectedWaypoint(this.wireContext());
   }
 
-  private insertWaypointOnConnection(
-    connectionId: string,
-    routePoints: Pt[],
-    point: Pt,
-  ): void {
-    insertWireWaypointOnConnection(
-      this.wireContext(),
-      connectionId,
-      routePoints,
-      point,
-    );
-  }
-
   private redrawWires(): void {
     redrawSceneWires(this.wireContext());
   }
@@ -353,6 +491,8 @@ export class KonvaSheetScene {
 
     const { nodeLayouts } = buildSheetSceneLayout(project, sheet);
     this.nodeLayouts = nodeLayouts;
+    this.sceneBounds = this.computeSceneBounds(state);
+    this.applyCamera();
     this.redrawWires();
 
     renderPorts({

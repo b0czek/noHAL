@@ -343,13 +343,14 @@ function getLabelPosition(
   return label ? label.position : null;
 }
 
-const labelWidthMeasureCache = new Map<string, { scopeW: number; nameW: number }>();
+const labelWidthMeasureCache = new Map<
+  string,
+  { scopeW: number; nameW: number }
+>();
 
-function getLabelBoxBounds(label: SheetDefinition["labels"][number]): {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
+function getLabelBoxSize(label: SheetDefinition["labels"][number]): {
+  width: number;
+  height: number;
 } {
   const cacheKey = `${label.scope}\u0000${label.name}`;
   let m = labelWidthMeasureCache.get(cacheKey);
@@ -374,11 +375,15 @@ function getLabelBoxBounds(label: SheetDefinition["labels"][number]): {
   }
   const width = 16 + m.scopeW + 8 + m.nameW + 10;
   const height = 22;
+  return { width, height };
+}
+
+function rotateVec(x: number, y: number, radians: number): Pt {
+  const c = Math.cos(radians);
+  const s = Math.sin(radians);
   return {
-    left: label.position.x,
-    right: label.position.x + width,
-    top: label.position.y - height / 2,
-    bottom: label.position.y + height / 2,
+    x: x * c - y * s,
+    y: x * s + y * c,
   };
 }
 
@@ -399,31 +404,59 @@ function getLabelAnchorPoint(
     live && (live.x !== label.position.x || live.y !== label.position.y)
       ? { ...label, position: live }
       : label;
-  const bounds = getLabelBoxBounds(labelForBounds);
+  const { width, height } = getLabelBoxSize(labelForBounds);
+  const localBounds = {
+    left: 0,
+    right: width,
+    top: -height / 2,
+    bottom: height / 2,
+  };
+  const rotationRad = ((labelForBounds.rotation ?? 0) * Math.PI) / 180;
+  const towardLocal =
+    rotationRad === 0
+      ? {
+          x: toward.x - labelForBounds.position.x,
+          y: toward.y - labelForBounds.position.y,
+        }
+      : rotateVec(
+          toward.x - labelForBounds.position.x,
+          toward.y - labelForBounds.position.y,
+          -rotationRad,
+        );
 
   const outside =
-    toward.x < bounds.left ||
-    toward.x > bounds.right ||
-    toward.y < bounds.top ||
-    toward.y > bounds.bottom;
+    towardLocal.x < localBounds.left ||
+    towardLocal.x > localBounds.right ||
+    towardLocal.y < localBounds.top ||
+    towardLocal.y > localBounds.bottom;
 
-  if (outside) {
-    return {
-      x: clamp(toward.x, bounds.left, bounds.right),
-      y: clamp(toward.y, bounds.top, bounds.bottom),
-    };
-  }
+  const localAnchor = outside
+    ? {
+        x: clamp(towardLocal.x, localBounds.left, localBounds.right),
+        y: clamp(towardLocal.y, localBounds.top, localBounds.bottom),
+      }
+    : (() => {
+        const dLeft = Math.abs(towardLocal.x - localBounds.left);
+        const dRight = Math.abs(localBounds.right - towardLocal.x);
+        const dTop = Math.abs(towardLocal.y - localBounds.top);
+        const dBottom = Math.abs(localBounds.bottom - towardLocal.y);
+        const minDist = Math.min(dLeft, dRight, dTop, dBottom);
 
-  const dLeft = Math.abs(toward.x - bounds.left);
-  const dRight = Math.abs(bounds.right - toward.x);
-  const dTop = Math.abs(toward.y - bounds.top);
-  const dBottom = Math.abs(bounds.bottom - toward.y);
-  const minDist = Math.min(dLeft, dRight, dTop, dBottom);
+        if (minDist === dLeft) return { x: localBounds.left, y: towardLocal.y };
+        if (minDist === dRight)
+          return { x: localBounds.right, y: towardLocal.y };
+        if (minDist === dTop) return { x: towardLocal.x, y: localBounds.top };
+        return { x: towardLocal.x, y: localBounds.bottom };
+      })();
 
-  if (minDist === dLeft) return { x: bounds.left, y: toward.y };
-  if (minDist === dRight) return { x: bounds.right, y: toward.y };
-  if (minDist === dTop) return { x: toward.x, y: bounds.top };
-  return { x: toward.x, y: bounds.bottom };
+  const worldAnchor =
+    rotationRad === 0
+      ? localAnchor
+      : rotateVec(localAnchor.x, localAnchor.y, rotationRad);
+  return {
+    x: labelForBounds.position.x + worldAnchor.x,
+    y: labelForBounds.position.y + worldAnchor.y,
+  };
 }
 
 function getEndpointPoint(

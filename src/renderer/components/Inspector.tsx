@@ -17,7 +17,7 @@ interface InspectorProps {
   onUpdateNodeParam: (nodeId: string, key: string, value: string) => void;
   onUpdateLabel: (
     labelId: string,
-    patch: { name?: string; scope?: LabelScope },
+    patch: { name?: string; scope?: LabelScope; rotation?: number },
   ) => void;
   onUpdateSheetPort: (
     portId: string,
@@ -26,6 +26,7 @@ interface InspectorProps {
       direction?: "in" | "out" | "io";
       type?: HalValueType;
       side?: "left" | "right" | "bottom";
+      rotation?: number;
     },
   ) => void;
   onRemoveSelection: () => void;
@@ -143,6 +144,12 @@ export default function Inspector(props: InspectorProps) {
                   }
                 />
               </div>
+              <RotationEditor
+                value={label().rotation ?? 0}
+                onChange={(rotation) =>
+                  props.onUpdateLabel(label().id, { rotation })
+                }
+              />
             </div>
           )}
         </Show>
@@ -197,6 +204,12 @@ export default function Inspector(props: InspectorProps) {
                   }
                 />
               </div>
+              <RotationEditor
+                value={port().rotation ?? 0}
+                onChange={(rotation) =>
+                  props.onUpdateSheetPort(port().id, { rotation })
+                }
+              />
             </div>
           )}
         </Show>
@@ -262,6 +275,52 @@ export default function Inspector(props: InspectorProps) {
         </section>
       </Show>
     </aside>
+  );
+}
+
+function RotationEditor(props: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div class="field-label-group">
+      Rotation
+      <div style={{ display: "flex", gap: "6px", "align-items": "center" }}>
+        <button
+          type="button"
+          class="btn"
+          onClick={() => props.onChange((props.value || 0) - 90)}
+          title="Rotate -90°"
+        >
+          -90
+        </button>
+        <input
+          type="number"
+          step="15"
+          value={Number.isFinite(props.value) ? props.value : 0}
+          onInput={(e) => {
+            const next = Number.parseFloat(e.currentTarget.value);
+            if (Number.isFinite(next)) props.onChange(next);
+          }}
+        />
+        <button
+          type="button"
+          class="btn"
+          onClick={() => props.onChange((props.value || 0) + 90)}
+          title="Rotate +90°"
+        >
+          +90
+        </button>
+        <button
+          type="button"
+          class="btn"
+          onClick={() => props.onChange(0)}
+          title="Reset rotation"
+        >
+          0
+        </button>
+      </div>
+    </div>
   );
 }
 

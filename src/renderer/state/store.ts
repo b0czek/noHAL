@@ -47,6 +47,12 @@ function snapshotProjectForIpc(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
 }
 
+function normalizeRotationDegrees(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  const normalized = value % 360;
+  return Object.is(normalized, -0) ? 0 : normalized;
+}
+
 function createEmptyComponentStore(): ComponentStore {
   return {
     format: "nohal-component-store",
@@ -652,6 +658,7 @@ export function createEditorStore(initialProject: NoHALProject) {
           name,
           scope,
           position: defaultLabelPosition(sheet),
+          rotation: 0,
         });
       });
       setState("status", `Added ${scope} label`);
@@ -720,7 +727,11 @@ export function createEditorStore(initialProject: NoHALProject) {
       });
     },
 
-    updateNodePinInitialValue(nodeId: string, pinKey: string, value: string): void {
+    updateNodePinInitialValue(
+      nodeId: string,
+      pinKey: string,
+      value: string,
+    ): void {
       withProject((project) => {
         const sheet = getSheet(project, state.activeSheetId);
         const node = sheet.nodes.find((n) => n.id === nodeId);
@@ -735,7 +746,7 @@ export function createEditorStore(initialProject: NoHALProject) {
 
     updateLabel(
       labelId: string,
-      patch: { name?: string; scope?: LabelScope },
+      patch: { name?: string; scope?: LabelScope; rotation?: number },
     ): void {
       withProject((project) => {
         const sheet = getSheet(project, state.activeSheetId);
@@ -743,6 +754,9 @@ export function createEditorStore(initialProject: NoHALProject) {
         if (!label) return;
         if (patch.name !== undefined) label.name = patch.name;
         if (patch.scope !== undefined) label.scope = patch.scope;
+        if (patch.rotation !== undefined) {
+          label.rotation = normalizeRotationDegrees(patch.rotation);
+        }
       });
     },
 
@@ -753,6 +767,7 @@ export function createEditorStore(initialProject: NoHALProject) {
         direction?: "in" | "out" | "io";
         type?: HalValueType;
         side?: "left" | "right" | "bottom";
+        rotation?: number;
       },
     ): void {
       withProject((project) => {
@@ -763,6 +778,9 @@ export function createEditorStore(initialProject: NoHALProject) {
         if (patch.direction !== undefined) port.direction = patch.direction;
         if (patch.type !== undefined) port.type = patch.type;
         if (patch.side !== undefined) port.side = patch.side;
+        if (patch.rotation !== undefined) {
+          port.rotation = normalizeRotationDegrees(patch.rotation);
+        }
       });
     },
 

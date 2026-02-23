@@ -133,6 +133,7 @@ export function renderPorts(args: RenderPortsArgs): void {
     const portGroup = new Konva.Group({
       x: port.position.x,
       y: port.position.y,
+      rotation: port.rotation ?? 0,
       draggable: true,
       dragBoundFunc: (pos) => clampPos(pos),
     });
@@ -578,6 +579,7 @@ export function renderLabels(args: RenderLabelsArgs): void {
     const group = new Konva.Group({
       x: label.position.x,
       y: label.position.y,
+      rotation: label.rotation ?? 0,
       draggable: true,
       dragBoundFunc: (pos) => clampPos(pos),
     });
