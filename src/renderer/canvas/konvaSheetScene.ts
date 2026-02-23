@@ -411,7 +411,7 @@ export class KonvaSheetScene {
   private makeBezierWire(
     a: Pt,
     b: Pt,
-    attrs: { stroke: string; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number }
+    attrs: { stroke: string | CanvasGradient; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number | "auto" }
   ): Konva.Line {
     const dx = Math.abs(b.x - a.x) * 0.4;
     const c1x = a.x + (b.x >= a.x ? dx : -dx);
@@ -429,7 +429,11 @@ export class KonvaSheetScene {
     });
   }
 
-  private drawWire(a: Pt, b: Pt, attrs: { stroke: string; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number }): Konva.Line {
+  private drawWire(
+    a: Pt,
+    b: Pt,
+    attrs: { stroke: string | CanvasGradient; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number | "auto" }
+  ): Konva.Line {
     const line = this.makeBezierWire(a, b, attrs);
     this.wireWorld.add(line);
     return line;
@@ -463,7 +467,7 @@ export class KonvaSheetScene {
 
   private drawWirePath(
     points: Pt[],
-    attrs: { stroke: string; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number }
+    attrs: { stroke: string | CanvasGradient; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number | "auto" }
   ): Konva.Line | null {
     if (points.length < 2) return null;
     if (points.length === 2) {

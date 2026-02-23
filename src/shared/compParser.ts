@@ -1,4 +1,3 @@
-import path from "node:path";
 import { safeKey, slugify } from "./id";
 import type {
   ComponentDefinition,
@@ -25,6 +24,18 @@ interface TokenizedStatement {
 }
 
 const HAL_TYPES = new Set(["float", "bit", "signed", "unsigned", "u32", "s32", "u64", "s64", "port"]);
+
+function basename(input: string): string {
+  const normalized = input.replaceAll("\\", "/");
+  const lastSlash = normalized.lastIndexOf("/");
+  return lastSlash >= 0 ? normalized.slice(lastSlash + 1) : normalized;
+}
+
+function basenameWithoutExt(input: string): string {
+  const name = basename(input);
+  const dot = name.lastIndexOf(".");
+  return dot > 0 ? name.slice(0, dot) : name;
+}
 
 function normalizeType(value: string): HalValueType {
   if (value === "signed") return "s32";
@@ -290,7 +301,7 @@ function parseDocStatement(tokens: string[]): { key: CompDocKind; value: string 
 }
 
 function toComponentId(halComponentName: string, filePath?: string): string {
-  const base = filePath ? path.basename(filePath, ".comp") : halComponentName;
+  const base = filePath ? (filePath.endsWith(".comp") ? basename(filePath).slice(0, -".comp".length) : basename(filePath)) : halComponentName;
   return `comp:${slugify(base)}:${slugify(halComponentName)}`;
 }
 
@@ -347,12 +358,12 @@ export function parseCompComponentDefinition(text: string, filePath?: string): I
   }
 
   if (!componentName) {
-    const fallback = filePath ? path.basename(filePath, path.extname(filePath)) : "component";
+    const fallback = filePath ? basenameWithoutExt(filePath) : "component";
     componentName = fallback;
     warnings.push("No component declaration found before ';;'; using filename as component name");
   }
 
-  const finalComponentName = componentName;
+  const finalComponentName = componentName ?? "component";
 
   return {
     id: toComponentId(finalComponentName, filePath),
