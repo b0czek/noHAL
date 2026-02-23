@@ -1,6 +1,7 @@
 import type {
   ComponentStore,
   ComponentStoreEntry,
+  HalImportDraft,
   ImportedComponentDefinition,
   NoHALProject,
   RecentProjectEntry,
@@ -21,6 +22,7 @@ export interface NoHALApi {
     project: NoHALProject,
     filePath?: string | null,
   ): Promise<{ filePath: string; warnings: string[] } | null>;
+  importHalFile(): Promise<HalImportDraft | null>;
   importCompFile(): Promise<ImportedComponentDefinition | null>;
   pickDirectory(defaultPath?: string | null): Promise<string | null>;
   scanCompDir(dirPath: string): Promise<{

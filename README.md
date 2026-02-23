@@ -5,6 +5,10 @@ Visual LinuxCNC HAL IDE prototype (Electron + TypeScript + SolidJS).
 ## What This MVP Does
 
 - Creates and saves a visual HAL project (`.nohal.json`)
+- New Project flow supports:
+  - blank project creation
+  - importing an existing `.hal` file
+  - component-link verification against the Component Store before project creation
 - Offline-only editing (no LinuxCNC runtime introspection)
 - Hierarchical sheets (subsheet nodes)
 - Sheet edge ports (`in`/`out`/`io`) with editable names/types/sides
@@ -17,12 +21,18 @@ Visual LinuxCNC HAL IDE prototype (Electron + TypeScript + SolidJS).
   - `net`
   - `setp`
   - userspace/unknown runtime summary comments
+- `.hal` import (pragmatic parser) for:
+  - `loadrt` (names/count inference)
+  - `net`
+  - `setp`
+  - `addf` (mapped into top-sheet addf queue when function names match instances)
+  - unresolved components become project-local component definitions in the imported `.nohal.json`
 
 ## What It Does Not Do Yet
 
 - `loadusr` generation (still manual flags/args)
-- Runtime HAL introspection
-- Import existing `.hal` text into diagrams
+- Full-fidelity `.hal` import (the importer is pragmatic and currently builds a single top-level sheet)
+- `loadusr` parsing/linking is partial during import (net/setp-driven reconstruction still works for many files)
 - Array pin expansion (`foo##` style pins are detected but not expanded)
 - Full visual editor uses a custom HAL scene on top of Konva (schematic-oriented UX)
 
@@ -57,8 +67,3 @@ npm install
 npm run dev
 ```
 
-## Notes On Local Typecheck In This Environment
-
-The current workspace did not have the app dependencies installed, so local `tsc`
-checks here were limited by missing type packages/modules (`solid-js`, `node` types).
-The code was still patched against the real logic/type issues found during partial checks.

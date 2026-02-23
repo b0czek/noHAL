@@ -2,6 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dialog, ipcMain } from "electron";
 import { parseCompComponentDefinition } from "../shared/compParser";
 import { exportProjectToHal } from "../shared/exportHal";
+import { parseHalImportDraft } from "../shared/halImport";
 import { createEmptyProject, stringifyNoHALProject } from "../shared/project";
 import type { NoHALProject } from "../shared/types";
 import {
@@ -81,6 +82,18 @@ export function registerIpcHandlers(): void {
       return { filePath: target, warnings: hal.warnings };
     },
   );
+
+  ipcMain.handle("nohal:import-hal-file", async () => {
+    const res = await dialog.showOpenDialog({
+      title: "Import HAL File",
+      properties: ["openFile"],
+      filters: [{ name: "HAL File", extensions: ["hal"] }],
+    });
+    if (res.canceled || res.filePaths.length === 0) return null;
+    const filePath = res.filePaths[0];
+    const content = await readFile(filePath, "utf8");
+    return parseHalImportDraft(content, filePath);
+  });
 
   ipcMain.handle("nohal:load-component-store", async () =>
     readComponentStoreFile(),

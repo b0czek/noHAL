@@ -992,6 +992,69 @@ select {
   grid-column: 1 / -1;
 }
 
+.new-project-dialog {
+  width: min(1100px, calc(100vw - 36px));
+}
+
+.new-project-dialog-body {
+  grid-template-columns: 1fr;
+}
+
+.new-project-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.new-project-choice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.new-project-linking-help {
+  margin-bottom: 10px;
+}
+
+.new-project-link-list {
+  display: grid;
+  gap: 8px;
+  max-height: 380px;
+  overflow: auto;
+}
+
+.new-project-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 12px;
+  align-items: start;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.new-project-link-main {
+  min-width: 0;
+}
+
+.new-project-link-select {
+  min-width: 0;
+}
+
+.new-project-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.new-project-path {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pin-filter-row {
   margin-bottom: 8px;
 }
@@ -1003,6 +1066,14 @@ select {
 
   .component-settings-dialog .panel:last-child {
     grid-column: auto;
+  }
+
+  .new-project-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .new-project-link-row {
+    grid-template-columns: 1fr;
   }
 }
 

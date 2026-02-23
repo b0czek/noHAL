@@ -6,6 +6,8 @@ import type {
   SheetEndpointRef,
 } from "../../shared/types";
 import {
+  FONT_MONO,
+  FONT_SANS,
   LABEL_ANCHOR_DASH,
   LABEL_ANCHOR_STROKE,
   LABEL_ANCHOR_STROKE_WIDTH,
@@ -341,6 +343,89 @@ function getLabelPosition(
   return label ? label.position : null;
 }
 
+const labelWidthMeasureCache = new Map<string, { scopeW: number; nameW: number }>();
+
+function getLabelBoxBounds(label: SheetDefinition["labels"][number]): {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+} {
+  const cacheKey = `${label.scope}\u0000${label.name}`;
+  let m = labelWidthMeasureCache.get(cacheKey);
+  if (!m) {
+    const scopeMeasure = new Konva.Text({
+      text: label.scope,
+      fontFamily: FONT_SANS,
+      fontSize: 10,
+    });
+    const nameMeasure = new Konva.Text({
+      text: label.name,
+      fontFamily: FONT_MONO,
+      fontSize: 12,
+    });
+    m = {
+      scopeW: Math.ceil(scopeMeasure.width()),
+      nameW: Math.ceil(nameMeasure.width()),
+    };
+    labelWidthMeasureCache.set(cacheKey, m);
+    scopeMeasure.destroy();
+    nameMeasure.destroy();
+  }
+  const width = 16 + m.scopeW + 8 + m.nameW + 10;
+  const height = 22;
+  return {
+    left: label.position.x,
+    right: label.position.x + width,
+    top: label.position.y - height / 2,
+    bottom: label.position.y + height / 2,
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getLabelAnchorPoint(
+  ctx: KonvaSheetSceneWiresContext,
+  sheet: SheetDefinition,
+  labelId: string,
+  toward: Pt,
+): Pt | null {
+  const live = ctx.getLiveLabelPositions().get(labelId);
+  const label = sheet.labels.find((l) => l.id === labelId);
+  if (!label) return null;
+  const labelForBounds =
+    live && (live.x !== label.position.x || live.y !== label.position.y)
+      ? { ...label, position: live }
+      : label;
+  const bounds = getLabelBoxBounds(labelForBounds);
+
+  const outside =
+    toward.x < bounds.left ||
+    toward.x > bounds.right ||
+    toward.y < bounds.top ||
+    toward.y > bounds.bottom;
+
+  if (outside) {
+    return {
+      x: clamp(toward.x, bounds.left, bounds.right),
+      y: clamp(toward.y, bounds.top, bounds.bottom),
+    };
+  }
+
+  const dLeft = Math.abs(toward.x - bounds.left);
+  const dRight = Math.abs(bounds.right - toward.x);
+  const dTop = Math.abs(toward.y - bounds.top);
+  const dBottom = Math.abs(bounds.bottom - toward.y);
+  const minDist = Math.min(dLeft, dRight, dTop, dBottom);
+
+  if (minDist === dLeft) return { x: bounds.left, y: toward.y };
+  if (minDist === dRight) return { x: bounds.right, y: toward.y };
+  if (minDist === dTop) return { x: toward.x, y: bounds.top };
+  return { x: toward.x, y: bounds.bottom };
+}
+
 function getEndpointPoint(
   ctx: KonvaSheetSceneWiresContext,
   sheet: SheetDefinition,
@@ -412,10 +497,10 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
     });
     const selected = ctx.getSelectedConnectionId() === conn.id;
     const wire = drawWirePath(ctx, displayRoutePoints, {
-      stroke: selected
-        ? WIRE_SELECTED_STROKE
-        : WIRE_DEFAULT_STROKE,
-      strokeWidth: selected ? WIRE_SELECTED_STROKE_WIDTH : WIRE_DEFAULT_STROKE_WIDTH,
+      stroke: selected ? WIRE_SELECTED_STROKE : WIRE_DEFAULT_STROKE,
+      strokeWidth: selected
+        ? WIRE_SELECTED_STROKE_WIDTH
+        : WIRE_DEFAULT_STROKE_WIDTH,
       listening: true,
       hitStrokeWidth: WIRE_HIT_STROKE_WIDTH,
     });
@@ -518,7 +603,9 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
 
   for (const anchor of sheet.labelAnchors) {
     const ep = getEndpointPoint(ctx, sheet, anchor.endpoint);
-    const labelPos = getLabelPosition(ctx, sheet, anchor.labelId);
+    const labelPos = ep
+      ? getLabelAnchorPoint(ctx, sheet, anchor.labelId, ep)
+      : getLabelPosition(ctx, sheet, anchor.labelId);
     if (!ep || !labelPos) continue;
     ctx.wireWorld.add(
       new Konva.Line({

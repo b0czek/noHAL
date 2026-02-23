@@ -685,6 +685,17 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
         const component = project.library.components[node.componentId];
         if (!component) continue;
         const instancePath = [...pathParts, node.instanceName].join(".");
+        for (const [pinKey, value] of Object.entries(node.pinInitialValues ?? {})) {
+          const pinDef = component.pins.find((p) => p.key === pinKey);
+          if (!pinDef) {
+            ctx.warnings.push(
+              `Unknown pin '${pinKey}' on node '${node.instanceName}'`,
+            );
+            continue;
+          }
+          if (!value.trim()) continue;
+          setpLines.push(`setp ${instancePath}.${pinDef.name} ${value}`);
+        }
         for (const [paramKey, value] of Object.entries(node.paramValues)) {
           const paramDef = component.params.find((p) => p.key === paramKey);
           if (!paramDef) {

@@ -9,6 +9,7 @@ interface ComponentNodeDialogProps {
   node: ComponentNode | null;
   onRename: (name: string) => void;
   onUpdateParam: (key: string, value: string) => void;
+  onUpdatePinInitialValue: (key: string, value: string) => void;
   onClose: () => void;
 }
 
@@ -108,6 +109,34 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                               )
                             }
                             placeholder={param.defaultValue ?? ""}
+                          />
+                        </label>
+                      )}
+                    </For>
+                  </div>
+                </Show>
+              </section>
+
+              <section class="panel">
+                <div class="panel-title">Pin Initial Values (setp)</div>
+                <Show
+                  when={pins().length > 0}
+                  fallback={<div class="muted">No pins.</div>}
+                >
+                  <div class="inspector-group">
+                    <For each={pins()}>
+                      {(pin) => (
+                        <label>
+                          <span class="mono">{pin.name}</span>
+                          <input
+                            value={props.node?.pinInitialValues?.[pin.key] ?? ""}
+                            onInput={(evt) =>
+                              props.onUpdatePinInitialValue(
+                                pin.key,
+                                evt.currentTarget.value,
+                              )
+                            }
+                            placeholder="(optional)"
                           />
                         </label>
                       )}

@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type {
   ComponentStore,
   ComponentStoreEntry,
+  HalImportDraft,
   ImportedComponentDefinition,
   NoHALProject,
 } from "../shared/types";
@@ -33,6 +34,10 @@ const api: NoHALApi = {
       filePath: string;
       warnings: string[];
     } | null>,
+  importHalFile: () =>
+    ipcRenderer.invoke(
+      "nohal:import-hal-file",
+    ) as Promise<HalImportDraft | null>,
   importCompFile: () =>
     ipcRenderer.invoke(
       "nohal:import-comp-file",

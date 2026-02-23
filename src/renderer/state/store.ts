@@ -110,6 +110,7 @@ function reconcileComponentNodesForDefinition(
   component: ComponentDefinition,
 ): void {
   const validParamKeys = new Set(component.params.map((param) => param.key));
+  const validPinKeys = new Set(component.pins.map((pin) => pin.key));
   const defaultParams = Object.fromEntries(
     component.params
       .filter((param) => param.defaultValue !== undefined)
@@ -128,6 +129,19 @@ function reconcileComponentNodesForDefinition(
         if (!(key in nextValues)) nextValues[key] = value;
       }
       node.paramValues = nextValues;
+
+      const currentPinInitialValues = node.pinInitialValues ?? {};
+      const nextPinInitialValues: Record<string, string> = {};
+      for (const [key, value] of Object.entries(currentPinInitialValues)) {
+        if (!validPinKeys.has(key)) continue;
+        if (!value.trim()) continue;
+        nextPinInitialValues[key] = value;
+      }
+      if (Object.keys(nextPinInitialValues).length > 0) {
+        node.pinInitialValues = nextPinInitialValues;
+      } else {
+        delete node.pinInitialValues;
+      }
     }
   }
 }
@@ -333,6 +347,33 @@ export function createEditorStore(initialProject: NoHALProject) {
         setState(
           "status",
           `Failed to create project: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return false;
+      }
+    },
+
+    openPreparedProject(
+      project: NoHALProject,
+      options?: {
+        filePath?: string | null;
+        status?: string;
+        warnings?: string[];
+      },
+    ): boolean {
+      try {
+        replaceProjectState(
+          project,
+          options?.filePath ?? null,
+          options?.status ?? "Opened project",
+        );
+        if (options?.warnings) {
+          setState("exportWarnings", [...options.warnings]);
+        }
+        return true;
+      } catch (error) {
+        setState(
+          "status",
+          `Failed to load prepared project: ${error instanceof Error ? error.message : String(error)}`,
         );
         return false;
       }
@@ -676,6 +717,19 @@ export function createEditorStore(initialProject: NoHALProject) {
         if (node && node.kind === "component") {
           node.paramValues[paramKey] = value;
         }
+      });
+    },
+
+    updateNodePinInitialValue(nodeId: string, pinKey: string, value: string): void {
+      withProject((project) => {
+        const sheet = getSheet(project, state.activeSheetId);
+        const node = sheet.nodes.find((n) => n.id === nodeId);
+        if (!node || node.kind !== "component") return;
+        const next = { ...(node.pinInitialValues ?? {}) };
+        if (value.trim()) next[pinKey] = value;
+        else delete next[pinKey];
+        if (Object.keys(next).length > 0) node.pinInitialValues = next;
+        else delete node.pinInitialValues;
       });
     },
 
