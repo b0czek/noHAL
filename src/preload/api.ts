@@ -1,4 +1,9 @@
-import type { ImportedComponentDefinition, NoHALProject } from "../shared/types";
+import type {
+  ComponentStore,
+  ComponentStoreEntry,
+  ImportedComponentDefinition,
+  NoHALProject
+} from "../shared/types";
 
 export interface NoHALApi {
   newProject(): Promise<NoHALProject>;
@@ -13,5 +18,24 @@ export interface NoHALApi {
   scanCompDir(
     dirPath: string
   ): Promise<{ imported: ImportedComponentDefinition[]; errors: Array<{ filePath: string; error: string }> }>;
+  loadComponentStore(): Promise<ComponentStore>;
+  importCompFileToStore(): Promise<ComponentStoreEntry | null>;
+  addCompDirSourceToStore(): Promise<{
+    sourceId: string;
+    entries: ComponentStoreEntry[];
+    removedComponentIds: string[];
+    errors: Array<{ filePath: string; error: string }>;
+  } | null>;
+  refreshComponentSourceInStore(sourceId: string): Promise<{
+    sourceId: string;
+    entries: ComponentStoreEntry[];
+    removedComponentIds: string[];
+    errors: Array<{ filePath: string; error: string }>;
+  }>;
+  deleteComponentSourceFromStore(sourceId: string): Promise<{
+    sourceId: string;
+    removedComponentIds: string[];
+  }>;
+  refreshComponentInStore(componentId: string): Promise<ComponentStoreEntry>;
   readTextFile(filePath: string): Promise<string>;
 }

@@ -1,9 +1,10 @@
-import { createEffect, createMemo, createSignal } from "solid-js";
+import { createEffect, createMemo, createSignal, onMount } from "solid-js";
 import { HiOutlineArchiveBoxArrowDown, HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
 import { createEmptyProject } from "../shared/project";
 import { getSheet } from "../shared/graph";
 import Canvas from "./components/Canvas";
 import ComponentNodeDialog from "./components/ComponentNodeDialog";
+import ComponentStoreDialog from "./components/ComponentStoreDialog";
 import Inspector from "./components/Inspector";
 import Sidebar from "./components/Sidebar";
 import { createEditorStore } from "./state/store";
@@ -12,6 +13,11 @@ import { useEditorShortcuts } from "./shortcuts/useEditorShortcuts";
 export default function App() {
   const { state, actions } = createEditorStore(createEmptyProject("NoHAL Project"));
   const [componentEditorNodeId, setComponentEditorNodeId] = createSignal<string | null>(null);
+  const [isComponentStoreOpen, setIsComponentStoreOpen] = createSignal(false);
+
+  onMount(() => {
+    void actions.loadComponentStore();
+  });
 
   const currentSheet = createMemo(() => getSheet(state.project, state.activeSheetId));
   const selectedNode = createMemo(() => {
@@ -110,8 +116,7 @@ export default function App() {
         </div>
 
         <div class="toolbar-group">
-          <button class="btn" onClick={() => void actions.importCompFile()}>Import .comp</button>
-          <button class="btn" onClick={() => void actions.importCompDirectory()}>Scan .comp Dir</button>
+          <button class="btn" onClick={() => setIsComponentStoreOpen(true)}>Component Store</button>
         </div>
 
         <div class="toolbar-group">
@@ -224,6 +229,7 @@ export default function App() {
           onRemoveConnection={actions.removeDirectConnection}
           onRemoveLabelAnchor={actions.removeLabelAnchor}
           onEnterSelectedSheet={actions.enterSelectedSheet}
+          onRefreshComponentInStore={(componentId) => void actions.refreshComponentInStore(componentId)}
         />
       </main>
 
@@ -242,6 +248,17 @@ export default function App() {
           actions.updateNodeParam(node.id, key, value);
         }}
         onClose={() => setComponentEditorNodeId(null)}
+      />
+
+      <ComponentStoreDialog
+        open={isComponentStoreOpen()}
+        componentStore={state.componentStore}
+        onImportCompFile={() => void actions.importCompFile()}
+        onAddCompDirSource={() => void actions.addComponentDirSource()}
+        onRefreshComponentSource={(sourceId) => void actions.refreshComponentSource(sourceId)}
+        onDeleteComponentSource={(sourceId) => void actions.deleteComponentSource(sourceId)}
+        onRefreshStoredComponent={(componentId) => void actions.refreshComponentInStore(componentId)}
+        onClose={() => setIsComponentStoreOpen(false)}
       />
     </div>
   );

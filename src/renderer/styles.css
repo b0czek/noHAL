@@ -226,6 +226,22 @@ select {
   pointer-events: auto;
 }
 
+.sidebar-panel-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-panel-section-fill {
+  flex: 1 1 auto;
+}
+
+.sidebar-divider {
+  height: 1px;
+  margin: 10px 0;
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .inspector {
   grid-column: 2;
   border-left: 1px solid rgba(255, 255, 255, 0.05);
@@ -440,6 +456,72 @@ select {
 
 .component-list {
   max-height: calc(100vh - 340px);
+}
+
+.component-store-section {
+  gap: 8px;
+}
+
+.component-store-list {
+  display: grid;
+  gap: 8px;
+  min-height: 0;
+  max-height: 280px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.component-store-row {
+  align-items: flex-start;
+}
+
+.component-store-main {
+  min-width: 0;
+}
+
+.component-store-path {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.component-store-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.component-store-empty {
+  padding: 8px 4px;
+}
+
+.component-store-dialog {
+  width: min(1080px, calc(100vw - 36px));
+}
+
+.component-store-dialog .modal-body {
+  grid-template-columns: 1fr;
+}
+
+.component-store-dialog .panel {
+  margin-bottom: 0;
+}
+
+.component-store-toolbar {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.component-store-dialog .component-store-list {
+  max-height: min(62vh, 640px);
+}
+
+.component-store-source-list {
+  max-height: min(34vh, 280px);
 }
 
 .mono {

@@ -4,7 +4,9 @@ import { getSheet, resolveEndpointInSheet } from "../../shared/graph";
 import { createSheet, createSheetPortDraft } from "../../shared/project";
 import { validateDirectConnection } from "../../shared/validation";
 import type {
+  ComponentDefinition,
   ComponentNode,
+  ComponentStore,
   HalValueType,
   LabelScope,
   NoHALProject,
@@ -23,6 +25,7 @@ export type Selection =
 
 export interface EditorState {
   project: NoHALProject;
+  componentStore: ComponentStore;
   filePath: string | null;
   activeSheetId: string;
   selection: Selection;
@@ -36,8 +39,76 @@ function cloneProject(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
 }
 
+function cloneComponentStore(store: ComponentStore): ComponentStore {
+  return structuredClone(unwrap(store));
+}
+
 function snapshotProjectForIpc(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
+}
+
+function createEmptyComponentStore(): ComponentStore {
+  return {
+    format: "nohal-component-store",
+    version: 2,
+    sources: {},
+    components: {}
+  };
+}
+
+function applyComponentStoreToProject(project: NoHALProject, componentStore: ComponentStore): void {
+  for (const entry of Object.values(componentStore.components)) {
+    project.library.components[entry.componentId] = entry.parsed;
+    reconcileComponentNodesForDefinition(project, entry.componentId, entry.parsed);
+  }
+}
+
+function projectUsesComponentDefinition(project: NoHALProject, componentId: string): boolean {
+  return Object.values(project.sheets).some((sheet) =>
+    sheet.nodes.some((node) => node.kind === "component" && node.componentId === componentId)
+  );
+}
+
+function pruneMissingStoredComponentsFromProject(project: NoHALProject, componentStore: ComponentStore): void {
+  for (const [componentId, component] of Object.entries(project.library.components)) {
+    if (component.source !== "comp") continue;
+    if (componentId in componentStore.components) continue;
+    if (projectUsesComponentDefinition(project, componentId)) continue;
+    delete project.library.components[componentId];
+  }
+}
+
+function getComponentSourceDisplayPath(componentStore: ComponentStore, sourceId: string): string {
+  const source = componentStore.sources[sourceId];
+  if (!source) return sourceId;
+  return source.kind === "comp-dir" ? source.dirPath : source.filePath;
+}
+
+function reconcileComponentNodesForDefinition(
+  project: NoHALProject,
+  componentId: string,
+  component: ComponentDefinition
+): void {
+  const validParamKeys = new Set(component.params.map((param) => param.key));
+  const defaultParams = Object.fromEntries(
+    component.params
+      .filter((param) => param.defaultValue !== undefined)
+      .map((param) => [param.key, param.defaultValue ?? ""])
+  );
+
+  for (const sheet of Object.values(project.sheets)) {
+    for (const node of sheet.nodes) {
+      if (node.kind !== "component" || node.componentId !== componentId) continue;
+      const nextValues: Record<string, string> = {};
+      for (const [key, value] of Object.entries(node.paramValues)) {
+        if (validParamKeys.has(key)) nextValues[key] = value;
+      }
+      for (const [key, value] of Object.entries(defaultParams)) {
+        if (!(key in nextValues)) nextValues[key] = value;
+      }
+      node.paramValues = nextValues;
+    }
+  }
 }
 
 function nextName(base: string, used: Set<string>): string {
@@ -117,6 +188,7 @@ function syncProjectUi(project: NoHALProject, activeSheetId: string): void {
 export function createEditorStore(initialProject: NoHALProject) {
   const [state, setState] = createStore<EditorState>({
     project: initialProject,
+    componentStore: createEmptyComponentStore(),
     filePath: null,
     activeSheetId: initialProject.ui.activeSheetId,
     selection: null,
@@ -133,6 +205,20 @@ export function createEditorStore(initialProject: NoHALProject) {
     setState("project", next);
   };
 
+  const withComponentStore = (mutate: (componentStore: ComponentStore) => void) => {
+    const next = cloneComponentStore(state.componentStore);
+    mutate(next);
+    setState("componentStore", next);
+  };
+
+  const replaceComponentStore = (componentStore: ComponentStore) => {
+    setState("componentStore", componentStore);
+    withProject((project) => {
+      pruneMissingStoredComponentsFromProject(project, componentStore);
+      applyComponentStoreToProject(project, componentStore);
+    });
+  };
+
   const actions = {
     getCurrentSheet(): SheetDefinition {
       return getSheet(state.project, state.activeSheetId);
@@ -140,6 +226,11 @@ export function createEditorStore(initialProject: NoHALProject) {
 
     setStatus(message: string): void {
       setState("status", message);
+    },
+
+    async loadComponentStore(): Promise<void> {
+      const componentStore = await window.nohal.loadComponentStore();
+      replaceComponentStore(componentStore);
     },
 
     setActiveSheet(sheetId: string): void {
@@ -168,8 +259,10 @@ export function createEditorStore(initialProject: NoHALProject) {
 
     async newProject(): Promise<void> {
       const project = await window.nohal.newProject();
+      applyComponentStoreToProject(project, state.componentStore);
       setState({
         project,
+        componentStore: state.componentStore,
         filePath: null,
         activeSheetId: project.ui.activeSheetId,
         selection: null,
@@ -183,8 +276,10 @@ export function createEditorStore(initialProject: NoHALProject) {
     async openProject(): Promise<void> {
       const result = await window.nohal.openProject();
       if (!result) return;
+      applyComponentStoreToProject(result.project, state.componentStore);
       setState({
         project: result.project,
+        componentStore: state.componentStore,
         filePath: result.filePath,
         activeSheetId: result.project.ui.activeSheetId,
         selection: null,
@@ -216,32 +311,78 @@ export function createEditorStore(initialProject: NoHALProject) {
     },
 
     async importCompFile(): Promise<void> {
-      const imported = await window.nohal.importCompFile();
-      if (!imported) return;
-      withProject((project) => {
-        project.library.components[imported.id] = imported;
-      });
-      setState("status", `Imported .comp: ${imported.halComponentName}`);
+      const entry = await window.nohal.importCompFileToStore();
+      if (!entry) return;
+      const componentStore = await window.nohal.loadComponentStore();
+      replaceComponentStore(componentStore);
+      setState("status", `Imported .comp to store: ${entry.parsed.halComponentName}`);
     },
 
-    async importCompDirectory(): Promise<void> {
-      const dirPath = await window.nohal.pickDirectory();
-      if (!dirPath) return;
-      const result = await window.nohal.scanCompDir(dirPath);
-      withProject((project) => {
-        for (const imported of result.imported) {
-          project.library.components[imported.id] = imported;
-        }
-      });
+    async addComponentDirSource(): Promise<void> {
+      const result = await window.nohal.addCompDirSourceToStore();
+      if (!result) return;
+      const componentStore = await window.nohal.loadComponentStore();
+      replaceComponentStore(componentStore);
       setState(
         "status",
-        `Imported ${result.imported.length} components (${result.errors.length} errors)`,
+        `Added dir source ${getComponentSourceDisplayPath(componentStore, result.sourceId)}: ${result.entries.length} components, ${result.removedComponentIds.length} removed (${result.errors.length} errors)`
       );
       if (result.errors.length > 0) {
+        setState("exportWarnings", result.errors.map((e) => `Import error ${e.filePath}: ${e.error}`));
+      }
+    },
+
+    async refreshComponentSource(sourceId: string): Promise<void> {
+      try {
+        const result = await window.nohal.refreshComponentSourceInStore(sourceId);
+        const componentStore = await window.nohal.loadComponentStore();
+        replaceComponentStore(componentStore);
         setState(
-          "exportWarnings",
-          result.errors.map((e) => `Import error ${e.filePath}: ${e.error}`),
+          "status",
+          `Refreshed source ${getComponentSourceDisplayPath(componentStore, sourceId)}: ${result.entries.length} components, ${result.removedComponentIds.length} removed (${result.errors.length} errors)`
         );
+        if (result.errors.length > 0) {
+          setState("exportWarnings", result.errors.map((e) => `Import error ${e.filePath}: ${e.error}`));
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setState("status", `Source refresh failed: ${message}`);
+      }
+    },
+
+    async deleteComponentSource(sourceId: string): Promise<void> {
+      try {
+        const previousPath = getComponentSourceDisplayPath(state.componentStore, sourceId);
+        const result = await window.nohal.deleteComponentSourceFromStore(sourceId);
+        const componentStore = await window.nohal.loadComponentStore();
+        replaceComponentStore(componentStore);
+        setState("status", `Deleted source ${previousPath} (${result.removedComponentIds.length} components removed)`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setState("status", `Delete source failed: ${message}`);
+      }
+    },
+
+    async refreshComponentInStore(componentId: string): Promise<void> {
+      const current = state.project.library.components[componentId];
+      if (!current || current.source !== "comp") {
+        setState("status", "Selected component is not a stored .comp component");
+        return;
+      }
+
+      try {
+        const entry = await window.nohal.refreshComponentInStore(componentId);
+        withComponentStore((componentStore) => {
+          componentStore.components[entry.componentId] = entry;
+        });
+        withProject((project) => {
+          project.library.components[entry.componentId] = entry.parsed;
+          reconcileComponentNodesForDefinition(project, entry.componentId, entry.parsed);
+        });
+        setState("status", `Refreshed component: ${entry.parsed.halComponentName}`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setState("status", `Refresh failed: ${message}`);
       }
     },
 

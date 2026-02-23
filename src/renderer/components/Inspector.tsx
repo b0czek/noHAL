@@ -29,6 +29,7 @@ interface InspectorProps {
   onRemoveConnection: (id: string) => void;
   onRemoveLabelAnchor: (id: string) => void;
   onEnterSelectedSheet: () => void;
+  onRefreshComponentInStore: (componentId: string) => void;
 }
 
 type SelectMenuOption = {
@@ -100,6 +101,7 @@ export default function Inspector(props: InspectorProps) {
               onOpenComponentEditor={props.onOpenSelectedComponentEditor}
               onRename={(name) => props.onRenameNode(node().id, name)}
               onEnterSelectedSheet={props.onEnterSelectedSheet}
+              onRefreshComponentInStore={props.onRefreshComponentInStore}
             />
           )}
         </Show>
@@ -270,6 +272,7 @@ function NodeInspector(props: {
   onOpenComponentEditor: () => void;
   onRename: (name: string) => void;
   onEnterSelectedSheet: () => void;
+  onRefreshComponentInStore: (componentId: string) => void;
 }) {
   const pins = () => getNodePins(props.project, props.node);
   const component = () =>
@@ -289,6 +292,11 @@ function NodeInspector(props: {
       >
         <button class="btn" onClick={props.onOpenComponentEditor}>
           Open Component Settings
+        </button>
+      </Show>
+      <Show when={props.node.kind === "component" && component()?.source === "comp" && component()}>
+        <button class="btn subtle" onClick={() => props.onRefreshComponentInStore(component()!.id)}>
+          Refresh Component Definition
         </button>
       </Show>
       <Show when={props.node.kind === "sheet"}>
