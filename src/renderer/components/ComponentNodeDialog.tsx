@@ -1,10 +1,10 @@
 import { For, Show, createMemo, createSignal } from "solid-js";
 import { getNodePins, getNodeTitle } from "../../shared/graph";
-import type { ComponentNode, NochalProject } from "../../shared/types";
+import type { ComponentNode, NoHALProject } from "../../shared/types";
 
 interface ComponentNodeDialogProps {
   open: boolean;
-  project: NochalProject;
+  project: NoHALProject;
   node: ComponentNode | null;
   onRename: (name: string) => void;
   onUpdateParam: (key: string, value: string) => void;

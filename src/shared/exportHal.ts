@@ -1,7 +1,7 @@
 import { getNodePins, getSheet, invertDirection, resolveEndpointInSheet } from "./graph";
 import type {
   ComponentNode,
-  NochalProject,
+  NoHALProject,
   PinDirection,
   SheetDefinition,
   SheetNode,
@@ -124,7 +124,7 @@ function chooseBoundarySignalName(pathParts: string[], portName: string): string
 
 function createLocalEndpointIdMap(
   ctx: ExportContext,
-  project: NochalProject,
+  project: NoHALProject,
   sheet: SheetDefinition,
   pathParts: string[]
 ): Map<string, string> {
@@ -181,7 +181,7 @@ function localEndpointRefToId(map: Map<string, string>, ref: { kind: "node-pin";
 
 function traverseSheetInstance(
   ctx: ExportContext,
-  project: NochalProject,
+  project: NoHALProject,
   sheetId: string,
   pathParts: string[],
   sheetStack: string[] = []
@@ -337,7 +337,7 @@ function sortPinsForHal(records: EndpointRecord[]): EndpointRecord[] {
   return [...records].sort((a, b) => rank(a) - rank(b));
 }
 
-export function exportProjectToHal(project: NochalProject): ExportResult {
+export function exportProjectToHal(project: NoHALProject): ExportResult {
   const ctx = createExportContext();
   traverseSheetInstance(ctx, project, project.rootSheetId, [], []);
 
@@ -418,7 +418,7 @@ export function exportProjectToHal(project: NochalProject): ExportResult {
   }
 
   const lines: string[] = [];
-  lines.push(`# Nochal HAL export`);
+  lines.push(`# NoHAL HAL export`);
   lines.push(`# Target LinuxCNC ${project.target.linuxcncVersion} (${project.target.platform})`);
   lines.push(`# Project: ${project.name}`);
   lines.push(`#`);

@@ -1,6 +1,6 @@
 import type {
   ComponentNode,
-  NochalProject,
+  NoHALProject,
   PinDirection,
   PortSide,
   ResolvedEndpoint,
@@ -21,7 +21,7 @@ export function pinDirectionToSide(direction: PinDirection): PortSide {
   return direction === "in" ? "left" : direction === "out" ? "right" : "bottom";
 }
 
-export function getSheet(project: NochalProject, sheetId: string): SheetDefinition {
+export function getSheet(project: NoHALProject, sheetId: string): SheetDefinition {
   const sheet = project.sheets[sheetId];
   if (!sheet) throw new Error(`Sheet not found: ${sheetId}`);
   return sheet;
@@ -33,7 +33,7 @@ export function getNode(sheet: SheetDefinition, nodeId: string): SheetNodeInstan
   return node;
 }
 
-export function getComponentNodePins(project: NochalProject, node: ComponentNode): ResolvedPin[] {
+export function getComponentNodePins(project: NoHALProject, node: ComponentNode): ResolvedPin[] {
   const component = project.library.components[node.componentId];
   if (!component) throw new Error(`Component definition missing: ${node.componentId}`);
   return component.pins.map((pin) => ({
@@ -46,7 +46,7 @@ export function getComponentNodePins(project: NochalProject, node: ComponentNode
   }));
 }
 
-export function getSheetNodePins(project: NochalProject, node: SheetNode): ResolvedPin[] {
+export function getSheetNodePins(project: NoHALProject, node: SheetNode): ResolvedPin[] {
   const targetSheet = getSheet(project, node.sheetId);
   return targetSheet.ports.map((port) => ({
     key: port.id,
@@ -57,12 +57,12 @@ export function getSheetNodePins(project: NochalProject, node: SheetNode): Resol
   }));
 }
 
-export function getNodePins(project: NochalProject, node: SheetNodeInstance): ResolvedPin[] {
+export function getNodePins(project: NoHALProject, node: SheetNodeInstance): ResolvedPin[] {
   return node.kind === "component" ? getComponentNodePins(project, node) : getSheetNodePins(project, node);
 }
 
 export function resolveEndpointInSheet(
-  project: NochalProject,
+  project: NoHALProject,
   sheetId: string,
   endpoint: SheetEndpointRef
 ): ResolvedEndpoint {
@@ -94,7 +94,7 @@ export function resolveEndpointInSheet(
   };
 }
 
-export function getNodeTitle(project: NochalProject, node: SheetNodeInstance): string {
+export function getNodeTitle(project: NoHALProject, node: SheetNodeInstance): string {
   if (node.kind === "component") {
     const comp = project.library.components[node.componentId];
     return `${node.instanceName} : ${comp?.halComponentName ?? "missing"}`;

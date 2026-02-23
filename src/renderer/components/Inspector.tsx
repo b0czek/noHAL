@@ -4,7 +4,7 @@ import type { EditorState } from "../state/store";
 import type {
   HalValueType,
   LabelScope,
-  NochalProject,
+  NoHALProject,
   SheetDefinition,
   SheetNodeInstance
 } from "../../shared/types";
@@ -212,7 +212,7 @@ export default function Inspector(props: InspectorProps) {
 }
 
 function NodeInspector(props: {
-  project: NochalProject;
+  project: NoHALProject;
   node: SheetNodeInstance;
   onOpenComponentEditor: () => void;
   onRename: (name: string) => void;

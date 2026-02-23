@@ -1,6 +1,6 @@
 import Konva from "konva";
 import { endpointKey, getNodePins, getNodeTitle } from "../../shared/graph";
-import type { NochalProject, SheetDefinition, SheetEndpointRef } from "../../shared/types";
+import type { NoHALProject, SheetDefinition, SheetEndpointRef } from "../../shared/types";
 import { BOTTOM_H, HEADER_H, PIN_R, PORT_LABEL_H, SCENE_HEIGHT, SCENE_WIDTH, SIDE_ROW_H } from "./constants";
 import { buildSheetSceneLayout, type NodeLayout, type Pt } from "./layout";
 import { dirStroke, directionPillFill, labelFill, typeFill } from "./theme";
@@ -16,7 +16,7 @@ interface SceneCallbacks {
 }
 
 export interface SceneRenderState {
-  project: NochalProject;
+  project: NoHALProject;
   sheet: SheetDefinition;
   selection: { kind: "node"; id: string } | { kind: "label"; id: string } | { kind: "sheet-port"; id: string } | null;
   pendingEndpoint: SheetEndpointRef | null;

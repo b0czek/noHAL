@@ -1,11 +1,11 @@
 import { createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
-import type { NochalProject, SheetDefinition, SheetEndpointRef } from "../../shared/types";
+import type { NoHALProject, SheetDefinition, SheetEndpointRef } from "../../shared/types";
 import type { Selection } from "../state/store";
 import { KonvaSheetScene } from "../canvas/konvaSheetScene";
 import CanvasComponentMenu from "./CanvasComponentMenu";
 
 interface CanvasProps {
-  project: NochalProject;
+  project: NoHALProject;
   sheet: SheetDefinition;
   activeSheetId: string;
   selection: Selection;

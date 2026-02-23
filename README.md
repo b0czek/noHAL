@@ -1,10 +1,10 @@
-# Nochal
+# NoHAL
 
 Visual LinuxCNC HAL IDE prototype (Electron + TypeScript + SolidJS).
 
 ## What This MVP Does
 
-- Creates and saves a visual HAL project (`.nochal.json`)
+- Creates and saves a visual HAL project (`.nohal.json`)
 - Offline-only editing (no LinuxCNC runtime introspection)
 - Hierarchical sheets (subsheet nodes)
 - Sheet edge ports (`in`/`out`/`io`) with editable names/types/sides
@@ -50,7 +50,7 @@ Reference used from the provided LinuxCNC tree:
 ## Run (after installing dependencies)
 
 ```bash
-cd nochal
+cd nohal
 npm install
 npm run dev
 ```

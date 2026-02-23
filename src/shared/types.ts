@@ -56,7 +56,7 @@ export interface ComponentDefinition {
 
 export interface ImportedComponentDefinition extends ComponentDefinition {
   parseMeta: {
-    parser: "nochal-comp-v1";
+    parser: "nohal-comp-v1";
     warnings: string[];
     rawHeader?: string;
   };
@@ -144,8 +144,8 @@ export interface ProjectLibrary {
   components: Record<string, ComponentDefinition>;
 }
 
-export interface NochalProject {
-  format: "nochal-project";
+export interface NoHALProject {
+  format: "nohal-project";
   version: 1;
   name: string;
   target: {

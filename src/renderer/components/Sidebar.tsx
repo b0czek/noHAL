@@ -1,8 +1,8 @@
 import { For } from "solid-js";
-import type { NochalProject } from "../../shared/types";
+import type { NoHALProject } from "../../shared/types";
 
 interface SidebarProps {
-  project: NochalProject;
+  project: NoHALProject;
   activeSheetId: string;
   onCreateSubsheet: () => void;
   onPlaceSheet: (sheetId: string) => void;

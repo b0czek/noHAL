@@ -9,7 +9,7 @@ import { createEditorStore } from "./state/store";
 import { useEditorShortcuts } from "./shortcuts/useEditorShortcuts";
 
 export default function App() {
-  const { state, actions } = createEditorStore(createEmptyProject("Nochal Project"));
+  const { state, actions } = createEditorStore(createEmptyProject("NoHAL Project"));
   const [componentEditorNodeId, setComponentEditorNodeId] = createSignal<string | null>(null);
 
   const currentSheet = createMemo(() => getSheet(state.project, state.activeSheetId));
@@ -78,7 +78,7 @@ export default function App() {
         <div class="brand">
           <div class="brand-mark">N</div>
           <div>
-            <div class="brand-name">NocHAL</div>
+            <div class="brand-name">NoHAL</div>
           </div>
         </div>
 

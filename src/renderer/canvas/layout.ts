@@ -1,5 +1,5 @@
 import { endpointKey, getNodePins } from "../../shared/graph";
-import type { NochalProject, SheetDefinition, SheetEndpointRef, SheetNodeInstance } from "../../shared/types";
+import type { NoHALProject, SheetDefinition, SheetEndpointRef, SheetNodeInstance } from "../../shared/types";
 import { BOTTOM_H, HEADER_H, NODE_WIDTH, SIDE_ROW_H } from "./constants";
 
 export type Pt = { x: number; y: number };
@@ -15,7 +15,7 @@ export interface SheetSceneLayout {
   endpointPoints: Map<string, Pt>;
 }
 
-export function computeNodeLayout(project: NochalProject, node: SheetNodeInstance): NodeLayout {
+export function computeNodeLayout(project: NoHALProject, node: SheetNodeInstance): NodeLayout {
   const pins = getNodePins(project, node);
   const left = pins.filter((p) => p.side === "left");
   const right = pins.filter((p) => p.side === "right");
@@ -70,7 +70,7 @@ export function endpointPointOf(
   return { x: node.position.x + local.x, y: node.position.y + local.y };
 }
 
-export function buildSheetSceneLayout(project: NochalProject, sheet: SheetDefinition): SheetSceneLayout {
+export function buildSheetSceneLayout(project: NoHALProject, sheet: SheetDefinition): SheetSceneLayout {
   const nodeLayouts = new Map(sheet.nodes.map((n) => [n.id, computeNodeLayout(project, n)]));
   const endpointPoints = new Map<string, Pt>();
 

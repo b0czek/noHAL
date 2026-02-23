@@ -2,7 +2,7 @@ import { createBuiltinLibrary } from "./library";
 import { createId, slugify } from "./id";
 import type {
   ComponentDefinition,
-  NochalProject,
+  NoHALProject,
   SheetDefinition,
   SheetPort
 } from "./types";
@@ -20,10 +20,10 @@ function createDefaultTopSheet(): SheetDefinition {
   };
 }
 
-export function createEmptyProject(name: string): NochalProject {
+export function createEmptyProject(name: string): NoHALProject {
   const top = createDefaultTopSheet();
   return {
-    format: "nochal-project",
+    format: "nohal-project",
     version: 1,
     name,
     target: {
@@ -43,10 +43,10 @@ export function createEmptyProject(name: string): NochalProject {
   };
 }
 
-function assertProjectShape(input: unknown): asserts input is NochalProject {
+function assertProjectShape(input: unknown): asserts input is NoHALProject {
   if (!input || typeof input !== "object") throw new Error("Project file is not an object");
-  const project = input as Partial<NochalProject>;
-  if (project.format !== "nochal-project") throw new Error("Unsupported project format");
+  const project = input as Partial<NoHALProject>;
+  if (project.format !== "nohal-project") throw new Error("Unsupported project format");
   if (project.version !== 1) throw new Error(`Unsupported project version: ${String(project.version)}`);
   if (!project.sheets || typeof project.sheets !== "object") throw new Error("Project has no sheets");
   if (!project.rootSheetId || !(project.rootSheetId in project.sheets)) {
@@ -54,13 +54,13 @@ function assertProjectShape(input: unknown): asserts input is NochalProject {
   }
 }
 
-export function parseNochalProject(content: string): NochalProject {
+export function parseNoHALProject(content: string): NoHALProject {
   const parsed = JSON.parse(content) as unknown;
   assertProjectShape(parsed);
   return parsed;
 }
 
-export function stringifyNochalProject(project: NochalProject): string {
+export function stringifyNoHALProject(project: NoHALProject): string {
   return `${JSON.stringify(project, null, 2)}\n`;
 }
 
@@ -96,9 +96,9 @@ export function createSheetPortDraft(
 }
 
 export function upsertComponentDefinition(
-  project: NochalProject,
+  project: NoHALProject,
   component: ComponentDefinition
-): NochalProject {
+): NoHALProject {
   return {
     ...project,
     library: {

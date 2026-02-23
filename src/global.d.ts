@@ -1,8 +1,8 @@
-import type { NochalApi } from "./preload/api";
+import type { NoHALApi } from "./preload/api";
 
 declare global {
   interface Window {
-    nochal: NochalApi;
+    nohal: NoHALApi;
   }
 }
 

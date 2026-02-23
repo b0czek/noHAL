@@ -368,7 +368,7 @@ export function parseCompComponentDefinition(text: string, filePath?: string): I
       options: runtimeOptions
     },
     parseMeta: {
-      parser: "nochal-comp-v1",
+      parser: "nohal-comp-v1",
       warnings,
       rawHeader: header
     }

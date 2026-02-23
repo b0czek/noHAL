@@ -1,11 +1,11 @@
-import type { ImportedComponentDefinition, NochalProject } from "../shared/types";
+import type { ImportedComponentDefinition, NoHALProject } from "../shared/types";
 
-export interface NochalApi {
-  newProject(): Promise<NochalProject>;
-  openProject(): Promise<{ project: NochalProject; filePath: string } | null>;
-  saveProject(project: NochalProject, filePath?: string | null): Promise<{ filePath: string } | null>;
+export interface NoHALApi {
+  newProject(): Promise<NoHALProject>;
+  openProject(): Promise<{ project: NoHALProject; filePath: string } | null>;
+  saveProject(project: NoHALProject, filePath?: string | null): Promise<{ filePath: string } | null>;
   exportHal(
-    project: NochalProject,
+    project: NoHALProject,
     filePath?: string | null
   ): Promise<{ filePath: string; warnings: string[] } | null>;
   importCompFile(): Promise<ImportedComponentDefinition | null>;

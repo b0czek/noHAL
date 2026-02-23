@@ -5,12 +5,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   createEmptyProject,
-  parseNochalProject,
-  stringifyNochalProject
+  parseNoHALProject,
+  stringifyNoHALProject
 } from "../shared/project";
 import { exportProjectToHal } from "../shared/exportHal";
 import { parseCompComponentDefinition } from "../shared/compParser";
-import type { ImportedComponentDefinition, NochalProject } from "../shared/types";
+import type { ImportedComponentDefinition, NoHALProject } from "../shared/types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -72,38 +72,38 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  ipcMain.handle("nochal:new-project", async () => createEmptyProject("Nochal Project"));
+  ipcMain.handle("nohal:new-project", async () => createEmptyProject("NoHAL Project"));
 
-  ipcMain.handle("nochal:open-project", async () => {
+  ipcMain.handle("nohal:open-project", async () => {
     const res = await dialog.showOpenDialog({
-      title: "Open Nochal Project",
+      title: "Open NoHAL Project",
       properties: ["openFile"],
-      filters: [{ name: "Nochal Project", extensions: ["nochal.json", "json"] }]
+      filters: [{ name: "NoHAL Project", extensions: ["nohal.json", "json"] }]
     });
     if (res.canceled || res.filePaths.length === 0) return null;
     const filePath = res.filePaths[0];
     const content = await readFile(filePath, "utf8");
-    const project = parseNochalProject(content);
+    const project = parseNoHALProject(content);
     return { project, filePath };
   });
 
-  ipcMain.handle("nochal:save-project", async (_evt, project: NochalProject, filePath?: string | null) => {
+  ipcMain.handle("nohal:save-project", async (_evt, project: NoHALProject, filePath?: string | null) => {
     let target = filePath ?? null;
     if (!target) {
       const res = await dialog.showSaveDialog({
-        title: "Save Nochal Project",
-        defaultPath: `${project.name || "project"}.nochal.json`,
-        filters: [{ name: "Nochal Project", extensions: ["nochal.json", "json"] }]
+        title: "Save NoHAL Project",
+        defaultPath: `${project.name || "project"}.nohal.json`,
+        filters: [{ name: "NoHAL Project", extensions: ["nohal.json", "json"] }]
       });
       if (res.canceled || !res.filePath) return null;
       target = res.filePath;
     }
 
-    await writeFile(target, stringifyNochalProject(project), "utf8");
+    await writeFile(target, stringifyNoHALProject(project), "utf8");
     return { filePath: target };
   });
 
-  ipcMain.handle("nochal:export-hal", async (_evt, project: NochalProject, filePath?: string | null) => {
+  ipcMain.handle("nohal:export-hal", async (_evt, project: NoHALProject, filePath?: string | null) => {
     let target = filePath ?? null;
     if (!target) {
       const res = await dialog.showSaveDialog({
@@ -119,7 +119,7 @@ app.whenReady().then(() => {
     return { filePath: target, warnings: hal.warnings };
   });
 
-  ipcMain.handle("nochal:import-comp-file", async () => {
+  ipcMain.handle("nohal:import-comp-file", async () => {
     const res = await dialog.showOpenDialog({
       title: "Import LinuxCNC .comp",
       properties: ["openFile"],
@@ -132,7 +132,7 @@ app.whenReady().then(() => {
     return parsed;
   });
 
-  ipcMain.handle("nochal:pick-directory", async (_evt, defaultPath?: string | null) => {
+  ipcMain.handle("nohal:pick-directory", async (_evt, defaultPath?: string | null) => {
     const res = await dialog.showOpenDialog({
       title: "Select Directory",
       defaultPath: defaultPath ?? undefined,
@@ -142,7 +142,7 @@ app.whenReady().then(() => {
     return res.filePaths[0];
   });
 
-  ipcMain.handle("nochal:scan-comp-dir", async (_evt, dirPath: string) => {
+  ipcMain.handle("nohal:scan-comp-dir", async (_evt, dirPath: string) => {
     const imported: ImportedComponentDefinition[] = [];
     const errors: Array<{ filePath: string; error: string }> = [];
     const files = await collectCompFilesRecursive(dirPath, errors);
@@ -162,7 +162,7 @@ app.whenReady().then(() => {
     return { imported, errors };
   });
 
-  ipcMain.handle("nochal:read-text-file", async (_evt, filePath: string) => readFile(filePath, "utf8"));
+  ipcMain.handle("nohal:read-text-file", async (_evt, filePath: string) => readFile(filePath, "utf8"));
 
   createWindow();
 

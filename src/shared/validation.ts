@@ -1,5 +1,5 @@
 import { endpointEquals, resolveEndpointInSheet } from "./graph";
-import type { DirectConnection, NochalProject, SheetEndpointRef } from "./types";
+import type { DirectConnection, NoHALProject, SheetEndpointRef } from "./types";
 
 export interface ConnectionValidationResult {
   ok: boolean;
@@ -13,7 +13,7 @@ function directionsCompatible(a: "in" | "out" | "io", b: "in" | "out" | "io"): b
 }
 
 export function validateDirectConnection(
-  project: NochalProject,
+  project: NoHALProject,
   sheetId: string,
   a: SheetEndpointRef,
   b: SheetEndpointRef,

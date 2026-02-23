@@ -7,7 +7,7 @@ import type {
   ComponentNode,
   HalValueType,
   LabelScope,
-  NochalProject,
+  NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
   SheetNode,
@@ -21,7 +21,7 @@ export type Selection =
   | null;
 
 export interface EditorState {
-  project: NochalProject;
+  project: NoHALProject;
   filePath: string | null;
   activeSheetId: string;
   selection: Selection;
@@ -30,11 +30,11 @@ export interface EditorState {
   exportWarnings: string[];
 }
 
-function cloneProject(project: NochalProject): NochalProject {
+function cloneProject(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
 }
 
-function snapshotProjectForIpc(project: NochalProject): NochalProject {
+function snapshotProjectForIpc(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
 }
 
@@ -84,7 +84,7 @@ function ensureInstanceName(sheet: SheetDefinition, preferred: string): string {
 }
 
 function sheetContainsSheet(
-  project: NochalProject,
+  project: NoHALProject,
   rootSheetId: string,
   searchSheetId: string,
   seen = new Set<string>(),
@@ -102,11 +102,11 @@ function sheetContainsSheet(
   return false;
 }
 
-function syncProjectUi(project: NochalProject, activeSheetId: string): void {
+function syncProjectUi(project: NoHALProject, activeSheetId: string): void {
   project.ui.activeSheetId = activeSheetId;
 }
 
-export function createEditorStore(initialProject: NochalProject) {
+export function createEditorStore(initialProject: NoHALProject) {
   const [state, setState] = createStore<EditorState>({
     project: initialProject,
     filePath: null,
@@ -117,7 +117,7 @@ export function createEditorStore(initialProject: NochalProject) {
     exportWarnings: [],
   });
 
-  const withProject = (mutate: (project: NochalProject) => void) => {
+  const withProject = (mutate: (project: NoHALProject) => void) => {
     const next = cloneProject(state.project);
     mutate(next);
     syncProjectUi(next, state.activeSheetId);
@@ -150,7 +150,7 @@ export function createEditorStore(initialProject: NochalProject) {
     },
 
     async newProject(): Promise<void> {
-      const project = await window.nochal.newProject();
+      const project = await window.nohal.newProject();
       setState({
         project,
         filePath: null,
@@ -163,7 +163,7 @@ export function createEditorStore(initialProject: NochalProject) {
     },
 
     async openProject(): Promise<void> {
-      const result = await window.nochal.openProject();
+      const result = await window.nohal.openProject();
       if (!result) return;
       setState({
         project: result.project,
@@ -177,7 +177,7 @@ export function createEditorStore(initialProject: NochalProject) {
     },
 
     async saveProject(): Promise<void> {
-      const result = await window.nochal.saveProject(
+      const result = await window.nohal.saveProject(
         snapshotProjectForIpc(state.project),
         state.filePath,
       );
@@ -187,7 +187,7 @@ export function createEditorStore(initialProject: NochalProject) {
     },
 
     async exportHal(): Promise<void> {
-      const result = await window.nochal.exportHal(
+      const result = await window.nohal.exportHal(
         snapshotProjectForIpc(state.project),
         null,
       );
@@ -197,7 +197,7 @@ export function createEditorStore(initialProject: NochalProject) {
     },
 
     async importCompFile(): Promise<void> {
-      const imported = await window.nochal.importCompFile();
+      const imported = await window.nohal.importCompFile();
       if (!imported) return;
       withProject((project) => {
         project.library.components[imported.id] = imported;
@@ -206,9 +206,9 @@ export function createEditorStore(initialProject: NochalProject) {
     },
 
     async importCompDirectory(): Promise<void> {
-      const dirPath = await window.nochal.pickDirectory();
+      const dirPath = await window.nohal.pickDirectory();
       if (!dirPath) return;
-      const result = await window.nochal.scanCompDir(dirPath);
+      const result = await window.nohal.scanCompDir(dirPath);
       withProject((project) => {
         for (const imported of result.imported) {
           project.library.components[imported.id] = imported;
