@@ -199,13 +199,16 @@ export default function App() {
           activeSheetId={state.activeSheetId}
           selection={state.selection}
           pendingEndpoint={state.pendingEndpoint}
+          pendingWirePoints={state.pendingWirePoints}
           onSelect={actions.select}
           onOpenNode={openComponentEditorForNode}
           onEndpointClick={actions.endpointClick}
+          onCanvasBackgroundClick={actions.addPendingWirePoint}
           onLabelClick={labelClick}
           onMoveNode={actions.moveNode}
           onMoveLabel={actions.moveLabel}
           onMoveSheetPort={actions.moveSheetPort}
+          onMoveConnectionWaypoints={actions.updateDirectConnectionWaypoints}
           onAddComponentAt={(id, x, y) => actions.addComponentNode(id, { x, y })}
         />
 

@@ -1,6 +1,6 @@
 import Konva from "konva";
 import { endpointKey, getNodePins, getNodeTitle } from "../../shared/graph";
-import type { NoHALProject, SheetDefinition, SheetEndpointRef } from "../../shared/types";
+import type { NoHALProject, SheetDefinition, SheetEndpointRef, XY } from "../../shared/types";
 import { BOTTOM_H, HEADER_H, PIN_R, PORT_LABEL_H, SCENE_HEIGHT, SCENE_WIDTH, SIDE_ROW_H } from "./constants";
 import { buildSheetSceneLayout, type NodeLayout, type Pt } from "./layout";
 import { dirStroke, directionPillFill, labelFill, typeFill } from "./theme";
@@ -13,6 +13,8 @@ interface SceneCallbacks {
   onMoveNode: (id: string, x: number, y: number) => void;
   onMoveLabel: (id: string, x: number, y: number) => void;
   onMoveSheetPort: (id: string, x: number, y: number) => void;
+  onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
+  onBackgroundClick?: (point: XY) => void;
   onCameraChange?: (camera: { x: number; y: number; scale: number }) => void;
 }
 
@@ -21,6 +23,7 @@ export interface SceneRenderState {
   sheet: SheetDefinition;
   selection: { kind: "node"; id: string } | { kind: "label"; id: string } | { kind: "sheet-port"; id: string } | null;
   pendingEndpoint: SheetEndpointRef | null;
+  pendingWirePoints: XY[];
 }
 
 export class KonvaSheetScene {
@@ -38,6 +41,8 @@ export class KonvaSheetScene {
   private livePortPositions = new Map<string, Pt>();
   private cursorPos: Pt | null = null;
   private camera = { x: 0, y: 0, scale: 1 };
+  private selectedConnectionId: string | null = null;
+  private selectedWaypointIndex: number | null = null;
   private isPanning = false;
   private panLastScreenPos: Pt | null = null;
   private spacePressed = false;
@@ -52,7 +57,7 @@ export class KonvaSheetScene {
       width: Math.max(320, container.clientWidth || 320),
       height: Math.max(240, container.clientHeight || 240)
     });
-    this.wireLayer = new Konva.Layer({ listening: false });
+    this.wireLayer = new Konva.Layer();
     this.mainLayer = new Konva.Layer();
     this.wireWorld = new Konva.Group();
     this.mainWorld = new Konva.Group();
@@ -65,11 +70,17 @@ export class KonvaSheetScene {
 
     this.onKeyDown = (evt) => {
       if (evt.code === "Space") this.spacePressed = true;
+      if ((evt.key === "Delete" || evt.key === "Backspace") && !this.isEditableTarget(evt.target)) {
+        if (!this.deleteSelectedWaypoint()) return;
+        evt.preventDefault();
+        evt.stopPropagation();
+        evt.stopImmediatePropagation();
+      }
     };
     this.onKeyUp = (evt) => {
       if (evt.code === "Space") this.spacePressed = false;
     };
-    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("keydown", this.onKeyDown, true);
     window.addEventListener("keyup", this.onKeyUp);
 
     this.stage.on("mousemove touchmove", () => {
@@ -95,8 +106,22 @@ export class KonvaSheetScene {
       if (this.lastState?.pendingEndpoint) this.redrawWires();
     });
     this.stage.on("mousedown touchstart", (evt) => {
-      if (!this.shouldStartPan(evt)) return;
       const pos = this.stage.getPointerPosition();
+      if (
+        pos &&
+        this.lastState?.pendingEndpoint &&
+        evt.evt instanceof MouseEvent &&
+        evt.evt.button === 0 &&
+        !this.spacePressed &&
+        this.isBackgroundTarget(evt.target)
+      ) {
+        evt.cancelBubble = true;
+        evt.evt.preventDefault();
+        this.callbacks.onBackgroundClick?.(this.clampPos(this.screenToWorld({ x: pos.x, y: pos.y })));
+        return;
+      }
+
+      if (!this.shouldStartPan(evt)) return;
       if (!pos) return;
       evt.cancelBubble = true;
       this.isPanning = true;
@@ -127,7 +152,7 @@ export class KonvaSheetScene {
   }
 
   destroy(): void {
-    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("keydown", this.onKeyDown, true);
     window.removeEventListener("keyup", this.onKeyUp);
     this.stage.destroy();
   }
@@ -216,9 +241,7 @@ export class KonvaSheetScene {
   }
 
   private shouldStartPan(evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>): boolean {
-    const target = evt.target;
-    const className = target.getClassName();
-    const onBackground = target === this.stage || className === "Layer";
+    const onBackground = this.isBackgroundTarget(evt.target);
 
     if (evt.evt instanceof MouseEvent) {
       if (evt.evt.button === 1) return true;
@@ -229,25 +252,215 @@ export class KonvaSheetScene {
     return this.spacePressed || onBackground;
   }
 
+  private isBackgroundTarget(target: Konva.Node): boolean {
+    const className = target.getClassName();
+    return target === this.stage || className === "Layer";
+  }
+
+  private isEditableTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName;
+    return target.isContentEditable || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+  }
+
+  private getPointerWorldPos(): Pt | null {
+    const pos = this.stage.getPointerPosition();
+    if (!pos) return null;
+    return this.clampPos(this.screenToWorld({ x: pos.x, y: pos.y }));
+  }
+
+  private distSqPointToSegment(p: Pt, a: Pt, b: Pt): number {
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const apx = p.x - a.x;
+    const apy = p.y - a.y;
+    const abLenSq = abx * abx + aby * aby;
+    if (abLenSq <= 1e-9) return apx * apx + apy * apy;
+    const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLenSq));
+    const cx = a.x + abx * t;
+    const cy = a.y + aby * t;
+    const dx = p.x - cx;
+    const dy = p.y - cy;
+    return dx * dx + dy * dy;
+  }
+
+  private findNearestSegmentIndex(routePoints: Pt[], point: Pt): number {
+    let bestIndex = 0;
+    let bestDist = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < routePoints.length - 1; i += 1) {
+      const d = this.distSqPointToSegment(point, routePoints[i], routePoints[i + 1]);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIndex = i;
+      }
+    }
+    return bestIndex;
+  }
+
+  private deleteSelectedWaypoint(): boolean {
+    if (!this.lastState || !this.selectedConnectionId || this.selectedWaypointIndex === null) return false;
+    const conn = this.lastState.sheet.directConnections.find((c) => c.id === this.selectedConnectionId);
+    if (!conn || !conn.waypoints || this.selectedWaypointIndex < 0 || this.selectedWaypointIndex >= conn.waypoints.length) return false;
+    const nextWaypoints = conn.waypoints.filter((_, i) => i !== this.selectedWaypointIndex);
+    this.selectedWaypointIndex = nextWaypoints.length === 0 ? null : Math.min(this.selectedWaypointIndex, nextWaypoints.length - 1);
+    this.callbacks.onMoveConnectionWaypoints(conn.id, nextWaypoints.map((p) => ({ x: p.x, y: p.y })));
+    return true;
+  }
+
+  private insertWaypointOnConnection(connectionId: string, routePoints: Pt[], point: Pt): void {
+    if (!this.lastState) return;
+    const conn = this.lastState.sheet.directConnections.find((c) => c.id === connectionId);
+    if (!conn) return;
+    const currentWaypoints = (conn.waypoints ?? []).map((p) => ({ x: p.x, y: p.y }));
+    const insertAt = this.findNearestSegmentIndex(routePoints, point);
+    currentWaypoints.splice(insertAt, 0, { x: point.x, y: point.y });
+    this.selectedConnectionId = connectionId;
+    this.selectedWaypointIndex = insertAt;
+    this.callbacks.onMoveConnectionWaypoints(connectionId, currentWaypoints);
+  }
+
+  private sideNormal(side: "left" | "right" | "bottom"): Pt {
+    if (side === "left") return { x: -1, y: 0 };
+    if (side === "right") return { x: 1, y: 0 };
+    return { x: 0, y: 1 };
+  }
+
+  private getEndpointNormal(project: NoHALProject, sheet: SheetDefinition, endpoint: SheetEndpointRef): Pt | null {
+    if (endpoint.kind === "sheet-port") {
+      const port = sheet.ports.find((p) => p.id === endpoint.portId);
+      return port ? this.sideNormal(port.side) : null;
+    }
+
+    const node = sheet.nodes.find((n) => n.id === endpoint.nodeId);
+    if (!node) return null;
+    const pin = getNodePins(project, node).find((p) => p.key === endpoint.pinKey);
+    if (!pin) return null;
+    return this.sideNormal(pin.side);
+  }
+
+  private buildDisplayWirePoints(args: {
+    project: NoHALProject;
+    sheet: SheetDefinition;
+    rawPoints: Pt[];
+    startEndpoint: SheetEndpointRef;
+    endEndpoint?: SheetEndpointRef | null;
+  }): Pt[] {
+    const { project, sheet, rawPoints, startEndpoint, endEndpoint } = args;
+    if (rawPoints.length < 2) return rawPoints;
+    const out: Pt[] = [];
+    const pushDistinct = (p: Pt) => {
+      const prev = out[out.length - 1];
+      if (!prev || Math.abs(prev.x - p.x) > 0.01 || Math.abs(prev.y - p.y) > 0.01) out.push(p);
+    };
+    const stubLen = 14;
+    const start = rawPoints[0];
+    const end = rawPoints[rawPoints.length - 1];
+
+    pushDistinct(start);
+    const startNormal = this.getEndpointNormal(project, sheet, startEndpoint);
+    if (startNormal) {
+      pushDistinct({ x: start.x + startNormal.x * stubLen, y: start.y + startNormal.y * stubLen });
+    }
+
+    for (let i = 1; i < rawPoints.length - 1; i += 1) {
+      pushDistinct(rawPoints[i]);
+    }
+
+    if (endEndpoint) {
+      const endNormal = this.getEndpointNormal(project, sheet, endEndpoint);
+      if (endNormal) {
+        pushDistinct({ x: end.x + endNormal.x * stubLen, y: end.y + endNormal.y * stubLen });
+      }
+    }
+
+    pushDistinct(end);
+    return out;
+  }
+
   private resetTransientPositions(): void {
     this.liveNodePositions.clear();
     this.liveLabelPositions.clear();
     this.livePortPositions.clear();
   }
 
-  private drawWire(a: Pt, b: Pt, attrs: { stroke: string; strokeWidth: number; dash?: number[] }): void {
+  private makeBezierWire(
+    a: Pt,
+    b: Pt,
+    attrs: { stroke: string; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number }
+  ): Konva.Line {
     const dx = Math.abs(b.x - a.x) * 0.4;
     const c1x = a.x + (b.x >= a.x ? dx : -dx);
     const c2x = b.x - (b.x >= a.x ? dx : -dx);
-    this.wireWorld.add(
-      new Konva.Line({
-        points: [a.x, a.y, c1x, a.y, c2x, b.y, b.x, b.y],
+    return new Konva.Line({
+      points: [a.x, a.y, c1x, a.y, c2x, b.y, b.x, b.y],
+      bezier: true,
+      stroke: attrs.stroke,
+      strokeWidth: attrs.strokeWidth,
+      dash: attrs.dash,
+      listening: attrs.listening ?? false,
+      hitStrokeWidth: attrs.hitStrokeWidth,
+      lineCap: "round",
+      lineJoin: "round"
+    });
+  }
+
+  private drawWire(a: Pt, b: Pt, attrs: { stroke: string; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number }): Konva.Line {
+    const line = this.makeBezierWire(a, b, attrs);
+    this.wireWorld.add(line);
+    return line;
+  }
+
+  private updateWirePathShape(line: Konva.Line, points: Pt[]): void {
+    if (points.length < 2) return;
+    if (points.length === 2) {
+      const bez = this.makeBezierWire(points[0], points[1], {
+        stroke: line.stroke(),
+        strokeWidth: line.strokeWidth(),
+        dash: line.dash(),
+        listening: line.listening(),
+        hitStrokeWidth: line.hitStrokeWidth()
+      });
+      line.setAttrs({
+        points: bez.points(),
         bezier: true,
-        stroke: attrs.stroke,
-        strokeWidth: attrs.strokeWidth,
-        dash: attrs.dash
-      })
-    );
+        tension: 0
+      });
+      return;
+    }
+    const flatPoints: number[] = [];
+    for (const p of points) flatPoints.push(p.x, p.y);
+    line.setAttrs({
+      points: flatPoints,
+      bezier: false,
+      tension: 0.25
+    });
+  }
+
+  private drawWirePath(
+    points: Pt[],
+    attrs: { stroke: string; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number }
+  ): Konva.Line | null {
+    if (points.length < 2) return null;
+    if (points.length === 2) {
+      return this.drawWire(points[0], points[1], attrs);
+    }
+    const flatPoints: number[] = [];
+    for (const p of points) {
+      flatPoints.push(p.x, p.y);
+    }
+    const line = new Konva.Line({
+      points: flatPoints,
+      tension: 0.25,
+      stroke: attrs.stroke,
+      strokeWidth: attrs.strokeWidth,
+      dash: attrs.dash,
+      listening: attrs.listening ?? false,
+      hitStrokeWidth: attrs.hitStrokeWidth,
+      lineCap: "round",
+      lineJoin: "round"
+    });
+    this.wireWorld.add(line);
+    return line;
   }
 
   private getNodePosition(sheet: SheetDefinition, nodeId: string): Pt | null {
@@ -287,23 +500,128 @@ export class KonvaSheetScene {
   private getCursorPos(): Pt | null {
     if (this.cursorPos) return this.cursorPos;
     const pos = this.stage.getPointerPosition();
-    return pos ? this.clampPos(pos) : null;
+    return pos ? this.clampPos(this.screenToWorld({ x: pos.x, y: pos.y })) : null;
   }
 
   private redrawWires(): void {
     const state = this.lastState;
     if (!state) return;
-    const { sheet, pendingEndpoint } = state;
+    const { sheet, pendingEndpoint, pendingWirePoints } = state;
+    const selectedConn = this.selectedConnectionId ? sheet.directConnections.find((c) => c.id === this.selectedConnectionId) : null;
+    if (!selectedConn) {
+      this.selectedConnectionId = null;
+      this.selectedWaypointIndex = null;
+    } else if (
+      this.selectedWaypointIndex !== null &&
+      (selectedConn.waypoints?.length ?? 0) <= this.selectedWaypointIndex
+    ) {
+      this.selectedWaypointIndex = (selectedConn.waypoints?.length ?? 0) > 0 ? (selectedConn.waypoints!.length - 1) : null;
+    }
     this.wireWorld.destroyChildren();
 
     for (const conn of sheet.directConnections) {
       const a = this.getEndpointPoint(sheet, conn.a);
       const b = this.getEndpointPoint(sheet, conn.b);
       if (!a || !b) continue;
-      this.drawWire(a, b, {
-        stroke: "rgba(122, 230, 208, 0.75)",
-        strokeWidth: 2.25
+      const routePoints: Pt[] = [a, ...((conn.waypoints ?? []).map((p) => ({ x: p.x, y: p.y }))), b];
+      const displayRoutePoints = this.buildDisplayWirePoints({
+        project: state.project,
+        sheet,
+        rawPoints: routePoints,
+        startEndpoint: conn.a,
+        endEndpoint: conn.b
       });
+      const selected = this.selectedConnectionId === conn.id;
+      const wire = this.drawWirePath(displayRoutePoints, {
+        stroke: selected ? "rgba(140, 244, 224, 0.92)" : "rgba(122, 230, 208, 0.75)",
+        strokeWidth: selected ? 2.75 : 2.25,
+        listening: true,
+        hitStrokeWidth: 14
+      });
+      wire?.on("click tap", (evt) => {
+        evt.cancelBubble = true;
+        if (evt.evt instanceof MouseEvent && evt.evt.detail >= 2) {
+          const point = this.getPointerWorldPos();
+          if (!point) return;
+          this.insertWaypointOnConnection(conn.id, routePoints, point);
+          return;
+        }
+        this.selectedConnectionId = conn.id;
+        this.selectedWaypointIndex = null;
+        this.redrawWires();
+      });
+      wire?.on("dbltap", (evt) => {
+        evt.cancelBubble = true;
+        const point = this.getPointerWorldPos();
+        if (!point) return;
+        this.insertWaypointOnConnection(conn.id, routePoints, point);
+      });
+
+      if (selected && (conn.waypoints?.length ?? 0) > 0 && wire) {
+        for (let i = 0; i < conn.waypoints!.length; i += 1) {
+          const isSelectedWaypoint = this.selectedWaypointIndex === i;
+          const waypointIndex = i + 1;
+          const p = routePoints[waypointIndex];
+          const handle = new Konva.Circle({
+            x: p.x,
+            y: p.y,
+            radius: isSelectedWaypoint ? 7 : 6,
+            fill: isSelectedWaypoint ? "rgba(140, 244, 224, 0.22)" : "rgba(8, 18, 22, 0.95)",
+            stroke: "rgba(140, 244, 224, 0.95)",
+            strokeWidth: 2,
+            draggable: true,
+            hitStrokeWidth: 14,
+            dragBoundFunc: (pos) => this.clampPos(pos)
+          });
+          handle.on("click tap", (evt) => {
+            evt.cancelBubble = true;
+            this.selectedConnectionId = conn.id;
+            this.selectedWaypointIndex = i;
+            this.redrawWires();
+          });
+          handle.on("dragmove", () => {
+            const pos = this.clampPos(handle.position());
+            handle.position(pos);
+            this.selectedConnectionId = conn.id;
+            this.selectedWaypointIndex = i;
+            routePoints[waypointIndex] = pos;
+            this.updateWirePathShape(
+              wire,
+              this.buildDisplayWirePoints({
+                project: state.project,
+                sheet,
+                rawPoints: routePoints,
+                startEndpoint: conn.a,
+                endEndpoint: conn.b
+              })
+            );
+            this.wireLayer.batchDraw();
+          });
+          handle.on("dragend", () => {
+            const pos = this.clampPos(handle.position());
+            handle.position(pos);
+            this.selectedConnectionId = conn.id;
+            this.selectedWaypointIndex = i;
+            routePoints[waypointIndex] = pos;
+            this.updateWirePathShape(
+              wire,
+              this.buildDisplayWirePoints({
+                project: state.project,
+                sheet,
+                rawPoints: routePoints,
+                startEndpoint: conn.a,
+                endEndpoint: conn.b
+              })
+            );
+            this.callbacks.onMoveConnectionWaypoints(
+              conn.id,
+              routePoints.slice(1, -1).map((pt) => ({ x: pt.x, y: pt.y }))
+            );
+            this.wireLayer.batchDraw();
+          });
+          this.wireWorld.add(handle);
+        }
+      }
     }
 
     for (const anchor of sheet.labelAnchors) {
@@ -315,7 +633,8 @@ export class KonvaSheetScene {
           points: [ep.x, ep.y, labelPos.x, labelPos.y],
           stroke: "rgba(242, 185, 75, 0.72)",
           strokeWidth: 1.7,
-          dash: [7, 5]
+          dash: [7, 5],
+          listening: false
         })
       );
     }
@@ -324,10 +643,19 @@ export class KonvaSheetScene {
       const a = this.getEndpointPoint(sheet, pendingEndpoint);
       const cursor = this.getCursorPos();
       if (a && cursor) {
-        this.drawWire(a, cursor, {
+        const pendingRawPoints = [a, ...pendingWirePoints, cursor];
+        const pendingDisplayPoints = this.buildDisplayWirePoints({
+          project: state.project,
+          sheet,
+          rawPoints: pendingRawPoints,
+          startEndpoint: pendingEndpoint,
+          endEndpoint: null
+        });
+        this.drawWirePath(pendingDisplayPoints, {
           stroke: "rgba(122, 230, 208, 0.55)",
           strokeWidth: 2,
-          dash: [8, 6]
+          dash: [8, 6],
+          listening: false
         });
       }
     }

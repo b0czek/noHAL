@@ -12,6 +12,7 @@ import type {
   SheetEndpointRef,
   SheetNode,
   SheetNodeInstance,
+  XY,
 } from "../../shared/types";
 
 export type Selection =
@@ -26,6 +27,7 @@ export interface EditorState {
   activeSheetId: string;
   selection: Selection;
   pendingEndpoint: SheetEndpointRef | null;
+  pendingWirePoints: XY[];
   status: string;
   exportWarnings: string[];
 }
@@ -119,6 +121,7 @@ export function createEditorStore(initialProject: NoHALProject) {
     activeSheetId: initialProject.ui.activeSheetId,
     selection: null,
     pendingEndpoint: null,
+    pendingWirePoints: [],
     status: "Ready",
     exportWarnings: [],
   });
@@ -145,6 +148,7 @@ export function createEditorStore(initialProject: NoHALProject) {
       setState("project", "ui", "activeSheetId", sheetId);
       setState("selection", null);
       setState("pendingEndpoint", null);
+      setState("pendingWirePoints", []);
     },
 
     select(sel: Selection): void {
@@ -153,6 +157,13 @@ export function createEditorStore(initialProject: NoHALProject) {
 
     clearPendingEndpoint(): void {
       setState("pendingEndpoint", null);
+      setState("pendingWirePoints", []);
+    },
+
+    addPendingWirePoint(point: XY): void {
+      if (!state.pendingEndpoint) return;
+      setState("pendingWirePoints", (points) => [...points, point]);
+      setState("status", `Added wire waypoint (${state.pendingWirePoints.length + 1})`);
     },
 
     async newProject(): Promise<void> {
@@ -163,6 +174,7 @@ export function createEditorStore(initialProject: NoHALProject) {
         activeSheetId: project.ui.activeSheetId,
         selection: null,
         pendingEndpoint: null,
+        pendingWirePoints: [],
         status: "Created new project",
         exportWarnings: [],
       });
@@ -177,6 +189,7 @@ export function createEditorStore(initialProject: NoHALProject) {
         activeSheetId: result.project.ui.activeSheetId,
         selection: null,
         pendingEndpoint: null,
+        pendingWirePoints: [],
         status: `Opened ${result.filePath}`,
         exportWarnings: [],
       });
@@ -481,6 +494,7 @@ export function createEditorStore(initialProject: NoHALProject) {
       });
       setState("selection", null);
       setState("pendingEndpoint", null);
+      setState("pendingWirePoints", []);
       setState("status", "Removed selection");
     },
 
@@ -488,6 +502,7 @@ export function createEditorStore(initialProject: NoHALProject) {
       const pending = state.pendingEndpoint;
       if (!pending) {
         setState("pendingEndpoint", endpoint);
+        setState("pendingWirePoints", []);
         try {
           const info = resolveEndpointInSheet(
             state.project,
@@ -514,6 +529,7 @@ export function createEditorStore(initialProject: NoHALProject) {
       if (!validation.ok) {
         setState("status", validation.reason ?? "Invalid connection");
         setState("pendingEndpoint", endpoint);
+        setState("pendingWirePoints", []);
         return;
       }
 
@@ -523,9 +539,11 @@ export function createEditorStore(initialProject: NoHALProject) {
           id: createId("conn"),
           a: pending,
           b: endpoint,
+          ...(state.pendingWirePoints.length > 0 ? { waypoints: [...state.pendingWirePoints] } : {}),
         });
       });
       setState("pendingEndpoint", null);
+      setState("pendingWirePoints", []);
       setState("status", "Connected endpoints");
     },
 
@@ -548,6 +566,7 @@ export function createEditorStore(initialProject: NoHALProject) {
         }
       });
       setState("pendingEndpoint", null);
+      setState("pendingWirePoints", []);
       setState("status", "Attached endpoint to label");
     },
 
@@ -559,6 +578,17 @@ export function createEditorStore(initialProject: NoHALProject) {
         );
       });
       setState("status", "Removed connection");
+    },
+
+    updateDirectConnectionWaypoints(connectionId: string, waypoints: XY[]): void {
+      withProject((project) => {
+        const sheet = getSheet(project, state.activeSheetId);
+        const conn = sheet.directConnections.find((c) => c.id === connectionId);
+        if (!conn) return;
+        if (waypoints.length === 0) delete conn.waypoints;
+        else conn.waypoints = waypoints.map((p) => ({ x: p.x, y: p.y }));
+      });
+      setState("status", "Updated wire route");
     },
 
     removeLabelAnchor(anchorId: string): void {

@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
-import type { NoHALProject, SheetDefinition, SheetEndpointRef } from "../../shared/types";
+import type { NoHALProject, SheetDefinition, SheetEndpointRef, XY } from "../../shared/types";
 import type { Selection } from "../state/store";
 import { KonvaSheetScene } from "../canvas/konvaSheetScene";
 import CanvasComponentMenu from "./CanvasComponentMenu";
@@ -10,13 +10,16 @@ interface CanvasProps {
   activeSheetId: string;
   selection: Selection;
   pendingEndpoint: SheetEndpointRef | null;
+  pendingWirePoints: XY[];
   onSelect: (selection: Selection) => void;
   onOpenNode: (nodeId: string) => void;
   onEndpointClick: (endpoint: SheetEndpointRef) => void;
+  onCanvasBackgroundClick: (point: XY) => void;
   onLabelClick: (labelId: string) => void;
   onMoveNode: (id: string, x: number, y: number) => void;
   onMoveLabel: (id: string, x: number, y: number) => void;
   onMoveSheetPort: (id: string, x: number, y: number) => void;
+  onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
   onAddComponentAt: (componentId: string, x: number, y: number) => void;
 }
 
@@ -55,10 +58,12 @@ export default function Canvas(props: CanvasProps) {
       onSelect: props.onSelect,
       onOpenNode: props.onOpenNode,
       onEndpointClick: props.onEndpointClick,
+      onBackgroundClick: props.onCanvasBackgroundClick,
       onLabelClick: props.onLabelClick,
       onMoveNode: props.onMoveNode,
       onMoveLabel: props.onMoveLabel,
       onMoveSheetPort: props.onMoveSheetPort,
+      onMoveConnectionWaypoints: props.onMoveConnectionWaypoints,
       onCameraChange: setCamera
     });
     resizeObserver = new ResizeObserver((entries) => {
@@ -71,7 +76,8 @@ export default function Canvas(props: CanvasProps) {
       project: props.project,
       sheet: props.sheet,
       selection: props.selection,
-      pendingEndpoint: props.pendingEndpoint
+      pendingEndpoint: props.pendingEndpoint,
+      pendingWirePoints: props.pendingWirePoints
     });
   });
 
@@ -80,11 +86,13 @@ export default function Canvas(props: CanvasProps) {
     props.sheet;
     props.selection;
     props.pendingEndpoint;
+    props.pendingWirePoints;
     scene?.render({
       project: props.project,
       sheet: props.sheet,
       selection: props.selection,
-      pendingEndpoint: props.pendingEndpoint
+      pendingEndpoint: props.pendingEndpoint,
+      pendingWirePoints: props.pendingWirePoints
     });
   });
 

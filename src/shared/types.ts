@@ -121,6 +121,7 @@ export interface DirectConnection {
   id: string;
   a: SheetEndpointRef;
   b: SheetEndpointRef;
+  waypoints?: XY[];
 }
 
 export interface LabelAnchor {
