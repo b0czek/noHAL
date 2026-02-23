@@ -1,6 +1,10 @@
 import { createMemo, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
-import type { ComponentStore, HalImportDraft } from "../../shared/types";
+import type {
+  ComponentStore,
+  HalImportDraft,
+  HalImportPlacementHeuristic,
+} from "../../shared/types";
 
 type NewProjectDialogStep = "choose" | "link";
 
@@ -12,6 +16,7 @@ interface NewProjectDialogProps {
   importDraft: HalImportDraft | null;
   linkSelections: Record<string, string>;
   linkReasons: Record<string, string>;
+  placementHeuristic: HalImportPlacementHeuristic;
   errorMessage: string | null;
   onClose: () => void;
   onCreateBlank: () => void;
@@ -19,6 +24,7 @@ interface NewProjectDialogProps {
   onBackToChoice: () => void;
   onRepickHalFile: () => void;
   onChangeLinkSelection: (groupId: string, value: string) => void;
+  onChangePlacementHeuristic: (value: HalImportPlacementHeuristic) => void;
   onCreateImportedProject: () => void;
 }
 
@@ -171,6 +177,30 @@ export default function NewProjectDialog(props: NewProjectDialogProps) {
                           <span class="muted">addf</span>
                           <span>{draft().addfs.length}</span>
                         </div>
+                        <div class="list-row">
+                          <span class="muted">Placement</span>
+                          <select
+                            value={props.placementHeuristic}
+                            onChange={(evt) =>
+                              props.onChangePlacementHeuristic(
+                                evt.currentTarget
+                                  .value as HalImportPlacementHeuristic,
+                              )
+                            }
+                            disabled={props.isBusy}
+                            title="Component placement heuristic"
+                          >
+                            <option value="related-groups">
+                              Related groups (heuristic)
+                            </option>
+                            <option value="alphabetical">Alphabetical</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="muted">
+                        Groups connected components together before laying out
+                        the imported sheet, which usually reduces long crossing
+                        wires.
                       </div>
                       <div class="new-project-choice-actions">
                         <button

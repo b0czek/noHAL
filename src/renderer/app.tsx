@@ -16,7 +16,11 @@ import {
   suggestHalImportLinks,
 } from "../shared/halImport";
 import { createEmptyProject } from "../shared/project";
-import type { HalImportDraft, RecentProjectEntry } from "../shared/types";
+import type {
+  HalImportDraft,
+  HalImportPlacementHeuristic,
+  RecentProjectEntry,
+} from "../shared/types";
 import Canvas from "./components/Canvas";
 import ComponentNodeDialog from "./components/ComponentNodeDialog";
 import ComponentStoreDialog from "./components/ComponentStoreDialog";
@@ -59,6 +63,8 @@ export default function App() {
   const [halImportLinkReasons, setHalImportLinkReasons] = createSignal<
     Record<string, string>
   >({});
+  const [halImportPlacementHeuristic, setHalImportPlacementHeuristic] =
+    createSignal<HalImportPlacementHeuristic>("related-groups");
   const [componentEditorNodeId, setComponentEditorNodeId] = createSignal<
     string | null
   >(null);
@@ -101,6 +107,7 @@ export default function App() {
     setPendingHalImportDraft(null);
     setHalImportLinkSelections({});
     setHalImportLinkReasons({});
+    setHalImportPlacementHeuristic("related-groups");
     setNewProjectDialogStep("choose");
     setIsNewProjectDialogOpen(true);
   };
@@ -179,6 +186,7 @@ export default function App() {
         draft,
         componentStore: state.componentStore,
         linkSelections,
+        placementHeuristic: halImportPlacementHeuristic(),
       });
       const opened = actions.openPreparedProject(result.project, {
         status: `Imported HAL${draft.sourcePath ? `: ${draft.sourcePath}` : ""}`,
@@ -275,6 +283,7 @@ export default function App() {
         importDraft={pendingHalImportDraft()}
         linkSelections={halImportLinkSelections()}
         linkReasons={halImportLinkReasons()}
+        placementHeuristic={halImportPlacementHeuristic()}
         errorMessage={newProjectDialogError()}
         onClose={closeNewProjectDialog}
         onCreateBlank={() => void createBlankProjectFromDialog()}
@@ -287,6 +296,9 @@ export default function App() {
         onRepickHalFile={() => void pickHalFileForNewProject()}
         onChangeLinkSelection={(groupId, value) =>
           setHalImportLinkSelections((prev) => ({ ...prev, [groupId]: value }))
+        }
+        onChangePlacementHeuristic={(value) =>
+          setHalImportPlacementHeuristic(value)
         }
         onCreateImportedProject={() => void createImportedProjectFromDialog()}
       />

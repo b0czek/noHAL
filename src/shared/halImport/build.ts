@@ -8,6 +8,7 @@ import type {
   HalImportComponentGroup,
   HalImportLinkSelection,
   HalImportNet,
+  HalImportPlacementHeuristic,
   HalValueType,
   PinDirection,
 } from "../types";
@@ -80,7 +81,12 @@ function chooseLocalComponentId(
 export function buildProjectFromHalImport(
   options: HalImportBuildOptions,
 ): HalImportBuildResult {
-  const { draft, componentStore, linkSelections } = options;
+  const {
+    draft,
+    componentStore,
+    linkSelections,
+    placementHeuristic = "alphabetical",
+  } = options;
   const warnings = [...draft.warnings];
   const fileBase =
     options.projectName?.trim() ||
@@ -251,6 +257,7 @@ export function buildProjectFromHalImport(
   const pinDirectionByInstanceAndPinName = new Map<string, PinDirection>();
   const nodeRefById = new Map<string, (typeof rootSheet.nodes)[number]>();
   const componentByNodeId = new Map<string, ComponentDefinition>();
+  const nodeInstanceNameById = new Map<string, string>();
 
   const allInstances = draft.componentGroups
     .flatMap((group) =>
@@ -280,6 +287,13 @@ export function buildProjectFromHalImport(
     fallbackLabelOriginY: 80,
     fallbackLabelColumnPitch: 280,
     fallbackLabelRowPitch: 70,
+  } as const;
+  const IMPORT_GROUP_LAYOUT = {
+    groupGapX: 150,
+    groupGapY: 130,
+    groupRowWidthMin: 1100,
+    groupRowWidthBias: 1.3,
+    maxNetFanoutForGrouping: 6,
   } as const;
   const IMPORT_NODE_BASE_W = 240;
   const IMPORT_NODE_HEADER_H = 28;
@@ -421,7 +435,10 @@ export function buildProjectFromHalImport(
   type ImportPreparedNet = {
     net: HalImportNet;
     resolvedEndpoints: ImportPreparedEndpoint[];
-    canUseDirectConnection: boolean;
+    directConnectionEdges: Array<{
+      a: ImportPreparedEndpoint;
+      b: ImportPreparedEndpoint;
+    }>;
   };
   type ImportNodeSide = "left" | "right" | "bottom";
   type ImportLabelDemand = {
@@ -517,6 +534,7 @@ export function buildProjectFromHalImport(
     });
     nodeRefById.set(nodeId, rootSheet.nodes[rootSheet.nodes.length - 1]);
     componentByNodeId.set(nodeId, component);
+    nodeInstanceNameById.set(nodeId, instance.instanceName);
     nodeIdByInstanceName.set(instance.instanceName, nodeId);
 
     for (const pin of component.pins) {
@@ -580,22 +598,268 @@ export function buildProjectFromHalImport(
 
   const preparedNets: ImportPreparedNet[] = draft.nets.map((net) => {
     const resolvedEndpoints = resolveNetEndpointsForImport(net);
-    const singleLineNet = (netNameUsageCount.get(net.name) ?? 0) === 1;
-    const canUseDirectConnection =
-      singleLineNet &&
-      resolvedEndpoints.length === 2 &&
-      directionsCompatibleForDirectImport(
-        resolvedEndpoints[0]?.direction,
-        resolvedEndpoints[1]?.direction,
-      );
-    return { net, resolvedEndpoints, canUseDirectConnection };
+    return { net, resolvedEndpoints, directConnectionEdges: [] };
   });
+
+  const compareNodeInstanceNames = (a: string, b: string) =>
+    (nodeInstanceNameById.get(a) ?? a).localeCompare(
+      nodeInstanceNameById.get(b) ?? b,
+    );
+  const alphabeticalNodeIds = rootSheet.nodes
+    .filter((node) => node.kind === "component")
+    .map((node) => node.id)
+    .sort(compareNodeInstanceNames);
+
+  const buildPlacementNodeGroups = (
+    heuristic: HalImportPlacementHeuristic,
+  ): string[][] => {
+    if (alphabeticalNodeIds.length <= 1 || heuristic === "alphabetical") {
+      return [alphabeticalNodeIds];
+    }
+
+    const adjacency = new Map<string, Map<string, number>>();
+    const weightedDegreeByNodeId = new Map<string, number>();
+    for (const nodeId of alphabeticalNodeIds) {
+      adjacency.set(nodeId, new Map());
+      weightedDegreeByNodeId.set(nodeId, 0);
+    }
+
+    const addEdge = (a: string, b: string, weight: number) => {
+      if (a === b || weight <= 0) return;
+      const aMap = adjacency.get(a);
+      const bMap = adjacency.get(b);
+      if (!aMap || !bMap) return;
+      aMap.set(b, (aMap.get(b) ?? 0) + weight);
+      bMap.set(a, (bMap.get(a) ?? 0) + weight);
+      weightedDegreeByNodeId.set(
+        a,
+        (weightedDegreeByNodeId.get(a) ?? 0) + weight,
+      );
+      weightedDegreeByNodeId.set(
+        b,
+        (weightedDegreeByNodeId.get(b) ?? 0) + weight,
+      );
+    };
+
+    for (const prepared of preparedNets) {
+      const uniqueNodeIds = Array.from(
+        new Set(prepared.resolvedEndpoints.map((endpoint) => endpoint.nodeId)),
+      );
+      if (uniqueNodeIds.length < 2) continue;
+      if (uniqueNodeIds.length > IMPORT_GROUP_LAYOUT.maxNetFanoutForGrouping) {
+        continue;
+      }
+      const edgeWeight = 1 / Math.max(1, uniqueNodeIds.length - 1);
+      for (let i = 0; i < uniqueNodeIds.length; i += 1) {
+        const a = uniqueNodeIds[i];
+        if (!a) continue;
+        for (let j = i + 1; j < uniqueNodeIds.length; j += 1) {
+          const b = uniqueNodeIds[j];
+          if (!b) continue;
+          addEdge(a, b, edgeWeight);
+        }
+      }
+    }
+
+    const getEdgeWeight = (a: string, b: string) =>
+      adjacency.get(a)?.get(b) ?? 0;
+
+    const connectedComponents: string[][] = [];
+    const seen = new Set<string>();
+    for (const start of alphabeticalNodeIds) {
+      if (seen.has(start)) continue;
+      const queue = [start];
+      seen.add(start);
+      const componentNodeIds: string[] = [];
+      while (queue.length > 0) {
+        const nodeId = queue.shift();
+        if (!nodeId) continue;
+        componentNodeIds.push(nodeId);
+        const neighbors = adjacency.get(nodeId);
+        if (!neighbors) continue;
+        for (const neighborId of neighbors.keys()) {
+          if (seen.has(neighborId)) continue;
+          seen.add(neighborId);
+          queue.push(neighborId);
+        }
+      }
+
+      componentNodeIds.sort(compareNodeInstanceNames);
+      if (componentNodeIds.length <= 2) {
+        connectedComponents.push(componentNodeIds);
+        continue;
+      }
+
+      const remaining = new Set(componentNodeIds);
+      const ordered: string[] = [];
+      let lastPlacedId: string | undefined;
+
+      const pickBestCandidate = (candidates: string[]) =>
+        [...candidates].sort((a, b) => {
+          const sumToPlaced = (candidate: string) => {
+            let sum = 0;
+            for (const placed of ordered)
+              sum += getEdgeWeight(candidate, placed);
+            return sum;
+          };
+          const aSum = sumToPlaced(a);
+          const bSum = sumToPlaced(b);
+          if (aSum !== bSum) return bSum - aSum;
+          const aLast = lastPlacedId ? getEdgeWeight(a, lastPlacedId) : 0;
+          const bLast = lastPlacedId ? getEdgeWeight(b, lastPlacedId) : 0;
+          if (aLast !== bLast) return bLast - aLast;
+          const aDeg = weightedDegreeByNodeId.get(a) ?? 0;
+          const bDeg = weightedDegreeByNodeId.get(b) ?? 0;
+          if (aDeg !== bDeg) return bDeg - aDeg;
+          return compareNodeInstanceNames(a, b);
+        })[0];
+
+      const seed = [...remaining].sort((a, b) => {
+        const aDeg = weightedDegreeByNodeId.get(a) ?? 0;
+        const bDeg = weightedDegreeByNodeId.get(b) ?? 0;
+        if (aDeg !== bDeg) return bDeg - aDeg;
+        return compareNodeInstanceNames(a, b);
+      })[0];
+      if (seed) {
+        ordered.push(seed);
+        remaining.delete(seed);
+        lastPlacedId = seed;
+      }
+
+      while (remaining.size > 0) {
+        const allCandidates = [...remaining];
+        const frontierCandidates = allCandidates.filter((candidate) => {
+          for (const placed of ordered) {
+            if (getEdgeWeight(candidate, placed) > 0) return true;
+          }
+          return false;
+        });
+        const next =
+          pickBestCandidate(
+            frontierCandidates.length > 0 ? frontierCandidates : allCandidates,
+          ) ?? allCandidates.sort(compareNodeInstanceNames)[0];
+        if (!next) break;
+        ordered.push(next);
+        remaining.delete(next);
+        lastPlacedId = next;
+      }
+
+      connectedComponents.push(ordered);
+    }
+
+    connectedComponents.sort((a, b) => {
+      if (a.length !== b.length) return b.length - a.length;
+      const aScore = a.reduce(
+        (sum, nodeId) => sum + (weightedDegreeByNodeId.get(nodeId) ?? 0),
+        0,
+      );
+      const bScore = b.reduce(
+        (sum, nodeId) => sum + (weightedDegreeByNodeId.get(nodeId) ?? 0),
+        0,
+      );
+      if (aScore !== bScore) return bScore - aScore;
+      return compareNodeInstanceNames(a[0] ?? "", b[0] ?? "");
+    });
+
+    const isolatedGroups = connectedComponents.filter(
+      (group) => group.length <= 1,
+    );
+    const connectedGroups = connectedComponents.filter(
+      (group) => group.length > 1,
+    );
+    if (isolatedGroups.length > 1) {
+      connectedGroups.push(
+        isolatedGroups.flat().sort(compareNodeInstanceNames),
+      );
+    } else if (isolatedGroups.length === 1) {
+      connectedGroups.push(isolatedGroups[0] ?? []);
+    }
+    return connectedGroups.filter((group) => group.length > 0);
+  };
+
+  const placementNodeGroups = buildPlacementNodeGroups(placementHeuristic);
+  const placementClusterIndexByNodeId = new Map<string, number>();
+  placementNodeGroups.forEach((groupNodeIds, groupIndex) => {
+    for (const nodeId of groupNodeIds) {
+      placementClusterIndexByNodeId.set(nodeId, groupIndex);
+    }
+  });
+
+  const planDirectConnectionEdgesForNet = (
+    prepared: ImportPreparedNet,
+  ): Array<{ a: ImportPreparedEndpoint; b: ImportPreparedEndpoint }> => {
+    const endpoints = prepared.resolvedEndpoints;
+    if (endpoints.length < 2) return [];
+
+    const singleLineNet = (netNameUsageCount.get(prepared.net.name) ?? 0) === 1;
+    if (endpoints.length === 2) {
+      const [a, b] = endpoints;
+      if (
+        singleLineNet &&
+        directionsCompatibleForDirectImport(a?.direction, b?.direction)
+      ) {
+        return a && b ? [{ a, b }] : [];
+      }
+    }
+
+    if (placementHeuristic !== "related-groups") return [];
+
+    const uniqueNodeIds = Array.from(
+      new Set(endpoints.map((item) => item.nodeId)),
+    );
+    if (uniqueNodeIds.length < 2) return [];
+    const clusterId = placementClusterIndexByNodeId.get(uniqueNodeIds[0] ?? "");
+    if (clusterId === undefined) return [];
+    if (
+      uniqueNodeIds.some(
+        (nodeId) => placementClusterIndexByNodeId.get(nodeId) !== clusterId,
+      )
+    ) {
+      return [];
+    }
+
+    const outEndpoints = endpoints.filter((item) => item.direction === "out");
+    const ioEndpoints = endpoints.filter((item) => item.direction === "io");
+    const inEndpoints = endpoints.filter((item) => item.direction === "in");
+
+    if (ioEndpoints.length === 0 && outEndpoints.length === 0) {
+      return [];
+    }
+    if (ioEndpoints.length === 0 && outEndpoints.length > 1) {
+      return [];
+    }
+
+    const root =
+      (outEndpoints.length === 1 ? outEndpoints[0] : undefined) ??
+      ioEndpoints[0] ??
+      outEndpoints[0];
+    if (!root) return [];
+
+    const edges: Array<{
+      a: ImportPreparedEndpoint;
+      b: ImportPreparedEndpoint;
+    }> = [];
+    for (const endpoint of [...ioEndpoints, ...outEndpoints, ...inEndpoints]) {
+      if (endpoint === root) continue;
+      if (
+        !directionsCompatibleForDirectImport(root.direction, endpoint.direction)
+      ) {
+        return [];
+      }
+      edges.push({ a: root, b: endpoint });
+    }
+    return edges;
+  };
+
+  for (const prepared of preparedNets) {
+    prepared.directConnectionEdges = planDirectConnectionEdgesForNet(prepared);
+  }
 
   const labelDemandByNodeId = new Map<string, ImportLabelDemand>();
   const plannedImportedLabels: ImportPlannedLabel[] = [];
   const countedDemandAnchors = new Set<string>();
   for (const prepared of preparedNets) {
-    if (prepared.canUseDirectConnection) continue;
+    if (prepared.directConnectionEdges.length > 0) continue;
     for (const item of prepared.resolvedEndpoints) {
       const dedupeKey = `${prepared.net.name}::${item.nodeId}::${item.pinKey}`;
       if (countedDemandAnchors.has(dedupeKey)) continue;
@@ -625,9 +889,7 @@ export function buildProjectFromHalImport(
 
   const importNodeLayoutById = new Map<string, ImportNodeLayoutMetrics>();
   const pinSideIndexByNodePin = new Map<string, number>();
-  const nodeIdsInOrder = rootSheet.nodes
-    .filter((node) => node.kind === "component")
-    .map((node) => node.id);
+  const nodeIdsInOrder = alphabeticalNodeIds;
 
   for (const nodeId of nodeIdsInOrder) {
     const component = componentByNodeId.get(nodeId);
@@ -814,52 +1076,125 @@ export function buildProjectFromHalImport(
     });
   }
 
-  const computedColumns = Math.max(
-    1,
-    Math.min(
-      IMPORT_LAYOUT.maxColumns,
-      Math.ceil(Math.sqrt(Math.max(1, nodeIdsInOrder.length))),
-    ),
-  );
-  const colWidths = Array.from({ length: computedColumns }, () => 0);
-  const rowHeights = Array.from(
-    { length: Math.ceil(nodeIdsInOrder.length / computedColumns) },
-    () => 0,
-  );
+  const planNodeGrid = (orderedNodeIds: string[]) => {
+    const computedColumns = Math.max(
+      1,
+      Math.min(
+        IMPORT_LAYOUT.maxColumns,
+        Math.ceil(Math.sqrt(Math.max(1, orderedNodeIds.length))),
+      ),
+    );
+    const colWidths = Array.from({ length: computedColumns }, () => 0);
+    const rowHeights = Array.from(
+      { length: Math.ceil(orderedNodeIds.length / computedColumns) },
+      () => 0,
+    );
 
-  nodeIdsInOrder.forEach((nodeId, index) => {
-    const layout = importNodeLayoutById.get(nodeId);
-    if (!layout) return;
-    const col = index % computedColumns;
-    const row = Math.floor(index / computedColumns);
-    colWidths[col] = Math.max(colWidths[col] ?? 0, layout.cellWidth);
-    rowHeights[row] = Math.max(rowHeights[row] ?? 0, layout.cellHeight);
-  });
+    orderedNodeIds.forEach((nodeId, index) => {
+      const layout = importNodeLayoutById.get(nodeId);
+      if (!layout) return;
+      const col = index % computedColumns;
+      const row = Math.floor(index / computedColumns);
+      colWidths[col] = Math.max(colWidths[col] ?? 0, layout.cellWidth);
+      rowHeights[row] = Math.max(rowHeights[row] ?? 0, layout.cellHeight);
+    });
 
-  const colStarts: number[] = [];
-  let runningX = 0;
-  for (const width of colWidths) {
-    colStarts.push(runningX);
-    runningX += width + IMPORT_LAYOUT.columnGap;
-  }
-  const rowStarts: number[] = [];
-  let runningY = 0;
-  for (const height of rowHeights) {
-    rowStarts.push(runningY);
-    runningY += height + IMPORT_LAYOUT.rowGap;
-  }
+    const colStarts: number[] = [];
+    let runningX = 0;
+    for (const width of colWidths) {
+      colStarts.push(runningX);
+      runningX += width + IMPORT_LAYOUT.columnGap;
+    }
+    const rowStarts: number[] = [];
+    let runningY = 0;
+    for (const height of rowHeights) {
+      rowStarts.push(runningY);
+      runningY += height + IMPORT_LAYOUT.rowGap;
+    }
 
-  nodeIdsInOrder.forEach((nodeId, index) => {
-    const layout = importNodeLayoutById.get(nodeId);
-    const node = nodeRefById.get(nodeId);
-    if (!layout || !node) return;
-    const col = index % computedColumns;
-    const row = Math.floor(index / computedColumns);
-    node.position = {
-      x: IMPORT_LAYOUT.originX + (colStarts[col] ?? 0) + layout.leftLaneWidth,
-      y: IMPORT_LAYOUT.originY + (rowStarts[row] ?? 0),
+    const localPosByNodeId = new Map<string, { x: number; y: number }>();
+    orderedNodeIds.forEach((nodeId, index) => {
+      const layout = importNodeLayoutById.get(nodeId);
+      if (!layout) return;
+      const col = index % computedColumns;
+      const row = Math.floor(index / computedColumns);
+      localPosByNodeId.set(nodeId, {
+        x: (colStarts[col] ?? 0) + layout.leftLaneWidth,
+        y: rowStarts[row] ?? 0,
+      });
+    });
+
+    const width =
+      colWidths.reduce((sum, value) => sum + value, 0) +
+      Math.max(0, colWidths.length - 1) * IMPORT_LAYOUT.columnGap;
+    const height =
+      rowHeights.reduce((sum, value) => sum + value, 0) +
+      Math.max(0, rowHeights.length - 1) * IMPORT_LAYOUT.rowGap;
+
+    return {
+      localPosByNodeId,
+      width,
+      height,
     };
-  });
+  };
+
+  if (placementHeuristic === "related-groups") {
+    const groupPlans = placementNodeGroups.map((groupNodeIds) => ({
+      nodeIds: groupNodeIds,
+      ...planNodeGrid(groupNodeIds),
+    }));
+    const totalArea = groupPlans.reduce(
+      (sum, group) =>
+        sum + Math.max(1, group.width) * Math.max(1, group.height),
+      0,
+    );
+    const targetRowWidth = Math.max(
+      IMPORT_GROUP_LAYOUT.groupRowWidthMin,
+      Math.ceil(
+        Math.sqrt(Math.max(1, totalArea)) *
+          IMPORT_GROUP_LAYOUT.groupRowWidthBias,
+      ),
+    );
+
+    let cursorX = 0;
+    let cursorY = 0;
+    let rowHeight = 0;
+    for (const group of groupPlans) {
+      if (
+        cursorX > 0 &&
+        cursorX + group.width > targetRowWidth &&
+        rowHeight > 0
+      ) {
+        cursorX = 0;
+        cursorY += rowHeight + IMPORT_GROUP_LAYOUT.groupGapY;
+        rowHeight = 0;
+      }
+
+      for (const nodeId of group.nodeIds) {
+        const node = nodeRefById.get(nodeId);
+        const localPos = group.localPosByNodeId.get(nodeId);
+        if (!node || !localPos) continue;
+        node.position = {
+          x: IMPORT_LAYOUT.originX + cursorX + localPos.x,
+          y: IMPORT_LAYOUT.originY + cursorY + localPos.y,
+        };
+      }
+
+      cursorX += group.width + IMPORT_GROUP_LAYOUT.groupGapX;
+      rowHeight = Math.max(rowHeight, group.height);
+    }
+  } else {
+    const gridPlan = planNodeGrid(nodeIdsInOrder);
+    nodeIdsInOrder.forEach((nodeId) => {
+      const node = nodeRefById.get(nodeId);
+      const localPos = gridPlan.localPosByNodeId.get(nodeId);
+      if (!node || !localPos) return;
+      node.position = {
+        x: IMPORT_LAYOUT.originX + localPos.x,
+        y: IMPORT_LAYOUT.originY + localPos.y,
+      };
+    });
+  }
 
   const nodePosById = new Map(
     rootSheet.nodes
@@ -946,23 +1281,29 @@ export function buildProjectFromHalImport(
   };
 
   preparedNets.forEach(
-    ({ net, resolvedEndpoints, canUseDirectConnection }, index) => {
-      if (canUseDirectConnection) {
-        const a = resolvedEndpoints[0];
-        const b = resolvedEndpoints[1];
-        if (!a || !b) return;
-        const pairKeyA = `${a.nodeId}:${a.pinKey}`;
-        const pairKeyB = `${b.nodeId}:${b.pinKey}`;
-        const pairKey =
-          pairKeyA < pairKeyB
-            ? `${pairKeyA}|${pairKeyB}`
-            : `${pairKeyB}|${pairKeyA}`;
-        if (!directConnectionPairs.has(pairKey)) {
+    ({ net, resolvedEndpoints, directConnectionEdges }, index) => {
+      if (directConnectionEdges.length > 0) {
+        for (const edge of directConnectionEdges) {
+          const pairKeyA = `${edge.a.nodeId}:${edge.a.pinKey}`;
+          const pairKeyB = `${edge.b.nodeId}:${edge.b.pinKey}`;
+          const pairKey =
+            pairKeyA < pairKeyB
+              ? `${pairKeyA}|${pairKeyB}`
+              : `${pairKeyB}|${pairKeyA}`;
+          if (directConnectionPairs.has(pairKey)) continue;
           directConnectionPairs.add(pairKey);
           rootSheet.directConnections.push({
             id: createId("conn"),
-            a: { kind: "node-pin", nodeId: a.nodeId, pinKey: a.pinKey },
-            b: { kind: "node-pin", nodeId: b.nodeId, pinKey: b.pinKey },
+            a: {
+              kind: "node-pin",
+              nodeId: edge.a.nodeId,
+              pinKey: edge.a.pinKey,
+            },
+            b: {
+              kind: "node-pin",
+              nodeId: edge.b.nodeId,
+              pinKey: edge.b.pinKey,
+            },
           });
         }
         return;

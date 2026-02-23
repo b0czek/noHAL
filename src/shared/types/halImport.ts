@@ -76,11 +76,14 @@ export interface HalImportLinkSuggestion {
   reason: string;
 }
 
+export type HalImportPlacementHeuristic = "alphabetical" | "related-groups";
+
 export interface HalImportBuildOptions {
   draft: HalImportDraft;
   componentStore: ComponentStore;
   linkSelections: Record<string, HalImportLinkSelection>;
   projectName?: string;
+  placementHeuristic?: HalImportPlacementHeuristic;
 }
 
 export interface HalImportBuildResult {
