@@ -124,6 +124,7 @@ export default function Canvas(props: CanvasProps) {
   return (
     <div
       class="canvas-shell"
+      role="presentation"
       onPointerDown={() => {
         if (menu()) setMenu(null);
       }}
@@ -134,6 +135,8 @@ export default function Canvas(props: CanvasProps) {
             hostEl = el;
           }}
           class="scene-konva-host"
+          role="application"
+          aria-label="Canvas workspace"
           onContextMenu={(evt) => {
             evt.preventDefault();
             const rect = hostEl.getBoundingClientRect();

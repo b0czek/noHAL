@@ -49,8 +49,8 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
       <Portal>
         <div
           class="modal-backdrop"
+          role="presentation"
           onPointerDown={() => props.onClose()}
-          onContextMenu={(evt) => evt.preventDefault()}
         >
           <div
             class="modal component-store-dialog"
@@ -68,7 +68,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                   components • {componentSources().length} sources
                 </div>
               </div>
-              <button class="btn subtle" onClick={props.onClose}>
+              <button type="button" class="btn subtle" onClick={props.onClose}>
                 Close
               </button>
             </div>
@@ -78,10 +78,18 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                 <div class="panel-title">Component Sources</div>
                 <div class="component-store-toolbar">
                   <div class="toolbar-group">
-                    <button class="btn" onClick={props.onAddCompDirSource}>
+                    <button
+                      type="button"
+                      class="btn"
+                      onClick={props.onAddCompDirSource}
+                    >
                       Add Dir Source
                     </button>
-                    <button class="btn" onClick={props.onImportCompFile}>
+                    <button
+                      type="button"
+                      class="btn"
+                      onClick={props.onImportCompFile}
+                    >
                       Import .comp
                     </button>
                   </div>
@@ -121,6 +129,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                           </div>
                           <div class="component-store-actions">
                             <button
+                              type="button"
                               class="mini"
                               onClick={() =>
                                 props.onRefreshComponentSource(source.id)
@@ -129,6 +138,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                               Refresh
                             </button>
                             <button
+                              type="button"
                               class="mini"
                               onClick={() =>
                                 props.onDeleteComponentSource(source.id)
@@ -193,6 +203,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                         </div>
                         <div class="component-store-actions">
                           <button
+                            type="button"
                             class="mini"
                             onClick={() =>
                               props.onRefreshStoredComponent(entry.componentId)

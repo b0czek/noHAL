@@ -131,7 +131,7 @@ export default function Inspector(props: InspectorProps) {
                   }
                 />
               </label>
-              <label>
+              <div class="field-label-group">
                 Scope
                 <SelectMenu
                   value={label().scope}
@@ -142,7 +142,7 @@ export default function Inspector(props: InspectorProps) {
                     })
                   }
                 />
-              </label>
+              </div>
             </div>
           )}
         </Show>
@@ -161,7 +161,7 @@ export default function Inspector(props: InspectorProps) {
                   }
                 />
               </label>
-              <label>
+              <div class="field-label-group">
                 Direction
                 <SelectMenu
                   value={port().direction}
@@ -172,8 +172,8 @@ export default function Inspector(props: InspectorProps) {
                     })
                   }
                 />
-              </label>
-              <label>
+              </div>
+              <div class="field-label-group">
                 Type
                 <SelectMenu
                   value={port().type}
@@ -184,8 +184,8 @@ export default function Inspector(props: InspectorProps) {
                     })
                   }
                 />
-              </label>
-              <label>
+              </div>
+              <div class="field-label-group">
                 Side
                 <SelectMenu
                   value={port().side}
@@ -196,7 +196,7 @@ export default function Inspector(props: InspectorProps) {
                     })
                   }
                 />
-              </label>
+              </div>
             </div>
           )}
         </Show>
@@ -220,6 +220,7 @@ export default function Inspector(props: InspectorProps) {
             {(conn) => (
               <div class="list-row">
                 <button
+                  type="button"
                   class="linkish"
                   onClick={() => props.onRemoveConnection(conn.id)}
                 >
@@ -237,6 +238,7 @@ export default function Inspector(props: InspectorProps) {
             {(anchor) => (
               <div class="list-row">
                 <button
+                  type="button"
                   class="linkish"
                   onClick={() => props.onRemoveLabelAnchor(anchor.id)}
                 >
@@ -325,7 +327,7 @@ function NodeInspector(props: {
           </label>
         }
       >
-        <button class="btn" onClick={props.onOpenComponentEditor}>
+        <button type="button" class="btn" onClick={props.onOpenComponentEditor}>
           Open Component Settings
         </button>
       </Show>
@@ -337,6 +339,7 @@ function NodeInspector(props: {
         }
       >
         <button
+          type="button"
           class="btn subtle"
           onClick={() => props.onRefreshComponentInStore(component()!.id)}
         >
@@ -344,7 +347,7 @@ function NodeInspector(props: {
         </button>
       </Show>
       <Show when={props.node.kind === "sheet"}>
-        <button class="btn" onClick={props.onEnterSelectedSheet}>
+        <button type="button" class="btn" onClick={props.onEnterSelectedSheet}>
           Enter Subsheet
         </button>
       </Show>

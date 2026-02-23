@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { app, dialog } from "electron";
@@ -24,7 +25,7 @@ async function collectCompFilesRecursive(
   dirPath: string,
   errors: Array<{ filePath: string; error: string }>,
 ): Promise<string[]> {
-  let entries;
+  let entries: Dirent[];
   try {
     entries = await readdir(dirPath, { withFileTypes: true });
   } catch (error) {

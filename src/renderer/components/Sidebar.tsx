@@ -146,6 +146,7 @@ export default function Sidebar(props: SidebarProps) {
         <div class={`sheet-tree-entry ${isActive() ? "is-active" : ""}`}>
           {hasChildren() ? (
             <button
+              type="button"
               class="sheet-tree-toggle"
               aria-label={
                 collapsed()
@@ -162,6 +163,7 @@ export default function Sidebar(props: SidebarProps) {
           )}
 
           <button
+            type="button"
             class={`linkish sheet-tree-name ${isActive() ? "is-active" : ""}`}
             onClick={() => props.onGoToSheet(branchProps.node.sheet.id)}
             onContextMenu={(evt) => {
@@ -184,6 +186,7 @@ export default function Sidebar(props: SidebarProps) {
 
           {canPlace() && (
             <button
+              type="button"
               class="mini sheet-tree-place"
               onClick={() => props.onPlaceSheet(branchProps.node.sheet.id)}
             >
@@ -209,6 +212,7 @@ export default function Sidebar(props: SidebarProps) {
         <div class="panel-title">Sheets</div>
         <div class="sidebar-actions">
           <button
+            type="button"
             class="btn subtle icon-btn"
             onClick={props.onGoToParentSheet}
             disabled={!props.canGoToParentSheet}
@@ -229,15 +233,20 @@ export default function Sidebar(props: SidebarProps) {
           <Portal>
             <div
               class="sheet-context-backdrop"
+              role="presentation"
               onPointerDown={() => setSheetContextMenu(null)}
             >
               <div
                 class="sheet-context-menu"
+                role="dialog"
+                aria-modal="false"
+                aria-label="Sheet actions"
                 style={{ left: `${menu().x}px`, top: `${menu().y}px` }}
                 onPointerDown={(evt) => evt.stopPropagation()}
                 onContextMenu={(evt) => evt.preventDefault()}
               >
                 <button
+                  type="button"
                   class="sheet-context-item"
                   onClick={() => {
                     props.onOpenSheetSettings(menu().sheetId);

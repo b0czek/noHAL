@@ -739,6 +739,12 @@ label {
   font-size: 12px;
 }
 
+.field-label-group {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+
 input,
 select {
   width: 100%;

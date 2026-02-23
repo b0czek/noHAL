@@ -31,11 +31,14 @@ export default function CanvasComponentMenu(props: CanvasComponentMenuProps) {
     <Show when={props.open}>
       <div
         class="canvas-context-backdrop"
+        role="presentation"
         onPointerDown={() => props.onClose()}
-        onContextMenu={(evt) => evt.preventDefault()}
       >
         <div
           class="canvas-context-menu"
+          role="dialog"
+          aria-modal="false"
+          aria-label="Add Component"
           style={{ left: `${props.x}px`, top: `${props.y}px` }}
           onPointerDown={(evt) => evt.stopPropagation()}
           onContextMenu={(evt) => evt.preventDefault()}

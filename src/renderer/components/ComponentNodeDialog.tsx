@@ -34,8 +34,8 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
       <Portal>
         <div
           class="modal-backdrop"
+          role="presentation"
           onPointerDown={() => props.onClose()}
-          onContextMenu={(evt) => evt.preventDefault()}
         >
           <div
             class="modal component-settings-dialog"
@@ -52,7 +52,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                   {props.node ? getNodeTitle(props.project, props.node) : ""}
                 </div>
               </div>
-              <button class="btn subtle" onClick={props.onClose}>
+              <button type="button" class="btn subtle" onClick={props.onClose}>
                 Close
               </button>
             </div>
@@ -121,6 +121,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                   <For each={pinFilterModes}>
                     {(mode) => (
                       <button
+                        type="button"
                         class={`mini ${pinFilter() === mode ? "is-active-filter" : ""}`}
                         onClick={() => setPinFilter(mode)}
                       >

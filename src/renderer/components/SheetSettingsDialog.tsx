@@ -127,8 +127,8 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
       <Portal>
         <div
           class="modal-backdrop"
+          role="presentation"
           onPointerDown={() => props.onClose()}
-          onContextMenu={(evt) => evt.preventDefault()}
         >
           <div
             class="modal sheet-settings-dialog"
@@ -143,7 +143,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                 <div class="modal-title">Sheet Settings</div>
                 <div class="modal-sub mono">{sheet()!.name}</div>
               </div>
-              <button class="btn subtle" onClick={props.onClose}>
+              <button type="button" class="btn subtle" onClick={props.onClose}>
                 Close
               </button>
             </div>
@@ -159,6 +159,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                   </div>
                   <div class="toolbar-group">
                     <button
+                      type="button"
                       class="btn subtle"
                       onClick={() => {
                         const sorted = [...rows()].sort((a, b) =>
@@ -180,6 +181,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                     {(row, index) => (
                       <div
                         class={`component-row addf-queue-row ${draggingNodeId() === row.nodeId ? "is-dragging" : ""} ${dropTargetNodeId() === row.nodeId ? "is-drop-target" : ""}`}
+                        role="presentation"
                         onPointerEnter={() => {
                           const dragged = draggingNodeId();
                           if (!dragged || dragged === row.nodeId) return;
@@ -195,6 +197,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                         }}
                       >
                         <button
+                          type="button"
                           class={`addf-drag-handle-btn ${draggingNodeId() === row.nodeId ? "is-active" : ""}`}
                           title="Drag to reorder"
                           onPointerDown={(evt) => {
@@ -225,6 +228,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                         </div>
                         <div class="component-store-actions addf-queue-actions">
                           <button
+                            type="button"
                             class="mini"
                             disabled={index() === 0}
                             onClick={() => {
@@ -239,6 +243,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                             Up
                           </button>
                           <button
+                            type="button"
                             class="mini"
                             disabled={index() === rows().length - 1}
                             onClick={() => {

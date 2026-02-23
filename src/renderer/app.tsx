@@ -171,6 +171,7 @@ export default function App() {
 
           <div class="toolbar-group">
             <button
+              type="button"
               class="btn subtle icon-btn"
               onClick={() => void actions.newProject()}
               aria-label="New project"
@@ -179,6 +180,7 @@ export default function App() {
               <HiOutlineDocumentPlus size={16} aria-hidden="true" />
             </button>
             <button
+              type="button"
               class="btn subtle icon-btn"
               onClick={() => void actions.openProject()}
               aria-label="Open project"
@@ -187,6 +189,7 @@ export default function App() {
               <HiOutlineFolderOpen size={16} aria-hidden="true" />
             </button>
             <button
+              type="button"
               class="btn subtle icon-btn"
               onClick={() => void actions.saveProject()}
               aria-label="Save project"
@@ -194,25 +197,38 @@ export default function App() {
             >
               <HiOutlineArchiveBoxArrowDown size={16} aria-hidden="true" />
             </button>
-            <button class="btn accent" onClick={() => void actions.exportHal()}>
+            <button
+              type="button"
+              class="btn accent"
+              onClick={() => void actions.exportHal()}
+            >
               Export HAL
             </button>
           </div>
 
           <div class="toolbar-group">
-            <button class="btn" onClick={() => setIsComponentStoreOpen(true)}>
+            <button
+              type="button"
+              class="btn"
+              onClick={() => setIsComponentStoreOpen(true)}
+            >
               Component Store
             </button>
           </div>
 
           <div class="toolbar-group">
-            <button class="btn" onClick={() => actions.addSheetDefinition()}>
+            <button
+              type="button"
+              class="btn"
+              onClick={() => actions.addSheetDefinition()}
+            >
               + Subsheet
             </button>
             <details class="toolbar-menu">
               <summary class="btn toolbar-menu-summary">+ Port</summary>
               <div class="toolbar-menu-popover">
                 <button
+                  type="button"
                   class="toolbar-menu-item"
                   onClick={(evt) => {
                     actions.addSheetPort("in", "bit");
@@ -222,6 +238,7 @@ export default function App() {
                   In Port (bit)
                 </button>
                 <button
+                  type="button"
                   class="toolbar-menu-item"
                   onClick={(evt) => {
                     actions.addSheetPort("out", "bit");
@@ -231,6 +248,7 @@ export default function App() {
                   Out Port (bit)
                 </button>
                 <button
+                  type="button"
                   class="toolbar-menu-item"
                   onClick={(evt) => {
                     actions.addSheetPort("io", "float");
@@ -245,6 +263,7 @@ export default function App() {
               <summary class="btn toolbar-menu-summary">+ Label</summary>
               <div class="toolbar-menu-popover">
                 <button
+                  type="button"
                   class="toolbar-menu-item"
                   onClick={(evt) => {
                     actions.addLabel("local");
@@ -254,6 +273,7 @@ export default function App() {
                   Local Label
                 </button>
                 <button
+                  type="button"
                   class="toolbar-menu-item"
                   onClick={(evt) => {
                     actions.addLabel("hierarchical");
@@ -263,6 +283,7 @@ export default function App() {
                   Hier Label
                 </button>
                 <button
+                  type="button"
                   class="toolbar-menu-item"
                   onClick={(evt) => {
                     actions.addLabel("global");
