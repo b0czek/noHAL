@@ -891,7 +891,7 @@ export class KonvaSheetScene {
           y: 8,
           width: 40,
           align: "right",
-          text: node.kind,
+          text: node.kind === "component" ? "comp" : node.kind,
           fontFamily: "IBM Plex Sans",
           fontSize: 11,
           fill: "#8ea8a1"
