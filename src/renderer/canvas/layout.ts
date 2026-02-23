@@ -1,6 +1,7 @@
 import { endpointKey, getNodePins } from "../../shared/graph";
 import type { NoHALProject, SheetDefinition, SheetEndpointRef, SheetNodeInstance } from "../../shared/types";
 import {
+  BOTTOM_H,
   BOTTOM_PIN_COLUMN_STEP,
   BOTTOM_PIN_DOT_GAP,
   BOTTOM_PIN_PILL_W,
@@ -12,11 +13,13 @@ import {
 } from "./constants";
 
 export type Pt = { x: number; y: number };
+export type BottomPinLabelMode = "horizontal" | "vertical";
 
 export interface NodeLayout {
   width: number;
   height: number;
   bottomBandHeight: number;
+  bottomLabelMode: BottomPinLabelMode;
   pinPositionsLocal: Record<string, Pt>;
 }
 
@@ -39,12 +42,30 @@ function computeSidePinWidth(leftNames: string[], rightNames: string[]): number 
   return leftMax + rightMax + SIDE_LABEL_CLEARANCE + SIDE_LABEL_GAP;
 }
 
-function computeBottomPinWidth(bottomNames: string[]): number {
+function computeBottomPinWidthVertical(bottomNames: string[]): number {
   if (bottomNames.length === 0) return 0;
   return Math.ceil(BOTTOM_PIN_COLUMN_STEP * (bottomNames.length + 1));
 }
 
-function computeBottomBandHeight(bottomNames: string[]): number {
+function computeBottomPinWidthHorizontal(bottomNames: string[]): number {
+  if (bottomNames.length === 0) return 0;
+
+  const pillWidths = bottomNames.map((name) => estimateMonoTextWidth(name, 11) + 16);
+  const count = pillWidths.length;
+  const maxPill = Math.max(...pillWidths);
+
+  if (count === 1) {
+    return maxPill + 20;
+  }
+
+  let requiredStep = maxPill / 2 + 6;
+  for (let i = 0; i < pillWidths.length - 1; i += 1) {
+    requiredStep = Math.max(requiredStep, (pillWidths[i] + pillWidths[i + 1]) / 2 + 8);
+  }
+  return Math.ceil(requiredStep * (count + 1));
+}
+
+function computeBottomBandHeightVertical(bottomNames: string[]): number {
   if (bottomNames.length === 0) return 0;
 
   const maxRotatedTextSpan = Math.max(...bottomNames.map((name) => estimateMonoTextWidth(name, 11)));
@@ -52,23 +73,61 @@ function computeBottomBandHeight(bottomNames: string[]): number {
   return tallestPill + BOTTOM_PIN_DOT_GAP + PIN_R;
 }
 
+function computeBottomBandHeightHorizontal(bottomNames: string[]): number {
+  if (bottomNames.length === 0) return 0;
+  return (BOTTOM_H - 4) + BOTTOM_PIN_DOT_GAP + PIN_R;
+}
+
 export function computeNodeLayout(project: NoHALProject, node: SheetNodeInstance): NodeLayout {
   const pins = getNodePins(project, node);
   const left = pins.filter((p) => p.side === "left");
   const right = pins.filter((p) => p.side === "right");
   const bottom = pins.filter((p) => p.side === "bottom");
-  const width = Math.max(
-    NODE_WIDTH,
-    computeSidePinWidth(
-      left.map((pin) => pin.name),
-      right.map((pin) => pin.name)
-    ),
-    computeBottomPinWidth(bottom.map((pin) => pin.name))
+  const sideWidth = computeSidePinWidth(
+    left.map((pin) => pin.name),
+    right.map((pin) => pin.name)
   );
 
   const rows = Math.max(left.length, right.length, 1);
   const sideHeight = rows * SIDE_ROW_H;
-  const bottomBandHeight = computeBottomBandHeight(bottom.map((pin) => pin.name));
+  const bottomNames = bottom.map((pin) => pin.name);
+
+  let bottomLabelMode: BottomPinLabelMode = "horizontal";
+  let bottomBandHeight = 0;
+  let bottomWidth = 0;
+
+  if (bottomNames.length > 0) {
+    const candidates = (["horizontal", "vertical"] as const).map((mode) => {
+      const bandHeight =
+        mode === "horizontal"
+          ? computeBottomBandHeightHorizontal(bottomNames)
+          : computeBottomBandHeightVertical(bottomNames);
+      const widthRequirement =
+        mode === "horizontal"
+          ? computeBottomPinWidthHorizontal(bottomNames)
+          : computeBottomPinWidthVertical(bottomNames);
+      const candidateWidth = Math.max(NODE_WIDTH, sideWidth, widthRequirement);
+      const candidateHeight = HEADER_H + sideHeight + bandHeight + 10 + 12;
+      return {
+        mode,
+        bandHeight,
+        widthRequirement,
+        area: candidateWidth * candidateHeight
+      };
+    });
+
+    const best = candidates.reduce((acc, item) => {
+      if (item.area < acc.area) return item;
+      if (item.area === acc.area && item.mode === "horizontal") return item;
+      return acc;
+    });
+
+    bottomLabelMode = best.mode;
+    bottomBandHeight = best.bandHeight;
+    bottomWidth = best.widthRequirement;
+  }
+
+  const width = Math.max(NODE_WIDTH, sideWidth, bottomWidth);
   const bottomHeight = bottom.length > 0 ? bottomBandHeight + 10 : 0;
   const height = HEADER_H + sideHeight + bottomHeight + 12;
   const pinPositionsLocal: Record<string, Pt> = {};
@@ -96,6 +155,7 @@ export function computeNodeLayout(project: NoHALProject, node: SheetNodeInstance
     width,
     height,
     bottomBandHeight,
+    bottomLabelMode,
     pinPositionsLocal
   };
 }

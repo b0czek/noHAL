@@ -2,6 +2,7 @@ import Konva from "konva";
 import { endpointKey, getNodePins, getNodeTitle } from "../../shared/graph";
 import type { NoHALProject, SheetDefinition, SheetEndpointRef, XY } from "../../shared/types";
 import {
+  BOTTOM_H,
   BOTTOM_PIN_PILL_W,
   BOTTOM_PIN_TEXT_PAD,
   HEADER_H,
@@ -1030,7 +1031,10 @@ export class KonvaSheetScene {
 
       if (bottomPins.length > 0) {
         const bandTop = HEADER_H + rows * SIDE_ROW_H + 8;
-        const bandHeight = Math.max(layout.bottomBandHeight, BOTTOM_PIN_PILL_W + PIN_R);
+        const bandHeight = Math.max(
+          layout.bottomBandHeight,
+          layout.bottomLabelMode === "vertical" ? BOTTOM_PIN_PILL_W + PIN_R : (BOTTOM_H - 4) + PIN_R
+        );
         for (const pin of bottomPins) {
           const p = layout.pinPositionsLocal[pin.key];
           const endpoint: SheetEndpointRef = { kind: "node-pin", nodeId: node.id, pinKey: pin.key };
@@ -1042,38 +1046,72 @@ export class KonvaSheetScene {
           });
           const textW = Math.ceil(measure.width());
           const textH = Math.ceil(measure.height());
-          const pillW = BOTTOM_PIN_PILL_W;
-          const pillH = Math.min(
-            bandHeight - 6,
-            Math.max(BOTTOM_PIN_PILL_W, textW + BOTTOM_PIN_TEXT_PAD)
-          );
-          const pillX = p.x - pillW / 2;
           const dotY = p.y;
-          const pillY = Math.max(bandTop, dotY - 6 - pillH);
-          const pill = new Konva.Rect({
-            x: pillX,
-            y: pillY,
-            width: pillW,
-            height: pillH,
-            cornerRadius: 10,
-            fill: "rgba(255,255,255,0.02)",
-            stroke: pending ? "rgba(122,230,208,0.45)" : "rgba(255,255,255,0.08)",
-            strokeWidth: 1
-          });
-          nodeGroup.add(pill);
-          const textX = pillX + pillW / 2 - textH / 2;
-          const textY = pillY + pillH / 2 + textW / 2;
-          nodeGroup.add(
-            new Konva.Text({
-              x: textX,
-              y: textY,
-              text: pin.name,
-              fontFamily: "IBM Plex Mono",
-              fontSize: 11,
-              fill: "#d7eee7",
-              rotation: -90
-            })
-          );
+          if (layout.bottomLabelMode === "vertical") {
+            const pillW = BOTTOM_PIN_PILL_W;
+            const pillH = Math.min(
+              bandHeight - 6,
+              Math.max(BOTTOM_PIN_PILL_W, textW + BOTTOM_PIN_TEXT_PAD)
+            );
+            const pillX = p.x - pillW / 2;
+            const pillY = Math.max(bandTop, dotY - 6 - pillH);
+            nodeGroup.add(
+              new Konva.Rect({
+                x: pillX,
+                y: pillY,
+                width: pillW,
+                height: pillH,
+                cornerRadius: 10,
+                fill: "rgba(255,255,255,0.02)",
+                stroke: pending ? "rgba(122,230,208,0.45)" : "rgba(255,255,255,0.08)",
+                strokeWidth: 1,
+                listening: false
+              })
+            );
+            const textX = pillX + pillW / 2 - textH / 2;
+            const textY = pillY + pillH / 2 + textW / 2;
+            nodeGroup.add(
+              new Konva.Text({
+                x: textX,
+                y: textY,
+                text: pin.name,
+                fontFamily: "IBM Plex Mono",
+                fontSize: 11,
+                fill: "#d7eee7",
+                rotation: -90,
+                listening: false
+              })
+            );
+          } else {
+            const pillH = Math.min(bandHeight - 6, BOTTOM_H - 4);
+            const pillW = textW + 16;
+            const pillX = p.x - pillW / 2;
+            const pillY = Math.max(bandTop, dotY - 6 - pillH);
+            nodeGroup.add(
+              new Konva.Rect({
+                x: pillX,
+                y: pillY,
+                width: pillW,
+                height: pillH,
+                cornerRadius: 999,
+                fill: "rgba(255,255,255,0.02)",
+                stroke: pending ? "rgba(122,230,208,0.45)" : "rgba(255,255,255,0.08)",
+                strokeWidth: 1,
+                listening: false
+              })
+            );
+            nodeGroup.add(
+              new Konva.Text({
+                x: pillX + 8,
+                y: pillY + 4,
+                text: pin.name,
+                fontFamily: "IBM Plex Mono",
+                fontSize: 11,
+                fill: "#d7eee7",
+                listening: false
+              })
+            );
+          }
           this.addPinDot({
             parent: nodeGroup,
             x: p.x,
