@@ -1,11 +1,13 @@
-import { createEffect, createMemo, createSignal, onMount } from "solid-js";
+import { Show, createEffect, createMemo, createSignal, onMount } from "solid-js";
 import { HiOutlineArchiveBoxArrowDown, HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
 import { createEmptyProject } from "../shared/project";
+import type { RecentProjectEntry } from "../shared/types";
 import { getSheet } from "../shared/graph";
 import Canvas from "./components/Canvas";
 import ComponentNodeDialog from "./components/ComponentNodeDialog";
 import ComponentStoreDialog from "./components/ComponentStoreDialog";
 import Inspector from "./components/Inspector";
+import LandingPage from "./components/LandingPage";
 import SheetSettingsDialog from "./components/SheetSettingsDialog";
 import Sidebar from "./components/Sidebar";
 import { createEditorStore } from "./state/store";
@@ -13,12 +15,47 @@ import { useEditorShortcuts } from "./shortcuts/useEditorShortcuts";
 
 export default function App() {
   const { state, actions } = createEditorStore(createEmptyProject("NoHAL Project"));
+  const [isEditorOpen, setIsEditorOpen] = createSignal(false);
+  const [recentProjects, setRecentProjects] = createSignal<RecentProjectEntry[]>([]);
+  const [isRecentProjectsLoading, setIsRecentProjectsLoading] = createSignal(true);
+  const [isLandingActionPending, setIsLandingActionPending] = createSignal(false);
+  const [landingError, setLandingError] = createSignal<string | null>(null);
   const [componentEditorNodeId, setComponentEditorNodeId] = createSignal<string | null>(null);
   const [isComponentStoreOpen, setIsComponentStoreOpen] = createSignal(false);
   const [sheetSettingsSheetId, setSheetSettingsSheetId] = createSignal<string | null>(null);
 
+  const refreshRecentProjects = async () => {
+    setIsRecentProjectsLoading(true);
+    try {
+      setRecentProjects(await window.nohal.getRecentProjects());
+    } catch (error) {
+      setLandingError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsRecentProjectsLoading(false);
+    }
+  };
+
+  const runLandingAction = async (action: () => Promise<boolean>) => {
+    setLandingError(null);
+    setIsLandingActionPending(true);
+    try {
+      const opened = await action();
+      if (opened) {
+        setIsEditorOpen(true);
+        await refreshRecentProjects();
+      } else if (state.status.startsWith("Failed")) {
+        setLandingError(state.status);
+      }
+    } catch (error) {
+      setLandingError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsLandingActionPending(false);
+    }
+  };
+
   onMount(() => {
     void actions.loadComponentStore();
+    void refreshRecentProjects();
   });
 
   const currentSheet = createMemo(() => getSheet(state.project, state.activeSheetId));
@@ -80,7 +117,22 @@ export default function App() {
   });
 
   return (
-    <div class="app-shell">
+    <Show
+      when={isEditorOpen()}
+      fallback={
+        <LandingPage
+          recentProjects={recentProjects()}
+          isRecentProjectsLoading={isRecentProjectsLoading()}
+          isActionPending={isLandingActionPending()}
+          errorMessage={landingError()}
+          onCreateProject={() => void runLandingAction(() => actions.newProject())}
+          onOpenProject={() => void runLandingAction(() => actions.openProject())}
+          onRefreshRecentProjects={() => void refreshRecentProjects()}
+          onOpenRecentProject={(filePath) => void runLandingAction(() => actions.openProjectAt(filePath))}
+        />
+      }
+    >
+      <div class="app-shell">
       <header class="topbar">
         <div class="brand">
           <div class="brand-mark">N</div>
@@ -271,6 +323,7 @@ export default function App() {
         onSetSheetAddfQueue={actions.setSheetAddfQueue}
         onClose={() => setSheetSettingsSheetId(null)}
       />
-    </div>
+      </div>
+    </Show>
   );
 }

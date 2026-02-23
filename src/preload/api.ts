@@ -2,12 +2,15 @@ import type {
   ComponentStore,
   ComponentStoreEntry,
   ImportedComponentDefinition,
-  NoHALProject
+  NoHALProject,
+  RecentProjectEntry
 } from "../shared/types";
 
 export interface NoHALApi {
   newProject(): Promise<NoHALProject>;
+  getRecentProjects(): Promise<RecentProjectEntry[]>;
   openProject(): Promise<{ project: NoHALProject; filePath: string } | null>;
+  openProjectAt(filePath: string): Promise<{ project: NoHALProject; filePath: string }>;
   saveProject(project: NoHALProject, filePath?: string | null): Promise<{ filePath: string } | null>;
   exportHal(
     project: NoHALProject,

@@ -4,8 +4,14 @@ import type { ComponentStore, ComponentStoreEntry, ImportedComponentDefinition, 
 
 const api: NoHALApi = {
   newProject: () => ipcRenderer.invoke("nohal:new-project") as Promise<NoHALProject>,
+  getRecentProjects: () =>
+    ipcRenderer.invoke("nohal:get-recent-projects") as Promise<
+      Array<{ filePath: string; name?: string; lastOpenedAt: string }>
+    >,
   openProject: () =>
     ipcRenderer.invoke("nohal:open-project") as Promise<{ project: NoHALProject; filePath: string } | null>,
+  openProjectAt: (filePath) =>
+    ipcRenderer.invoke("nohal:open-project-at", filePath) as Promise<{ project: NoHALProject; filePath: string }>,
   saveProject: (project, filePath) =>
     ipcRenderer.invoke("nohal:save-project", project, filePath) as Promise<{ filePath: string } | null>,
   exportHal: (project, filePath) =>

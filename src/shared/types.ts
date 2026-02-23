@@ -110,6 +110,12 @@ export interface ComponentStore {
   components: Record<string, ComponentStoreEntry>;
 }
 
+export interface RecentProjectEntry {
+  filePath: string;
+  name?: string;
+  lastOpenedAt: string;
+}
+
 export interface ManualComponentDefinitionInput {
   name: string;
   halComponentName?: string;

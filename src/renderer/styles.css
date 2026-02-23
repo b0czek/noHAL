@@ -1220,9 +1220,3 @@ select {
   letter-spacing: 0.08em;
   opacity: 0.8;
 }
-
-@media (max-width: 1300px) {
-  .workspace {
-    grid-template-columns: 260px 1fr 300px;
-  }
-}

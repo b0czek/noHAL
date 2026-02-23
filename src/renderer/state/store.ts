@@ -219,6 +219,25 @@ export function createEditorStore(initialProject: NoHALProject) {
     });
   };
 
+  const replaceProjectState = (
+    project: NoHALProject,
+    filePath: string | null,
+    status: string
+  ): void => {
+    applyComponentStoreToProject(project, state.componentStore);
+    setState({
+      project,
+      componentStore: state.componentStore,
+      filePath,
+      activeSheetId: project.ui.activeSheetId,
+      selection: null,
+      pendingEndpoint: null,
+      pendingWirePoints: [],
+      status,
+      exportWarnings: []
+    });
+  };
+
   const actions = {
     getCurrentSheet(): SheetDefinition {
       return getSheet(state.project, state.activeSheetId);
@@ -269,37 +288,38 @@ export function createEditorStore(initialProject: NoHALProject) {
       setState("status", `Added wire waypoint (${state.pendingWirePoints.length + 1})`);
     },
 
-    async newProject(): Promise<void> {
-      const project = await window.nohal.newProject();
-      applyComponentStoreToProject(project, state.componentStore);
-      setState({
-        project,
-        componentStore: state.componentStore,
-        filePath: null,
-        activeSheetId: project.ui.activeSheetId,
-        selection: null,
-        pendingEndpoint: null,
-        pendingWirePoints: [],
-        status: "Created new project",
-        exportWarnings: [],
-      });
+    async newProject(): Promise<boolean> {
+      try {
+        const project = await window.nohal.newProject();
+        replaceProjectState(project, null, "Created new project");
+        return true;
+      } catch (error) {
+        setState("status", `Failed to create project: ${error instanceof Error ? error.message : String(error)}`);
+        return false;
+      }
     },
 
-    async openProject(): Promise<void> {
-      const result = await window.nohal.openProject();
-      if (!result) return;
-      applyComponentStoreToProject(result.project, state.componentStore);
-      setState({
-        project: result.project,
-        componentStore: state.componentStore,
-        filePath: result.filePath,
-        activeSheetId: result.project.ui.activeSheetId,
-        selection: null,
-        pendingEndpoint: null,
-        pendingWirePoints: [],
-        status: `Opened ${result.filePath}`,
-        exportWarnings: [],
-      });
+    async openProject(): Promise<boolean> {
+      try {
+        const result = await window.nohal.openProject();
+        if (!result) return false;
+        replaceProjectState(result.project, result.filePath, `Opened ${result.filePath}`);
+        return true;
+      } catch (error) {
+        setState("status", `Failed to open project: ${error instanceof Error ? error.message : String(error)}`);
+        return false;
+      }
+    },
+
+    async openProjectAt(filePath: string): Promise<boolean> {
+      try {
+        const result = await window.nohal.openProjectAt(filePath);
+        replaceProjectState(result.project, result.filePath, `Opened ${result.filePath}`);
+        return true;
+      } catch (error) {
+        setState("status", `Failed to open project: ${error instanceof Error ? error.message : String(error)}`);
+        return false;
+      }
     },
 
     async saveProject(): Promise<void> {
