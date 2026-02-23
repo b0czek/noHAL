@@ -1,5 +1,5 @@
-import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import { HiOutlineArrowSmallUp } from "solid-icons/hi";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { NoHALProject, SheetDefinition } from "../../shared/types";
 
@@ -20,7 +20,9 @@ export default function Sidebar(props: SidebarProps) {
     isOrphan: boolean;
   };
 
-  const [collapsedSheetIds, setCollapsedSheetIds] = createSignal<Set<string>>(new Set());
+  const [collapsedSheetIds, setCollapsedSheetIds] = createSignal<Set<string>>(
+    new Set(),
+  );
   const [sheetContextMenu, setSheetContextMenu] = createSignal<{
     sheetId: string;
     x: number;
@@ -54,7 +56,11 @@ export default function Sidebar(props: SidebarProps) {
 
     const visited = new Set<string>();
 
-    const buildNode = (sheetId: string, path: Set<string>, isOrphan: boolean): SheetTreeNode | null => {
+    const buildNode = (
+      sheetId: string,
+      path: Set<string>,
+      isOrphan: boolean,
+    ): SheetTreeNode | null => {
       if (visited.has(sheetId) || path.has(sheetId)) return null;
       const sheet = byId.get(sheetId);
       if (!sheet) return null;
@@ -73,7 +79,11 @@ export default function Sidebar(props: SidebarProps) {
 
     const roots: SheetTreeNode[] = [];
     if (byId.has(props.project.rootSheetId)) {
-      const root = buildNode(props.project.rootSheetId, new Set<string>(), false);
+      const root = buildNode(
+        props.project.rootSheetId,
+        new Set<string>(),
+        false,
+      );
       if (root) roots.push(root);
     }
 
@@ -128,7 +138,8 @@ export default function Sidebar(props: SidebarProps) {
     const hasChildren = () => branchProps.node.children.length > 0;
     const collapsed = () => isCollapsed(branchProps.node.sheet.id);
     const isActive = () => branchProps.node.sheet.id === props.activeSheetId;
-    const canPlace = () => !isActive() && !placedSheetIds().has(branchProps.node.sheet.id);
+    const canPlace = () =>
+      !isActive() && !placedSheetIds().has(branchProps.node.sheet.id);
 
     return (
       <li class="sheet-tree-node">
@@ -136,7 +147,11 @@ export default function Sidebar(props: SidebarProps) {
           {hasChildren() ? (
             <button
               class="sheet-tree-toggle"
-              aria-label={collapsed() ? `Expand ${branchProps.node.sheet.name}` : `Collapse ${branchProps.node.sheet.name}`}
+              aria-label={
+                collapsed()
+                  ? `Expand ${branchProps.node.sheet.name}`
+                  : `Collapse ${branchProps.node.sheet.name}`
+              }
               aria-expanded={!collapsed()}
               onClick={() => toggleCollapsed(branchProps.node.sheet.id)}
             >
@@ -155,7 +170,7 @@ export default function Sidebar(props: SidebarProps) {
               setSheetContextMenu({
                 sheetId: branchProps.node.sheet.id,
                 x: evt.clientX,
-                y: evt.clientY
+                y: evt.clientY,
               });
             }}
             title={branchProps.node.sheet.name}
@@ -163,10 +178,15 @@ export default function Sidebar(props: SidebarProps) {
             {branchProps.node.sheet.name}
           </button>
 
-          {branchProps.node.isOrphan && <span class="sheet-tree-tag">orphan</span>}
+          {branchProps.node.isOrphan && (
+            <span class="sheet-tree-tag">orphan</span>
+          )}
 
           {canPlace() && (
-            <button class="mini sheet-tree-place" onClick={() => props.onPlaceSheet(branchProps.node.sheet.id)}>
+            <button
+              class="mini sheet-tree-place"
+              onClick={() => props.onPlaceSheet(branchProps.node.sheet.id)}
+            >
               Place
             </button>
           )}
@@ -200,16 +220,17 @@ export default function Sidebar(props: SidebarProps) {
         </div>
         <div class="sheet-tree">
           <ul class="sheet-tree-list is-root">
-            <For each={treeRoots()}>
-              {(node) => <TreeBranch node={node} />}
-            </For>
+            <For each={treeRoots()}>{(node) => <TreeBranch node={node} />}</For>
           </ul>
         </div>
       </section>
       <Show when={sheetContextMenu()}>
         {(menu) => (
           <Portal>
-            <div class="sheet-context-backdrop" onPointerDown={() => setSheetContextMenu(null)}>
+            <div
+              class="sheet-context-backdrop"
+              onPointerDown={() => setSheetContextMenu(null)}
+            >
               <div
                 class="sheet-context-menu"
                 style={{ left: `${menu().x}px`, top: `${menu().y}px` }}

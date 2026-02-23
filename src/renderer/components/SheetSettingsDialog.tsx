@@ -1,4 +1,11 @@
-import { For, Show, createMemo, createSignal, createEffect, onCleanup } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  onCleanup,
+  Show,
+} from "solid-js";
 import { Portal } from "solid-js/web";
 import type { NoHALProject, SheetNodeInstance } from "../../shared/types";
 
@@ -18,7 +25,11 @@ interface SheetQueueRow {
   subtitle: string;
 }
 
-function reorderByIds(list: string[], draggedId: string, targetId: string): string[] {
+function reorderByIds(
+  list: string[],
+  draggedId: string,
+  targetId: string,
+): string[] {
   if (draggedId === targetId) return list;
   const from = list.indexOf(draggedId);
   const to = list.indexOf(targetId);
@@ -29,7 +40,10 @@ function reorderByIds(list: string[], draggedId: string, targetId: string): stri
   return next;
 }
 
-function buildSheetQueueRows(project: NoHALProject, sheetId: string | null): SheetQueueRow[] {
+function buildSheetQueueRows(
+  project: NoHALProject,
+  sheetId: string | null,
+): SheetQueueRow[] {
   if (!sheetId) return [];
   const sheet = project.sheets[sheetId];
   if (!sheet) return [];
@@ -62,7 +76,7 @@ function buildSheetQueueRows(project: NoHALProject, sheetId: string | null): She
         instanceName: node.instanceName,
         kind: "subsheet",
         title: node.instanceName,
-        subtitle: childSheet?.name ?? "missing sheet"
+        subtitle: childSheet?.name ?? "missing sheet",
       };
     }
     const component = project.library.components[node.componentId];
@@ -71,17 +85,23 @@ function buildSheetQueueRows(project: NoHALProject, sheetId: string | null): She
       instanceName: node.instanceName,
       kind: "component",
       title: node.instanceName,
-      subtitle: component?.halComponentName ?? "missing"
+      subtitle: component?.halComponentName ?? "missing",
     };
   });
 }
 
 export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
   const [draggingNodeId, setDraggingNodeId] = createSignal<string | null>(null);
-  const [dropTargetNodeId, setDropTargetNodeId] = createSignal<string | null>(null);
+  const [dropTargetNodeId, setDropTargetNodeId] = createSignal<string | null>(
+    null,
+  );
 
-  const sheet = createMemo(() => (props.sheetId ? props.project.sheets[props.sheetId] : undefined));
-  const rows = createMemo(() => buildSheetQueueRows(props.project, props.sheetId));
+  const sheet = createMemo(() =>
+    props.sheetId ? props.project.sheets[props.sheetId] : undefined,
+  );
+  const rows = createMemo(() =>
+    buildSheetQueueRows(props.project, props.sheetId),
+  );
 
   const commitNodeOrder = (nodeIds: string[]) => {
     if (!props.sheetId) return;
@@ -105,7 +125,11 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
   return (
     <Show when={props.open && sheet()}>
       <Portal>
-        <div class="modal-backdrop" onPointerDown={() => props.onClose()} onContextMenu={(evt) => evt.preventDefault()}>
+        <div
+          class="modal-backdrop"
+          onPointerDown={() => props.onClose()}
+          onContextMenu={(evt) => evt.preventDefault()}
+        >
           <div
             class="modal sheet-settings-dialog"
             role="dialog"
@@ -119,7 +143,9 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                 <div class="modal-title">Sheet Settings</div>
                 <div class="modal-sub mono">{sheet()!.name}</div>
               </div>
-              <button class="btn subtle" onClick={props.onClose}>Close</button>
+              <button class="btn subtle" onClick={props.onClose}>
+                Close
+              </button>
             </div>
 
             <div class="modal-body sheet-settings-body">
@@ -127,13 +153,17 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                 <div class="panel-title">addf Queue (Sheet Scope)</div>
                 <div class="component-store-toolbar">
                   <div class="muted">
-                    Order components and subsheets together. Subsheet entries expand using that subsheet&apos;s own queue during HAL export.
+                    Order components and subsheets together. Subsheet entries
+                    expand using that subsheet&apos;s own queue during HAL
+                    export.
                   </div>
                   <div class="toolbar-group">
                     <button
                       class="btn subtle"
                       onClick={() => {
-                        const sorted = [...rows()].sort((a, b) => a.instanceName.localeCompare(b.instanceName));
+                        const sorted = [...rows()].sort((a, b) =>
+                          a.instanceName.localeCompare(b.instanceName),
+                        );
                         commitNodeOrder(sorted.map((row) => row.nodeId));
                       }}
                     >
@@ -183,10 +213,14 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                         </button>
                         <div class="component-store-main">
                           <div class="component-name mono">
-                            <span class="addf-queue-index">{index() + 1}.</span> {row.title}
+                            <span class="addf-queue-index">{index() + 1}.</span>{" "}
+                            {row.title}
                           </div>
                           <div class="component-sub">
-                            <span class="chip type">{row.kind === "subsheet" ? "sheet" : "rt"}</span> {row.subtitle}
+                            <span class="chip type">
+                              {row.kind === "subsheet" ? "sheet" : "rt"}
+                            </span>{" "}
+                            {row.subtitle}
                           </div>
                         </div>
                         <div class="component-store-actions addf-queue-actions">
@@ -197,7 +231,9 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                               const ids = rows().map((item) => item.nodeId);
                               const prev = rows()[index() - 1];
                               if (!prev) return;
-                              commitNodeOrder(reorderByIds(ids, row.nodeId, prev.nodeId));
+                              commitNodeOrder(
+                                reorderByIds(ids, row.nodeId, prev.nodeId),
+                              );
                             }}
                           >
                             Up
@@ -209,7 +245,9 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                               const ids = rows().map((item) => item.nodeId);
                               const next = rows()[index() + 1];
                               if (!next) return;
-                              commitNodeOrder(reorderByIds(ids, row.nodeId, next.nodeId));
+                              commitNodeOrder(
+                                reorderByIds(ids, row.nodeId, next.nodeId),
+                              );
                             }}
                           >
                             Down
@@ -220,7 +258,9 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                   </For>
 
                   <Show when={rows().length === 0}>
-                    <div class="muted component-store-empty">No RT components or subsheets in this sheet.</div>
+                    <div class="muted component-store-empty">
+                      No RT components or subsheets in this sheet.
+                    </div>
                   </Show>
                 </div>
               </section>

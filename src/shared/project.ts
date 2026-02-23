@@ -1,10 +1,10 @@
-import { createBuiltinLibrary } from "./library";
 import { createId, slugify } from "./id";
+import { createBuiltinLibrary } from "./library";
 import type {
   ComponentDefinition,
   NoHALProject,
   SheetDefinition,
-  SheetPort
+  SheetPort,
 } from "./types";
 
 function createDefaultTopSheet(): SheetDefinition {
@@ -16,7 +16,7 @@ function createDefaultTopSheet(): SheetDefinition {
     ports: [],
     labels: [],
     directConnections: [],
-    labelAnchors: []
+    labelAnchors: [],
   };
 }
 
@@ -28,27 +28,31 @@ export function createEmptyProject(name: string): NoHALProject {
     name,
     target: {
       linuxcncVersion: "2.10",
-      platform: "linux"
+      platform: "linux",
     },
     rootSheetId: top.id,
     sheets: {
-      [top.id]: top
+      [top.id]: top,
     },
     library: {
-      components: createBuiltinLibrary()
+      components: createBuiltinLibrary(),
     },
     ui: {
-      activeSheetId: top.id
-    }
+      activeSheetId: top.id,
+    },
   };
 }
 
 function assertProjectShape(input: unknown): asserts input is NoHALProject {
-  if (!input || typeof input !== "object") throw new Error("Project file is not an object");
+  if (!input || typeof input !== "object")
+    throw new Error("Project file is not an object");
   const project = input as Partial<NoHALProject>;
-  if (project.format !== "nohal-project") throw new Error("Unsupported project format");
-  if (project.version !== 1) throw new Error(`Unsupported project version: ${String(project.version)}`);
-  if (!project.sheets || typeof project.sheets !== "object") throw new Error("Project has no sheets");
+  if (project.format !== "nohal-project")
+    throw new Error("Unsupported project format");
+  if (project.version !== 1)
+    throw new Error(`Unsupported project version: ${String(project.version)}`);
+  if (!project.sheets || typeof project.sheets !== "object")
+    throw new Error("Project has no sheets");
   if (!project.rootSheetId || !(project.rootSheetId in project.sheets)) {
     throw new Error("Project rootSheetId is missing or invalid");
   }
@@ -64,7 +68,10 @@ export function stringifyNoHALProject(project: NoHALProject): string {
   return `${JSON.stringify(project, null, 2)}\n`;
 }
 
-export function createSheet(name: string, parentSheetId: string | null): SheetDefinition {
+export function createSheet(
+  name: string,
+  parentSheetId: string | null,
+): SheetDefinition {
   return {
     id: createId("sheet"),
     name,
@@ -73,7 +80,7 @@ export function createSheet(name: string, parentSheetId: string | null): SheetDe
     ports: [],
     labels: [],
     directConnections: [],
-    labelAnchors: []
+    labelAnchors: [],
   };
 }
 
@@ -81,7 +88,7 @@ export function createSheetPortDraft(
   name: string,
   direction: SheetPort["direction"],
   type: SheetPort["type"],
-  side?: SheetPort["side"]
+  side?: SheetPort["side"],
 ): SheetPort {
   return {
     id: createId("port"),
@@ -91,13 +98,13 @@ export function createSheetPortDraft(
     side:
       side ??
       (direction === "in" ? "left" : direction === "out" ? "right" : "bottom"),
-    position: { x: 0, y: 0 }
+    position: { x: 0, y: 0 },
   };
 }
 
 export function upsertComponentDefinition(
   project: NoHALProject,
-  component: ComponentDefinition
+  component: ComponentDefinition,
 ): NoHALProject {
   return {
     ...project,
@@ -105,8 +112,8 @@ export function upsertComponentDefinition(
       ...project.library,
       components: {
         ...project.library.components,
-        [component.id]: component
-      }
-    }
+        [component.id]: component,
+      },
+    },
   };
 }

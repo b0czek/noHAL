@@ -1,7 +1,7 @@
-import { app } from "electron";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { app } from "electron";
 import type { RecentProjectEntry } from "../shared/types";
 
 const RECENT_PROJECTS_FILENAME = "recent-projects.json";
@@ -19,19 +19,19 @@ async function readRecentProjectsFile(): Promise<RecentProjectEntry[]> {
     const parsed = JSON.parse(content) as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .filter(
-        (entry): entry is RecentProjectEntry =>
-          Boolean(
-            entry &&
-              typeof entry === "object" &&
-              typeof (entry as { filePath?: unknown }).filePath === "string" &&
-              typeof (entry as { lastOpenedAt?: unknown }).lastOpenedAt === "string"
-          )
+      .filter((entry): entry is RecentProjectEntry =>
+        Boolean(
+          entry &&
+            typeof entry === "object" &&
+            typeof (entry as { filePath?: unknown }).filePath === "string" &&
+            typeof (entry as { lastOpenedAt?: unknown }).lastOpenedAt ===
+              "string",
+        ),
       )
       .map((entry) => ({
         filePath: path.resolve(entry.filePath),
         name: typeof entry.name === "string" ? entry.name : undefined,
-        lastOpenedAt: entry.lastOpenedAt
+        lastOpenedAt: entry.lastOpenedAt,
       }));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
@@ -39,7 +39,9 @@ async function readRecentProjectsFile(): Promise<RecentProjectEntry[]> {
   }
 }
 
-async function writeRecentProjectsFile(entries: RecentProjectEntry[]): Promise<void> {
+async function writeRecentProjectsFile(
+  entries: RecentProjectEntry[],
+): Promise<void> {
   const filePath = await getRecentProjectsFilePath();
   await writeFile(filePath, `${JSON.stringify(entries, null, 2)}\n`, "utf8");
 }
@@ -53,7 +55,10 @@ export async function listRecentProjects(): Promise<RecentProjectEntry[]> {
   return filtered;
 }
 
-export async function touchRecentProject(filePath: string, projectName?: string): Promise<void> {
+export async function touchRecentProject(
+  filePath: string,
+  projectName?: string,
+): Promise<void> {
   const normalizedFilePath = path.resolve(filePath);
   const nowIso = new Date().toISOString();
   const current = await readRecentProjectsFile();
@@ -61,9 +66,11 @@ export async function touchRecentProject(filePath: string, projectName?: string)
     {
       filePath: normalizedFilePath,
       name: projectName?.trim() ? projectName : undefined,
-      lastOpenedAt: nowIso
+      lastOpenedAt: nowIso,
     },
-    ...current.filter((entry) => path.resolve(entry.filePath) !== normalizedFilePath)
+    ...current.filter(
+      (entry) => path.resolve(entry.filePath) !== normalizedFilePath,
+    ),
   ].slice(0, 20);
   await writeRecentProjectsFile(next);
 }

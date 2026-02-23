@@ -1,11 +1,16 @@
-import { getNodePins, getSheet, invertDirection, resolveEndpointInSheet } from "./graph";
+import {
+  getNodePins,
+  getSheet,
+  invertDirection,
+  resolveEndpointInSheet,
+} from "./graph";
 import type {
   ComponentNode,
   NoHALProject,
   PinDirection,
   SheetDefinition,
   SheetNode,
-  SheetNodeInstance
+  SheetNodeInstance,
 } from "./types";
 
 interface ExportResult {
@@ -89,7 +94,7 @@ function createExportContext(): ExportContext {
     warnings: [],
     globalLabelMembers: new Map(),
     componentInstances: [],
-    endpointSeq: 0
+    endpointSeq: 0,
   };
 }
 
@@ -98,7 +103,11 @@ function endpointId(ctx: ExportContext, prefix: string): string {
   return `${prefix}_${ctx.endpointSeq}`;
 }
 
-function addHint(ctx: ExportContext, endpointIdValue: string, hint: Hint): void {
+function addHint(
+  ctx: ExportContext,
+  endpointIdValue: string,
+  hint: Hint,
+): void {
   const list = ctx.hintsByEndpointId.get(endpointIdValue);
   if (list) {
     list.push(hint);
@@ -112,7 +121,11 @@ function registerEndpoint(ctx: ExportContext, record: EndpointRecord): void {
   ctx.union.add(record.id);
 }
 
-function pushGlobalLabelMember(ctx: ExportContext, name: string, endpointIdValue: string): void {
+function pushGlobalLabelMember(
+  ctx: ExportContext,
+  name: string,
+  endpointIdValue: string,
+): void {
   const list = ctx.globalLabelMembers.get(name);
   if (list) list.push(endpointIdValue);
   else ctx.globalLabelMembers.set(name, [endpointIdValue]);
@@ -126,15 +139,20 @@ function joinInstancePath(parts: string[]): string {
   return parts.join(".");
 }
 
-function chooseBoundarySignalName(pathParts: string[], portName: string): string {
-  return pathParts.length > 0 ? `${joinInstancePath(pathParts)}.${portName}` : portName;
+function chooseBoundarySignalName(
+  pathParts: string[],
+  portName: string,
+): string {
+  return pathParts.length > 0
+    ? `${joinInstancePath(pathParts)}.${portName}`
+    : portName;
 }
 
 function createLocalEndpointIdMap(
   ctx: ExportContext,
   project: NoHALProject,
   sheet: SheetDefinition,
-  pathParts: string[]
+  pathParts: string[],
 ): Map<string, string> {
   const map = new Map<string, string>();
 
@@ -145,9 +163,12 @@ function createLocalEndpointIdMap(
       kind: "sheet-boundary",
       type: port.type,
       direction: invertDirection(port.direction),
-      boundarySignalPath: chooseBoundarySignalName(pathParts, port.name)
+      boundarySignalPath: chooseBoundarySignalName(pathParts, port.name),
     });
-    addHint(ctx, id, { kind: "boundary", name: chooseBoundarySignalName(pathParts, port.name) });
+    addHint(ctx, id, {
+      kind: "boundary",
+      name: chooseBoundarySignalName(pathParts, port.name),
+    });
     map.set(`port:${port.id}`, id);
   }
 
@@ -157,20 +178,23 @@ function createLocalEndpointIdMap(
       const localKey = `node:${node.id}:${pin.key}`;
       const id = endpointId(ctx, "ep");
       if (node.kind === "component") {
-        const instancePath = joinInstancePath([...pathParts, node.instanceName]);
+        const instancePath = joinInstancePath([
+          ...pathParts,
+          node.instanceName,
+        ]);
         registerEndpoint(ctx, {
           id,
           kind: "component-pin",
           type: pin.type,
           direction: pin.direction,
-          halPinPath: `${instancePath}.${pin.name}`
+          halPinPath: `${instancePath}.${pin.name}`,
         });
       } else {
         registerEndpoint(ctx, {
           id,
           kind: "bridge",
           type: pin.type,
-          direction: pin.direction
+          direction: pin.direction,
         });
       }
       map.set(localKey, id);
@@ -180,8 +204,16 @@ function createLocalEndpointIdMap(
   return map;
 }
 
-function localEndpointRefToId(map: Map<string, string>, ref: { kind: "node-pin"; nodeId: string; pinKey: string } | { kind: "sheet-port"; portId: string }): string {
-  const key = ref.kind === "node-pin" ? `node:${ref.nodeId}:${ref.pinKey}` : `port:${ref.portId}`;
+function localEndpointRefToId(
+  map: Map<string, string>,
+  ref:
+    | { kind: "node-pin"; nodeId: string; pinKey: string }
+    | { kind: "sheet-port"; portId: string },
+): string {
+  const key =
+    ref.kind === "node-pin"
+      ? `node:${ref.nodeId}:${ref.pinKey}`
+      : `port:${ref.portId}`;
   const value = map.get(key);
   if (!value) throw new Error(`Missing local endpoint map entry: ${key}`);
   return value;
@@ -192,11 +224,11 @@ function traverseSheetInstance(
   project: NoHALProject,
   sheetId: string,
   pathParts: string[],
-  sheetStack: string[] = []
+  sheetStack: string[] = [],
 ): TraversalResult {
   if (sheetStack.includes(sheetId)) {
     ctx.warnings.push(
-      `Recursive sheet hierarchy detected at '${[...pathParts].join(".") || "Top"}' (${sheetId}); skipping nested expansion`
+      `Recursive sheet hierarchy detected at '${[...pathParts].join(".") || "Top"}' (${sheetId}); skipping nested expansion`,
     );
     return { boundaryPortEndpointIds: {} };
   }
@@ -214,17 +246,19 @@ function traverseSheetInstance(
           componentId: node.componentId,
           instancePath: joinInstancePath([...pathParts, node.instanceName]),
           parentSheetPath: joinInstancePath(pathParts),
-          runtimeKind: component.runtime?.kind ?? "unknown"
+          runtimeKind: component.runtime?.kind ?? "unknown",
         });
         for (const pin of component.pins) {
           if (pin.arrayLen !== undefined || pin.name.includes("#")) {
             ctx.warnings.push(
-              `Array pin export is not expanded yet (${component.halComponentName}.${pin.name}) on ${node.instanceName}`
+              `Array pin export is not expanded yet (${component.halComponentName}.${pin.name}) on ${node.instanceName}`,
             );
           }
         }
       } else {
-        ctx.warnings.push(`Missing component definition '${node.componentId}' for node '${node.instanceName}'`);
+        ctx.warnings.push(
+          `Missing component definition '${node.componentId}' for node '${node.instanceName}'`,
+        );
       }
     }
   }
@@ -242,7 +276,9 @@ function traverseSheetInstance(
   for (const anchor of sheet.labelAnchors) {
     const label = labelsById.get(anchor.labelId);
     if (!label) {
-      ctx.warnings.push(`Missing label '${anchor.labelId}' in sheet '${sheet.name}'`);
+      ctx.warnings.push(
+        `Missing label '${anchor.labelId}' in sheet '${sheet.name}'`,
+      );
       continue;
     }
     const endpoint = localEndpointRefToId(localIds, anchor.endpoint);
@@ -257,7 +293,7 @@ function traverseSheetInstance(
     if (label.scope === "hierarchical") {
       addHint(ctx, endpoint, {
         kind: "hierarchical",
-        name: chooseBoundarySignalName(pathParts, label.name)
+        name: chooseBoundarySignalName(pathParts, label.name),
       });
       const list = hierBuckets.get(scopeKey);
       if (list) list.push(endpoint);
@@ -267,7 +303,7 @@ function traverseSheetInstance(
 
     addHint(ctx, endpoint, {
       kind: "local",
-      name: chooseBoundarySignalName(pathParts, label.name)
+      name: chooseBoundarySignalName(pathParts, label.name),
     });
     const list = localBuckets.get(scopeKey);
     if (list) list.push(endpoint);
@@ -275,20 +311,23 @@ function traverseSheetInstance(
   }
 
   for (const endpoints of localBuckets.values()) {
-    for (let i = 1; i < endpoints.length; i += 1) ctx.union.union(endpoints[0], endpoints[i]);
+    for (let i = 1; i < endpoints.length; i += 1)
+      ctx.union.union(endpoints[0], endpoints[i]);
   }
 
   for (const [labelName, endpoints] of hierBuckets.entries()) {
-    for (let i = 1; i < endpoints.length; i += 1) ctx.union.union(endpoints[0], endpoints[i]);
+    for (let i = 1; i < endpoints.length; i += 1)
+      ctx.union.union(endpoints[0], endpoints[i]);
     const matchingPort = sheet.ports.find((port) => port.name === labelName);
     if (matchingPort) {
       const portEndpointId = localIds.get(`port:${matchingPort.id}`);
       if (portEndpointId) {
-        for (const endpoint of endpoints) ctx.union.union(portEndpointId, endpoint);
+        for (const endpoint of endpoints)
+          ctx.union.union(portEndpointId, endpoint);
       }
     } else {
       ctx.warnings.push(
-        `Hierarchical label '${labelName}' in sheet '${sheet.name}' has no matching sheet port`
+        `Hierarchical label '${labelName}' in sheet '${sheet.name}' has no matching sheet port`,
       );
     }
   }
@@ -301,7 +340,7 @@ function traverseSheetInstance(
       project,
       node.sheetId,
       [...pathParts, node.instanceName],
-      nextStack
+      nextStack,
     );
     const childSheet = getSheet(project, node.sheetId);
     for (const port of childSheet.ports) {
@@ -309,7 +348,7 @@ function traverseSheetInstance(
       const childBoundaryId = child.boundaryPortEndpointIds[port.id];
       if (!parentPinId || !childBoundaryId) {
         ctx.warnings.push(
-          `Sheet boundary bridge missing for subsheet '${node.instanceName}' port '${port.name}'`
+          `Sheet boundary bridge missing for subsheet '${node.instanceName}' port '${port.name}'`,
         );
         continue;
       }
@@ -326,7 +365,9 @@ function traverseSheetInstance(
 }
 
 function chooseNetName(hints: Hint[], fallbackIndex: number): string {
-  const unique = Array.from(new Map(hints.map((hint) => [hint.kind + ":" + hint.name, hint])).values());
+  const unique = Array.from(
+    new Map(hints.map((hint) => [hint.kind + ":" + hint.name, hint])).values(),
+  );
   const preferred =
     unique.find((h) => h.kind === "global") ??
     unique.find((h) => h.kind === "boundary") ??
@@ -365,7 +406,10 @@ interface RuntimeSections {
 
 function replaceAddfTemplate(
   template: string,
-  item: Pick<RuntimeInstanceRecord, "componentName" | "instancePath" | "parentSheetPath">
+  item: Pick<
+    RuntimeInstanceRecord,
+    "componentName" | "instancePath" | "parentSheetPath"
+  >,
 ): string {
   return template
     .replaceAll("{instance}", item.instancePath)
@@ -373,20 +417,29 @@ function replaceAddfTemplate(
     .replaceAll("{subsheet}", item.parentSheetPath || "top");
 }
 
-function buildRuntimeSections(project: NoHALProject, ctx: ExportContext): RuntimeSections {
+function buildRuntimeSections(
+  project: NoHALProject,
+  ctx: ExportContext,
+): RuntimeSections {
   const rules = project.halExport?.componentRules ?? {};
   const addfConfig = project.halExport?.addf;
   const loadOrderList = project.halExport?.loadOrder ?? [];
   const loadOrderIndex = new Map(loadOrderList.map((name, idx) => [name, idx]));
 
-  const allInstances = [...ctx.componentInstances].sort((a, b) => a.instancePath.localeCompare(b.instancePath));
+  const allInstances = [...ctx.componentInstances].sort((a, b) =>
+    a.instancePath.localeCompare(b.instancePath),
+  );
   const rtInstances = allInstances.filter((item) => item.runtimeKind === "rt");
-  const userspaceInstances = allInstances.filter((item) => item.runtimeKind === "userspace");
-  const unknownRuntimeInstances = allInstances.filter((item) => item.runtimeKind === "unknown");
+  const userspaceInstances = allInstances.filter(
+    (item) => item.runtimeKind === "userspace",
+  );
+  const unknownRuntimeInstances = allInstances.filter(
+    (item) => item.runtimeKind === "unknown",
+  );
 
   for (const item of unknownRuntimeInstances) {
     ctx.warnings.push(
-      `Component '${item.instancePath}' (${item.componentName}) has unknown runtime kind; skipping loadrt/addf generation for it`
+      `Component '${item.instancePath}' (${item.componentName}) has unknown runtime kind; skipping loadrt/addf generation for it`,
     );
   }
 
@@ -403,7 +456,10 @@ function buildRuntimeSections(project: NoHALProject, ctx: ExportContext): Runtim
     const explicitA = loadOrderIndex.get(nameA);
     const explicitB = loadOrderIndex.get(nameB);
     if (explicitA !== undefined || explicitB !== undefined) {
-      return (explicitA ?? Number.MAX_SAFE_INTEGER) - (explicitB ?? Number.MAX_SAFE_INTEGER);
+      return (
+        (explicitA ?? Number.MAX_SAFE_INTEGER) -
+        (explicitB ?? Number.MAX_SAFE_INTEGER)
+      );
     }
     const prioA = ruleA?.loadOrderPriority ?? 0;
     const prioB = ruleB?.loadOrderPriority ?? 0;
@@ -415,8 +471,12 @@ function buildRuntimeSections(project: NoHALProject, ctx: ExportContext): Runtim
   for (const [componentName, items] of sortedRtGroups) {
     const rule = rules[componentName];
     const combine = rule?.loadCombine ?? "names";
-    const extraArgs = (rule?.loadrtArgs ?? []).map((arg) => `${arg}`.trim()).filter(Boolean);
-    const sortedNames = items.map((item) => item.instancePath).sort((a, b) => a.localeCompare(b));
+    const extraArgs = (rule?.loadrtArgs ?? [])
+      .map((arg) => `${arg}`.trim())
+      .filter(Boolean);
+    const sortedNames = items
+      .map((item) => item.instancePath)
+      .sort((a, b) => a.localeCompare(b));
     if (combine === "separate") {
       for (const instanceName of sortedNames) {
         const args = [`names=${instanceName}`, ...extraArgs];
@@ -430,21 +490,29 @@ function buildRuntimeSections(project: NoHALProject, ctx: ExportContext): Runtim
 
   const runtimeSummaryLines: string[] = [];
   if (userspaceInstances.length > 0) {
-    runtimeSummaryLines.push(`# Userspace components still need manual loadusr flags/args:`);
+    runtimeSummaryLines.push(
+      `# Userspace components still need manual loadusr flags/args:`,
+    );
     const byComponent = new Map<string, string[]>();
     for (const item of userspaceInstances) {
       const list = byComponent.get(item.componentName);
       if (list) list.push(item.instancePath);
       else byComponent.set(item.componentName, [item.instancePath]);
     }
-    for (const [componentName, instances] of [...byComponent.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [componentName, instances] of [...byComponent.entries()].sort(
+      ([a], [b]) => a.localeCompare(b),
+    )) {
       runtimeSummaryLines.push(`#   ${componentName}: ${instances.join(", ")}`);
     }
   }
   if (unknownRuntimeInstances.length > 0) {
-    runtimeSummaryLines.push(`# Unknown-runtime components (set runtime.kind to enable loadrt/addf generation):`);
+    runtimeSummaryLines.push(
+      `# Unknown-runtime components (set runtime.kind to enable loadrt/addf generation):`,
+    );
     for (const item of unknownRuntimeInstances) {
-      runtimeSummaryLines.push(`#   ${item.instancePath} (${item.componentName})`);
+      runtimeSummaryLines.push(
+        `#   ${item.instancePath} (${item.componentName})`,
+      );
     }
   }
 
@@ -454,7 +522,9 @@ function buildRuntimeSections(project: NoHALProject, ctx: ExportContext): Runtim
   const addfEntries: AddfEntry[] = [];
 
   if (addfEnabled) {
-    function orderedAddfNodesForSheet(sheet: SheetDefinition): SheetNodeInstance[] {
+    function orderedAddfNodesForSheet(
+      sheet: SheetDefinition,
+    ): SheetNodeInstance[] {
       const eligible = sheet.nodes.filter((node) => {
         if (node.kind === "sheet") return true;
         const component = project.library.components[node.componentId];
@@ -477,22 +547,34 @@ function buildRuntimeSections(project: NoHALProject, ctx: ExportContext): Runtim
       return ordered;
     }
 
-    function collectAddfFromSheetInstance(sheetId: string, pathParts: string[], stack: string[] = []): void {
+    function collectAddfFromSheetInstance(
+      sheetId: string,
+      pathParts: string[],
+      stack: string[] = [],
+    ): void {
       const cycleKey = `${sheetId}|${pathParts.join(".")}`;
       if (stack.includes(cycleKey)) {
-        ctx.warnings.push(`Recursive sheet addf expansion skipped at '${pathParts.join(".") || "Top"}'`);
+        ctx.warnings.push(
+          `Recursive sheet addf expansion skipped at '${pathParts.join(".") || "Top"}'`,
+        );
         return;
       }
       const nextStack = [...stack, cycleKey];
       const sheet = getSheet(project, sheetId);
       for (const node of orderedAddfNodesForSheet(sheet)) {
         if (node.kind === "sheet") {
-          collectAddfFromSheetInstance(node.sheetId, [...pathParts, node.instanceName], nextStack);
+          collectAddfFromSheetInstance(
+            node.sheetId,
+            [...pathParts, node.instanceName],
+            nextStack,
+          );
           continue;
         }
         const component = project.library.components[node.componentId];
         if (!component) {
-          ctx.warnings.push(`Missing component definition '${node.componentId}' for node '${node.instanceName}'`);
+          ctx.warnings.push(
+            `Missing component definition '${node.componentId}' for node '${node.instanceName}'`,
+          );
           continue;
         }
         if (component.runtime?.kind !== "rt") continue;
@@ -500,17 +582,19 @@ function buildRuntimeSections(project: NoHALProject, ctx: ExportContext): Runtim
         const rule = rules[componentName];
         if (rule?.addf?.enabled === false) continue;
         const thread = rule?.addf?.thread?.trim() || defaultThread;
-        const templates = (rule?.addf?.functionTemplates ?? ["{instance}"]).filter((t) => t.trim().length > 0);
+        const templates = (
+          rule?.addf?.functionTemplates ?? ["{instance}"]
+        ).filter((t) => t.trim().length > 0);
         const item = {
           componentName,
           instancePath: joinInstancePath([...pathParts, node.instanceName]),
-          parentSheetPath: joinInstancePath(pathParts)
+          parentSheetPath: joinInstancePath(pathParts),
         };
         for (const template of templates) {
           addfEntries.push({
             functionName: replaceAddfTemplate(template, item),
             thread,
-            parentSheetPath: item.parentSheetPath
+            parentSheetPath: item.parentSheetPath,
           });
         }
       }
@@ -533,7 +617,7 @@ function buildRuntimeSections(project: NoHALProject, ctx: ExportContext): Runtim
     addfLines.push(
       emitPosition
         ? `addf ${entry.functionName} ${entry.thread} ${nextPos}`
-        : `addf ${entry.functionName} ${entry.thread}`
+        : `addf ${entry.functionName} ${entry.thread}`,
     );
   }
 
@@ -541,7 +625,7 @@ function buildRuntimeSections(project: NoHALProject, ctx: ExportContext): Runtim
     loadrtLines,
     loadusrLines: [],
     addfLines,
-    runtimeSummaryLines
+    runtimeSummaryLines,
   };
 }
 
@@ -550,7 +634,8 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
   traverseSheetInstance(ctx, project, project.rootSheetId, [], []);
 
   for (const members of ctx.globalLabelMembers.values()) {
-    for (let i = 1; i < members.length; i += 1) ctx.union.union(members[0], members[i]);
+    for (let i = 1; i < members.length; i += 1)
+      ctx.union.union(members[0], members[i]);
   }
 
   const groups = ctx.union.groups();
@@ -562,22 +647,28 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
       .map((id) => ctx.endpoints.get(id))
       .filter((item): item is EndpointRecord => Boolean(item));
 
-    const leafPins = records.filter((r) => r.kind === "component-pin" && r.halPinPath);
+    const leafPins = records.filter(
+      (r) => r.kind === "component-pin" && r.halPinPath,
+    );
     if (leafPins.length < 2) continue;
 
     const outputs = leafPins.filter((r) => r.direction === "out");
     if (outputs.length > 1) {
       ctx.warnings.push(
-        `Multiple output pins share one signal: ${outputs.map((r) => r.halPinPath).join(", ")}`
+        `Multiple output pins share one signal: ${outputs.map((r) => r.halPinPath).join(", ")}`,
       );
     }
 
     const types = new Set(records.map((r) => r.type));
     if (types.size > 1) {
-      ctx.warnings.push(`Mixed signal types found during export: ${Array.from(types).join(", ")}`);
+      ctx.warnings.push(
+        `Mixed signal types found during export: ${Array.from(types).join(", ")}`,
+      );
     }
 
-    const hints = groupMembers.flatMap((id) => ctx.hintsByEndpointId.get(id) ?? []);
+    const hints = groupMembers.flatMap(
+      (id) => ctx.hintsByEndpointId.get(id) ?? [],
+    );
     const netName = chooseNetName(hints, autoIndex++);
 
     const sortedLeafs = sortPinsForHal(leafPins);
@@ -604,7 +695,9 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
         for (const [paramKey, value] of Object.entries(node.paramValues)) {
           const paramDef = component.params.find((p) => p.key === paramKey);
           if (!paramDef) {
-            ctx.warnings.push(`Unknown param '${paramKey}' on node '${node.instanceName}'`);
+            ctx.warnings.push(
+              `Unknown param '${paramKey}' on node '${node.instanceName}'`,
+            );
             continue;
           }
           if (!value.trim()) continue;
@@ -621,15 +714,25 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
 
   const lines: string[] = [];
   lines.push(`# NoHAL HAL export`);
-  lines.push(`# Target LinuxCNC ${project.target.linuxcncVersion} (${project.target.platform})`);
+  lines.push(
+    `# Target LinuxCNC ${project.target.linuxcncVersion} (${project.target.platform})`,
+  );
   lines.push(`# Project: ${project.name}`);
   lines.push(`#`);
   lines.push(`# Notes:`);
-  lines.push(`# - loadrt is generated for RT components using names=... grouping (override via project.halExport.componentRules).`);
-  lines.push(`# - addf is emitted per thread and expanded from per-sheet queues (sheet.hal.addfQueue), with subsheets acting as ordered blocks.`);
+  lines.push(
+    `# - loadrt is generated for RT components using names=... grouping (override via project.halExport.componentRules).`,
+  );
+  lines.push(
+    `# - addf is emitted per thread and expanded from per-sheet queues (sheet.hal.addfQueue), with subsheets acting as ordered blocks.`,
+  );
   lines.push("");
   lines.push(`# Runtime`);
-  if (runtimeSections.loadrtLines.length === 0 && runtimeSections.addfLines.length === 0 && runtimeSections.runtimeSummaryLines.length === 0) {
+  if (
+    runtimeSections.loadrtLines.length === 0 &&
+    runtimeSections.addfLines.length === 0 &&
+    runtimeSections.runtimeSummaryLines.length === 0
+  ) {
     lines.push("# (no runtime component actions generated)");
     lines.push("");
   } else {
@@ -668,6 +771,6 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
 
   return {
     text: `${lines.join("\n")}\n`,
-    warnings: Array.from(new Set(ctx.warnings))
+    warnings: Array.from(new Set(ctx.warnings)),
   };
 }

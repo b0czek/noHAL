@@ -1,6 +1,11 @@
 import Konva from "konva";
 import { endpointKey, getNodePins, getNodeTitle } from "../../shared/graph";
-import type { NoHALProject, SheetDefinition, SheetEndpointRef, XY } from "../../shared/types";
+import type {
+  NoHALProject,
+  SheetDefinition,
+  SheetEndpointRef,
+  XY,
+} from "../../shared/types";
 import {
   BOTTOM_H,
   BOTTOM_PIN_PILL_W,
@@ -10,16 +15,22 @@ import {
   PORT_LABEL_H,
   SCENE_HEIGHT,
   SCENE_WIDTH,
-  SIDE_ROW_H
+  SIDE_ROW_H,
 } from "./constants";
 import { buildSheetSceneLayout, type NodeLayout, type Pt } from "./layout";
-import { dirStroke, directionPillFill, labelFill, typeFill } from "./theme";
+import { directionPillFill, dirStroke, labelFill, typeFill } from "./theme";
 
 const SCENE_POSITION_PADDING = 2400;
 const CAMERA_OVERSCROLL_PX = 220;
 
 interface SceneCallbacks {
-  onSelect: (selection: { kind: "node"; id: string } | { kind: "label"; id: string } | { kind: "sheet-port"; id: string } | null) => void;
+  onSelect: (
+    selection:
+      | { kind: "node"; id: string }
+      | { kind: "label"; id: string }
+      | { kind: "sheet-port"; id: string }
+      | null,
+  ) => void;
   onOpenNode: (nodeId: string) => void;
   onEndpointClick: (endpoint: SheetEndpointRef) => void;
   onLabelClick: (labelId: string) => void;
@@ -34,7 +45,11 @@ interface SceneCallbacks {
 export interface SceneRenderState {
   project: NoHALProject;
   sheet: SheetDefinition;
-  selection: { kind: "node"; id: string } | { kind: "label"; id: string } | { kind: "sheet-port"; id: string } | null;
+  selection:
+    | { kind: "node"; id: string }
+    | { kind: "label"; id: string }
+    | { kind: "sheet-port"; id: string }
+    | null;
   pendingEndpoint: SheetEndpointRef | null;
   pendingWirePoints: XY[];
 }
@@ -68,7 +83,7 @@ export class KonvaSheetScene {
     this.stage = new Konva.Stage({
       container,
       width: Math.max(320, container.clientWidth || 320),
-      height: Math.max(240, container.clientHeight || 240)
+      height: Math.max(240, container.clientHeight || 240),
     });
     this.wireLayer = new Konva.Layer();
     this.mainLayer = new Konva.Layer();
@@ -83,7 +98,10 @@ export class KonvaSheetScene {
 
     this.onKeyDown = (evt) => {
       if (evt.code === "Space") this.spacePressed = true;
-      if ((evt.key === "Delete" || evt.key === "Backspace") && !this.isEditableTarget(evt.target)) {
+      if (
+        (evt.key === "Delete" || evt.key === "Backspace") &&
+        !this.isEditableTarget(evt.target)
+      ) {
         if (!this.deleteSelectedWaypoint()) return;
         evt.preventDefault();
         evt.stopPropagation();
@@ -99,7 +117,9 @@ export class KonvaSheetScene {
     this.stage.on("mousemove touchmove", () => {
       const pos = this.stage.getPointerPosition();
       const screenPos = pos ? { x: pos.x, y: pos.y } : null;
-      this.cursorPos = screenPos ? this.clampPos(this.screenToWorld(screenPos)) : null;
+      this.cursorPos = screenPos
+        ? this.clampPos(this.screenToWorld(screenPos))
+        : null;
 
       if (this.isPanning && screenPos && this.panLastScreenPos) {
         const dx = screenPos.x - this.panLastScreenPos.x;
@@ -130,7 +150,9 @@ export class KonvaSheetScene {
       ) {
         evt.cancelBubble = true;
         evt.evt.preventDefault();
-        this.callbacks.onBackgroundClick?.(this.clampPos(this.screenToWorld({ x: pos.x, y: pos.y })));
+        this.callbacks.onBackgroundClick?.(
+          this.clampPos(this.screenToWorld({ x: pos.x, y: pos.y })),
+        );
         return;
       }
 
@@ -186,7 +208,7 @@ export class KonvaSheetScene {
     const rect = this.container.getBoundingClientRect();
     const screen = {
       x: clientX - rect.left,
-      y: clientY - rect.top
+      y: clientY - rect.top,
     };
     return this.clampPos(this.screenToWorld(screen));
   }
@@ -198,7 +220,7 @@ export class KonvaSheetScene {
     const maxY = SCENE_HEIGHT + SCENE_POSITION_PADDING;
     return {
       x: Math.max(minX, Math.min(maxX, pos.x)),
-      y: Math.max(minY, Math.min(maxY, pos.y))
+      y: Math.max(minY, Math.min(maxY, pos.y)),
     };
   }
 
@@ -227,7 +249,9 @@ export class KonvaSheetScene {
     const overscrollY = CAMERA_OVERSCROLL_PX;
 
     if (scaledWorldW <= stageW - overscrollX * 2) {
-      this.camera.x = Math.round((stageW - scaledWorldW) / 2 - minWorldX * this.camera.scale);
+      this.camera.x = Math.round(
+        (stageW - scaledWorldW) / 2 - minWorldX * this.camera.scale,
+      );
     } else {
       const minX = stageW - overscrollX - maxWorldX * this.camera.scale;
       const maxX = overscrollX - minWorldX * this.camera.scale;
@@ -235,7 +259,9 @@ export class KonvaSheetScene {
     }
 
     if (scaledWorldH <= stageH - overscrollY * 2) {
-      this.camera.y = Math.round((stageH - scaledWorldH) / 2 - minWorldY * this.camera.scale);
+      this.camera.y = Math.round(
+        (stageH - scaledWorldH) / 2 - minWorldY * this.camera.scale,
+      );
     } else {
       const minY = stageH - overscrollY - maxWorldY * this.camera.scale;
       const maxY = overscrollY - minWorldY * this.camera.scale;
@@ -249,7 +275,7 @@ export class KonvaSheetScene {
       x: this.camera.x,
       y: this.camera.y,
       scaleX: this.camera.scale,
-      scaleY: this.camera.scale
+      scaleY: this.camera.scale,
     };
     this.wireWorld.setAttrs(transform);
     this.mainWorld.setAttrs(transform);
@@ -261,11 +287,13 @@ export class KonvaSheetScene {
   private screenToWorld(pos: Pt): Pt {
     return {
       x: (pos.x - this.camera.x) / this.camera.scale,
-      y: (pos.y - this.camera.y) / this.camera.scale
+      y: (pos.y - this.camera.y) / this.camera.scale,
     };
   }
 
-  private shouldStartPan(evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>): boolean {
+  private shouldStartPan(
+    evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  ): boolean {
     const onBackground = this.isBackgroundTarget(evt.target);
 
     if (evt.evt instanceof MouseEvent) {
@@ -285,7 +313,12 @@ export class KonvaSheetScene {
   private isEditableTarget(target: EventTarget | null): boolean {
     if (!(target instanceof HTMLElement)) return false;
     const tag = target.tagName;
-    return target.isContentEditable || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+    return (
+      target.isContentEditable ||
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      tag === "SELECT"
+    );
   }
 
   private getPointerWorldPos(): Pt | null {
@@ -313,7 +346,11 @@ export class KonvaSheetScene {
     let bestIndex = 0;
     let bestDist = Number.POSITIVE_INFINITY;
     for (let i = 0; i < routePoints.length - 1; i += 1) {
-      const d = this.distSqPointToSegment(point, routePoints[i], routePoints[i + 1]);
+      const d = this.distSqPointToSegment(
+        point,
+        routePoints[i],
+        routePoints[i + 1],
+      );
       if (d < bestDist) {
         bestDist = d;
         bestIndex = i;
@@ -323,20 +360,50 @@ export class KonvaSheetScene {
   }
 
   private deleteSelectedWaypoint(): boolean {
-    if (!this.lastState || !this.selectedConnectionId || this.selectedWaypointIndex === null) return false;
-    const conn = this.lastState.sheet.directConnections.find((c) => c.id === this.selectedConnectionId);
-    if (!conn || !conn.waypoints || this.selectedWaypointIndex < 0 || this.selectedWaypointIndex >= conn.waypoints.length) return false;
-    const nextWaypoints = conn.waypoints.filter((_, i) => i !== this.selectedWaypointIndex);
-    this.selectedWaypointIndex = nextWaypoints.length === 0 ? null : Math.min(this.selectedWaypointIndex, nextWaypoints.length - 1);
-    this.callbacks.onMoveConnectionWaypoints(conn.id, nextWaypoints.map((p) => ({ x: p.x, y: p.y })));
+    if (
+      !this.lastState ||
+      !this.selectedConnectionId ||
+      this.selectedWaypointIndex === null
+    )
+      return false;
+    const conn = this.lastState.sheet.directConnections.find(
+      (c) => c.id === this.selectedConnectionId,
+    );
+    if (
+      !conn ||
+      !conn.waypoints ||
+      this.selectedWaypointIndex < 0 ||
+      this.selectedWaypointIndex >= conn.waypoints.length
+    )
+      return false;
+    const nextWaypoints = conn.waypoints.filter(
+      (_, i) => i !== this.selectedWaypointIndex,
+    );
+    this.selectedWaypointIndex =
+      nextWaypoints.length === 0
+        ? null
+        : Math.min(this.selectedWaypointIndex, nextWaypoints.length - 1);
+    this.callbacks.onMoveConnectionWaypoints(
+      conn.id,
+      nextWaypoints.map((p) => ({ x: p.x, y: p.y })),
+    );
     return true;
   }
 
-  private insertWaypointOnConnection(connectionId: string, routePoints: Pt[], point: Pt): void {
+  private insertWaypointOnConnection(
+    connectionId: string,
+    routePoints: Pt[],
+    point: Pt,
+  ): void {
     if (!this.lastState) return;
-    const conn = this.lastState.sheet.directConnections.find((c) => c.id === connectionId);
+    const conn = this.lastState.sheet.directConnections.find(
+      (c) => c.id === connectionId,
+    );
     if (!conn) return;
-    const currentWaypoints = (conn.waypoints ?? []).map((p) => ({ x: p.x, y: p.y }));
+    const currentWaypoints = (conn.waypoints ?? []).map((p) => ({
+      x: p.x,
+      y: p.y,
+    }));
     const insertAt = this.findNearestSegmentIndex(routePoints, point);
     currentWaypoints.splice(insertAt, 0, { x: point.x, y: point.y });
     this.selectedConnectionId = connectionId;
@@ -350,7 +417,11 @@ export class KonvaSheetScene {
     return { x: 0, y: 1 };
   }
 
-  private getEndpointNormal(project: NoHALProject, sheet: SheetDefinition, endpoint: SheetEndpointRef): Pt | null {
+  private getEndpointNormal(
+    project: NoHALProject,
+    sheet: SheetDefinition,
+    endpoint: SheetEndpointRef,
+  ): Pt | null {
     if (endpoint.kind === "sheet-port") {
       const port = sheet.ports.find((p) => p.id === endpoint.portId);
       return port ? this.sideNormal(port.side) : null;
@@ -358,7 +429,9 @@ export class KonvaSheetScene {
 
     const node = sheet.nodes.find((n) => n.id === endpoint.nodeId);
     if (!node) return null;
-    const pin = getNodePins(project, node).find((p) => p.key === endpoint.pinKey);
+    const pin = getNodePins(project, node).find(
+      (p) => p.key === endpoint.pinKey,
+    );
     if (!pin) return null;
     return this.sideNormal(pin.side);
   }
@@ -375,7 +448,12 @@ export class KonvaSheetScene {
     const out: Pt[] = [];
     const pushDistinct = (p: Pt) => {
       const prev = out[out.length - 1];
-      if (!prev || Math.abs(prev.x - p.x) > 0.01 || Math.abs(prev.y - p.y) > 0.01) out.push(p);
+      if (
+        !prev ||
+        Math.abs(prev.x - p.x) > 0.01 ||
+        Math.abs(prev.y - p.y) > 0.01
+      )
+        out.push(p);
     };
     const stubLen = 14;
     const start = rawPoints[0];
@@ -384,7 +462,10 @@ export class KonvaSheetScene {
     pushDistinct(start);
     const startNormal = this.getEndpointNormal(project, sheet, startEndpoint);
     if (startNormal) {
-      pushDistinct({ x: start.x + startNormal.x * stubLen, y: start.y + startNormal.y * stubLen });
+      pushDistinct({
+        x: start.x + startNormal.x * stubLen,
+        y: start.y + startNormal.y * stubLen,
+      });
     }
 
     for (let i = 1; i < rawPoints.length - 1; i += 1) {
@@ -394,7 +475,10 @@ export class KonvaSheetScene {
     if (endEndpoint) {
       const endNormal = this.getEndpointNormal(project, sheet, endEndpoint);
       if (endNormal) {
-        pushDistinct({ x: end.x + endNormal.x * stubLen, y: end.y + endNormal.y * stubLen });
+        pushDistinct({
+          x: end.x + endNormal.x * stubLen,
+          y: end.y + endNormal.y * stubLen,
+        });
       }
     }
 
@@ -411,7 +495,13 @@ export class KonvaSheetScene {
   private makeBezierWire(
     a: Pt,
     b: Pt,
-    attrs: { stroke: string | CanvasGradient; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number | "auto" }
+    attrs: {
+      stroke: string | CanvasGradient;
+      strokeWidth: number;
+      dash?: number[];
+      listening?: boolean;
+      hitStrokeWidth?: number | "auto";
+    },
   ): Konva.Line {
     const dx = Math.abs(b.x - a.x) * 0.4;
     const c1x = a.x + (b.x >= a.x ? dx : -dx);
@@ -425,14 +515,20 @@ export class KonvaSheetScene {
       listening: attrs.listening ?? false,
       hitStrokeWidth: attrs.hitStrokeWidth,
       lineCap: "round",
-      lineJoin: "round"
+      lineJoin: "round",
     });
   }
 
   private drawWire(
     a: Pt,
     b: Pt,
-    attrs: { stroke: string | CanvasGradient; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number | "auto" }
+    attrs: {
+      stroke: string | CanvasGradient;
+      strokeWidth: number;
+      dash?: number[];
+      listening?: boolean;
+      hitStrokeWidth?: number | "auto";
+    },
   ): Konva.Line {
     const line = this.makeBezierWire(a, b, attrs);
     this.wireWorld.add(line);
@@ -447,12 +543,12 @@ export class KonvaSheetScene {
         strokeWidth: line.strokeWidth(),
         dash: line.dash(),
         listening: line.listening(),
-        hitStrokeWidth: line.hitStrokeWidth()
+        hitStrokeWidth: line.hitStrokeWidth(),
       });
       line.setAttrs({
         points: bez.points(),
         bezier: true,
-        tension: 0
+        tension: 0,
       });
       return;
     }
@@ -461,13 +557,19 @@ export class KonvaSheetScene {
     line.setAttrs({
       points: flatPoints,
       bezier: false,
-      tension: 0.25
+      tension: 0.25,
     });
   }
 
   private drawWirePath(
     points: Pt[],
-    attrs: { stroke: string | CanvasGradient; strokeWidth: number; dash?: number[]; listening?: boolean; hitStrokeWidth?: number | "auto" }
+    attrs: {
+      stroke: string | CanvasGradient;
+      strokeWidth: number;
+      dash?: number[];
+      listening?: boolean;
+      hitStrokeWidth?: number | "auto";
+    },
   ): Konva.Line | null {
     if (points.length < 2) return null;
     if (points.length === 2) {
@@ -486,7 +588,7 @@ export class KonvaSheetScene {
       listening: attrs.listening ?? false,
       hitStrokeWidth: attrs.hitStrokeWidth,
       lineCap: "round",
-      lineJoin: "round"
+      lineJoin: "round",
     });
     this.wireWorld.add(line);
     return line;
@@ -513,7 +615,10 @@ export class KonvaSheetScene {
     return label ? label.position : null;
   }
 
-  private getEndpointPoint(sheet: SheetDefinition, endpoint: SheetEndpointRef): Pt | null {
+  private getEndpointPoint(
+    sheet: SheetDefinition,
+    endpoint: SheetEndpointRef,
+  ): Pt | null {
     if (endpoint.kind === "sheet-port") {
       return this.getPortPosition(sheet, endpoint.portId);
     }
@@ -529,14 +634,18 @@ export class KonvaSheetScene {
   private getCursorPos(): Pt | null {
     if (this.cursorPos) return this.cursorPos;
     const pos = this.stage.getPointerPosition();
-    return pos ? this.clampPos(this.screenToWorld({ x: pos.x, y: pos.y })) : null;
+    return pos
+      ? this.clampPos(this.screenToWorld({ x: pos.x, y: pos.y }))
+      : null;
   }
 
   private redrawWires(): void {
     const state = this.lastState;
     if (!state) return;
     const { sheet, pendingEndpoint, pendingWirePoints } = state;
-    const selectedConn = this.selectedConnectionId ? sheet.directConnections.find((c) => c.id === this.selectedConnectionId) : null;
+    const selectedConn = this.selectedConnectionId
+      ? sheet.directConnections.find((c) => c.id === this.selectedConnectionId)
+      : null;
     if (!selectedConn) {
       this.selectedConnectionId = null;
       this.selectedWaypointIndex = null;
@@ -544,7 +653,10 @@ export class KonvaSheetScene {
       this.selectedWaypointIndex !== null &&
       (selectedConn.waypoints?.length ?? 0) <= this.selectedWaypointIndex
     ) {
-      this.selectedWaypointIndex = (selectedConn.waypoints?.length ?? 0) > 0 ? (selectedConn.waypoints!.length - 1) : null;
+      this.selectedWaypointIndex =
+        (selectedConn.waypoints?.length ?? 0) > 0
+          ? selectedConn.waypoints!.length - 1
+          : null;
     }
     this.wireWorld.destroyChildren();
 
@@ -552,20 +664,26 @@ export class KonvaSheetScene {
       const a = this.getEndpointPoint(sheet, conn.a);
       const b = this.getEndpointPoint(sheet, conn.b);
       if (!a || !b) continue;
-      const routePoints: Pt[] = [a, ...((conn.waypoints ?? []).map((p) => ({ x: p.x, y: p.y }))), b];
+      const routePoints: Pt[] = [
+        a,
+        ...(conn.waypoints ?? []).map((p) => ({ x: p.x, y: p.y })),
+        b,
+      ];
       const displayRoutePoints = this.buildDisplayWirePoints({
         project: state.project,
         sheet,
         rawPoints: routePoints,
         startEndpoint: conn.a,
-        endEndpoint: conn.b
+        endEndpoint: conn.b,
       });
       const selected = this.selectedConnectionId === conn.id;
       const wire = this.drawWirePath(displayRoutePoints, {
-        stroke: selected ? "rgba(140, 244, 224, 0.92)" : "rgba(122, 230, 208, 0.75)",
+        stroke: selected
+          ? "rgba(140, 244, 224, 0.92)"
+          : "rgba(122, 230, 208, 0.75)",
         strokeWidth: selected ? 2.75 : 2.25,
         listening: true,
-        hitStrokeWidth: 14
+        hitStrokeWidth: 14,
       });
       wire?.on("click tap", (evt) => {
         evt.cancelBubble = true;
@@ -595,12 +713,14 @@ export class KonvaSheetScene {
             x: p.x,
             y: p.y,
             radius: isSelectedWaypoint ? 7 : 6,
-            fill: isSelectedWaypoint ? "rgba(140, 244, 224, 0.22)" : "rgba(8, 18, 22, 0.95)",
+            fill: isSelectedWaypoint
+              ? "rgba(140, 244, 224, 0.22)"
+              : "rgba(8, 18, 22, 0.95)",
             stroke: "rgba(140, 244, 224, 0.95)",
             strokeWidth: 2,
             draggable: true,
             hitStrokeWidth: 14,
-            dragBoundFunc: (pos) => this.clampPos(pos)
+            dragBoundFunc: (pos) => this.clampPos(pos),
           });
           handle.on("click tap", (evt) => {
             evt.cancelBubble = true;
@@ -621,8 +741,8 @@ export class KonvaSheetScene {
                 sheet,
                 rawPoints: routePoints,
                 startEndpoint: conn.a,
-                endEndpoint: conn.b
-              })
+                endEndpoint: conn.b,
+              }),
             );
             this.wireLayer.batchDraw();
           });
@@ -639,12 +759,12 @@ export class KonvaSheetScene {
                 sheet,
                 rawPoints: routePoints,
                 startEndpoint: conn.a,
-                endEndpoint: conn.b
-              })
+                endEndpoint: conn.b,
+              }),
             );
             this.callbacks.onMoveConnectionWaypoints(
               conn.id,
-              routePoints.slice(1, -1).map((pt) => ({ x: pt.x, y: pt.y }))
+              routePoints.slice(1, -1).map((pt) => ({ x: pt.x, y: pt.y })),
             );
             this.wireLayer.batchDraw();
           });
@@ -663,8 +783,8 @@ export class KonvaSheetScene {
           stroke: "rgba(242, 185, 75, 0.72)",
           strokeWidth: 1.7,
           dash: [7, 5],
-          listening: false
-        })
+          listening: false,
+        }),
       );
     }
 
@@ -678,13 +798,13 @@ export class KonvaSheetScene {
           sheet,
           rawPoints: pendingRawPoints,
           startEndpoint: pendingEndpoint,
-          endEndpoint: null
+          endEndpoint: null,
         });
         this.drawWirePath(pendingDisplayPoints, {
           stroke: "rgba(122, 230, 208, 0.55)",
           strokeWidth: 2,
           dash: [8, 6],
-          listening: false
+          listening: false,
         });
       }
     }
@@ -708,8 +828,8 @@ export class KonvaSheetScene {
           y: args.y,
           radius: PIN_R + 4,
           fill: "rgba(122, 230, 208, 0.18)",
-          listening: false
-        })
+          listening: false,
+        }),
       );
     }
 
@@ -720,7 +840,7 @@ export class KonvaSheetScene {
       fill: typeFill(args.type),
       stroke: "rgba(6, 12, 15, 0.95)",
       strokeWidth: 1,
-      hitStrokeWidth: 10
+      hitStrokeWidth: 10,
     });
 
     bead.on("click tap", (evt) => {
@@ -736,7 +856,8 @@ export class KonvaSheetScene {
     const pendingKey = this.pendingKey(pendingEndpoint);
     const selectedNodeId = selection?.kind === "node" ? selection.id : null;
     const selectedLabelId = selection?.kind === "label" ? selection.id : null;
-    const selectedPortId = selection?.kind === "sheet-port" ? selection.id : null;
+    const selectedPortId =
+      selection?.kind === "sheet-port" ? selection.id : null;
 
     this.lastState = state;
     this.resetTransientPositions();
@@ -747,21 +868,24 @@ export class KonvaSheetScene {
     this.redrawWires();
 
     for (const port of sheet.ports) {
-      const endpoint: SheetEndpointRef = { kind: "sheet-port", portId: port.id };
+      const endpoint: SheetEndpointRef = {
+        kind: "sheet-port",
+        portId: port.id,
+      };
       const pending = pendingKey === endpointKey(endpoint);
 
       const portGroup = new Konva.Group({
         x: port.position.x,
         y: port.position.y,
         draggable: true,
-        dragBoundFunc: (pos) => this.clampPos(pos)
+        dragBoundFunc: (pos) => this.clampPos(pos),
       });
 
       const labelText = `${port.name}  ${port.type}`;
       const measure = new Konva.Text({
         text: labelText,
         fontFamily: "IBM Plex Sans",
-        fontSize: 12
+        fontSize: 12,
       });
       const width = Math.ceil(measure.width()) + 38;
       const h = PORT_LABEL_H;
@@ -781,8 +905,11 @@ export class KonvaSheetScene {
         height: h,
         cornerRadius: 10,
         fill: "rgba(8, 21, 27, 0.95)",
-        stroke: selectedPortId === port.id ? "rgba(122, 230, 208, 0.6)" : "rgba(255, 255, 255, 0.08)",
-        strokeWidth: selectedPortId === port.id ? 2 : 1
+        stroke:
+          selectedPortId === port.id
+            ? "rgba(122, 230, 208, 0.6)"
+            : "rgba(255, 255, 255, 0.08)",
+        strokeWidth: selectedPortId === port.id ? 2 : 1,
       });
       portGroup.add(box);
 
@@ -792,7 +919,7 @@ export class KonvaSheetScene {
         text: port.name,
         fontFamily: "IBM Plex Mono",
         fontSize: 12,
-        fill: "#d7eee7"
+        fill: "#d7eee7",
       });
       portGroup.add(nameText);
 
@@ -802,7 +929,7 @@ export class KonvaSheetScene {
         text: port.type,
         fontFamily: "IBM Plex Sans",
         fontSize: 11,
-        fill: "#8ea8a1"
+        fill: "#8ea8a1",
       });
       portGroup.add(typeText);
 
@@ -814,7 +941,7 @@ export class KonvaSheetScene {
         cornerRadius: 999,
         fill: directionPillFill(port.direction),
         stroke: dirStroke(port.direction),
-        strokeWidth: 1
+        strokeWidth: 1,
       });
       portGroup.add(dirRect);
       portGroup.add(
@@ -824,8 +951,8 @@ export class KonvaSheetScene {
           text: port.direction,
           fontFamily: "IBM Plex Sans",
           fontSize: 10,
-          fill: "#d7eee7"
-        })
+          fill: "#d7eee7",
+        }),
       );
 
       portGroup.on("click tap", (evt) => {
@@ -853,7 +980,7 @@ export class KonvaSheetScene {
         direction: port.direction,
         type: port.type,
         pending,
-        endpoint
+        endpoint,
       });
 
       this.mainWorld.add(portGroup);
@@ -867,7 +994,7 @@ export class KonvaSheetScene {
         x: node.position.x,
         y: node.position.y,
         draggable: true,
-        dragBoundFunc: (pos) => this.clampPos(pos)
+        dragBoundFunc: (pos) => this.clampPos(pos),
       });
 
       nodeGroup.add(
@@ -877,14 +1004,17 @@ export class KonvaSheetScene {
           width: layout.width,
           height: layout.height,
           cornerRadius: 14,
-          fill: node.kind === "sheet" ? "rgba(17, 14, 9, 0.96)" : "rgba(10, 20, 25, 0.96)",
+          fill:
+            node.kind === "sheet"
+              ? "rgba(17, 14, 9, 0.96)"
+              : "rgba(10, 20, 25, 0.96)",
           stroke: selected
             ? "rgba(122, 230, 208, 0.45)"
             : node.kind === "sheet"
               ? "rgba(242, 185, 75, 0.18)"
               : "rgba(255, 255, 255, 0.08)",
-          strokeWidth: selected ? 2 : 1
-        })
+          strokeWidth: selected ? 2 : 1,
+        }),
       );
 
       const header = new Konva.Rect({
@@ -893,15 +1023,15 @@ export class KonvaSheetScene {
         width: layout.width,
         height: HEADER_H,
         cornerRadius: [14, 14, 0, 0],
-        fill: "rgba(255, 255, 255, 0.03)"
+        fill: "rgba(255, 255, 255, 0.03)",
       });
       nodeGroup.add(header);
       nodeGroup.add(
         new Konva.Line({
           points: [0, HEADER_H, layout.width, HEADER_H],
           stroke: "rgba(255, 255, 255, 0.05)",
-          strokeWidth: 1
-        })
+          strokeWidth: 1,
+        }),
       );
       nodeGroup.add(
         new Konva.Text({
@@ -911,8 +1041,8 @@ export class KonvaSheetScene {
           text: getNodeTitle(project, node),
           fontFamily: "IBM Plex Sans",
           fontSize: 12,
-          fill: "#d7eee7"
-        })
+          fill: "#d7eee7",
+        }),
       );
       nodeGroup.add(
         new Konva.Text({
@@ -923,8 +1053,8 @@ export class KonvaSheetScene {
           text: node.kind === "component" ? "comp" : node.kind,
           fontFamily: "IBM Plex Sans",
           fontSize: 11,
-          fill: "#8ea8a1"
-        })
+          fill: "#8ea8a1",
+        }),
       );
 
       const pins = getNodePins(project, node);
@@ -935,12 +1065,16 @@ export class KonvaSheetScene {
 
       for (const pin of leftPins) {
         const p = layout.pinPositionsLocal[pin.key];
-        const endpoint: SheetEndpointRef = { kind: "node-pin", nodeId: node.id, pinKey: pin.key };
+        const endpoint: SheetEndpointRef = {
+          kind: "node-pin",
+          nodeId: node.id,
+          pinKey: pin.key,
+        };
         const pending = pendingKey === endpointKey(endpoint);
         const measure = new Konva.Text({
           text: pin.name,
           fontFamily: "IBM Plex Mono",
-          fontSize: 12
+          fontSize: 12,
         });
         const bubbleH = SIDE_ROW_H - 6;
         const bubbleX = p.x + 8;
@@ -954,10 +1088,12 @@ export class KonvaSheetScene {
             height: bubbleH,
             cornerRadius: 999,
             fill: "rgba(255,255,255,0.02)",
-            stroke: pending ? "rgba(122,230,208,0.45)" : "rgba(255,255,255,0.08)",
+            stroke: pending
+              ? "rgba(122,230,208,0.45)"
+              : "rgba(255,255,255,0.08)",
             strokeWidth: 1,
-            listening: false
-          })
+            listening: false,
+          }),
         );
 
         this.addPinDot({
@@ -967,7 +1103,7 @@ export class KonvaSheetScene {
           direction: pin.direction,
           type: pin.type,
           pending,
-          endpoint
+          endpoint,
         });
 
         nodeGroup.add(
@@ -978,14 +1114,18 @@ export class KonvaSheetScene {
             fontFamily: "IBM Plex Mono",
             fontSize: 12,
             fill: "#d7eee7",
-            listening: false
-          })
+            listening: false,
+          }),
         );
       }
 
       for (const pin of rightPins) {
         const p = layout.pinPositionsLocal[pin.key];
-        const endpoint: SheetEndpointRef = { kind: "node-pin", nodeId: node.id, pinKey: pin.key };
+        const endpoint: SheetEndpointRef = {
+          kind: "node-pin",
+          nodeId: node.id,
+          pinKey: pin.key,
+        };
         const pending = pendingKey === endpointKey(endpoint);
 
         this.addPinDot({
@@ -995,13 +1135,13 @@ export class KonvaSheetScene {
           direction: pin.direction,
           type: pin.type,
           pending,
-          endpoint
+          endpoint,
         });
 
         const measure = new Konva.Text({
           text: pin.name,
           fontFamily: "IBM Plex Mono",
-          fontSize: 12
+          fontSize: 12,
         });
         const bubbleH = SIDE_ROW_H - 6;
         const bubbleW = Math.ceil(measure.width()) + 14;
@@ -1015,10 +1155,12 @@ export class KonvaSheetScene {
             height: bubbleH,
             cornerRadius: 999,
             fill: "rgba(255,255,255,0.02)",
-            stroke: pending ? "rgba(122,230,208,0.45)" : "rgba(255,255,255,0.08)",
+            stroke: pending
+              ? "rgba(122,230,208,0.45)"
+              : "rgba(255,255,255,0.08)",
             strokeWidth: 1,
-            listening: false
-          })
+            listening: false,
+          }),
         );
         nodeGroup.add(
           new Konva.Text({
@@ -1028,8 +1170,8 @@ export class KonvaSheetScene {
             fontFamily: "IBM Plex Mono",
             fontSize: 12,
             fill: "#d7eee7",
-            listening: false
-          })
+            listening: false,
+          }),
         );
       }
 
@@ -1037,16 +1179,22 @@ export class KonvaSheetScene {
         const bandTop = HEADER_H + rows * SIDE_ROW_H + 8;
         const bandHeight = Math.max(
           layout.bottomBandHeight,
-          layout.bottomLabelMode === "vertical" ? BOTTOM_PIN_PILL_W + PIN_R : (BOTTOM_H - 4) + PIN_R
+          layout.bottomLabelMode === "vertical"
+            ? BOTTOM_PIN_PILL_W + PIN_R
+            : BOTTOM_H - 4 + PIN_R,
         );
         for (const pin of bottomPins) {
           const p = layout.pinPositionsLocal[pin.key];
-          const endpoint: SheetEndpointRef = { kind: "node-pin", nodeId: node.id, pinKey: pin.key };
+          const endpoint: SheetEndpointRef = {
+            kind: "node-pin",
+            nodeId: node.id,
+            pinKey: pin.key,
+          };
           const pending = pendingKey === endpointKey(endpoint);
           const measure = new Konva.Text({
             text: pin.name,
             fontFamily: "IBM Plex Mono",
-            fontSize: 11
+            fontSize: 11,
           });
           const textW = Math.ceil(measure.width());
           const textH = Math.ceil(measure.height());
@@ -1055,7 +1203,7 @@ export class KonvaSheetScene {
             const pillW = BOTTOM_PIN_PILL_W;
             const pillH = Math.min(
               bandHeight - 6,
-              Math.max(BOTTOM_PIN_PILL_W, textW + BOTTOM_PIN_TEXT_PAD)
+              Math.max(BOTTOM_PIN_PILL_W, textW + BOTTOM_PIN_TEXT_PAD),
             );
             const pillX = p.x - pillW / 2;
             const pillY = Math.max(bandTop, dotY - 6 - pillH);
@@ -1067,10 +1215,12 @@ export class KonvaSheetScene {
                 height: pillH,
                 cornerRadius: 10,
                 fill: "rgba(255,255,255,0.02)",
-                stroke: pending ? "rgba(122,230,208,0.45)" : "rgba(255,255,255,0.08)",
+                stroke: pending
+                  ? "rgba(122,230,208,0.45)"
+                  : "rgba(255,255,255,0.08)",
                 strokeWidth: 1,
-                listening: false
-              })
+                listening: false,
+              }),
             );
             const textX = pillX + pillW / 2 - textH / 2;
             const textY = pillY + pillH / 2 + textW / 2;
@@ -1083,8 +1233,8 @@ export class KonvaSheetScene {
                 fontSize: 11,
                 fill: "#d7eee7",
                 rotation: -90,
-                listening: false
-              })
+                listening: false,
+              }),
             );
           } else {
             const pillH = Math.min(bandHeight - 6, BOTTOM_H - 4);
@@ -1099,10 +1249,12 @@ export class KonvaSheetScene {
                 height: pillH,
                 cornerRadius: 999,
                 fill: "rgba(255,255,255,0.02)",
-                stroke: pending ? "rgba(122,230,208,0.45)" : "rgba(255,255,255,0.08)",
+                stroke: pending
+                  ? "rgba(122,230,208,0.45)"
+                  : "rgba(255,255,255,0.08)",
                 strokeWidth: 1,
-                listening: false
-              })
+                listening: false,
+              }),
             );
             nodeGroup.add(
               new Konva.Text({
@@ -1112,8 +1264,8 @@ export class KonvaSheetScene {
                 fontFamily: "IBM Plex Mono",
                 fontSize: 11,
                 fill: "#d7eee7",
-                listening: false
-              })
+                listening: false,
+              }),
             );
           }
           this.addPinDot({
@@ -1123,7 +1275,7 @@ export class KonvaSheetScene {
             direction: pin.direction,
             type: pin.type,
             pending,
-            endpoint
+            endpoint,
           });
         }
       }
@@ -1158,19 +1310,24 @@ export class KonvaSheetScene {
         x: label.position.x,
         y: label.position.y,
         draggable: true,
-        dragBoundFunc: (pos) => this.clampPos(pos)
+        dragBoundFunc: (pos) => this.clampPos(pos),
       });
       const scopeMeasure = new Konva.Text({
         text: label.scope,
         fontFamily: "IBM Plex Sans",
-        fontSize: 10
+        fontSize: 10,
       });
       const nameMeasure = new Konva.Text({
         text: label.name,
         fontFamily: "IBM Plex Mono",
-        fontSize: 12
+        fontSize: 12,
       });
-      const w = 16 + Math.ceil(scopeMeasure.width()) + 8 + Math.ceil(nameMeasure.width()) + 10;
+      const w =
+        16 +
+        Math.ceil(scopeMeasure.width()) +
+        8 +
+        Math.ceil(nameMeasure.width()) +
+        10;
       const h = 22;
       const box = new Konva.Rect({
         x: 0,
@@ -1179,8 +1336,11 @@ export class KonvaSheetScene {
         height: h,
         cornerRadius: 10,
         fill: labelFill(label.scope),
-        stroke: selectedLabelId === label.id ? "rgba(122,230,208,0.5)" : "rgba(255,255,255,0.08)",
-        strokeWidth: selectedLabelId === label.id ? 2 : 1
+        stroke:
+          selectedLabelId === label.id
+            ? "rgba(122,230,208,0.5)"
+            : "rgba(255,255,255,0.08)",
+        strokeWidth: selectedLabelId === label.id ? 2 : 1,
       });
       group.add(box);
       group.add(
@@ -1190,8 +1350,8 @@ export class KonvaSheetScene {
           text: label.scope,
           fontFamily: "IBM Plex Sans",
           fontSize: 10,
-          fill: "rgba(215,238,231,0.8)"
-        })
+          fill: "rgba(215,238,231,0.8)",
+        }),
       );
       group.add(
         new Konva.Text({
@@ -1200,8 +1360,8 @@ export class KonvaSheetScene {
           text: label.name,
           fontFamily: "IBM Plex Mono",
           fontSize: 12,
-          fill: "#d7eee7"
-        })
+          fill: "#d7eee7",
+        }),
       );
 
       group.on("click tap", (evt) => {

@@ -1,6 +1,6 @@
-import { app, dialog } from "electron";
-import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { app, dialog } from "electron";
 import { parseCompComponentDefinition } from "../shared/compParser";
 import { slugify } from "../shared/id";
 import type {
@@ -8,7 +8,7 @@ import type {
   ComponentStoreDirSource,
   ComponentStoreEntry,
   ComponentStoreFileSource,
-  ImportedComponentDefinition
+  ImportedComponentDefinition,
 } from "../shared/types";
 
 const COMPONENT_STORE_FILENAME = "component-store.json";
@@ -22,7 +22,7 @@ export type StoreSourceRefreshResult = {
 
 async function collectCompFilesRecursive(
   dirPath: string,
-  errors: Array<{ filePath: string; error: string }>
+  errors: Array<{ filePath: string; error: string }>,
 ): Promise<string[]> {
   let entries;
   try {
@@ -30,7 +30,7 @@ async function collectCompFilesRecursive(
   } catch (error) {
     errors.push({
       filePath: dirPath,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
     return [];
   }
@@ -55,17 +55,26 @@ function createEmptyComponentStore(): ComponentStore {
     format: "nohal-component-store",
     version: 2,
     sources: {},
-    components: {}
+    components: {},
   };
 }
 
-function assertComponentStoreShape(input: unknown): asserts input is ComponentStore {
-  if (!input || typeof input !== "object") throw new Error("Component store file is not an object");
+function assertComponentStoreShape(
+  input: unknown,
+): asserts input is ComponentStore {
+  if (!input || typeof input !== "object")
+    throw new Error("Component store file is not an object");
   const store = input as Partial<ComponentStore>;
-  if (store.format !== "nohal-component-store") throw new Error("Unsupported component store format");
-  if (store.version !== 2) throw new Error(`Unsupported component store version: ${String(store.version)}`);
-  if (!store.sources || typeof store.sources !== "object") throw new Error("Component store has no sources map");
-  if (!store.components || typeof store.components !== "object") throw new Error("Component store has no components map");
+  if (store.format !== "nohal-component-store")
+    throw new Error("Unsupported component store format");
+  if (store.version !== 2)
+    throw new Error(
+      `Unsupported component store version: ${String(store.version)}`,
+    );
+  if (!store.sources || typeof store.sources !== "object")
+    throw new Error("Component store has no sources map");
+  if (!store.components || typeof store.components !== "object")
+    throw new Error("Component store has no components map");
 }
 
 async function getComponentStoreFilePath(): Promise<string> {
@@ -105,7 +114,7 @@ function createComponentFileSourceId(filePath: string): string {
 function upsertComponentDirSource(
   store: ComponentStore,
   dirPath: string,
-  nowIso: string
+  nowIso: string,
 ): ComponentStoreDirSource {
   const normalizedDirPath = path.resolve(dirPath);
   const sourceId = createComponentDirSourceId(normalizedDirPath);
@@ -121,7 +130,7 @@ function upsertComponentDirSource(
     createdAt: existing?.createdAt ?? nowIso,
     updatedAt: nowIso,
     lastScanAt: existing?.lastScanAt,
-    lastError: existing?.lastError
+    lastError: existing?.lastError,
   };
   store.sources[sourceId] = source;
   return source;
@@ -130,7 +139,7 @@ function upsertComponentDirSource(
 function upsertComponentFileSource(
   store: ComponentStore,
   filePath: string,
-  nowIso: string
+  nowIso: string,
 ): ComponentStoreFileSource {
   const normalizedFilePath = path.resolve(filePath);
   const sourceId = createComponentFileSourceId(normalizedFilePath);
@@ -145,7 +154,7 @@ function upsertComponentFileSource(
     createdAt: existing?.createdAt ?? nowIso,
     updatedAt: nowIso,
     lastScanAt: existing?.lastScanAt,
-    lastError: existing?.lastError
+    lastError: existing?.lastError,
   };
   store.sources[sourceId] = source;
   return source;
@@ -156,23 +165,27 @@ function upsertStoredComponentEntry(
   parsed: ImportedComponentDefinition,
   sourceRef: ComponentStoreEntry["sourceRef"],
   nowIso: string,
-  forcedComponentId?: string
+  forcedComponentId?: string,
 ): ComponentStoreEntry {
   const componentId = forcedComponentId ?? parsed.id;
   const existing = store.components[componentId];
-  const normalizedParsed = forcedComponentId ? { ...parsed, id: forcedComponentId } : parsed;
+  const normalizedParsed = forcedComponentId
+    ? { ...parsed, id: forcedComponentId }
+    : parsed;
   const entry: ComponentStoreEntry = {
     componentId,
     sourceRef,
     parsed: normalizedParsed,
     createdAt: existing?.createdAt ?? nowIso,
-    updatedAt: nowIso
+    updatedAt: nowIso,
   };
   store.components[componentId] = entry;
   return entry;
 }
 
-export async function saveParsedCompFileToStore(filePath: string): Promise<ComponentStoreEntry> {
+export async function saveParsedCompFileToStore(
+  filePath: string,
+): Promise<ComponentStoreEntry> {
   const store = await readComponentStoreFile();
   const nowIso = new Date().toISOString();
   const normalizedFilePath = path.resolve(filePath);
@@ -180,62 +193,79 @@ export async function saveParsedCompFileToStore(filePath: string): Promise<Compo
   const content = await readFile(normalizedFilePath, "utf8");
   const parsed = parseCompComponentDefinition(content, normalizedFilePath);
   const existingForSource = Object.values(store.components).find(
-    (entry) => entry.sourceRef.sourceId === source.id
+    (entry) => entry.sourceRef.sourceId === source.id,
   );
   const entry = upsertStoredComponentEntry(
     store,
     parsed,
     { kind: "comp-file", sourceId: source.id, filePath: normalizedFilePath },
     nowIso,
-    existingForSource?.componentId
+    existingForSource?.componentId,
   );
   store.sources[source.id] = {
     ...source,
     updatedAt: nowIso,
     lastScanAt: nowIso,
-    lastError: undefined
+    lastError: undefined,
   };
   await writeComponentStoreFile(store);
   return entry;
 }
 
-export async function refreshStoredCompEntry(componentId: string): Promise<ComponentStoreEntry> {
+export async function refreshStoredCompEntry(
+  componentId: string,
+): Promise<ComponentStoreEntry> {
   const store = await readComponentStoreFile();
   const existing = store.components[componentId];
-  if (!existing) throw new Error(`Component store entry not found: ${componentId}`);
-  if (existing.sourceRef.kind !== "comp-file" && existing.sourceRef.kind !== "comp-dir") {
+  if (!existing)
+    throw new Error(`Component store entry not found: ${componentId}`);
+  if (
+    existing.sourceRef.kind !== "comp-file" &&
+    existing.sourceRef.kind !== "comp-dir"
+  ) {
     throw new Error(`Unsupported component source for refresh: ${componentId}`);
   }
   const filePath = existing.sourceRef.filePath;
   const nowIso = new Date().toISOString();
   const content = await readFile(filePath, "utf8");
   const parsed = parseCompComponentDefinition(content, filePath);
-  const entry = upsertStoredComponentEntry(store, parsed, existing.sourceRef, nowIso, componentId);
+  const entry = upsertStoredComponentEntry(
+    store,
+    parsed,
+    existing.sourceRef,
+    nowIso,
+    componentId,
+  );
   const source = store.sources[existing.sourceRef.sourceId];
   if (source) {
     store.sources[source.id] = {
       ...source,
       updatedAt: nowIso,
       lastScanAt: nowIso,
-      lastError: undefined
+      lastError: undefined,
     };
   }
   await writeComponentStoreFile(store);
   return entry;
 }
 
-async function rescanComponentDirSourceInStore(sourceId: string): Promise<StoreSourceRefreshResult> {
+async function rescanComponentDirSourceInStore(
+  sourceId: string,
+): Promise<StoreSourceRefreshResult> {
   const store = await readComponentStoreFile();
   const source = store.sources[sourceId];
   if (!source) throw new Error(`Component source not found: ${sourceId}`);
-  if (source.kind !== "comp-dir") throw new Error(`Component source is not a dir: ${sourceId}`);
+  if (source.kind !== "comp-dir")
+    throw new Error(`Component source is not a dir: ${sourceId}`);
 
   const nowIso = new Date().toISOString();
   const errors: Array<{ filePath: string; error: string }> = [];
   const files = await collectCompFilesRecursive(source.dirPath, errors);
   const entries: ComponentStoreEntry[] = [];
   const seenComponentIds = new Set<string>();
-  const hasRootScanError = errors.some((error) => path.resolve(error.filePath) === path.resolve(source.dirPath));
+  const hasRootScanError = errors.some(
+    (error) => path.resolve(error.filePath) === path.resolve(source.dirPath),
+  );
 
   for (const filePath of files) {
     const normalizedFilePath = path.resolve(filePath);
@@ -246,21 +276,21 @@ async function rescanComponentDirSourceInStore(sourceId: string): Promise<StoreS
         (entry) =>
           entry.sourceRef.kind === "comp-dir" &&
           entry.sourceRef.sourceId === sourceId &&
-          path.resolve(entry.sourceRef.filePath) === normalizedFilePath
+          path.resolve(entry.sourceRef.filePath) === normalizedFilePath,
       );
       const entry = upsertStoredComponentEntry(
         store,
         parsed,
         { kind: "comp-dir", sourceId, filePath: normalizedFilePath },
         nowIso,
-        existingByFile?.componentId
+        existingByFile?.componentId,
       );
       entries.push(entry);
       seenComponentIds.add(entry.componentId);
     } catch (error) {
       errors.push({
         filePath: normalizedFilePath,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }
@@ -281,8 +311,12 @@ async function rescanComponentDirSourceInStore(sourceId: string): Promise<StoreS
     updatedAt: nowIso,
     lastScanAt: nowIso,
     ...(errors.length > 0
-      ? { lastError: hasRootScanError ? "Directory scan failed" : `${errors.length} scan errors` }
-      : { lastError: undefined })
+      ? {
+          lastError: hasRootScanError
+            ? "Directory scan failed"
+            : `${errors.length} scan errors`,
+        }
+      : { lastError: undefined }),
   };
 
   await writeComponentStoreFile(store);
@@ -292,7 +326,7 @@ async function rescanComponentDirSourceInStore(sourceId: string): Promise<StoreS
 export async function addComponentDirSourceToStore(): Promise<StoreSourceRefreshResult | null> {
   const res = await dialog.showOpenDialog({
     title: "Add Component Source Directory",
-    properties: ["openDirectory"]
+    properties: ["openDirectory"],
   });
   if (res.canceled || res.filePaths.length === 0) return null;
 
@@ -304,7 +338,9 @@ export async function addComponentDirSourceToStore(): Promise<StoreSourceRefresh
   return rescanComponentDirSourceInStore(source.id);
 }
 
-export async function refreshComponentSourceInStore(sourceId: string): Promise<StoreSourceRefreshResult> {
+export async function refreshComponentSourceInStore(
+  sourceId: string,
+): Promise<StoreSourceRefreshResult> {
   const store = await readComponentStoreFile();
   const source = store.sources[sourceId];
   if (!source) throw new Error(`Component source not found: ${sourceId}`);
@@ -322,14 +358,16 @@ export async function refreshComponentSourceInStore(sourceId: string): Promise<S
     const normalizedFilePath = path.resolve(source.filePath);
     const content = await readFile(normalizedFilePath, "utf8");
     const parsed = parseCompComponentDefinition(content, normalizedFilePath);
-    const existingEntries = Object.values(store.components).filter((entry) => entry.sourceRef.sourceId === sourceId);
+    const existingEntries = Object.values(store.components).filter(
+      (entry) => entry.sourceRef.sourceId === sourceId,
+    );
     const keepId = existingEntries[0]?.componentId;
     const entry = upsertStoredComponentEntry(
       store,
       parsed,
       { kind: "comp-file", sourceId, filePath: normalizedFilePath },
       nowIso,
-      keepId
+      keepId,
     );
     entries = [entry];
     for (const extra of existingEntries) {
@@ -342,18 +380,18 @@ export async function refreshComponentSourceInStore(sourceId: string): Promise<S
       filePath: normalizedFilePath,
       updatedAt: nowIso,
       lastScanAt: nowIso,
-      lastError: undefined
+      lastError: undefined,
     };
   } catch (error) {
     errors.push({
       filePath: source.filePath,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
     store.sources[sourceId] = {
       ...source,
       updatedAt: nowIso,
       lastScanAt: nowIso,
-      lastError: "File import refresh failed"
+      lastError: "File import refresh failed",
     };
   }
 
@@ -362,7 +400,7 @@ export async function refreshComponentSourceInStore(sourceId: string): Promise<S
 }
 
 export async function deleteComponentSourceFromStore(
-  sourceId: string
+  sourceId: string,
 ): Promise<{ sourceId: string; removedComponentIds: string[] }> {
   const store = await readComponentStoreFile();
   const source = store.sources[sourceId];
@@ -379,9 +417,10 @@ export async function deleteComponentSourceFromStore(
   return { sourceId, removedComponentIds };
 }
 
-export async function scanCompDirectory(
-  dirPath: string
-): Promise<{ imported: ImportedComponentDefinition[]; errors: Array<{ filePath: string; error: string }> }> {
+export async function scanCompDirectory(dirPath: string): Promise<{
+  imported: ImportedComponentDefinition[];
+  errors: Array<{ filePath: string; error: string }>;
+}> {
   const imported: ImportedComponentDefinition[] = [];
   const errors: Array<{ filePath: string; error: string }> = [];
   const files = await collectCompFilesRecursive(dirPath, errors);
@@ -393,7 +432,7 @@ export async function scanCompDirectory(
     } catch (error) {
       errors.push({
         filePath,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }

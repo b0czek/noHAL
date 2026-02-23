@@ -1,4 +1,10 @@
-import type { HalValueType, LabelScope, PinDirection, PortSide, XY } from "./base";
+import type {
+  HalValueType,
+  LabelScope,
+  PinDirection,
+  PortSide,
+  XY,
+} from "./base";
 
 export interface SheetPort {
   id: string;

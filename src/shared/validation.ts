@@ -6,7 +6,10 @@ export interface ConnectionValidationResult {
   reason?: string;
 }
 
-function directionsCompatible(a: "in" | "out" | "io", b: "in" | "out" | "io"): boolean {
+function directionsCompatible(
+  a: "in" | "out" | "io",
+  b: "in" | "out" | "io",
+): boolean {
   if (a === "in" && b === "in") return false;
   if (a === "out" && b === "out") return false;
   return true;
@@ -17,14 +20,15 @@ export function validateDirectConnection(
   sheetId: string,
   a: SheetEndpointRef,
   b: SheetEndpointRef,
-  existing: DirectConnection[]
+  existing: DirectConnection[],
 ): ConnectionValidationResult {
-  if (endpointEquals(a, b)) return { ok: false, reason: "Cannot connect an endpoint to itself" };
+  if (endpointEquals(a, b))
+    return { ok: false, reason: "Cannot connect an endpoint to itself" };
 
   const duplicate = existing.some(
     (conn) =>
       (endpointEquals(conn.a, a) && endpointEquals(conn.b, b)) ||
-      (endpointEquals(conn.a, b) && endpointEquals(conn.b, a))
+      (endpointEquals(conn.a, b) && endpointEquals(conn.b, a)),
   );
   if (duplicate) return { ok: false, reason: "Connection already exists" };
 
@@ -36,7 +40,10 @@ export function validateDirectConnection(
   }
 
   if (!directionsCompatible(ra.direction, rb.direction)) {
-    return { ok: false, reason: `Direction mismatch: ${ra.direction} -> ${rb.direction}` };
+    return {
+      ok: false,
+      reason: `Direction mismatch: ${ra.direction} -> ${rb.direction}`,
+    };
   }
 
   return { ok: true };

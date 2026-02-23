@@ -8,7 +8,7 @@ import type {
   SheetDefinition,
   SheetEndpointRef,
   SheetNode,
-  SheetNodeInstance
+  SheetNodeInstance,
 } from "./types";
 
 export function invertDirection(direction: PinDirection): PinDirection {
@@ -21,50 +21,68 @@ export function pinDirectionToSide(direction: PinDirection): PortSide {
   return direction === "in" ? "left" : direction === "out" ? "right" : "bottom";
 }
 
-export function getSheet(project: NoHALProject, sheetId: string): SheetDefinition {
+export function getSheet(
+  project: NoHALProject,
+  sheetId: string,
+): SheetDefinition {
   const sheet = project.sheets[sheetId];
   if (!sheet) throw new Error(`Sheet not found: ${sheetId}`);
   return sheet;
 }
 
-export function getNode(sheet: SheetDefinition, nodeId: string): SheetNodeInstance {
+export function getNode(
+  sheet: SheetDefinition,
+  nodeId: string,
+): SheetNodeInstance {
   const node = sheet.nodes.find((item) => item.id === nodeId);
   if (!node) throw new Error(`Node not found: ${nodeId}`);
   return node;
 }
 
-export function getComponentNodePins(project: NoHALProject, node: ComponentNode): ResolvedPin[] {
+export function getComponentNodePins(
+  project: NoHALProject,
+  node: ComponentNode,
+): ResolvedPin[] {
   const component = project.library.components[node.componentId];
-  if (!component) throw new Error(`Component definition missing: ${node.componentId}`);
+  if (!component)
+    throw new Error(`Component definition missing: ${node.componentId}`);
   return component.pins.map((pin) => ({
     key: pin.key,
     name: pin.name,
     direction: pin.direction,
     type: pin.type,
     side: pinDirectionToSide(pin.direction),
-    doc: pin.doc
+    doc: pin.doc,
   }));
 }
 
-export function getSheetNodePins(project: NoHALProject, node: SheetNode): ResolvedPin[] {
+export function getSheetNodePins(
+  project: NoHALProject,
+  node: SheetNode,
+): ResolvedPin[] {
   const targetSheet = getSheet(project, node.sheetId);
   return targetSheet.ports.map((port) => ({
     key: port.id,
     name: port.name,
     direction: port.direction,
     type: port.type,
-    side: port.side
+    side: port.side,
   }));
 }
 
-export function getNodePins(project: NoHALProject, node: SheetNodeInstance): ResolvedPin[] {
-  return node.kind === "component" ? getComponentNodePins(project, node) : getSheetNodePins(project, node);
+export function getNodePins(
+  project: NoHALProject,
+  node: SheetNodeInstance,
+): ResolvedPin[] {
+  return node.kind === "component"
+    ? getComponentNodePins(project, node)
+    : getSheetNodePins(project, node);
 }
 
 export function resolveEndpointInSheet(
   project: NoHALProject,
   sheetId: string,
-  endpoint: SheetEndpointRef
+  endpoint: SheetEndpointRef,
 ): ResolvedEndpoint {
   const sheet = getSheet(project, sheetId);
 
@@ -76,25 +94,31 @@ export function resolveEndpointInSheet(
       name: port.name,
       direction: invertDirection(port.direction),
       type: port.type,
-      side: port.side
+      side: port.side,
     };
   }
 
   const node = getNode(sheet, endpoint.nodeId);
   const pins = getNodePins(project, node);
   const pin = pins.find((item) => item.key === endpoint.pinKey);
-  if (!pin) throw new Error(`Pin ${endpoint.pinKey} not found on node ${endpoint.nodeId}`);
+  if (!pin)
+    throw new Error(
+      `Pin ${endpoint.pinKey} not found on node ${endpoint.nodeId}`,
+    );
 
   return {
     endpoint,
     name: pin.name,
     direction: pin.direction,
     type: pin.type,
-    side: pin.side
+    side: pin.side,
   };
 }
 
-export function getNodeTitle(project: NoHALProject, node: SheetNodeInstance): string {
+export function getNodeTitle(
+  project: NoHALProject,
+  node: SheetNodeInstance,
+): string {
   if (node.kind === "component") {
     const comp = project.library.components[node.componentId];
     return `${node.instanceName} : ${comp?.halComponentName ?? "missing"}`;
@@ -109,6 +133,9 @@ export function endpointKey(endpoint: SheetEndpointRef): string {
     : `port:${endpoint.portId}`;
 }
 
-export function endpointEquals(a: SheetEndpointRef, b: SheetEndpointRef): boolean {
+export function endpointEquals(
+  a: SheetEndpointRef,
+  b: SheetEndpointRef,
+): boolean {
   return endpointKey(a) === endpointKey(b);
 }

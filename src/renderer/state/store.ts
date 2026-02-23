@@ -1,8 +1,7 @@
 import { createStore, unwrap } from "solid-js/store";
-import { createId, slugify } from "../../shared/id";
 import { getSheet, resolveEndpointInSheet } from "../../shared/graph";
+import { createId, slugify } from "../../shared/id";
 import { createSheet, createSheetPortDraft } from "../../shared/project";
-import { validateDirectConnection } from "../../shared/validation";
 import type {
   ComponentDefinition,
   ComponentNode,
@@ -16,6 +15,7 @@ import type {
   SheetNodeInstance,
   XY,
 } from "../../shared/types";
+import { validateDirectConnection } from "../../shared/validation";
 
 export type Selection =
   | { kind: "node"; id: string }
@@ -52,25 +52,42 @@ function createEmptyComponentStore(): ComponentStore {
     format: "nohal-component-store",
     version: 2,
     sources: {},
-    components: {}
+    components: {},
   };
 }
 
-function applyComponentStoreToProject(project: NoHALProject, componentStore: ComponentStore): void {
+function applyComponentStoreToProject(
+  project: NoHALProject,
+  componentStore: ComponentStore,
+): void {
   for (const entry of Object.values(componentStore.components)) {
     project.library.components[entry.componentId] = entry.parsed;
-    reconcileComponentNodesForDefinition(project, entry.componentId, entry.parsed);
+    reconcileComponentNodesForDefinition(
+      project,
+      entry.componentId,
+      entry.parsed,
+    );
   }
 }
 
-function projectUsesComponentDefinition(project: NoHALProject, componentId: string): boolean {
+function projectUsesComponentDefinition(
+  project: NoHALProject,
+  componentId: string,
+): boolean {
   return Object.values(project.sheets).some((sheet) =>
-    sheet.nodes.some((node) => node.kind === "component" && node.componentId === componentId)
+    sheet.nodes.some(
+      (node) => node.kind === "component" && node.componentId === componentId,
+    ),
   );
 }
 
-function pruneMissingStoredComponentsFromProject(project: NoHALProject, componentStore: ComponentStore): void {
-  for (const [componentId, component] of Object.entries(project.library.components)) {
+function pruneMissingStoredComponentsFromProject(
+  project: NoHALProject,
+  componentStore: ComponentStore,
+): void {
+  for (const [componentId, component] of Object.entries(
+    project.library.components,
+  )) {
     if (component.source !== "comp") continue;
     if (componentId in componentStore.components) continue;
     if (projectUsesComponentDefinition(project, componentId)) continue;
@@ -78,7 +95,10 @@ function pruneMissingStoredComponentsFromProject(project: NoHALProject, componen
   }
 }
 
-function getComponentSourceDisplayPath(componentStore: ComponentStore, sourceId: string): string {
+function getComponentSourceDisplayPath(
+  componentStore: ComponentStore,
+  sourceId: string,
+): string {
   const source = componentStore.sources[sourceId];
   if (!source) return sourceId;
   return source.kind === "comp-dir" ? source.dirPath : source.filePath;
@@ -87,18 +107,19 @@ function getComponentSourceDisplayPath(componentStore: ComponentStore, sourceId:
 function reconcileComponentNodesForDefinition(
   project: NoHALProject,
   componentId: string,
-  component: ComponentDefinition
+  component: ComponentDefinition,
 ): void {
   const validParamKeys = new Set(component.params.map((param) => param.key));
   const defaultParams = Object.fromEntries(
     component.params
       .filter((param) => param.defaultValue !== undefined)
-      .map((param) => [param.key, param.defaultValue ?? ""])
+      .map((param) => [param.key, param.defaultValue ?? ""]),
   );
 
   for (const sheet of Object.values(project.sheets)) {
     for (const node of sheet.nodes) {
-      if (node.kind !== "component" || node.componentId !== componentId) continue;
+      if (node.kind !== "component" || node.componentId !== componentId)
+        continue;
       const nextValues: Record<string, string> = {};
       for (const [key, value] of Object.entries(node.paramValues)) {
         if (validParamKeys.has(key)) nextValues[key] = value;
@@ -175,9 +196,14 @@ function sheetContainsSheet(
   return false;
 }
 
-function isSheetPlacedInProject(project: NoHALProject, sheetId: string): boolean {
+function isSheetPlacedInProject(
+  project: NoHALProject,
+  sheetId: string,
+): boolean {
   return Object.values(project.sheets).some((sheet) =>
-    sheet.nodes.some((node) => node.kind === "sheet" && node.sheetId === sheetId),
+    sheet.nodes.some(
+      (node) => node.kind === "sheet" && node.sheetId === sheetId,
+    ),
   );
 }
 
@@ -205,7 +231,9 @@ export function createEditorStore(initialProject: NoHALProject) {
     setState("project", next);
   };
 
-  const withComponentStore = (mutate: (componentStore: ComponentStore) => void) => {
+  const withComponentStore = (
+    mutate: (componentStore: ComponentStore) => void,
+  ) => {
     const next = cloneComponentStore(state.componentStore);
     mutate(next);
     setState("componentStore", next);
@@ -222,7 +250,7 @@ export function createEditorStore(initialProject: NoHALProject) {
   const replaceProjectState = (
     project: NoHALProject,
     filePath: string | null,
-    status: string
+    status: string,
   ): void => {
     applyComponentStoreToProject(project, state.componentStore);
     setState({
@@ -234,7 +262,7 @@ export function createEditorStore(initialProject: NoHALProject) {
       pendingEndpoint: null,
       pendingWirePoints: [],
       status,
-      exportWarnings: []
+      exportWarnings: [],
     });
   };
 
@@ -248,7 +276,9 @@ export function createEditorStore(initialProject: NoHALProject) {
     },
 
     setSheetAddfQueue(sheetId: string, nodeOrder: string[]): void {
-      const normalized = Array.from(new Set(nodeOrder.map((v) => v.trim()).filter(Boolean)));
+      const normalized = Array.from(
+        new Set(nodeOrder.map((v) => v.trim()).filter(Boolean)),
+      );
       withProject((project) => {
         const sheet = getSheet(project, sheetId);
         if (!sheet.hal) sheet.hal = {};
@@ -256,7 +286,10 @@ export function createEditorStore(initialProject: NoHALProject) {
         else delete sheet.hal?.addfQueue;
         if (sheet.hal && Object.keys(sheet.hal).length === 0) delete sheet.hal;
       });
-      setState("status", `Updated sheet addf queue (${normalized.length} entries)`);
+      setState(
+        "status",
+        `Updated sheet addf queue (${normalized.length} entries)`,
+      );
     },
 
     async loadComponentStore(): Promise<void> {
@@ -285,7 +318,10 @@ export function createEditorStore(initialProject: NoHALProject) {
     addPendingWirePoint(point: XY): void {
       if (!state.pendingEndpoint) return;
       setState("pendingWirePoints", (points) => [...points, point]);
-      setState("status", `Added wire waypoint (${state.pendingWirePoints.length + 1})`);
+      setState(
+        "status",
+        `Added wire waypoint (${state.pendingWirePoints.length + 1})`,
+      );
     },
 
     async newProject(): Promise<boolean> {
@@ -294,7 +330,10 @@ export function createEditorStore(initialProject: NoHALProject) {
         replaceProjectState(project, null, "Created new project");
         return true;
       } catch (error) {
-        setState("status", `Failed to create project: ${error instanceof Error ? error.message : String(error)}`);
+        setState(
+          "status",
+          `Failed to create project: ${error instanceof Error ? error.message : String(error)}`,
+        );
         return false;
       }
     },
@@ -303,10 +342,17 @@ export function createEditorStore(initialProject: NoHALProject) {
       try {
         const result = await window.nohal.openProject();
         if (!result) return false;
-        replaceProjectState(result.project, result.filePath, `Opened ${result.filePath}`);
+        replaceProjectState(
+          result.project,
+          result.filePath,
+          `Opened ${result.filePath}`,
+        );
         return true;
       } catch (error) {
-        setState("status", `Failed to open project: ${error instanceof Error ? error.message : String(error)}`);
+        setState(
+          "status",
+          `Failed to open project: ${error instanceof Error ? error.message : String(error)}`,
+        );
         return false;
       }
     },
@@ -314,10 +360,17 @@ export function createEditorStore(initialProject: NoHALProject) {
     async openProjectAt(filePath: string): Promise<boolean> {
       try {
         const result = await window.nohal.openProjectAt(filePath);
-        replaceProjectState(result.project, result.filePath, `Opened ${result.filePath}`);
+        replaceProjectState(
+          result.project,
+          result.filePath,
+          `Opened ${result.filePath}`,
+        );
         return true;
       } catch (error) {
-        setState("status", `Failed to open project: ${error instanceof Error ? error.message : String(error)}`);
+        setState(
+          "status",
+          `Failed to open project: ${error instanceof Error ? error.message : String(error)}`,
+        );
         return false;
       }
     },
@@ -347,7 +400,10 @@ export function createEditorStore(initialProject: NoHALProject) {
       if (!entry) return;
       const componentStore = await window.nohal.loadComponentStore();
       replaceComponentStore(componentStore);
-      setState("status", `Imported .comp to store: ${entry.parsed.halComponentName}`);
+      setState(
+        "status",
+        `Imported .comp to store: ${entry.parsed.halComponentName}`,
+      );
     },
 
     async addComponentDirSource(): Promise<void> {
@@ -357,24 +413,31 @@ export function createEditorStore(initialProject: NoHALProject) {
       replaceComponentStore(componentStore);
       setState(
         "status",
-        `Added dir source ${getComponentSourceDisplayPath(componentStore, result.sourceId)}: ${result.entries.length} components, ${result.removedComponentIds.length} removed (${result.errors.length} errors)`
+        `Added dir source ${getComponentSourceDisplayPath(componentStore, result.sourceId)}: ${result.entries.length} components, ${result.removedComponentIds.length} removed (${result.errors.length} errors)`,
       );
       if (result.errors.length > 0) {
-        setState("exportWarnings", result.errors.map((e) => `Import error ${e.filePath}: ${e.error}`));
+        setState(
+          "exportWarnings",
+          result.errors.map((e) => `Import error ${e.filePath}: ${e.error}`),
+        );
       }
     },
 
     async refreshComponentSource(sourceId: string): Promise<void> {
       try {
-        const result = await window.nohal.refreshComponentSourceInStore(sourceId);
+        const result =
+          await window.nohal.refreshComponentSourceInStore(sourceId);
         const componentStore = await window.nohal.loadComponentStore();
         replaceComponentStore(componentStore);
         setState(
           "status",
-          `Refreshed source ${getComponentSourceDisplayPath(componentStore, sourceId)}: ${result.entries.length} components, ${result.removedComponentIds.length} removed (${result.errors.length} errors)`
+          `Refreshed source ${getComponentSourceDisplayPath(componentStore, sourceId)}: ${result.entries.length} components, ${result.removedComponentIds.length} removed (${result.errors.length} errors)`,
         );
         if (result.errors.length > 0) {
-          setState("exportWarnings", result.errors.map((e) => `Import error ${e.filePath}: ${e.error}`));
+          setState(
+            "exportWarnings",
+            result.errors.map((e) => `Import error ${e.filePath}: ${e.error}`),
+          );
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -384,11 +447,18 @@ export function createEditorStore(initialProject: NoHALProject) {
 
     async deleteComponentSource(sourceId: string): Promise<void> {
       try {
-        const previousPath = getComponentSourceDisplayPath(state.componentStore, sourceId);
-        const result = await window.nohal.deleteComponentSourceFromStore(sourceId);
+        const previousPath = getComponentSourceDisplayPath(
+          state.componentStore,
+          sourceId,
+        );
+        const result =
+          await window.nohal.deleteComponentSourceFromStore(sourceId);
         const componentStore = await window.nohal.loadComponentStore();
         replaceComponentStore(componentStore);
-        setState("status", `Deleted source ${previousPath} (${result.removedComponentIds.length} components removed)`);
+        setState(
+          "status",
+          `Deleted source ${previousPath} (${result.removedComponentIds.length} components removed)`,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         setState("status", `Delete source failed: ${message}`);
@@ -398,7 +468,10 @@ export function createEditorStore(initialProject: NoHALProject) {
     async refreshComponentInStore(componentId: string): Promise<void> {
       const current = state.project.library.components[componentId];
       if (!current || current.source !== "comp") {
-        setState("status", "Selected component is not a stored .comp component");
+        setState(
+          "status",
+          "Selected component is not a stored .comp component",
+        );
         return;
       }
 
@@ -409,16 +482,26 @@ export function createEditorStore(initialProject: NoHALProject) {
         });
         withProject((project) => {
           project.library.components[entry.componentId] = entry.parsed;
-          reconcileComponentNodesForDefinition(project, entry.componentId, entry.parsed);
+          reconcileComponentNodesForDefinition(
+            project,
+            entry.componentId,
+            entry.parsed,
+          );
         });
-        setState("status", `Refreshed component: ${entry.parsed.halComponentName}`);
+        setState(
+          "status",
+          `Refreshed component: ${entry.parsed.halComponentName}`,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         setState("status", `Refresh failed: ${message}`);
       }
     },
 
-    addComponentNode(componentId: string, position?: { x: number; y: number }): void {
+    addComponentNode(
+      componentId: string,
+      position?: { x: number; y: number },
+    ): void {
       const comp = state.project.library.components[componentId];
       if (!comp) return;
       withProject((project) => {
@@ -712,7 +795,9 @@ export function createEditorStore(initialProject: NoHALProject) {
           id: createId("conn"),
           a: pending,
           b: endpoint,
-          ...(state.pendingWirePoints.length > 0 ? { waypoints: [...state.pendingWirePoints] } : {}),
+          ...(state.pendingWirePoints.length > 0
+            ? { waypoints: [...state.pendingWirePoints] }
+            : {}),
         });
       });
       setState("pendingEndpoint", null);
@@ -753,7 +838,10 @@ export function createEditorStore(initialProject: NoHALProject) {
       setState("status", "Removed connection");
     },
 
-    updateDirectConnectionWaypoints(connectionId: string, waypoints: XY[]): void {
+    updateDirectConnectionWaypoints(
+      connectionId: string,
+      waypoints: XY[],
+    ): void {
       withProject((project) => {
         const sheet = getSheet(project, state.activeSheetId);
         const conn = sheet.directConnections.find((c) => c.id === connectionId);

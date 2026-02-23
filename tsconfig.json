@@ -14,9 +14,5 @@
     "jsxImportSource": "solid-js",
     "types": []
   },
-  "include": [
-    "src/renderer/**/*",
-    "src/shared/**/*",
-    "src/global.d.ts"
-  ]
+  "include": ["src/renderer/**/*", "src/shared/**/*", "src/global.d.ts"]
 }

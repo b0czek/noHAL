@@ -1,5 +1,10 @@
 import { endpointKey, getNodePins } from "../../shared/graph";
-import type { NoHALProject, SheetDefinition, SheetEndpointRef, SheetNodeInstance } from "../../shared/types";
+import type {
+  NoHALProject,
+  SheetDefinition,
+  SheetEndpointRef,
+  SheetNodeInstance,
+} from "../../shared/types";
 import {
   BOTTOM_H,
   BOTTOM_PIN_COLUMN_STEP,
@@ -9,7 +14,7 @@ import {
   HEADER_H,
   NODE_WIDTH,
   PIN_R,
-  SIDE_ROW_H
+  SIDE_ROW_H,
 } from "./constants";
 
 export type Pt = { x: number; y: number };
@@ -36,9 +41,18 @@ function estimateMonoTextWidth(text: string, fontSize: number): number {
   return Math.ceil(text.length * MONO_CHAR_WIDTH_AT_12 * (fontSize / 12));
 }
 
-function computeSidePinWidth(leftNames: string[], rightNames: string[]): number {
-  const leftMax = Math.max(0, ...leftNames.map((name) => estimateMonoTextWidth(name, 12)));
-  const rightMax = Math.max(0, ...rightNames.map((name) => estimateMonoTextWidth(name, 12)));
+function computeSidePinWidth(
+  leftNames: string[],
+  rightNames: string[],
+): number {
+  const leftMax = Math.max(
+    0,
+    ...leftNames.map((name) => estimateMonoTextWidth(name, 12)),
+  );
+  const rightMax = Math.max(
+    0,
+    ...rightNames.map((name) => estimateMonoTextWidth(name, 12)),
+  );
   return leftMax + rightMax + SIDE_LABEL_CLEARANCE + SIDE_LABEL_GAP;
 }
 
@@ -50,7 +64,9 @@ function computeBottomPinWidthVertical(bottomNames: string[]): number {
 function computeBottomPinWidthHorizontal(bottomNames: string[]): number {
   if (bottomNames.length === 0) return 0;
 
-  const pillWidths = bottomNames.map((name) => estimateMonoTextWidth(name, 11) + 16);
+  const pillWidths = bottomNames.map(
+    (name) => estimateMonoTextWidth(name, 11) + 16,
+  );
   const count = pillWidths.length;
   const maxPill = Math.max(...pillWidths);
 
@@ -60,7 +76,10 @@ function computeBottomPinWidthHorizontal(bottomNames: string[]): number {
 
   let requiredStep = maxPill / 2 + 6;
   for (let i = 0; i < pillWidths.length - 1; i += 1) {
-    requiredStep = Math.max(requiredStep, (pillWidths[i] + pillWidths[i + 1]) / 2 + 8);
+    requiredStep = Math.max(
+      requiredStep,
+      (pillWidths[i] + pillWidths[i + 1]) / 2 + 8,
+    );
   }
   return Math.ceil(requiredStep * (count + 1));
 }
@@ -68,24 +87,32 @@ function computeBottomPinWidthHorizontal(bottomNames: string[]): number {
 function computeBottomBandHeightVertical(bottomNames: string[]): number {
   if (bottomNames.length === 0) return 0;
 
-  const maxRotatedTextSpan = Math.max(...bottomNames.map((name) => estimateMonoTextWidth(name, 11)));
-  const tallestPill = Math.max(BOTTOM_PIN_PILL_W, maxRotatedTextSpan + BOTTOM_PIN_TEXT_PAD);
+  const maxRotatedTextSpan = Math.max(
+    ...bottomNames.map((name) => estimateMonoTextWidth(name, 11)),
+  );
+  const tallestPill = Math.max(
+    BOTTOM_PIN_PILL_W,
+    maxRotatedTextSpan + BOTTOM_PIN_TEXT_PAD,
+  );
   return tallestPill + BOTTOM_PIN_DOT_GAP + PIN_R;
 }
 
 function computeBottomBandHeightHorizontal(bottomNames: string[]): number {
   if (bottomNames.length === 0) return 0;
-  return (BOTTOM_H - 4) + BOTTOM_PIN_DOT_GAP + PIN_R;
+  return BOTTOM_H - 4 + BOTTOM_PIN_DOT_GAP + PIN_R;
 }
 
-export function computeNodeLayout(project: NoHALProject, node: SheetNodeInstance): NodeLayout {
+export function computeNodeLayout(
+  project: NoHALProject,
+  node: SheetNodeInstance,
+): NodeLayout {
   const pins = getNodePins(project, node);
   const left = pins.filter((p) => p.side === "left");
   const right = pins.filter((p) => p.side === "right");
   const bottom = pins.filter((p) => p.side === "bottom");
   const sideWidth = computeSidePinWidth(
     left.map((pin) => pin.name),
-    right.map((pin) => pin.name)
+    right.map((pin) => pin.name),
   );
 
   const rows = Math.max(left.length, right.length, 1);
@@ -112,7 +139,7 @@ export function computeNodeLayout(project: NoHALProject, node: SheetNodeInstance
         mode,
         bandHeight,
         widthRequirement,
-        area: candidateWidth * candidateHeight
+        area: candidateWidth * candidateHeight,
       };
     });
 
@@ -133,13 +160,16 @@ export function computeNodeLayout(project: NoHALProject, node: SheetNodeInstance
   const pinPositionsLocal: Record<string, Pt> = {};
 
   left.forEach((pin, idx) => {
-    pinPositionsLocal[pin.key] = { x: 10, y: HEADER_H + idx * SIDE_ROW_H + SIDE_ROW_H / 2 };
+    pinPositionsLocal[pin.key] = {
+      x: 10,
+      y: HEADER_H + idx * SIDE_ROW_H + SIDE_ROW_H / 2,
+    };
   });
 
   right.forEach((pin, idx) => {
     pinPositionsLocal[pin.key] = {
       x: width - 10,
-      y: HEADER_H + idx * SIDE_ROW_H + SIDE_ROW_H / 2
+      y: HEADER_H + idx * SIDE_ROW_H + SIDE_ROW_H / 2,
     };
   });
 
@@ -147,7 +177,7 @@ export function computeNodeLayout(project: NoHALProject, node: SheetNodeInstance
     const step = width / (bottom.length + 1);
     pinPositionsLocal[pin.key] = {
       x: step * (idx + 1),
-      y: height - 10
+      y: height - 10,
     };
   });
 
@@ -156,14 +186,14 @@ export function computeNodeLayout(project: NoHALProject, node: SheetNodeInstance
     height,
     bottomBandHeight,
     bottomLabelMode,
-    pinPositionsLocal
+    pinPositionsLocal,
   };
 }
 
 export function endpointPointOf(
   sheet: SheetDefinition,
   layouts: Map<string, NodeLayout>,
-  endpoint: SheetEndpointRef
+  endpoint: SheetEndpointRef,
 ): Pt | null {
   if (endpoint.kind === "sheet-port") {
     const port = sheet.ports.find((p) => p.id === endpoint.portId);
@@ -177,14 +207,19 @@ export function endpointPointOf(
   return { x: node.position.x + local.x, y: node.position.y + local.y };
 }
 
-export function buildSheetSceneLayout(project: NoHALProject, sheet: SheetDefinition): SheetSceneLayout {
-  const nodeLayouts = new Map(sheet.nodes.map((n) => [n.id, computeNodeLayout(project, n)]));
+export function buildSheetSceneLayout(
+  project: NoHALProject,
+  sheet: SheetDefinition,
+): SheetSceneLayout {
+  const nodeLayouts = new Map(
+    sheet.nodes.map((n) => [n.id, computeNodeLayout(project, n)]),
+  );
   const endpointPoints = new Map<string, Pt>();
 
   for (const port of sheet.ports) {
     endpointPoints.set(endpointKey({ kind: "sheet-port", portId: port.id }), {
       x: port.position.x,
-      y: port.position.y
+      y: port.position.y,
     });
   }
 
@@ -192,10 +227,13 @@ export function buildSheetSceneLayout(project: NoHALProject, sheet: SheetDefinit
     const layout = nodeLayouts.get(node.id);
     if (!layout) continue;
     for (const [pinKey, pt] of Object.entries(layout.pinPositionsLocal)) {
-      endpointPoints.set(endpointKey({ kind: "node-pin", nodeId: node.id, pinKey }), {
-        x: node.position.x + pt.x,
-        y: node.position.y + pt.y
-      });
+      endpointPoints.set(
+        endpointKey({ kind: "node-pin", nodeId: node.id, pinKey }),
+        {
+          x: node.position.x + pt.x,
+          y: node.position.y + pt.y,
+        },
+      );
     }
   }
 

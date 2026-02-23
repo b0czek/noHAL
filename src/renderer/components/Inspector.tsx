@@ -1,13 +1,13 @@
 import { For, Show } from "solid-js";
 import { getNodePins, getNodeTitle } from "../../shared/graph";
-import type { EditorState } from "../state/store";
 import type {
   HalValueType,
   LabelScope,
   NoHALProject,
   SheetDefinition,
-  SheetNodeInstance
+  SheetNodeInstance,
 } from "../../shared/types";
+import type { EditorState } from "../state/store";
 
 interface InspectorProps {
   state: EditorState;
@@ -15,7 +15,10 @@ interface InspectorProps {
   onOpenSelectedComponentEditor: () => void;
   onRenameNode: (nodeId: string, name: string) => void;
   onUpdateNodeParam: (nodeId: string, key: string, value: string) => void;
-  onUpdateLabel: (labelId: string, patch: { name?: string; scope?: LabelScope }) => void;
+  onUpdateLabel: (
+    labelId: string,
+    patch: { name?: string; scope?: LabelScope },
+  ) => void;
   onUpdateSheetPort: (
     portId: string,
     patch: {
@@ -23,7 +26,7 @@ interface InspectorProps {
       direction?: "in" | "out" | "io";
       type?: HalValueType;
       side?: "left" | "right" | "bottom";
-    }
+    },
   ) => void;
   onRemoveSelection: () => void;
   onRemoveConnection: (id: string) => void;
@@ -40,13 +43,13 @@ type SelectMenuOption = {
 const LABEL_SCOPE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
   { value: "local", label: "local" },
   { value: "hierarchical", label: "hierarchical" },
-  { value: "global", label: "global" }
+  { value: "global", label: "global" },
 ];
 
 const PORT_DIRECTION_OPTIONS: ReadonlyArray<SelectMenuOption> = [
   { value: "in", label: "in" },
   { value: "out", label: "out" },
-  { value: "io", label: "io" }
+  { value: "io", label: "io" },
 ];
 
 const PORT_TYPE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
@@ -56,13 +59,13 @@ const PORT_TYPE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
   { value: "u32", label: "u32" },
   { value: "s64", label: "s64" },
   { value: "u64", label: "u64" },
-  { value: "port", label: "port" }
+  { value: "port", label: "port" },
 ];
 
 const PORT_SIDE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
   { value: "left", label: "left" },
   { value: "right", label: "right" },
-  { value: "bottom", label: "bottom" }
+  { value: "bottom", label: "bottom" },
 ];
 
 export default function Inspector(props: InspectorProps) {
@@ -72,7 +75,9 @@ export default function Inspector(props: InspectorProps) {
       : undefined;
   const selectedLabel = () =>
     props.state.selection?.kind === "label"
-      ? props.currentSheet.labels.find((l) => l.id === props.state.selection?.id)
+      ? props.currentSheet.labels.find(
+          (l) => l.id === props.state.selection?.id,
+        )
       : undefined;
   const selectedPort = () =>
     props.state.selection?.kind === "sheet-port"
@@ -83,8 +88,14 @@ export default function Inspector(props: InspectorProps) {
     <aside class="inspector">
       <section class="panel">
         <div class="panel-title">Session</div>
-        <div class="kv"><span>Status</span><span>{props.state.status}</span></div>
-        <div class="kv"><span>File</span><span>{props.state.filePath ?? "(unsaved)"}</span></div>
+        <div class="kv">
+          <span>Status</span>
+          <span>{props.state.status}</span>
+        </div>
+        <div class="kv">
+          <span>File</span>
+          <span>{props.state.filePath ?? "(unsaved)"}</span>
+        </div>
       </section>
 
       <section class="panel">
@@ -113,7 +124,11 @@ export default function Inspector(props: InspectorProps) {
                 Name
                 <input
                   value={label().name}
-                  onInput={(e) => props.onUpdateLabel(label().id, { name: e.currentTarget.value })}
+                  onInput={(e) =>
+                    props.onUpdateLabel(label().id, {
+                      name: e.currentTarget.value,
+                    })
+                  }
                 />
               </label>
               <label>
@@ -123,7 +138,7 @@ export default function Inspector(props: InspectorProps) {
                   options={LABEL_SCOPE_OPTIONS}
                   onChange={(value) =>
                     props.onUpdateLabel(label().id, {
-                      scope: value as LabelScope
+                      scope: value as LabelScope,
                     })
                   }
                 />
@@ -139,7 +154,11 @@ export default function Inspector(props: InspectorProps) {
                 Name
                 <input
                   value={port().name}
-                  onInput={(e) => props.onUpdateSheetPort(port().id, { name: e.currentTarget.value })}
+                  onInput={(e) =>
+                    props.onUpdateSheetPort(port().id, {
+                      name: e.currentTarget.value,
+                    })
+                  }
                 />
               </label>
               <label>
@@ -149,7 +168,7 @@ export default function Inspector(props: InspectorProps) {
                   options={PORT_DIRECTION_OPTIONS}
                   onChange={(value) =>
                     props.onUpdateSheetPort(port().id, {
-                      direction: value as "in" | "out" | "io"
+                      direction: value as "in" | "out" | "io",
                     })
                   }
                 />
@@ -161,7 +180,7 @@ export default function Inspector(props: InspectorProps) {
                   options={PORT_TYPE_OPTIONS}
                   onChange={(value) =>
                     props.onUpdateSheetPort(port().id, {
-                      type: value as HalValueType
+                      type: value as HalValueType,
                     })
                   }
                 />
@@ -173,7 +192,7 @@ export default function Inspector(props: InspectorProps) {
                   options={PORT_SIDE_OPTIONS}
                   onChange={(value) =>
                     props.onUpdateSheetPort(port().id, {
-                      side: value as "left" | "right" | "bottom"
+                      side: value as "left" | "right" | "bottom",
                     })
                   }
                 />
@@ -183,7 +202,11 @@ export default function Inspector(props: InspectorProps) {
         </Show>
 
         <Show when={props.state.selection}>
-          <button class="btn danger" onClick={props.onRemoveSelection}>
+          <button
+            type="button"
+            class="btn danger"
+            onClick={props.onRemoveSelection}
+          >
             Delete Selection
           </button>
         </Show>
@@ -196,7 +219,10 @@ export default function Inspector(props: InspectorProps) {
           <For each={props.currentSheet.directConnections}>
             {(conn) => (
               <div class="list-row">
-                <button class="linkish" onClick={() => props.onRemoveConnection(conn.id)}>
+                <button
+                  class="linkish"
+                  onClick={() => props.onRemoveConnection(conn.id)}
+                >
                   remove
                 </button>
                 <span class="mono">{conn.id}</span>
@@ -210,7 +236,10 @@ export default function Inspector(props: InspectorProps) {
           <For each={props.currentSheet.labelAnchors}>
             {(anchor) => (
               <div class="list-row">
-                <button class="linkish" onClick={() => props.onRemoveLabelAnchor(anchor.id)}>
+                <button
+                  class="linkish"
+                  onClick={() => props.onRemoveLabelAnchor(anchor.id)}
+                >
                   remove
                 </button>
                 <span class="mono">{anchor.id}</span>
@@ -240,7 +269,8 @@ function SelectMenu(props: {
   onChange: (value: string) => void;
 }) {
   const currentLabel = () =>
-    props.options.find((option) => option.value === props.value)?.label ?? props.value;
+    props.options.find((option) => option.value === props.value)?.label ??
+    props.value;
 
   return (
     <details class="field-menu">
@@ -276,7 +306,9 @@ function NodeInspector(props: {
 }) {
   const pins = () => getNodePins(props.project, props.node);
   const component = () =>
-    props.node.kind === "component" ? props.project.library.components[props.node.componentId] : undefined;
+    props.node.kind === "component"
+      ? props.project.library.components[props.node.componentId]
+      : undefined;
 
   return (
     <div class="inspector-group">
@@ -286,7 +318,10 @@ function NodeInspector(props: {
         fallback={
           <label>
             Instance Name
-            <input value={props.node.instanceName} onInput={(e) => props.onRename(e.currentTarget.value)} />
+            <input
+              value={props.node.instanceName}
+              onInput={(e) => props.onRename(e.currentTarget.value)}
+            />
           </label>
         }
       >
@@ -294,8 +329,17 @@ function NodeInspector(props: {
           Open Component Settings
         </button>
       </Show>
-      <Show when={props.node.kind === "component" && component()?.source === "comp" && component()}>
-        <button class="btn subtle" onClick={() => props.onRefreshComponentInStore(component()!.id)}>
+      <Show
+        when={
+          props.node.kind === "component" &&
+          component()?.source === "comp" &&
+          component()
+        }
+      >
+        <button
+          class="btn subtle"
+          onClick={() => props.onRefreshComponentInStore(component()!.id)}
+        >
           Refresh Component Definition
         </button>
       </Show>

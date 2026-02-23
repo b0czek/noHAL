@@ -3,7 +3,7 @@ import solid from "vite-plugin-solid";
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
@@ -11,12 +11,12 @@ export default defineConfig({
       rollupOptions: {
         output: {
           format: "cjs",
-          entryFileNames: "[name].cjs"
-        }
-      }
-    }
+          entryFileNames: "[name].cjs",
+        },
+      },
+    },
   },
   renderer: {
-    plugins: [solid()]
-  }
+    plugins: [solid()],
+  },
 });

@@ -1,4 +1,4 @@
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { getNodePins, getNodeTitle } from "../../shared/graph";
 import type { ComponentNode, NoHALProject } from "../../shared/types";
@@ -14,11 +14,16 @@ interface ComponentNodeDialogProps {
 
 export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
   const component = createMemo(() =>
-    props.node ? props.project.library.components[props.node.componentId] : undefined
+    props.node
+      ? props.project.library.components[props.node.componentId]
+      : undefined,
   );
-  const pins = createMemo(() => (props.node ? getNodePins(props.project, props.node) : []));
+  const pins = createMemo(() =>
+    props.node ? getNodePins(props.project, props.node) : [],
+  );
   const pinFilterModes = ["all", "in", "out", "io"] as const;
-  const [pinFilter, setPinFilter] = createSignal<(typeof pinFilterModes)[number]>("all");
+  const [pinFilter, setPinFilter] =
+    createSignal<(typeof pinFilterModes)[number]>("all");
   const visiblePins = createMemo(() => {
     const mode = pinFilter();
     return mode === "all" ? pins() : pins().filter((p) => p.direction === mode);
@@ -43,7 +48,9 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
             <div class="modal-header">
               <div>
                 <div class="modal-title">Component Settings</div>
-                <div class="modal-sub mono">{props.node ? getNodeTitle(props.project, props.node) : ""}</div>
+                <div class="modal-sub mono">
+                  {props.node ? getNodeTitle(props.project, props.node) : ""}
+                </div>
               </div>
               <button class="btn subtle" onClick={props.onClose}>
                 Close
@@ -82,7 +89,10 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
 
               <section class="panel">
                 <div class="panel-title">Parameters</div>
-                <Show when={component() && component()!.params.length > 0} fallback={<div class="muted">No parameters.</div>}>
+                <Show
+                  when={component() && component()!.params.length > 0}
+                  fallback={<div class="muted">No parameters.</div>}
+                >
                   <div class="inspector-group">
                     <For each={component()!.params}>
                       {(param) => (
@@ -90,7 +100,12 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                           <span class="mono">{param.name}</span>
                           <input
                             value={props.node?.paramValues[param.key] ?? ""}
-                            onInput={(evt) => props.onUpdateParam(param.key, evt.currentTarget.value)}
+                            onInput={(evt) =>
+                              props.onUpdateParam(
+                                param.key,
+                                evt.currentTarget.value,
+                              )
+                            }
                             placeholder={param.defaultValue ?? ""}
                           />
                         </label>
@@ -118,7 +133,9 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                   <For each={visiblePins()}>
                     {(pin) => (
                       <div class="list-row">
-                        <span class={`chip dir-${pin.direction}`}>{pin.direction}</span>
+                        <span class={`chip dir-${pin.direction}`}>
+                          {pin.direction}
+                        </span>
                         <span class="mono">{pin.name}</span>
                         <span class="chip type">{pin.type}</span>
                       </div>

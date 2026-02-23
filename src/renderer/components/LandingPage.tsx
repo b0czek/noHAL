@@ -1,5 +1,5 @@
-import { For, Show } from "solid-js";
 import { HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
+import { For, Show } from "solid-js";
 import type { RecentProjectEntry } from "../../shared/types";
 import "./LandingPage.css";
 
@@ -46,8 +46,8 @@ export default function LandingPage(props: LandingPageProps) {
           </div>
           <h1 class="landing-title">Pick a project and get to work.</h1>
           <p class="landing-copy">
-            Open an existing `.nohal.json` file or create a new project and jump into the editor only when you are
-            ready.
+            Open an existing `.nohal.json` file or create a new project and jump
+            into the editor only when you are ready.
           </p>
           <div class="landing-actions">
             <button
@@ -89,13 +89,19 @@ export default function LandingPage(props: LandingPageProps) {
 
           <Show
             when={!props.isRecentProjectsLoading}
-            fallback={<div class="landing-recents-empty muted">Loading recent projects...</div>}
+            fallback={
+              <div class="landing-recents-empty muted">
+                Loading recent projects...
+              </div>
+            }
           >
             <Show
               when={props.recentProjects.length > 0}
               fallback={
                 <div class="landing-recents-empty muted">
-                  No recent projects yet. Use <span class="mono">New Project</span> or <span class="mono">Open Project</span>.
+                  No recent projects yet. Use{" "}
+                  <span class="mono">New Project</span> or{" "}
+                  <span class="mono">Open Project</span>.
                 </div>
               }
             >
@@ -110,10 +116,16 @@ export default function LandingPage(props: LandingPageProps) {
                       title={entry.filePath}
                     >
                       <div class="landing-recent-main">
-                        <div class="landing-recent-name">{recentProjectName(entry)}</div>
-                        <div class="landing-recent-path mono">{recentProjectPathTail(entry.filePath)}</div>
+                        <div class="landing-recent-name">
+                          {recentProjectName(entry)}
+                        </div>
+                        <div class="landing-recent-path mono">
+                          {recentProjectPathTail(entry.filePath)}
+                        </div>
                       </div>
-                      <div class="landing-recent-time">{recentProjectTime(entry.lastOpenedAt)}</div>
+                      <div class="landing-recent-time">
+                        {recentProjectTime(entry.lastOpenedAt)}
+                      </div>
                     </button>
                   )}
                 </For>

@@ -1,7 +1,18 @@
-import { createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
-import type { NoHALProject, SheetDefinition, SheetEndpointRef, XY } from "../../shared/types";
-import type { Selection } from "../state/store";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+} from "solid-js";
+import type {
+  NoHALProject,
+  SheetDefinition,
+  SheetEndpointRef,
+  XY,
+} from "../../shared/types";
 import { KonvaSheetScene } from "../canvas/konvaSheetScene";
+import type { Selection } from "../state/store";
 import CanvasComponentMenu from "./CanvasComponentMenu";
 
 interface CanvasProps {
@@ -27,7 +38,12 @@ export default function Canvas(props: CanvasProps) {
   let hostEl!: HTMLDivElement;
   let scene: KonvaSheetScene | null = null;
   let resizeObserver: ResizeObserver | null = null;
-  const [menu, setMenu] = createSignal<{ x: number; y: number; worldX: number; worldY: number } | null>(null);
+  const [menu, setMenu] = createSignal<{
+    x: number;
+    y: number;
+    worldX: number;
+    worldY: number;
+  } | null>(null);
   const [camera, setCamera] = createSignal({ x: 0, y: 0, scale: 1 });
 
   const wrapOffset = (value: number, spacing: number) => {
@@ -45,12 +61,14 @@ export default function Canvas(props: CanvasProps) {
       `--grid-offset-x:${wrapOffset(x, minorSpace)}px`,
       `--grid-offset-y:${wrapOffset(y, minorSpace)}px`,
       `--grid-major-offset-x:${wrapOffset(x, majorSpace)}px`,
-      `--grid-major-offset-y:${wrapOffset(y, majorSpace)}px`
+      `--grid-major-offset-y:${wrapOffset(y, majorSpace)}px`,
     ].join(";");
   });
 
   const componentChoices = createMemo(() =>
-    Object.values(props.project.library.components).sort((a, b) => a.halComponentName.localeCompare(b.halComponentName))
+    Object.values(props.project.library.components).sort((a, b) =>
+      a.halComponentName.localeCompare(b.halComponentName),
+    ),
   );
 
   onMount(() => {
@@ -64,7 +82,7 @@ export default function Canvas(props: CanvasProps) {
       onMoveLabel: props.onMoveLabel,
       onMoveSheetPort: props.onMoveSheetPort,
       onMoveConnectionWaypoints: props.onMoveConnectionWaypoints,
-      onCameraChange: setCamera
+      onCameraChange: setCamera,
     });
     resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -77,7 +95,7 @@ export default function Canvas(props: CanvasProps) {
       sheet: props.sheet,
       selection: props.selection,
       pendingEndpoint: props.pendingEndpoint,
-      pendingWirePoints: props.pendingWirePoints
+      pendingWirePoints: props.pendingWirePoints,
     });
   });
 
@@ -92,7 +110,7 @@ export default function Canvas(props: CanvasProps) {
       sheet: props.sheet,
       selection: props.selection,
       pendingEndpoint: props.pendingEndpoint,
-      pendingWirePoints: props.pendingWirePoints
+      pendingWirePoints: props.pendingWirePoints,
     });
   });
 
@@ -125,7 +143,10 @@ export default function Canvas(props: CanvasProps) {
             const menuH = 440;
             const x = Math.max(8, Math.min(localX, rect.width - menuW - 8));
             const y = Math.max(8, Math.min(localY, rect.height - menuH - 8));
-            const world = scene?.clientToWorld(evt.clientX, evt.clientY) ?? { x: 120, y: 120 };
+            const world = scene?.clientToWorld(evt.clientX, evt.clientY) ?? {
+              x: 120,
+              y: 120,
+            };
             setMenu({ x, y, worldX: world.x, worldY: world.y });
           }}
         />
@@ -136,7 +157,11 @@ export default function Canvas(props: CanvasProps) {
           components={componentChoices()}
           onAddComponent={(componentId) => {
             const m = menu();
-            props.onAddComponentAt(componentId, m?.worldX ?? 120, m?.worldY ?? 120);
+            props.onAddComponentAt(
+              componentId,
+              m?.worldX ?? 120,
+              m?.worldY ?? 120,
+            );
           }}
           onClose={() => setMenu(null)}
         />

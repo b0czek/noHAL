@@ -1,7 +1,7 @@
-import { BrowserWindow } from "electron";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { BrowserWindow } from "electron";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -9,9 +9,11 @@ export function createWindow(): void {
   const preloadCandidates = [
     path.join(__dirname, "../preload/index.cjs"),
     path.join(__dirname, "../preload/index.mjs"),
-    path.join(__dirname, "../preload/index.js")
+    path.join(__dirname, "../preload/index.js"),
   ];
-  const preloadPath = preloadCandidates.find((candidate) => existsSync(candidate)) ?? preloadCandidates[0];
+  const preloadPath =
+    preloadCandidates.find((candidate) => existsSync(candidate)) ??
+    preloadCandidates[0];
 
   const win = new BrowserWindow({
     width: 1600,
@@ -22,8 +24,8 @@ export function createWindow(): void {
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
-      nodeIntegration: false
-    }
+      nodeIntegration: false,
+    },
   });
   win.setMenuBarVisibility(false);
 

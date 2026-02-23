@@ -1,4 +1,4 @@
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { ComponentStore } from "../../shared/types";
 
@@ -18,12 +18,14 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
 
   const filteredEntries = createMemo(() => {
     const q = query().trim().toLowerCase();
-    const entries = Object.values(props.componentStore.components).sort((a, b) =>
-      a.parsed.halComponentName.localeCompare(b.parsed.halComponentName)
+    const entries = Object.values(props.componentStore.components).sort(
+      (a, b) =>
+        a.parsed.halComponentName.localeCompare(b.parsed.halComponentName),
     );
     if (!q) return entries;
     return entries.filter((entry) => {
-      const hay = `${entry.parsed.halComponentName} ${entry.parsed.name} ${entry.sourceRef.filePath}`.toLowerCase();
+      const hay =
+        `${entry.parsed.halComponentName} ${entry.parsed.name} ${entry.sourceRef.filePath}`.toLowerCase();
       return hay.includes(q);
     });
   });
@@ -33,7 +35,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
       const aPath = a.kind === "comp-dir" ? a.dirPath : a.filePath;
       const bPath = b.kind === "comp-dir" ? b.dirPath : b.filePath;
       return aPath.localeCompare(bPath);
-    })
+    }),
   );
 
   const formatDateTime = (value: string) => {
@@ -62,7 +64,8 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
               <div>
                 <div class="modal-title">Component Store</div>
                 <div class="modal-sub">
-                  {Object.keys(props.componentStore.components).length} stored components • {componentSources().length} sources
+                  {Object.keys(props.componentStore.components).length} stored
+                  components • {componentSources().length} sources
                 </div>
               </div>
               <button class="btn subtle" onClick={props.onClose}>
@@ -75,8 +78,12 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                 <div class="panel-title">Component Sources</div>
                 <div class="component-store-toolbar">
                   <div class="toolbar-group">
-                    <button class="btn" onClick={props.onAddCompDirSource}>Add Dir Source</button>
-                    <button class="btn" onClick={props.onImportCompFile}>Import .comp</button>
+                    <button class="btn" onClick={props.onAddCompDirSource}>
+                      Add Dir Source
+                    </button>
+                    <button class="btn" onClick={props.onImportCompFile}>
+                      Import .comp
+                    </button>
                   </div>
                 </div>
 
@@ -85,26 +92,48 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                     {(source) => {
                       const sourceComponentCount = () =>
                         Object.values(props.componentStore.components).filter(
-                          (entry) => entry.sourceRef.sourceId === source.id
+                          (entry) => entry.sourceRef.sourceId === source.id,
                         ).length;
-                      const sourcePath = () => (source.kind === "comp-dir" ? source.dirPath : source.filePath);
+                      const sourcePath = () =>
+                        source.kind === "comp-dir"
+                          ? source.dirPath
+                          : source.filePath;
 
                       return (
-                        <div class="component-row component-store-row" title={sourcePath()}>
+                        <div
+                          class="component-row component-store-row"
+                          title={sourcePath()}
+                        >
                           <div class="component-store-main">
-                            <div class="component-name mono">{sourcePath()}</div>
+                            <div class="component-name mono">
+                              {sourcePath()}
+                            </div>
                             <div class="component-sub">
-                              <span class="chip type">{source.kind === "comp-dir" ? "dir" : ".comp"}</span>
+                              <span class="chip type">
+                                {source.kind === "comp-dir" ? "dir" : ".comp"}
+                              </span>
                               {sourceComponentCount()} components
-                              {source.lastScanAt ? ` • last scan ${formatDateTime(source.lastScanAt)}` : ""}
+                              {source.lastScanAt
+                                ? ` • last scan ${formatDateTime(source.lastScanAt)}`
+                                : ""}
                               {source.lastError ? ` • ${source.lastError}` : ""}
                             </div>
                           </div>
                           <div class="component-store-actions">
-                            <button class="mini" onClick={() => props.onRefreshComponentSource(source.id)}>
+                            <button
+                              class="mini"
+                              onClick={() =>
+                                props.onRefreshComponentSource(source.id)
+                              }
+                            >
                               Refresh
                             </button>
-                            <button class="mini" onClick={() => props.onDeleteComponentSource(source.id)}>
+                            <button
+                              class="mini"
+                              onClick={() =>
+                                props.onDeleteComponentSource(source.id)
+                              }
+                            >
                               Delete Source
                             </button>
                           </div>
@@ -114,7 +143,9 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                   </For>
 
                   <Show when={componentSources().length === 0}>
-                    <div class="muted component-store-empty">No component sources yet.</div>
+                    <div class="muted component-store-empty">
+                      No component sources yet.
+                    </div>
                   </Show>
                 </div>
               </section>
@@ -133,23 +164,40 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                 <div class="component-store-list">
                   <For each={filteredEntries()}>
                     {(entry) => (
-                      <div class="component-row component-store-row" title={entry.sourceRef.filePath}>
+                      <div
+                        class="component-row component-store-row"
+                        title={entry.sourceRef.filePath}
+                      >
                         <div class="component-store-main">
-                          <div class="component-name">{entry.parsed.halComponentName}</div>
+                          <div class="component-name">
+                            {entry.parsed.halComponentName}
+                          </div>
                           <div class="component-sub">
-                            {entry.parsed.pins.length} pins • {entry.parsed.params.length} params
+                            {entry.parsed.pins.length} pins •{" "}
+                            {entry.parsed.params.length} params
                             {entry.parsed.parseMeta.warnings.length > 0
                               ? ` • ${entry.parsed.parseMeta.warnings.length} warnings`
                               : ""}
                           </div>
                           <div class="component-sub">
-                            {entry.sourceRef.kind === "comp-dir" ? "dir source" : "file import"}
+                            {entry.sourceRef.kind === "comp-dir"
+                              ? "dir source"
+                              : "file import"}
                           </div>
-                          <div class="component-sub component-store-path mono">{entry.sourceRef.filePath}</div>
-                          <div class="component-sub">Updated {formatDateTime(entry.updatedAt)}</div>
+                          <div class="component-sub component-store-path mono">
+                            {entry.sourceRef.filePath}
+                          </div>
+                          <div class="component-sub">
+                            Updated {formatDateTime(entry.updatedAt)}
+                          </div>
                         </div>
                         <div class="component-store-actions">
-                          <button class="mini" onClick={() => props.onRefreshStoredComponent(entry.componentId)}>
+                          <button
+                            class="mini"
+                            onClick={() =>
+                              props.onRefreshStoredComponent(entry.componentId)
+                            }
+                          >
                             Refresh
                           </button>
                         </div>
