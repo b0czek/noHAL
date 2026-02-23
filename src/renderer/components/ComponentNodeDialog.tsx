@@ -1,4 +1,5 @@
 import { For, Show, createMemo, createSignal } from "solid-js";
+import { Portal } from "solid-js/web";
 import { getNodePins, getNodeTitle } from "../../shared/graph";
 import type { ComponentNode, NoHALProject } from "../../shared/types";
 
@@ -25,108 +26,110 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
 
   return (
     <Show when={props.open && props.node}>
-      <div
-        class="modal-backdrop"
-        onPointerDown={() => props.onClose()}
-        onContextMenu={(evt) => evt.preventDefault()}
-      >
+      <Portal>
         <div
-          class="modal component-settings-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Component Settings"
-          onPointerDown={(evt) => evt.stopPropagation()}
+          class="modal-backdrop"
+          onPointerDown={() => props.onClose()}
           onContextMenu={(evt) => evt.preventDefault()}
         >
-          <div class="modal-header">
-            <div>
-              <div class="modal-title">Component Settings</div>
-              <div class="modal-sub mono">{props.node ? getNodeTitle(props.project, props.node) : ""}</div>
+          <div
+            class="modal component-settings-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Component Settings"
+            onPointerDown={(evt) => evt.stopPropagation()}
+            onContextMenu={(evt) => evt.preventDefault()}
+          >
+            <div class="modal-header">
+              <div>
+                <div class="modal-title">Component Settings</div>
+                <div class="modal-sub mono">{props.node ? getNodeTitle(props.project, props.node) : ""}</div>
+              </div>
+              <button class="btn subtle" onClick={props.onClose}>
+                Close
+              </button>
             </div>
-            <button class="btn subtle" onClick={props.onClose}>
-              Close
-            </button>
-          </div>
 
-          <div class="modal-body">
-            <section class="panel">
-              <div class="panel-title">Instance</div>
-              <label>
-                Instance Name
-                <input
-                  value={props.node?.instanceName ?? ""}
-                  onInput={(evt) => props.onRename(evt.currentTarget.value)}
-                />
-              </label>
-              <Show when={component()}>
-                {(comp) => (
-                  <div class="list compact">
-                    <div class="list-row">
-                      <span class="muted">HAL Component</span>
-                      <span class="mono">{comp().halComponentName}</span>
+            <div class="modal-body">
+              <section class="panel">
+                <div class="panel-title">Instance</div>
+                <label>
+                  Instance Name
+                  <input
+                    value={props.node?.instanceName ?? ""}
+                    onInput={(evt) => props.onRename(evt.currentTarget.value)}
+                  />
+                </label>
+                <Show when={component()}>
+                  {(comp) => (
+                    <div class="list compact">
+                      <div class="list-row">
+                        <span class="muted">HAL Component</span>
+                        <span class="mono">{comp().halComponentName}</span>
+                      </div>
+                      <div class="list-row">
+                        <span class="muted">Source</span>
+                        <span>{comp().source}</span>
+                      </div>
+                      <div class="list-row">
+                        <span class="muted">Runtime</span>
+                        <span>{comp().runtime?.kind ?? "unknown"}</span>
+                      </div>
                     </div>
-                    <div class="list-row">
-                      <span class="muted">Source</span>
-                      <span>{comp().source}</span>
-                    </div>
-                    <div class="list-row">
-                      <span class="muted">Runtime</span>
-                      <span>{comp().runtime?.kind ?? "unknown"}</span>
-                    </div>
+                  )}
+                </Show>
+              </section>
+
+              <section class="panel">
+                <div class="panel-title">Parameters</div>
+                <Show when={component() && component()!.params.length > 0} fallback={<div class="muted">No parameters.</div>}>
+                  <div class="inspector-group">
+                    <For each={component()!.params}>
+                      {(param) => (
+                        <label>
+                          <span class="mono">{param.name}</span>
+                          <input
+                            value={props.node?.paramValues[param.key] ?? ""}
+                            onInput={(evt) => props.onUpdateParam(param.key, evt.currentTarget.value)}
+                            placeholder={param.defaultValue ?? ""}
+                          />
+                        </label>
+                      )}
+                    </For>
                   </div>
-                )}
-              </Show>
-            </section>
+                </Show>
+              </section>
 
-            <section class="panel">
-              <div class="panel-title">Parameters</div>
-              <Show when={component() && component()!.params.length > 0} fallback={<div class="muted">No parameters.</div>}>
-                <div class="inspector-group">
-                  <For each={component()!.params}>
-                    {(param) => (
-                      <label>
-                        <span class="mono">{param.name}</span>
-                        <input
-                          value={props.node?.paramValues[param.key] ?? ""}
-                          onInput={(evt) => props.onUpdateParam(param.key, evt.currentTarget.value)}
-                          placeholder={param.defaultValue ?? ""}
-                        />
-                      </label>
+              <section class="panel">
+                <div class="panel-title">Pins</div>
+                <div class="toolbar-group pin-filter-row">
+                  <For each={pinFilterModes}>
+                    {(mode) => (
+                      <button
+                        class={`mini ${pinFilter() === mode ? "is-active-filter" : ""}`}
+                        onClick={() => setPinFilter(mode)}
+                      >
+                        {mode}
+                      </button>
                     )}
                   </For>
                 </div>
-              </Show>
-            </section>
-
-            <section class="panel">
-              <div class="panel-title">Pins</div>
-              <div class="toolbar-group pin-filter-row">
-                <For each={pinFilterModes}>
-                  {(mode) => (
-                    <button
-                      class={`mini ${pinFilter() === mode ? "is-active-filter" : ""}`}
-                      onClick={() => setPinFilter(mode)}
-                    >
-                      {mode}
-                    </button>
-                  )}
-                </For>
-              </div>
-              <div class="list compact">
-                <For each={visiblePins()}>
-                  {(pin) => (
-                    <div class="list-row">
-                      <span class={`chip dir-${pin.direction}`}>{pin.direction}</span>
-                      <span class="mono">{pin.name}</span>
-                      <span class="chip type">{pin.type}</span>
-                    </div>
-                  )}
-                </For>
-              </div>
-            </section>
+                <div class="list compact">
+                  <For each={visiblePins()}>
+                    {(pin) => (
+                      <div class="list-row">
+                        <span class={`chip dir-${pin.direction}`}>{pin.direction}</span>
+                        <span class="mono">{pin.name}</span>
+                        <span class="chip type">{pin.type}</span>
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </section>
+            </div>
           </div>
         </div>
-      </div>
+      </Portal>
     </Show>
   );
 }

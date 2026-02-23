@@ -102,6 +102,12 @@ function sheetContainsSheet(
   return false;
 }
 
+function isSheetPlacedInProject(project: NoHALProject, sheetId: string): boolean {
+  return Object.values(project.sheets).some((sheet) =>
+    sheet.nodes.some((node) => node.kind === "sheet" && node.sheetId === sheetId),
+  );
+}
+
 function syncProjectUi(project: NoHALProject, activeSheetId: string): void {
   project.ui.activeSheetId = activeSheetId;
 }
@@ -277,6 +283,10 @@ export function createEditorStore(initialProject: NoHALProject) {
     placeExistingSheetNode(sheetIdToPlace: string): void {
       if (sheetIdToPlace === state.activeSheetId) {
         setState("status", "Cannot place a sheet inside itself");
+        return;
+      }
+      if (isSheetPlacedInProject(state.project, sheetIdToPlace)) {
+        setState("status", "Sheet is already placed");
         return;
       }
       if (

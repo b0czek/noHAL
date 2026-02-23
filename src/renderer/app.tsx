@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, For } from "solid-js";
+import { createEffect, createMemo, createSignal } from "solid-js";
 import { createEmptyProject } from "../shared/project";
 import { getSheet } from "../shared/graph";
 import Canvas from "./components/Canvas";
@@ -24,17 +24,6 @@ export default function App() {
     const node = currentSheet().nodes.find((n) => n.id === id);
     return node && node.kind === "component" ? node : null;
   });
-  const breadcrumb = createMemo(() => {
-    const items: Array<{ id: string; name: string }> = [];
-    let cursor = currentSheet();
-    items.push({ id: cursor.id, name: cursor.name });
-    while (cursor.parentSheetId) {
-      cursor = getSheet(state.project, cursor.parentSheetId);
-      items.push({ id: cursor.id, name: cursor.name });
-    }
-    return items.reverse();
-  });
-
   const labelClick = (labelId: string) => {
     if (state.pendingEndpoint) {
       actions.anchorPendingToLabel(labelId);
@@ -45,7 +34,11 @@ export default function App() {
 
   const openComponentEditorForNode = (nodeId: string) => {
     const node = currentSheet().nodes.find((n) => n.id === nodeId);
-    if (!node || node.kind !== "component") return;
+    if (!node) return;
+    if (node.kind === "sheet") {
+      actions.setActiveSheet(node.sheetId);
+      return;
+    }
     setComponentEditorNodeId(node.id);
   };
 
@@ -53,6 +46,11 @@ export default function App() {
     const node = selectedNode();
     if (!node || node.kind !== "component") return;
     setComponentEditorNodeId(node.id);
+  };
+
+  const closeToolbarMenu = (el: HTMLElement) => {
+    const host = el.closest("details");
+    if (host instanceof HTMLDetailsElement) host.open = false;
   };
 
   createEffect(() => {
@@ -95,41 +93,82 @@ export default function App() {
         </div>
 
         <div class="toolbar-group">
-          <button class="btn" onClick={() => actions.addSheetPort("in", "bit")}>+ In Port</button>
-          <button class="btn" onClick={() => actions.addSheetPort("out", "bit")}>+ Out Port</button>
-          <button class="btn" onClick={() => actions.addSheetPort("io", "float")}>+ IO Port</button>
-          <button class="btn" onClick={() => actions.addLabel("local")}>+ Local Label</button>
-          <button class="btn" onClick={() => actions.addLabel("hierarchical")}>+ Hier Label</button>
-          <button class="btn" onClick={() => actions.addLabel("global")}>+ Global Label</button>
+          <button class="btn" onClick={() => actions.addSheetDefinition()}>+ Subsheet</button>
+          <details class="toolbar-menu">
+            <summary class="btn toolbar-menu-summary">+ Port</summary>
+            <div class="toolbar-menu-popover">
+              <button
+                class="toolbar-menu-item"
+                onClick={(evt) => {
+                  actions.addSheetPort("in", "bit");
+                  closeToolbarMenu(evt.currentTarget);
+                }}
+              >
+                In Port (bit)
+              </button>
+              <button
+                class="toolbar-menu-item"
+                onClick={(evt) => {
+                  actions.addSheetPort("out", "bit");
+                  closeToolbarMenu(evt.currentTarget);
+                }}
+              >
+                Out Port (bit)
+              </button>
+              <button
+                class="toolbar-menu-item"
+                onClick={(evt) => {
+                  actions.addSheetPort("io", "float");
+                  closeToolbarMenu(evt.currentTarget);
+                }}
+              >
+                IO Port (float)
+              </button>
+            </div>
+          </details>
+          <details class="toolbar-menu">
+            <summary class="btn toolbar-menu-summary">+ Label</summary>
+            <div class="toolbar-menu-popover">
+              <button
+                class="toolbar-menu-item"
+                onClick={(evt) => {
+                  actions.addLabel("local");
+                  closeToolbarMenu(evt.currentTarget);
+                }}
+              >
+                Local Label
+              </button>
+              <button
+                class="toolbar-menu-item"
+                onClick={(evt) => {
+                  actions.addLabel("hierarchical");
+                  closeToolbarMenu(evt.currentTarget);
+                }}
+              >
+                Hier Label
+              </button>
+              <button
+                class="toolbar-menu-item"
+                onClick={(evt) => {
+                  actions.addLabel("global");
+                  closeToolbarMenu(evt.currentTarget);
+                }}
+              >
+                Global Label
+              </button>
+            </div>
+          </details>
         </div>
       </header>
-
-      <div class="crumbs">
-        <For each={breadcrumb()}>
-          {(item, idx) => (
-            <>
-              <button class={`crumb ${item.id === state.activeSheetId ? "is-active" : ""}`} onClick={() => actions.setActiveSheet(item.id)}>
-                {item.name}
-              </button>
-              {idx() < breadcrumb().length - 1 && <span class="crumb-sep">/</span>}
-            </>
-          )}
-        </For>
-        <button class="btn subtle" onClick={() => actions.goToParentSheet()} disabled={!currentSheet().parentSheetId}>
-          Up
-        </button>
-        <button class="btn subtle" onClick={() => actions.clearPendingEndpoint()} disabled={!state.pendingEndpoint}>
-          Cancel Wire
-        </button>
-      </div>
 
       <main class="workspace">
         <Sidebar
           project={state.project}
           activeSheetId={state.activeSheetId}
-          onCreateSubsheet={() => actions.addSheetDefinition()}
           onPlaceSheet={(id) => actions.placeExistingSheetNode(id)}
           onGoToSheet={(id) => actions.setActiveSheet(id)}
+          onGoToParentSheet={() => actions.goToParentSheet()}
+          canGoToParentSheet={Boolean(currentSheet().parentSheetId)}
         />
 
         <Canvas

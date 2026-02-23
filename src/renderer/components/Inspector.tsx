@@ -31,6 +31,39 @@ interface InspectorProps {
   onEnterSelectedSheet: () => void;
 }
 
+type SelectMenuOption = {
+  value: string;
+  label: string;
+};
+
+const LABEL_SCOPE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
+  { value: "local", label: "local" },
+  { value: "hierarchical", label: "hierarchical" },
+  { value: "global", label: "global" }
+];
+
+const PORT_DIRECTION_OPTIONS: ReadonlyArray<SelectMenuOption> = [
+  { value: "in", label: "in" },
+  { value: "out", label: "out" },
+  { value: "io", label: "io" }
+];
+
+const PORT_TYPE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
+  { value: "bit", label: "bit" },
+  { value: "float", label: "float" },
+  { value: "s32", label: "s32" },
+  { value: "u32", label: "u32" },
+  { value: "s64", label: "s64" },
+  { value: "u64", label: "u64" },
+  { value: "port", label: "port" }
+];
+
+const PORT_SIDE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
+  { value: "left", label: "left" },
+  { value: "right", label: "right" },
+  { value: "bottom", label: "bottom" }
+];
+
 export default function Inspector(props: InspectorProps) {
   const selectedNode = () =>
     props.state.selection?.kind === "node"
@@ -83,18 +116,15 @@ export default function Inspector(props: InspectorProps) {
               </label>
               <label>
                 Scope
-                <select
+                <SelectMenu
                   value={label().scope}
-                  onChange={(e) =>
+                  options={LABEL_SCOPE_OPTIONS}
+                  onChange={(value) =>
                     props.onUpdateLabel(label().id, {
-                      scope: e.currentTarget.value as LabelScope
+                      scope: value as LabelScope
                     })
                   }
-                >
-                  <option value="local">local</option>
-                  <option value="hierarchical">hierarchical</option>
-                  <option value="global">global</option>
-                </select>
+                />
               </label>
             </div>
           )}
@@ -112,48 +142,39 @@ export default function Inspector(props: InspectorProps) {
               </label>
               <label>
                 Direction
-                <select
+                <SelectMenu
                   value={port().direction}
-                  onChange={(e) =>
+                  options={PORT_DIRECTION_OPTIONS}
+                  onChange={(value) =>
                     props.onUpdateSheetPort(port().id, {
-                      direction: e.currentTarget.value as "in" | "out" | "io"
+                      direction: value as "in" | "out" | "io"
                     })
                   }
-                >
-                  <option value="in">in</option>
-                  <option value="out">out</option>
-                  <option value="io">io</option>
-                </select>
+                />
               </label>
               <label>
                 Type
-                <select
+                <SelectMenu
                   value={port().type}
-                  onChange={(e) =>
+                  options={PORT_TYPE_OPTIONS}
+                  onChange={(value) =>
                     props.onUpdateSheetPort(port().id, {
-                      type: e.currentTarget.value as HalValueType
+                      type: value as HalValueType
                     })
                   }
-                >
-                  <For each={["bit", "float", "s32", "u32", "s64", "u64", "port"]}>
-                    {(t) => <option value={t}>{t}</option>}
-                  </For>
-                </select>
+                />
               </label>
               <label>
                 Side
-                <select
+                <SelectMenu
                   value={port().side}
-                  onChange={(e) =>
+                  options={PORT_SIDE_OPTIONS}
+                  onChange={(value) =>
                     props.onUpdateSheetPort(port().id, {
-                      side: e.currentTarget.value as "left" | "right" | "bottom"
+                      side: value as "left" | "right" | "bottom"
                     })
                   }
-                >
-                  <option value="left">left</option>
-                  <option value="right">right</option>
-                  <option value="bottom">bottom</option>
-                </select>
+                />
               </label>
             </div>
           )}
@@ -208,6 +229,38 @@ export default function Inspector(props: InspectorProps) {
         </section>
       </Show>
     </aside>
+  );
+}
+
+function SelectMenu(props: {
+  value: string;
+  options: ReadonlyArray<SelectMenuOption>;
+  onChange: (value: string) => void;
+}) {
+  const currentLabel = () =>
+    props.options.find((option) => option.value === props.value)?.label ?? props.value;
+
+  return (
+    <details class="field-menu">
+      <summary class="field-menu-trigger">{currentLabel()}</summary>
+      <div class="field-menu-popover">
+        <For each={props.options}>
+          {(option) => (
+            <button
+              type="button"
+              class={`field-menu-item ${option.value === props.value ? "is-active" : ""}`}
+              onClick={(evt) => {
+                props.onChange(option.value);
+                const host = evt.currentTarget.closest("details");
+                if (host instanceof HTMLDetailsElement) host.open = false;
+              }}
+            >
+              {option.label}
+            </button>
+          )}
+        </For>
+      </div>
+    </details>
   );
 }
 
