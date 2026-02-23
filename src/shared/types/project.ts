@@ -1,0 +1,54 @@
+import type { ComponentDefinition } from "./components";
+import type { SheetDefinition } from "./sheet";
+
+export interface RecentProjectEntry {
+  filePath: string;
+  name?: string;
+  lastOpenedAt: string;
+}
+
+export interface ProjectLibrary {
+  components: Record<string, ComponentDefinition>;
+}
+
+export interface HalExportComponentAddfRule {
+  enabled?: boolean;
+  thread?: string;
+  functionTemplates?: string[];
+}
+
+export interface HalExportComponentRule {
+  loadCombine?: "names" | "separate";
+  loadOrderPriority?: number;
+  loadrtArgs?: string[];
+  addf?: HalExportComponentAddfRule;
+}
+
+export interface HalExportAddfConfig {
+  enabled?: boolean;
+  defaultThread?: string;
+  emitPosition?: boolean;
+}
+
+export interface HalExportConfig {
+  loadOrder?: string[];
+  componentRules?: Record<string, HalExportComponentRule>;
+  addf?: HalExportAddfConfig;
+}
+
+export interface NoHALProject {
+  format: "nohal-project";
+  version: 1;
+  name: string;
+  target: {
+    linuxcncVersion: "2.10";
+    platform: "linux";
+  };
+  rootSheetId: string;
+  sheets: Record<string, SheetDefinition>;
+  library: ProjectLibrary;
+  halExport?: HalExportConfig;
+  ui: {
+    activeSheetId: string;
+  };
+}
