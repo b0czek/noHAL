@@ -12,6 +12,7 @@ import type {
 interface InspectorProps {
   state: EditorState;
   currentSheet: SheetDefinition;
+  onOpenSelectedComponentEditor: () => void;
   onRenameNode: (nodeId: string, name: string) => void;
   onUpdateNodeParam: (nodeId: string, key: string, value: string) => void;
   onUpdateLabel: (labelId: string, patch: { name?: string; scope?: LabelScope }) => void;
@@ -63,8 +64,8 @@ export default function Inspector(props: InspectorProps) {
             <NodeInspector
               project={props.state.project}
               node={node()}
+              onOpenComponentEditor={props.onOpenSelectedComponentEditor}
               onRename={(name) => props.onRenameNode(node().id, name)}
-              onUpdateParam={(key, value) => props.onUpdateNodeParam(node().id, key, value)}
               onEnterSelectedSheet={props.onEnterSelectedSheet}
             />
           )}
@@ -213,8 +214,8 @@ export default function Inspector(props: InspectorProps) {
 function NodeInspector(props: {
   project: NochalProject;
   node: SheetNodeInstance;
+  onOpenComponentEditor: () => void;
   onRename: (name: string) => void;
-  onUpdateParam: (key: string, value: string) => void;
   onEnterSelectedSheet: () => void;
 }) {
   const pins = () => getNodePins(props.project, props.node);
@@ -224,10 +225,19 @@ function NodeInspector(props: {
   return (
     <div class="inspector-group">
       <div class="mono">{getNodeTitle(props.project, props.node)}</div>
-      <label>
-        Instance Name
-        <input value={props.node.instanceName} onInput={(e) => props.onRename(e.currentTarget.value)} />
-      </label>
+      <Show
+        when={props.node.kind === "component"}
+        fallback={
+          <label>
+            Instance Name
+            <input value={props.node.instanceName} onInput={(e) => props.onRename(e.currentTarget.value)} />
+          </label>
+        }
+      >
+        <button class="btn" onClick={props.onOpenComponentEditor}>
+          Open Component Settings
+        </button>
+      </Show>
       <Show when={props.node.kind === "sheet"}>
         <button class="btn" onClick={props.onEnterSelectedSheet}>
           Enter Subsheet
@@ -245,20 +255,12 @@ function NodeInspector(props: {
           )}
         </For>
       </div>
-      <Show when={component() && component()!.params.length > 0}>
-        <div class="sub-title">Parameters</div>
-        <For each={component()!.params}>
-          {(param) => (
-            <label>
-              <span class="mono">{param.name}</span>
-              <input
-                value={props.node.kind === "component" ? props.node.paramValues[param.key] ?? "" : ""}
-                onInput={(e) => props.onUpdateParam(param.key, e.currentTarget.value)}
-                placeholder={param.defaultValue ?? ""}
-              />
-            </label>
-          )}
-        </For>
+      <Show when={props.node.kind === "component" && component()}>
+        <div class="muted">
+          {component()!.params.length > 0
+            ? `${component()!.params.length} parameters available in dialog`
+            : "No parameters"}
+        </div>
       </Show>
     </div>
   );

@@ -1,15 +1,29 @@
-import { createMemo, For } from "solid-js";
+import { createEffect, createMemo, createSignal, For } from "solid-js";
 import { createEmptyProject } from "../shared/project";
 import { getSheet } from "../shared/graph";
 import Canvas from "./components/Canvas";
+import ComponentNodeDialog from "./components/ComponentNodeDialog";
 import Inspector from "./components/Inspector";
 import Sidebar from "./components/Sidebar";
 import { createEditorStore } from "./state/store";
+import { useEditorShortcuts } from "./shortcuts/useEditorShortcuts";
 
 export default function App() {
   const { state, actions } = createEditorStore(createEmptyProject("Nochal Project"));
+  const [componentEditorNodeId, setComponentEditorNodeId] = createSignal<string | null>(null);
 
   const currentSheet = createMemo(() => getSheet(state.project, state.activeSheetId));
+  const selectedNode = createMemo(() => {
+    const selection = state.selection;
+    if (!selection || selection.kind !== "node") return undefined;
+    return currentSheet().nodes.find((n) => n.id === selection.id);
+  });
+  const editingComponentNode = createMemo(() => {
+    const id = componentEditorNodeId();
+    if (!id) return null;
+    const node = currentSheet().nodes.find((n) => n.id === id);
+    return node && node.kind === "component" ? node : null;
+  });
   const breadcrumb = createMemo(() => {
     const items: Array<{ id: string; name: string }> = [];
     let cursor = currentSheet();
@@ -28,6 +42,35 @@ export default function App() {
       actions.select({ kind: "label", id: labelId });
     }
   };
+
+  const openComponentEditorForNode = (nodeId: string) => {
+    const node = currentSheet().nodes.find((n) => n.id === nodeId);
+    if (!node || node.kind !== "component") return;
+    setComponentEditorNodeId(node.id);
+  };
+
+  const openSelectedComponentEditor = () => {
+    const node = selectedNode();
+    if (!node || node.kind !== "component") return;
+    setComponentEditorNodeId(node.id);
+  };
+
+  createEffect(() => {
+    state.activeSheetId;
+    state.project;
+    if (componentEditorNodeId() && !editingComponentNode()) {
+      setComponentEditorNodeId(null);
+    }
+  });
+
+  useEditorShortcuts({
+    isComponentDialogOpen: () => componentEditorNodeId() !== null,
+    closeComponentDialog: () => setComponentEditorNodeId(null),
+    hasPendingWire: () => state.pendingEndpoint !== null,
+    cancelPendingWire: actions.clearPendingEndpoint,
+    hasSelection: () => state.selection !== null,
+    deleteSelection: actions.removeSelection
+  });
 
   return (
     <div class="app-shell">
@@ -96,6 +139,7 @@ export default function App() {
           selection={state.selection}
           pendingEndpoint={state.pendingEndpoint}
           onSelect={actions.select}
+          onOpenNode={openComponentEditorForNode}
           onEndpointClick={actions.endpointClick}
           onLabelClick={labelClick}
           onMoveNode={actions.moveNode}
@@ -107,6 +151,7 @@ export default function App() {
         <Inspector
           state={state}
           currentSheet={currentSheet()}
+          onOpenSelectedComponentEditor={openSelectedComponentEditor}
           onRenameNode={actions.renameNode}
           onUpdateNodeParam={actions.updateNodeParam}
           onUpdateLabel={actions.updateLabel}
@@ -117,6 +162,23 @@ export default function App() {
           onEnterSelectedSheet={actions.enterSelectedSheet}
         />
       </main>
+
+      <ComponentNodeDialog
+        open={editingComponentNode() !== null}
+        project={state.project}
+        node={editingComponentNode()}
+        onRename={(name) => {
+          const node = editingComponentNode();
+          if (!node) return;
+          actions.renameNode(node.id, name);
+        }}
+        onUpdateParam={(key, value) => {
+          const node = editingComponentNode();
+          if (!node) return;
+          actions.updateNodeParam(node.id, key, value);
+        }}
+        onClose={() => setComponentEditorNodeId(null)}
+      />
     </div>
   );
 }

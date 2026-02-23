@@ -120,6 +120,11 @@ select {
   cursor: default;
 }
 
+.mini.is-active-filter {
+  border-color: rgba(122, 230, 208, 0.42);
+  background: rgba(122, 230, 208, 0.12);
+}
+
 .btn.danger {
   border-color: rgba(239, 107, 90, 0.36);
   background: rgba(239, 107, 90, 0.12);
@@ -435,6 +440,76 @@ select {
 
 .scene-konva-host canvas {
   display: block;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(3, 8, 10, 0.5);
+  backdrop-filter: blur(3px);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.modal {
+  width: min(920px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(8, 18, 22, 0.98), rgba(5, 11, 14, 0.97));
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.45);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.modal-title {
+  font-weight: 700;
+}
+
+.modal-sub {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.modal-body {
+  padding: 12px;
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(250px, 1fr) minmax(250px, 1fr);
+  align-content: start;
+}
+
+.component-settings-dialog .panel:last-child {
+  grid-column: 1 / -1;
+}
+
+.pin-filter-row {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 920px) {
+  .modal-body {
+    grid-template-columns: 1fr;
+  }
+
+  .component-settings-dialog .panel:last-child {
+    grid-column: auto;
+  }
 }
 
 .wire-layer {

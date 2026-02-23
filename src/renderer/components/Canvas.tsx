@@ -11,6 +11,7 @@ interface CanvasProps {
   selection: Selection;
   pendingEndpoint: SheetEndpointRef | null;
   onSelect: (selection: Selection) => void;
+  onOpenNode: (nodeId: string) => void;
   onEndpointClick: (endpoint: SheetEndpointRef) => void;
   onLabelClick: (labelId: string) => void;
   onMoveNode: (id: string, x: number, y: number) => void;
@@ -32,6 +33,7 @@ export default function Canvas(props: CanvasProps) {
   onMount(() => {
     scene = new KonvaSheetScene(hostEl, {
       onSelect: props.onSelect,
+      onOpenNode: props.onOpenNode,
       onEndpointClick: props.onEndpointClick,
       onLabelClick: props.onLabelClick,
       onMoveNode: props.onMoveNode,

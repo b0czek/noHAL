@@ -7,6 +7,7 @@ import { dirStroke, directionPillFill, labelFill, typeFill } from "./theme";
 
 interface SceneCallbacks {
   onSelect: (selection: { kind: "node"; id: string } | { kind: "label"; id: string } | { kind: "sheet-port"; id: string } | null) => void;
+  onOpenNode: (nodeId: string) => void;
   onEndpointClick: (endpoint: SheetEndpointRef) => void;
   onLabelClick: (labelId: string) => void;
   onMoveNode: (id: string, x: number, y: number) => void;
@@ -694,6 +695,11 @@ export class KonvaSheetScene {
 
       nodeGroup.on("click tap", () => {
         this.callbacks.onSelect({ kind: "node", id: node.id });
+      });
+      nodeGroup.on("dblclick dbltap", (evt) => {
+        evt.cancelBubble = true;
+        this.callbacks.onSelect({ kind: "node", id: node.id });
+        this.callbacks.onOpenNode(node.id);
       });
       nodeGroup.on("dragmove", () => {
         const pos = this.clampPos(nodeGroup.position());
