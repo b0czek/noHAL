@@ -25,6 +25,26 @@ export default function Canvas(props: CanvasProps) {
   let scene: KonvaSheetScene | null = null;
   let resizeObserver: ResizeObserver | null = null;
   const [menu, setMenu] = createSignal<{ x: number; y: number; worldX: number; worldY: number } | null>(null);
+  const [camera, setCamera] = createSignal({ x: 0, y: 0, scale: 1 });
+
+  const wrapOffset = (value: number, spacing: number) => {
+    if (spacing <= 0) return 0;
+    return ((value % spacing) + spacing) % spacing;
+  };
+
+  const gridStyle = createMemo(() => {
+    const { x, y, scale } = camera();
+    const minorSpace = 24 * scale;
+    const majorSpace = minorSpace * 5;
+    return [
+      `--grid-space:${minorSpace}px`,
+      `--grid-major-space:${majorSpace}px`,
+      `--grid-offset-x:${wrapOffset(x, minorSpace)}px`,
+      `--grid-offset-y:${wrapOffset(y, minorSpace)}px`,
+      `--grid-major-offset-x:${wrapOffset(x, majorSpace)}px`,
+      `--grid-major-offset-y:${wrapOffset(y, majorSpace)}px`
+    ].join(";");
+  });
 
   const componentChoices = createMemo(() =>
     Object.values(props.project.library.components).sort((a, b) => a.halComponentName.localeCompare(b.halComponentName))
@@ -38,7 +58,8 @@ export default function Canvas(props: CanvasProps) {
       onLabelClick: props.onLabelClick,
       onMoveNode: props.onMoveNode,
       onMoveLabel: props.onMoveLabel,
-      onMoveSheetPort: props.onMoveSheetPort
+      onMoveSheetPort: props.onMoveSheetPort,
+      onCameraChange: setCamera
     });
     resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -81,7 +102,7 @@ export default function Canvas(props: CanvasProps) {
         if (menu()) setMenu(null);
       }}
     >
-      <div class="canvas-grid">
+      <div class="canvas-grid" style={gridStyle()}>
         <div
           ref={(el) => {
             hostEl = el;

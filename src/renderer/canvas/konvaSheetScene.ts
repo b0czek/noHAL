@@ -13,6 +13,7 @@ interface SceneCallbacks {
   onMoveNode: (id: string, x: number, y: number) => void;
   onMoveLabel: (id: string, x: number, y: number) => void;
   onMoveSheetPort: (id: string, x: number, y: number) => void;
+  onCameraChange?: (camera: { x: number; y: number; scale: number }) => void;
 }
 
 export interface SceneRenderState {
@@ -204,6 +205,7 @@ export class KonvaSheetScene {
     this.mainWorld.setAttrs(transform);
     this.wireLayer.batchDraw();
     this.mainLayer.batchDraw();
+    this.callbacks.onCameraChange?.({ ...this.camera });
   }
 
   private screenToWorld(pos: Pt): Pt {

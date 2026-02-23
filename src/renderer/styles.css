@@ -560,12 +560,9 @@ select {
   min-width: 0;
   min-height: 0;
   background:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
     radial-gradient(circle at 20% 10%, rgba(122, 230, 208, 0.06), transparent 40%),
     radial-gradient(circle at 80% 30%, rgba(242, 185, 75, 0.04), transparent 35%),
     #081216;
-  background-size: 24px 24px, 24px 24px, auto, auto, auto;
 }
 
 .canvas-grid {
@@ -574,6 +571,34 @@ select {
   height: 100%;
   min-width: 0;
   min-height: 0;
+  --grid-space: 24px;
+  --grid-major-space: 120px;
+  --grid-offset-x: 0px;
+  --grid-offset-y: 0px;
+  --grid-major-offset-x: 0px;
+  --grid-major-offset-y: 0px;
+}
+
+.canvas-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size:
+    var(--grid-space) var(--grid-space),
+    var(--grid-space) var(--grid-space),
+    var(--grid-major-space) var(--grid-major-space),
+    var(--grid-major-space) var(--grid-major-space);
+  background-position:
+    var(--grid-offset-x) var(--grid-offset-y),
+    var(--grid-offset-x) var(--grid-offset-y),
+    var(--grid-major-offset-x) var(--grid-major-offset-y),
+    var(--grid-major-offset-x) var(--grid-major-offset-y);
 }
 
 .scene-konva-host {
