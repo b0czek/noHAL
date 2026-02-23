@@ -6,11 +6,11 @@ import type {
   HalImportPlacementHeuristic,
 } from "../../shared/types";
 
-type NewProjectDialogStep = "choose" | "link";
+type ProjectCreationDialogStep = "choose" | "link";
 
-interface NewProjectDialogProps {
+export interface ProjectCreationDialogProps {
   open: boolean;
-  step: NewProjectDialogStep;
+  step: ProjectCreationDialogStep;
   isBusy: boolean;
   componentStore: ComponentStore;
   importDraft: HalImportDraft | null;
@@ -41,7 +41,9 @@ function selectionLabel(
   return `Store: ${entry.parsed.halComponentName}`;
 }
 
-export default function NewProjectDialog(props: NewProjectDialogProps) {
+export default function ProjectCreationDialog(
+  props: ProjectCreationDialogProps,
+) {
   const storeEntries = createMemo(() =>
     Object.values(props.componentStore.components).sort((a, b) =>
       a.parsed.halComponentName.localeCompare(b.parsed.halComponentName),
