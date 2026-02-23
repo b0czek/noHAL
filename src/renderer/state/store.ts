@@ -228,6 +228,18 @@ export function createEditorStore(initialProject: NoHALProject) {
       setState("status", message);
     },
 
+    setSheetAddfQueue(sheetId: string, nodeOrder: string[]): void {
+      const normalized = Array.from(new Set(nodeOrder.map((v) => v.trim()).filter(Boolean)));
+      withProject((project) => {
+        const sheet = getSheet(project, sheetId);
+        if (!sheet.hal) sheet.hal = {};
+        if (normalized.length > 0) sheet.hal.addfQueue = normalized;
+        else delete sheet.hal?.addfQueue;
+        if (sheet.hal && Object.keys(sheet.hal).length === 0) delete sheet.hal;
+      });
+      setState("status", `Updated sheet addf queue (${normalized.length} entries)`);
+    },
+
     async loadComponentStore(): Promise<void> {
       const componentStore = await window.nohal.loadComponentStore();
       replaceComponentStore(componentStore);

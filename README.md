@@ -12,13 +12,15 @@ Visual LinuxCNC HAL IDE prototype (Electron + TypeScript + SolidJS).
 - Direct endpoint wiring with type + direction validation
 - `.comp` import (pragmatic parser for declaration block before `;;`)
 - `.hal` export focused on:
+  - `loadrt` (RT components; grouped with `names=...`)
+  - `addf` (per-sheet queue ordering; subsheets expand as ordered blocks)
   - `net`
   - `setp`
-  - component instance summary comments
+  - userspace/unknown runtime summary comments
 
 ## What It Does Not Do Yet
 
-- `loadrt` / `loadusr` / `addf` generation (still manual)
+- `loadusr` generation (still manual flags/args)
 - Runtime HAL introspection
 - Import existing `.hal` text into diagrams
 - Array pin expansion (`foo##` style pins are detected but not expanded)

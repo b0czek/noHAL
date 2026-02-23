@@ -187,10 +187,38 @@ export interface SheetDefinition {
   labels: SheetLabel[];
   directConnections: DirectConnection[];
   labelAnchors: LabelAnchor[];
+  hal?: {
+    addfQueue?: string[];
+  };
 }
 
 export interface ProjectLibrary {
   components: Record<string, ComponentDefinition>;
+}
+
+export interface HalExportComponentAddfRule {
+  enabled?: boolean;
+  thread?: string;
+  functionTemplates?: string[];
+}
+
+export interface HalExportComponentRule {
+  loadCombine?: "names" | "separate";
+  loadOrderPriority?: number;
+  loadrtArgs?: string[];
+  addf?: HalExportComponentAddfRule;
+}
+
+export interface HalExportAddfConfig {
+  enabled?: boolean;
+  defaultThread?: string;
+  emitPosition?: boolean;
+}
+
+export interface HalExportConfig {
+  loadOrder?: string[];
+  componentRules?: Record<string, HalExportComponentRule>;
+  addf?: HalExportAddfConfig;
 }
 
 export interface NoHALProject {
@@ -204,6 +232,7 @@ export interface NoHALProject {
   rootSheetId: string;
   sheets: Record<string, SheetDefinition>;
   library: ProjectLibrary;
+  halExport?: HalExportConfig;
   ui: {
     activeSheetId: string;
   };

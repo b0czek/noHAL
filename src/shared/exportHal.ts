@@ -27,6 +27,8 @@ interface Hint {
   name: string;
 }
 
+type RuntimeKind = "rt" | "userspace" | "unknown";
+
 class UnionFind {
   private parent = new Map<string, string>();
 
@@ -69,7 +71,13 @@ interface ExportContext {
   hintsByEndpointId: Map<string, Hint[]>;
   warnings: string[];
   globalLabelMembers: Map<string, string[]>;
-  componentInstances: Array<{ componentName: string; instancePath: string }>;
+  componentInstances: Array<{
+    componentName: string;
+    componentId: string;
+    instancePath: string;
+    parentSheetPath: string;
+    runtimeKind: RuntimeKind;
+  }>;
   endpointSeq: number;
 }
 
@@ -203,7 +211,10 @@ function traverseSheetInstance(
       if (component) {
         ctx.componentInstances.push({
           componentName: component.halComponentName,
-          instancePath: joinInstancePath([...pathParts, node.instanceName])
+          componentId: node.componentId,
+          instancePath: joinInstancePath([...pathParts, node.instanceName]),
+          parentSheetPath: joinInstancePath(pathParts),
+          runtimeKind: component.runtime?.kind ?? "unknown"
         });
         for (const pin of component.pins) {
           if (pin.arrayLen !== undefined || pin.name.includes("#")) {
@@ -337,6 +348,203 @@ function sortPinsForHal(records: EndpointRecord[]): EndpointRecord[] {
   return [...records].sort((a, b) => rank(a) - rank(b));
 }
 
+type RuntimeInstanceRecord = ExportContext["componentInstances"][number];
+
+interface AddfEntry {
+  functionName: string;
+  thread: string;
+  parentSheetPath: string;
+}
+
+interface RuntimeSections {
+  loadrtLines: string[];
+  loadusrLines: string[];
+  addfLines: string[];
+  runtimeSummaryLines: string[];
+}
+
+function replaceAddfTemplate(
+  template: string,
+  item: Pick<RuntimeInstanceRecord, "componentName" | "instancePath" | "parentSheetPath">
+): string {
+  return template
+    .replaceAll("{instance}", item.instancePath)
+    .replaceAll("{component}", item.componentName)
+    .replaceAll("{subsheet}", item.parentSheetPath || "top");
+}
+
+function buildRuntimeSections(project: NoHALProject, ctx: ExportContext): RuntimeSections {
+  const rules = project.halExport?.componentRules ?? {};
+  const addfConfig = project.halExport?.addf;
+  const loadOrderList = project.halExport?.loadOrder ?? [];
+  const loadOrderIndex = new Map(loadOrderList.map((name, idx) => [name, idx]));
+
+  const allInstances = [...ctx.componentInstances].sort((a, b) => a.instancePath.localeCompare(b.instancePath));
+  const rtInstances = allInstances.filter((item) => item.runtimeKind === "rt");
+  const userspaceInstances = allInstances.filter((item) => item.runtimeKind === "userspace");
+  const unknownRuntimeInstances = allInstances.filter((item) => item.runtimeKind === "unknown");
+
+  for (const item of unknownRuntimeInstances) {
+    ctx.warnings.push(
+      `Component '${item.instancePath}' (${item.componentName}) has unknown runtime kind; skipping loadrt/addf generation for it`
+    );
+  }
+
+  const rtGroups = new Map<string, RuntimeInstanceRecord[]>();
+  for (const item of rtInstances) {
+    const list = rtGroups.get(item.componentName);
+    if (list) list.push(item);
+    else rtGroups.set(item.componentName, [item]);
+  }
+
+  const sortedRtGroups = [...rtGroups.entries()].sort(([nameA], [nameB]) => {
+    const ruleA = rules[nameA];
+    const ruleB = rules[nameB];
+    const explicitA = loadOrderIndex.get(nameA);
+    const explicitB = loadOrderIndex.get(nameB);
+    if (explicitA !== undefined || explicitB !== undefined) {
+      return (explicitA ?? Number.MAX_SAFE_INTEGER) - (explicitB ?? Number.MAX_SAFE_INTEGER);
+    }
+    const prioA = ruleA?.loadOrderPriority ?? 0;
+    const prioB = ruleB?.loadOrderPriority ?? 0;
+    if (prioA !== prioB) return prioA - prioB;
+    return nameA.localeCompare(nameB);
+  });
+
+  const loadrtLines: string[] = [];
+  for (const [componentName, items] of sortedRtGroups) {
+    const rule = rules[componentName];
+    const combine = rule?.loadCombine ?? "names";
+    const extraArgs = (rule?.loadrtArgs ?? []).map((arg) => `${arg}`.trim()).filter(Boolean);
+    const sortedNames = items.map((item) => item.instancePath).sort((a, b) => a.localeCompare(b));
+    if (combine === "separate") {
+      for (const instanceName of sortedNames) {
+        const args = [`names=${instanceName}`, ...extraArgs];
+        loadrtLines.push(`loadrt ${componentName} ${args.join(" ")}`.trim());
+      }
+      continue;
+    }
+    const args = [`names=${sortedNames.join(",")}`, ...extraArgs];
+    loadrtLines.push(`loadrt ${componentName} ${args.join(" ")}`.trim());
+  }
+
+  const runtimeSummaryLines: string[] = [];
+  if (userspaceInstances.length > 0) {
+    runtimeSummaryLines.push(`# Userspace components still need manual loadusr flags/args:`);
+    const byComponent = new Map<string, string[]>();
+    for (const item of userspaceInstances) {
+      const list = byComponent.get(item.componentName);
+      if (list) list.push(item.instancePath);
+      else byComponent.set(item.componentName, [item.instancePath]);
+    }
+    for (const [componentName, instances] of [...byComponent.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+      runtimeSummaryLines.push(`#   ${componentName}: ${instances.join(", ")}`);
+    }
+  }
+  if (unknownRuntimeInstances.length > 0) {
+    runtimeSummaryLines.push(`# Unknown-runtime components (set runtime.kind to enable loadrt/addf generation):`);
+    for (const item of unknownRuntimeInstances) {
+      runtimeSummaryLines.push(`#   ${item.instancePath} (${item.componentName})`);
+    }
+  }
+
+  const addfEnabled = addfConfig?.enabled ?? true;
+  const emitPosition = addfConfig?.emitPosition ?? true;
+  const defaultThread = addfConfig?.defaultThread?.trim() || "servo-thread";
+  const addfEntries: AddfEntry[] = [];
+
+  if (addfEnabled) {
+    function orderedAddfNodesForSheet(sheet: SheetDefinition): SheetNodeInstance[] {
+      const eligible = sheet.nodes.filter((node) => {
+        if (node.kind === "sheet") return true;
+        const component = project.library.components[node.componentId];
+        if (!component) return false;
+        return component.runtime?.kind === "rt";
+      });
+      const byId = new Map(eligible.map((node) => [node.id, node]));
+      const ordered: SheetNodeInstance[] = [];
+      const seen = new Set<string>();
+      for (const nodeId of sheet.hal?.addfQueue ?? []) {
+        const node = byId.get(nodeId);
+        if (!node || seen.has(nodeId)) continue;
+        ordered.push(node);
+        seen.add(nodeId);
+      }
+      for (const node of eligible) {
+        if (seen.has(node.id)) continue;
+        ordered.push(node);
+      }
+      return ordered;
+    }
+
+    function collectAddfFromSheetInstance(sheetId: string, pathParts: string[], stack: string[] = []): void {
+      const cycleKey = `${sheetId}|${pathParts.join(".")}`;
+      if (stack.includes(cycleKey)) {
+        ctx.warnings.push(`Recursive sheet addf expansion skipped at '${pathParts.join(".") || "Top"}'`);
+        return;
+      }
+      const nextStack = [...stack, cycleKey];
+      const sheet = getSheet(project, sheetId);
+      for (const node of orderedAddfNodesForSheet(sheet)) {
+        if (node.kind === "sheet") {
+          collectAddfFromSheetInstance(node.sheetId, [...pathParts, node.instanceName], nextStack);
+          continue;
+        }
+        const component = project.library.components[node.componentId];
+        if (!component) {
+          ctx.warnings.push(`Missing component definition '${node.componentId}' for node '${node.instanceName}'`);
+          continue;
+        }
+        if (component.runtime?.kind !== "rt") continue;
+        const componentName = component.halComponentName;
+        const rule = rules[componentName];
+        if (rule?.addf?.enabled === false) continue;
+        const thread = rule?.addf?.thread?.trim() || defaultThread;
+        const templates = (rule?.addf?.functionTemplates ?? ["{instance}"]).filter((t) => t.trim().length > 0);
+        const item = {
+          componentName,
+          instancePath: joinInstancePath([...pathParts, node.instanceName]),
+          parentSheetPath: joinInstancePath(pathParts)
+        };
+        for (const template of templates) {
+          addfEntries.push({
+            functionName: replaceAddfTemplate(template, item),
+            thread,
+            parentSheetPath: item.parentSheetPath
+          });
+        }
+      }
+    }
+    collectAddfFromSheetInstance(project.rootSheetId, []);
+  }
+
+  const addfLines: string[] = [];
+  const positionByThread = new Map<string, number>();
+  const lastGroupByThread = new Map<string, string>();
+  for (const entry of addfEntries) {
+    const group = entry.parentSheetPath || "(top)";
+    const prev = lastGroupByThread.get(entry.thread);
+    if (prev !== group) {
+      addfLines.push(`# ${entry.thread} :: ${group}`);
+      lastGroupByThread.set(entry.thread, group);
+    }
+    const nextPos = (positionByThread.get(entry.thread) ?? 0) + 1;
+    positionByThread.set(entry.thread, nextPos);
+    addfLines.push(
+      emitPosition
+        ? `addf ${entry.functionName} ${entry.thread} ${nextPos}`
+        : `addf ${entry.functionName} ${entry.thread}`
+    );
+  }
+
+  return {
+    loadrtLines,
+    loadusrLines: [],
+    addfLines,
+    runtimeSummaryLines
+  };
+}
+
 export function exportProjectToHal(project: NoHALProject): ExportResult {
   const ctx = createExportContext();
   traverseSheetInstance(ctx, project, project.rootSheetId, [], []);
@@ -409,13 +617,7 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
   }
 
   emitParams(project.rootSheetId, []);
-
-  const loadSuggestions = new Map<string, string[]>();
-  for (const item of ctx.componentInstances) {
-    const list = loadSuggestions.get(item.componentName);
-    if (list) list.push(item.instancePath);
-    else loadSuggestions.set(item.componentName, [item.instancePath]);
-  }
+  const runtimeSections = buildRuntimeSections(project, ctx);
 
   const lines: string[] = [];
   lines.push(`# NoHAL HAL export`);
@@ -423,15 +625,33 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
   lines.push(`# Project: ${project.name}`);
   lines.push(`#`);
   lines.push(`# Notes:`);
-  lines.push(`# - Export currently focuses on signal netting (net/setp).`);
-  lines.push(`# - loadrt/loadusr/addf generation is not inferred yet and remains manual.`);
+  lines.push(`# - loadrt is generated for RT components using names=... grouping (override via project.halExport.componentRules).`);
+  lines.push(`# - addf is emitted per thread and expanded from per-sheet queues (sheet.hal.addfQueue), with subsheets acting as ordered blocks.`);
   lines.push("");
-  if (loadSuggestions.size > 0) {
-    lines.push(`# Component instance summary (manual loadrt/loadusr wiring still required):`);
-    for (const [componentName, instances] of [...loadSuggestions.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-      lines.push(`#   ${componentName}: ${instances.join(", ")}`);
-    }
+  lines.push(`# Runtime`);
+  if (runtimeSections.loadrtLines.length === 0 && runtimeSections.addfLines.length === 0 && runtimeSections.runtimeSummaryLines.length === 0) {
+    lines.push("# (no runtime component actions generated)");
     lines.push("");
+  } else {
+    if (runtimeSections.loadrtLines.length > 0) {
+      lines.push(`# loadrt`);
+      lines.push(...runtimeSections.loadrtLines);
+      lines.push("");
+    }
+    if (runtimeSections.loadusrLines.length > 0) {
+      lines.push(`# loadusr`);
+      lines.push(...runtimeSections.loadusrLines);
+      lines.push("");
+    }
+    if (runtimeSections.addfLines.length > 0) {
+      lines.push(`# addf`);
+      lines.push(...runtimeSections.addfLines);
+      lines.push("");
+    }
+    if (runtimeSections.runtimeSummaryLines.length > 0) {
+      lines.push(...runtimeSections.runtimeSummaryLines);
+      lines.push("");
+    }
   }
   if (setpLines.length > 0) {
     lines.push(`# Parameters`);

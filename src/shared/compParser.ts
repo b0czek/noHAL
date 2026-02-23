@@ -364,7 +364,7 @@ export function parseCompComponentDefinition(text: string, filePath?: string): I
     pins,
     params,
     runtime: {
-      kind: runtimeOptions.userspace ? "userspace" : "unknown",
+      kind: runtimeOptions.userspace ? "userspace" : "rt",
       options: runtimeOptions
     },
     parseMeta: {

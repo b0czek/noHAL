@@ -6,6 +6,7 @@ import Canvas from "./components/Canvas";
 import ComponentNodeDialog from "./components/ComponentNodeDialog";
 import ComponentStoreDialog from "./components/ComponentStoreDialog";
 import Inspector from "./components/Inspector";
+import SheetSettingsDialog from "./components/SheetSettingsDialog";
 import Sidebar from "./components/Sidebar";
 import { createEditorStore } from "./state/store";
 import { useEditorShortcuts } from "./shortcuts/useEditorShortcuts";
@@ -14,6 +15,7 @@ export default function App() {
   const { state, actions } = createEditorStore(createEmptyProject("NoHAL Project"));
   const [componentEditorNodeId, setComponentEditorNodeId] = createSignal<string | null>(null);
   const [isComponentStoreOpen, setIsComponentStoreOpen] = createSignal(false);
+  const [sheetSettingsSheetId, setSheetSettingsSheetId] = createSignal<string | null>(null);
 
   onMount(() => {
     void actions.loadComponentStore();
@@ -196,6 +198,7 @@ export default function App() {
           onGoToSheet={(id) => actions.setActiveSheet(id)}
           onGoToParentSheet={() => actions.goToParentSheet()}
           canGoToParentSheet={Boolean(currentSheet().parentSheetId)}
+          onOpenSheetSettings={(id) => setSheetSettingsSheetId(id)}
         />
 
         <Canvas
@@ -259,6 +262,14 @@ export default function App() {
         onDeleteComponentSource={(sourceId) => void actions.deleteComponentSource(sourceId)}
         onRefreshStoredComponent={(componentId) => void actions.refreshComponentInStore(componentId)}
         onClose={() => setIsComponentStoreOpen(false)}
+      />
+
+      <SheetSettingsDialog
+        open={sheetSettingsSheetId() !== null}
+        project={state.project}
+        sheetId={sheetSettingsSheetId()}
+        onSetSheetAddfQueue={actions.setSheetAddfQueue}
+        onClose={() => setSheetSettingsSheetId(null)}
       />
     </div>
   );

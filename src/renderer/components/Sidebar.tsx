@@ -1,5 +1,6 @@
-import { For, createEffect, createMemo, createSignal } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import { HiOutlineArrowSmallUp } from "solid-icons/hi";
+import { Portal } from "solid-js/web";
 import type { NoHALProject, SheetDefinition } from "../../shared/types";
 
 interface SidebarProps {
@@ -9,6 +10,7 @@ interface SidebarProps {
   onGoToSheet: (sheetId: string) => void;
   onGoToParentSheet: () => void;
   canGoToParentSheet: boolean;
+  onOpenSheetSettings: (sheetId: string) => void;
 }
 
 export default function Sidebar(props: SidebarProps) {
@@ -19,6 +21,11 @@ export default function Sidebar(props: SidebarProps) {
   };
 
   const [collapsedSheetIds, setCollapsedSheetIds] = createSignal<Set<string>>(new Set());
+  const [sheetContextMenu, setSheetContextMenu] = createSignal<{
+    sheetId: string;
+    x: number;
+    y: number;
+  } | null>(null);
   const placedSheetIds = createMemo(() => {
     const ids = new Set<string>();
     for (const sheet of Object.values(props.project.sheets)) {
@@ -142,6 +149,15 @@ export default function Sidebar(props: SidebarProps) {
           <button
             class={`linkish sheet-tree-name ${isActive() ? "is-active" : ""}`}
             onClick={() => props.onGoToSheet(branchProps.node.sheet.id)}
+            onContextMenu={(evt) => {
+              evt.preventDefault();
+              evt.stopPropagation();
+              setSheetContextMenu({
+                sheetId: branchProps.node.sheet.id,
+                x: evt.clientX,
+                y: evt.clientY
+              });
+            }}
             title={branchProps.node.sheet.name}
           >
             {branchProps.node.sheet.name}
@@ -190,6 +206,30 @@ export default function Sidebar(props: SidebarProps) {
           </ul>
         </div>
       </section>
+      <Show when={sheetContextMenu()}>
+        {(menu) => (
+          <Portal>
+            <div class="sheet-context-backdrop" onPointerDown={() => setSheetContextMenu(null)}>
+              <div
+                class="sheet-context-menu"
+                style={{ left: `${menu().x}px`, top: `${menu().y}px` }}
+                onPointerDown={(evt) => evt.stopPropagation()}
+                onContextMenu={(evt) => evt.preventDefault()}
+              >
+                <button
+                  class="sheet-context-item"
+                  onClick={() => {
+                    props.onOpenSheetSettings(menu().sheetId);
+                    setSheetContextMenu(null);
+                  }}
+                >
+                  Sheet Settings
+                </button>
+              </div>
+            </div>
+          </Portal>
+        )}
+      </Show>
     </aside>
   );
 }

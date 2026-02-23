@@ -420,6 +420,38 @@ select {
   color: #dffcf4;
 }
 
+.sheet-context-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482900;
+}
+
+.sheet-context-menu {
+  position: fixed;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(122, 230, 208, 0.18);
+  background: rgba(8, 18, 22, 0.98);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.38);
+}
+
+.sheet-context-item {
+  width: 100%;
+  text-align: left;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.sheet-context-item:hover {
+  border-color: rgba(122, 230, 208, 0.28);
+  background: rgba(122, 230, 208, 0.06);
+}
+
 .sheet-tree-place {
   flex: 0 0 auto;
   opacity: 0.82;
@@ -502,12 +534,28 @@ select {
   width: min(1080px, calc(100vw - 36px));
 }
 
+.sheet-settings-dialog {
+  width: min(980px, calc(100vw - 36px));
+}
+
 .component-store-dialog .modal-body {
+  grid-template-columns: 1fr;
+}
+
+.sheet-settings-dialog .modal-body {
   grid-template-columns: 1fr;
 }
 
 .component-store-dialog .panel {
   margin-bottom: 0;
+}
+
+.sheet-settings-dialog .panel {
+  margin-bottom: 0;
+}
+
+.sheet-settings-body {
+  grid-template-columns: 1fr;
 }
 
 .component-store-toolbar {
@@ -518,6 +566,79 @@ select {
 
 .component-store-dialog .component-store-list {
   max-height: min(62vh, 640px);
+}
+
+.addf-queue-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(60vh, 620px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.addf-queue-row {
+  cursor: default;
+  transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
+  grid-template-columns: auto 1fr auto;
+}
+
+.addf-queue-row.is-drop-target {
+  border-color: rgba(122, 230, 208, 0.34);
+  background: rgba(122, 230, 208, 0.07);
+}
+
+.addf-queue-row.is-dragging {
+  opacity: 0.65;
+}
+
+.addf-queue-index {
+  color: var(--muted);
+  margin-right: 6px;
+  display: inline-block;
+  min-width: 28px;
+  text-align: right;
+}
+
+.addf-queue-actions {
+  align-items: center;
+}
+
+.addf-drag-handle-btn {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  min-width: 28px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  cursor: grab;
+}
+
+.addf-drag-handle-btn:hover {
+  background: rgba(122, 230, 208, 0.04);
+  border-radius: 8px;
+}
+
+.addf-drag-handle-btn.is-active {
+  background: rgba(122, 230, 208, 0.08);
+  border-radius: 8px;
+}
+
+.addf-drag-dot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 4px);
+  grid-template-rows: repeat(2, 4px);
+  gap: 4px;
+}
+
+.addf-drag-dot-grid > span {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(190, 230, 220, 0.78);
 }
 
 .component-store-source-list {
