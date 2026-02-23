@@ -1,9 +1,21 @@
 import Konva from "konva";
 import { endpointKey, getNodePins, getNodeTitle } from "../../shared/graph";
 import type { NoHALProject, SheetDefinition, SheetEndpointRef, XY } from "../../shared/types";
-import { BOTTOM_H, HEADER_H, PIN_R, PORT_LABEL_H, SCENE_HEIGHT, SCENE_WIDTH, SIDE_ROW_H } from "./constants";
+import {
+  BOTTOM_PIN_PILL_W,
+  BOTTOM_PIN_TEXT_PAD,
+  HEADER_H,
+  PIN_R,
+  PORT_LABEL_H,
+  SCENE_HEIGHT,
+  SCENE_WIDTH,
+  SIDE_ROW_H
+} from "./constants";
 import { buildSheetSceneLayout, type NodeLayout, type Pt } from "./layout";
 import { dirStroke, directionPillFill, labelFill, typeFill } from "./theme";
+
+const SCENE_POSITION_PADDING = 2400;
+const CAMERA_OVERSCROLL_PX = 220;
 
 interface SceneCallbacks {
   onSelect: (selection: { kind: "node"; id: string } | { kind: "label"; id: string } | { kind: "sheet-port"; id: string } | null) => void;
@@ -179,9 +191,13 @@ export class KonvaSheetScene {
   }
 
   private clampPos(pos: { x: number; y: number }): { x: number; y: number } {
+    const minX = -SCENE_POSITION_PADDING;
+    const minY = -SCENE_POSITION_PADDING;
+    const maxX = SCENE_WIDTH + SCENE_POSITION_PADDING;
+    const maxY = SCENE_HEIGHT + SCENE_POSITION_PADDING;
     return {
-      x: Math.max(10, Math.min(SCENE_WIDTH - 10, pos.x)),
-      y: Math.max(10, Math.min(SCENE_HEIGHT - 10, pos.y))
+      x: Math.max(minX, Math.min(maxX, pos.x)),
+      y: Math.max(minY, Math.min(maxY, pos.y))
     };
   }
 
@@ -200,21 +216,29 @@ export class KonvaSheetScene {
   private clampCamera(): void {
     const stageW = this.stage.width();
     const stageH = this.stage.height();
-    const scaledWorldW = SCENE_WIDTH * this.camera.scale;
-    const scaledWorldH = SCENE_HEIGHT * this.camera.scale;
+    const minWorldX = -SCENE_POSITION_PADDING;
+    const minWorldY = -SCENE_POSITION_PADDING;
+    const maxWorldX = SCENE_WIDTH + SCENE_POSITION_PADDING;
+    const maxWorldY = SCENE_HEIGHT + SCENE_POSITION_PADDING;
+    const scaledWorldW = (maxWorldX - minWorldX) * this.camera.scale;
+    const scaledWorldH = (maxWorldY - minWorldY) * this.camera.scale;
+    const overscrollX = CAMERA_OVERSCROLL_PX;
+    const overscrollY = CAMERA_OVERSCROLL_PX;
 
-    if (scaledWorldW <= stageW) {
-      this.camera.x = Math.round((stageW - scaledWorldW) / 2);
+    if (scaledWorldW <= stageW - overscrollX * 2) {
+      this.camera.x = Math.round((stageW - scaledWorldW) / 2 - minWorldX * this.camera.scale);
     } else {
-      const minX = stageW - scaledWorldW;
-      this.camera.x = Math.max(minX, Math.min(0, this.camera.x));
+      const minX = stageW - overscrollX - maxWorldX * this.camera.scale;
+      const maxX = overscrollX - minWorldX * this.camera.scale;
+      this.camera.x = Math.max(minX, Math.min(maxX, this.camera.x));
     }
 
-    if (scaledWorldH <= stageH) {
-      this.camera.y = Math.round((stageH - scaledWorldH) / 2);
+    if (scaledWorldH <= stageH - overscrollY * 2) {
+      this.camera.y = Math.round((stageH - scaledWorldH) / 2 - minWorldY * this.camera.scale);
     } else {
-      const minY = stageH - scaledWorldH;
-      this.camera.y = Math.max(minY, Math.min(0, this.camera.y));
+      const minY = stageH - overscrollY - maxWorldY * this.camera.scale;
+      const maxY = overscrollY - minWorldY * this.camera.scale;
+      this.camera.y = Math.max(minY, Math.min(maxY, this.camera.y));
     }
   }
 
@@ -689,8 +713,8 @@ export class KonvaSheetScene {
       y: args.y,
       radius: PIN_R,
       fill: typeFill(args.type),
-      stroke: dirStroke(args.direction),
-      strokeWidth: 2,
+      stroke: "rgba(6, 12, 15, 0.95)",
+      strokeWidth: 1,
       hitStrokeWidth: 10
     });
 
@@ -904,24 +928,32 @@ export class KonvaSheetScene {
       const bottomPins = pins.filter((p) => p.side === "bottom");
       const rows = Math.max(leftPins.length, rightPins.length, 1);
 
-      for (let i = 0; i < rows; i += 1) {
-        nodeGroup.add(
-          new Konva.Rect({
-            x: 6,
-            y: HEADER_H + i * SIDE_ROW_H + 2,
-            width: layout.width - 12,
-            height: SIDE_ROW_H - 3,
-            cornerRadius: 8,
-            fill: i % 2 === 0 ? "rgba(255,255,255,0.012)" : "rgba(255,255,255,0.02)",
-            listening: false
-          })
-        );
-      }
-
       for (const pin of leftPins) {
         const p = layout.pinPositionsLocal[pin.key];
         const endpoint: SheetEndpointRef = { kind: "node-pin", nodeId: node.id, pinKey: pin.key };
         const pending = pendingKey === endpointKey(endpoint);
+        const measure = new Konva.Text({
+          text: pin.name,
+          fontFamily: "IBM Plex Mono",
+          fontSize: 12
+        });
+        const bubbleH = SIDE_ROW_H - 6;
+        const bubbleX = p.x + 8;
+        const bubbleY = p.y - bubbleH / 2;
+        const bubbleW = Math.ceil(measure.width()) + 14;
+        nodeGroup.add(
+          new Konva.Rect({
+            x: bubbleX,
+            y: bubbleY,
+            width: bubbleW,
+            height: bubbleH,
+            cornerRadius: 999,
+            fill: "rgba(255,255,255,0.02)",
+            stroke: pending ? "rgba(122,230,208,0.45)" : "rgba(255,255,255,0.08)",
+            strokeWidth: 1,
+            listening: false
+          })
+        );
 
         this.addPinDot({
           parent: nodeGroup,
@@ -935,12 +967,13 @@ export class KonvaSheetScene {
 
         nodeGroup.add(
           new Konva.Text({
-            x: p.x + 11,
+            x: bubbleX + 7,
             y: p.y - 7,
             text: pin.name,
             fontFamily: "IBM Plex Mono",
             fontSize: 12,
-            fill: "#d7eee7"
+            fill: "#d7eee7",
+            listening: false
           })
         );
       }
@@ -965,20 +998,39 @@ export class KonvaSheetScene {
           fontFamily: "IBM Plex Mono",
           fontSize: 12
         });
+        const bubbleH = SIDE_ROW_H - 6;
+        const bubbleW = Math.ceil(measure.width()) + 14;
+        const bubbleX = p.x - 8 - bubbleW;
+        const bubbleY = p.y - bubbleH / 2;
+        nodeGroup.add(
+          new Konva.Rect({
+            x: bubbleX,
+            y: bubbleY,
+            width: bubbleW,
+            height: bubbleH,
+            cornerRadius: 999,
+            fill: "rgba(255,255,255,0.02)",
+            stroke: pending ? "rgba(122,230,208,0.45)" : "rgba(255,255,255,0.08)",
+            strokeWidth: 1,
+            listening: false
+          })
+        );
         nodeGroup.add(
           new Konva.Text({
-            x: p.x - 11 - measure.width(),
+            x: bubbleX + 7,
             y: p.y - 7,
             text: pin.name,
             fontFamily: "IBM Plex Mono",
             fontSize: 12,
-            fill: "#d7eee7"
+            fill: "#d7eee7",
+            listening: false
           })
         );
       }
 
       if (bottomPins.length > 0) {
-        const y = HEADER_H + rows * SIDE_ROW_H + 8;
+        const bandTop = HEADER_H + rows * SIDE_ROW_H + 8;
+        const bandHeight = Math.max(layout.bottomBandHeight, BOTTOM_PIN_PILL_W + PIN_R);
         for (const pin of bottomPins) {
           const p = layout.pinPositionsLocal[pin.key];
           const endpoint: SheetEndpointRef = { kind: "node-pin", nodeId: node.id, pinKey: pin.key };
@@ -988,33 +1040,44 @@ export class KonvaSheetScene {
             fontFamily: "IBM Plex Mono",
             fontSize: 11
           });
-          const pillW = Math.ceil(measure.width()) + 16;
+          const textW = Math.ceil(measure.width());
+          const textH = Math.ceil(measure.height());
+          const pillW = BOTTOM_PIN_PILL_W;
+          const pillH = Math.min(
+            bandHeight - 6,
+            Math.max(BOTTOM_PIN_PILL_W, textW + BOTTOM_PIN_TEXT_PAD)
+          );
           const pillX = p.x - pillW / 2;
+          const dotY = p.y;
+          const pillY = Math.max(bandTop, dotY - 6 - pillH);
           const pill = new Konva.Rect({
             x: pillX,
-            y,
+            y: pillY,
             width: pillW,
-            height: BOTTOM_H - 4,
-            cornerRadius: 999,
+            height: pillH,
+            cornerRadius: 10,
             fill: "rgba(255,255,255,0.02)",
             stroke: pending ? "rgba(122,230,208,0.45)" : "rgba(255,255,255,0.08)",
             strokeWidth: 1
           });
           nodeGroup.add(pill);
+          const textX = pillX + pillW / 2 - textH / 2;
+          const textY = pillY + pillH / 2 + textW / 2;
           nodeGroup.add(
             new Konva.Text({
-              x: pillX + 8,
-              y: y + 4,
+              x: textX,
+              y: textY,
               text: pin.name,
               fontFamily: "IBM Plex Mono",
               fontSize: 11,
-              fill: "#d7eee7"
+              fill: "#d7eee7",
+              rotation: -90
             })
           );
           this.addPinDot({
             parent: nodeGroup,
             x: p.x,
-            y: y + (BOTTOM_H - 4),
+            y: dotY,
             direction: pin.direction,
             type: pin.type,
             pending,

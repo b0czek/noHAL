@@ -1,12 +1,22 @@
 import { endpointKey, getNodePins } from "../../shared/graph";
 import type { NoHALProject, SheetDefinition, SheetEndpointRef, SheetNodeInstance } from "../../shared/types";
-import { BOTTOM_H, HEADER_H, NODE_WIDTH, SIDE_ROW_H } from "./constants";
+import {
+  BOTTOM_PIN_COLUMN_STEP,
+  BOTTOM_PIN_DOT_GAP,
+  BOTTOM_PIN_PILL_W,
+  BOTTOM_PIN_TEXT_PAD,
+  HEADER_H,
+  NODE_WIDTH,
+  PIN_R,
+  SIDE_ROW_H
+} from "./constants";
 
 export type Pt = { x: number; y: number };
 
 export interface NodeLayout {
   width: number;
   height: number;
+  bottomBandHeight: number;
   pinPositionsLocal: Record<string, Pt>;
 }
 
@@ -16,7 +26,7 @@ export interface SheetSceneLayout {
 }
 
 const MONO_CHAR_WIDTH_AT_12 = 7.2;
-const SIDE_LABEL_CLEARANCE = 42; // left/right pin labels start/end 21px from the node edge
+const SIDE_LABEL_CLEARANCE = 50; // side pin bubbles/text start/end ~25px from the node edge
 const SIDE_LABEL_GAP = 16;
 
 function estimateMonoTextWidth(text: string, fontSize: number): number {
@@ -31,20 +41,15 @@ function computeSidePinWidth(leftNames: string[], rightNames: string[]): number 
 
 function computeBottomPinWidth(bottomNames: string[]): number {
   if (bottomNames.length === 0) return 0;
+  return Math.ceil(BOTTOM_PIN_COLUMN_STEP * (bottomNames.length + 1));
+}
 
-  const pillWidths = bottomNames.map((name) => estimateMonoTextWidth(name, 11) + 16);
-  const count = pillWidths.length;
-  const maxPill = Math.max(...pillWidths);
+function computeBottomBandHeight(bottomNames: string[]): number {
+  if (bottomNames.length === 0) return 0;
 
-  if (count === 1) {
-    return maxPill + 20;
-  }
-
-  let requiredStep = maxPill / 2 + 6; // keep first/last pill mostly inside node bounds
-  for (let i = 0; i < pillWidths.length - 1; i += 1) {
-    requiredStep = Math.max(requiredStep, (pillWidths[i] + pillWidths[i + 1]) / 2 + 8);
-  }
-  return Math.ceil(requiredStep * (count + 1));
+  const maxRotatedTextSpan = Math.max(...bottomNames.map((name) => estimateMonoTextWidth(name, 11)));
+  const tallestPill = Math.max(BOTTOM_PIN_PILL_W, maxRotatedTextSpan + BOTTOM_PIN_TEXT_PAD);
+  return tallestPill + BOTTOM_PIN_DOT_GAP + PIN_R;
 }
 
 export function computeNodeLayout(project: NoHALProject, node: SheetNodeInstance): NodeLayout {
@@ -63,7 +68,8 @@ export function computeNodeLayout(project: NoHALProject, node: SheetNodeInstance
 
   const rows = Math.max(left.length, right.length, 1);
   const sideHeight = rows * SIDE_ROW_H;
-  const bottomHeight = bottom.length > 0 ? BOTTOM_H + 10 : 0;
+  const bottomBandHeight = computeBottomBandHeight(bottom.map((pin) => pin.name));
+  const bottomHeight = bottom.length > 0 ? bottomBandHeight + 10 : 0;
   const height = HEADER_H + sideHeight + bottomHeight + 12;
   const pinPositionsLocal: Record<string, Pt> = {};
 
@@ -82,13 +88,14 @@ export function computeNodeLayout(project: NoHALProject, node: SheetNodeInstance
     const step = width / (bottom.length + 1);
     pinPositionsLocal[pin.key] = {
       x: step * (idx + 1),
-      y: HEADER_H + sideHeight + 12 + BOTTOM_H / 2
+      y: height - 10
     };
   });
 
   return {
     width,
     height,
+    bottomBandHeight,
     pinPositionsLocal
   };
 }
