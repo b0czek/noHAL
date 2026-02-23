@@ -1,4 +1,5 @@
 import { createEffect, createMemo, createSignal } from "solid-js";
+import { HiOutlineArchiveBoxArrowDown, HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
 import { createEmptyProject } from "../shared/project";
 import { getSheet } from "../shared/graph";
 import Canvas from "./components/Canvas";
@@ -81,9 +82,30 @@ export default function App() {
         </div>
 
         <div class="toolbar-group">
-          <button class="btn" onClick={() => void actions.newProject()}>New</button>
-          <button class="btn" onClick={() => void actions.openProject()}>Open</button>
-          <button class="btn" onClick={() => void actions.saveProject()}>Save</button>
+          <button
+            class="btn subtle icon-btn"
+            onClick={() => void actions.newProject()}
+            aria-label="New project"
+            title="New project"
+          >
+            <HiOutlineDocumentPlus size={16} aria-hidden="true" />
+          </button>
+          <button
+            class="btn subtle icon-btn"
+            onClick={() => void actions.openProject()}
+            aria-label="Open project"
+            title="Open project"
+          >
+            <HiOutlineFolderOpen size={16} aria-hidden="true" />
+          </button>
+          <button
+            class="btn subtle icon-btn"
+            onClick={() => void actions.saveProject()}
+            aria-label="Save project"
+            title="Save project"
+          >
+            <HiOutlineArchiveBoxArrowDown size={16} aria-hidden="true" />
+          </button>
           <button class="btn accent" onClick={() => void actions.exportHal()}>Export HAL</button>
         </div>
 
