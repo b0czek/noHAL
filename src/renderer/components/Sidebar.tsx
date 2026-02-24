@@ -1,22 +1,20 @@
-import { HiOutlineArrowSmallUp } from "solid-icons/hi";
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
-import { Portal } from "solid-js/web";
+import { createEffect, createMemo, createSignal, For } from "solid-js";
 import type { NoHALProject, SheetDefinition } from "../../shared/types";
 import { useI18n } from "../i18n";
+import { useContextMenu } from "./ContextMenuProvider";
 
 interface SidebarProps {
   project: NoHALProject;
   activeSheetId: string;
   onPlaceSheet: (sheetId: string) => void;
   onGoToSheet: (sheetId: string) => void;
-  onGoToParentSheet: () => void;
-  canGoToParentSheet: boolean;
   onOpenSheetSettings: (sheetId: string) => void;
   onDeleteSheet: (sheetId: string) => void;
 }
 
 export default function Sidebar(props: SidebarProps) {
   const { t } = useI18n();
+  const contextMenu = useContextMenu();
   type SheetTreeNode = {
     sheet: SheetDefinition;
     children: SheetTreeNode[];
@@ -26,11 +24,6 @@ export default function Sidebar(props: SidebarProps) {
   const [collapsedSheetIds, setCollapsedSheetIds] = createSignal<Set<string>>(
     new Set(),
   );
-  const [sheetContextMenu, setSheetContextMenu] = createSignal<{
-    sheetId: string;
-    x: number;
-    y: number;
-  } | null>(null);
   const placedSheetIds = createMemo(() => {
     const ids = new Set<string>();
     for (const sheet of Object.values(props.project.sheets)) {
@@ -176,10 +169,28 @@ export default function Sidebar(props: SidebarProps) {
             onContextMenu={(evt) => {
               evt.preventDefault();
               evt.stopPropagation();
-              setSheetContextMenu({
-                sheetId: branchProps.node.sheet.id,
+              const items = [
+                {
+                  label: t("sidebar.sheetSettings"),
+                  onSelect: () =>
+                    props.onOpenSheetSettings(branchProps.node.sheet.id),
+                },
+              ];
+              if (branchProps.node.sheet.id !== props.project.rootSheetId) {
+                items.push({
+                  label: t("sidebar.deleteSheet"),
+                  onSelect: () =>
+                    props.onDeleteSheet(branchProps.node.sheet.id),
+                });
+              }
+              contextMenu.openActions({
                 x: evt.clientX,
                 y: evt.clientY,
+                width: 220,
+                maxHeight: 240,
+                ariaLabel: t("sidebar.sheetActions"),
+                title: branchProps.node.sheet.name,
+                items,
               });
             }}
             title={branchProps.node.sheet.name}
@@ -217,68 +228,12 @@ export default function Sidebar(props: SidebarProps) {
     <aside class="sidebar">
       <section class="panel">
         <div class="panel-title">{t("sidebar.sheets")}</div>
-        <div class="sidebar-actions">
-          <button
-            type="button"
-            class="btn subtle icon-btn"
-            onClick={props.onGoToParentSheet}
-            disabled={!props.canGoToParentSheet}
-            aria-label={t("sidebar.goToParentSheet")}
-            title={t("sidebar.goToParentSheet")}
-          >
-            <HiOutlineArrowSmallUp size={16} aria-hidden="true" />
-          </button>
-        </div>
         <div class="sheet-tree">
           <ul class="sheet-tree-list is-root">
             <For each={treeRoots()}>{(node) => <TreeBranch node={node} />}</For>
           </ul>
         </div>
       </section>
-      <Show when={sheetContextMenu()}>
-        {(menu) => (
-          <Portal>
-            <div
-              class="sheet-context-backdrop"
-              role="presentation"
-              onPointerDown={() => setSheetContextMenu(null)}
-            >
-              <div
-                class="sheet-context-menu"
-                role="dialog"
-                aria-modal="false"
-                aria-label={t("sidebar.sheetActions")}
-                style={{ left: `${menu().x}px`, top: `${menu().y}px` }}
-                onPointerDown={(evt) => evt.stopPropagation()}
-                onContextMenu={(evt) => evt.preventDefault()}
-              >
-                <button
-                  type="button"
-                  class="sheet-context-item"
-                  onClick={() => {
-                    props.onOpenSheetSettings(menu().sheetId);
-                    setSheetContextMenu(null);
-                  }}
-                >
-                  {t("sidebar.sheetSettings")}
-                </button>
-                <Show when={menu().sheetId !== props.project.rootSheetId}>
-                  <button
-                    type="button"
-                    class="sheet-context-item"
-                    onClick={() => {
-                      props.onDeleteSheet(menu().sheetId);
-                      setSheetContextMenu(null);
-                    }}
-                  >
-                    {t("sidebar.deleteSheet")}
-                  </button>
-                </Show>
-              </div>
-            </div>
-          </Portal>
-        )}
-      </Show>
     </aside>
   );
 }

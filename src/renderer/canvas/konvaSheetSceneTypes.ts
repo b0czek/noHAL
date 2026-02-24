@@ -12,6 +12,19 @@ export type SceneSelection =
   | { kind: "multi"; nodeIds: string[]; labelIds: string[]; portIds: string[] }
   | null;
 
+export type SceneContextMenuTarget =
+  | { kind: "node"; id: string; nodeKind: "component" | "sheet" }
+  | { kind: "label"; id: string }
+  | { kind: "sheet-port"; id: string }
+  | { kind: "wire-connection"; connectionId: string }
+  | { kind: "wire-waypoint"; connectionId: string; waypointIndex: number };
+
+export interface SceneContextMenuRequest {
+  clientX: number;
+  clientY: number;
+  target: SceneContextMenuTarget;
+}
+
 export interface SceneCallbacks {
   onSelect: (selection: SceneSelection) => void;
   onOpenNode: (nodeId: string) => void;
@@ -23,6 +36,7 @@ export interface SceneCallbacks {
   onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
   onBackgroundClick?: (point: XY) => void;
   onCameraChange?: (camera: { x: number; y: number; scale: number }) => void;
+  onContextMenuRequest?: (request: SceneContextMenuRequest) => void;
 }
 
 export interface SceneRenderState {

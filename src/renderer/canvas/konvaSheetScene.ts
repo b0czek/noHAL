@@ -503,7 +503,9 @@ export class KonvaSheetScene {
       return;
     }
 
-    const worldA = this.clampPos(this.screenToWorld({ x: screenRect.x, y: screenRect.y }));
+    const worldA = this.clampPos(
+      this.screenToWorld({ x: screenRect.x, y: screenRect.y }),
+    );
     const worldB = this.clampPos(
       this.screenToWorld({
         x: screenRect.x + screenRect.width,
@@ -630,7 +632,8 @@ export class KonvaSheetScene {
       return;
     }
     if (total === 1) {
-      if (nodeIds.length === 1) this.callbacks.onSelect({ kind: "node", id: nodeIds[0] });
+      if (nodeIds.length === 1)
+        this.callbacks.onSelect({ kind: "node", id: nodeIds[0] });
       else if (labelIds.length === 1)
         this.callbacks.onSelect({ kind: "label", id: labelIds[0] });
       else this.callbacks.onSelect({ kind: "sheet-port", id: portIds[0] });
@@ -678,7 +681,9 @@ export class KonvaSheetScene {
     if (!this.selectionContainsTarget(selection, target)) return null;
 
     const total =
-      selection.nodeIds.length + selection.labelIds.length + selection.portIds.length;
+      selection.nodeIds.length +
+      selection.labelIds.length +
+      selection.portIds.length;
     if (total <= 1) return null;
 
     const nodeStartPositions = new Map<string, Pt>();
@@ -688,7 +693,10 @@ export class KonvaSheetScene {
     for (const nodeId of selection.nodeIds) {
       const node = state.sheet.nodes.find((n) => n.id === nodeId);
       if (!node) continue;
-      nodeStartPositions.set(nodeId, this.liveNodePositions.get(nodeId) ?? node.position);
+      nodeStartPositions.set(
+        nodeId,
+        this.liveNodePositions.get(nodeId) ?? node.position,
+      );
     }
     for (const labelId of selection.labelIds) {
       const label = state.sheet.labels.find((l) => l.id === labelId);
@@ -701,11 +709,16 @@ export class KonvaSheetScene {
     for (const portId of selection.portIds) {
       const port = state.sheet.ports.find((p) => p.id === portId);
       if (!port) continue;
-      portStartPositions.set(portId, this.livePortPositions.get(portId) ?? port.position);
+      portStartPositions.set(
+        portId,
+        this.livePortPositions.get(portId) ?? port.position,
+      );
     }
 
     if (
-      nodeStartPositions.size + labelStartPositions.size + portStartPositions.size <=
+      nodeStartPositions.size +
+        labelStartPositions.size +
+        portStartPositions.size <=
       1
     ) {
       return null;
@@ -732,13 +745,21 @@ export class KonvaSheetScene {
     if (group) group.position(pos);
   }
 
-  private applyGroupDragLivePosition(target: SelectionDragTarget, pos: Pt): void {
+  private applyGroupDragLivePosition(
+    target: SelectionDragTarget,
+    pos: Pt,
+  ): void {
     if (target.kind === "node") this.liveNodePositions.set(target.id, pos);
-    else if (target.kind === "label") this.liveLabelPositions.set(target.id, pos);
+    else if (target.kind === "label")
+      this.liveLabelPositions.set(target.id, pos);
     else this.livePortPositions.set(target.id, pos);
   }
 
-  private constrainGroupDragDelta(session: GroupDragSession, dx: number, dy: number): Pt {
+  private constrainGroupDragDelta(
+    session: GroupDragSession,
+    dx: number,
+    dy: number,
+  ): Pt {
     let nextDx = dx;
     let nextDy = dy;
 
@@ -752,9 +773,12 @@ export class KonvaSheetScene {
       else if (dy < 0) nextDy = Math.max(nextDy, allowedDy);
     };
 
-    for (const start of session.nodeStartPositions.values()) applyConstraint(start);
-    for (const start of session.labelStartPositions.values()) applyConstraint(start);
-    for (const start of session.portStartPositions.values()) applyConstraint(start);
+    for (const start of session.nodeStartPositions.values())
+      applyConstraint(start);
+    for (const start of session.labelStartPositions.values())
+      applyConstraint(start);
+    for (const start of session.portStartPositions.values())
+      applyConstraint(start);
 
     return { x: nextDx, y: nextDy };
   }
@@ -779,13 +803,19 @@ export class KonvaSheetScene {
     moveAll(session.portStartPositions.entries(), "sheet-port");
   }
 
-  private onSelectionDragStart = (target: SelectionDragTarget, pos: Pt): boolean => {
+  private onSelectionDragStart = (
+    target: SelectionDragTarget,
+    pos: Pt,
+  ): boolean => {
     const session = this.buildGroupDragSession(target, pos);
     this.groupDragSession = session;
     return session !== null;
   };
 
-  private onSelectionDragMove = (target: SelectionDragTarget, pos: Pt): boolean => {
+  private onSelectionDragMove = (
+    target: SelectionDragTarget,
+    pos: Pt,
+  ): boolean => {
     const session = this.groupDragSession;
     if (!session) return false;
     if (
@@ -796,7 +826,11 @@ export class KonvaSheetScene {
     }
     const desiredDx = pos.x - session.anchorStartPos.x;
     const desiredDy = pos.y - session.anchorStartPos.y;
-    const constrained = this.constrainGroupDragDelta(session, desiredDx, desiredDy);
+    const constrained = this.constrainGroupDragDelta(
+      session,
+      desiredDx,
+      desiredDy,
+    );
     session.appliedDx = constrained.x;
     session.appliedDy = constrained.y;
     this.applyGroupDragSessionPositions(session);
@@ -804,7 +838,10 @@ export class KonvaSheetScene {
     return true;
   };
 
-  private onSelectionDragEnd = (target: SelectionDragTarget, pos: Pt): boolean => {
+  private onSelectionDragEnd = (
+    target: SelectionDragTarget,
+    pos: Pt,
+  ): boolean => {
     const session = this.groupDragSession;
     if (!session) return false;
     if (
@@ -922,7 +959,8 @@ export class KonvaSheetScene {
     const selectedPortIds = new Set<string>();
     if (selection?.kind === "node") selectedNodeIds.add(selection.id);
     else if (selection?.kind === "label") selectedLabelIds.add(selection.id);
-    else if (selection?.kind === "sheet-port") selectedPortIds.add(selection.id);
+    else if (selection?.kind === "sheet-port")
+      selectedPortIds.add(selection.id);
     else if (selection?.kind === "multi") {
       for (const id of selection.nodeIds) selectedNodeIds.add(id);
       for (const id of selection.labelIds) selectedLabelIds.add(id);

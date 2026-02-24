@@ -54,8 +54,6 @@ export default function EditorScreen(props: EditorScreenProps) {
           activeSheetId={props.state.activeSheetId}
           onPlaceSheet={(id) => props.actions.placeExistingSheetNode(id)}
           onGoToSheet={(id) => props.actions.setActiveSheet(id)}
-          onGoToParentSheet={() => props.actions.goToParentSheet()}
-          canGoToParentSheet={Boolean(editorUi.currentSheet().parentSheetId)}
           onOpenSheetSettings={editorUi.openSheetSettings}
           onDeleteSheet={(id) => props.actions.deleteSheetDefinition(id)}
         />
@@ -80,6 +78,11 @@ export default function EditorScreen(props: EditorScreenProps) {
           }
           onAddComponentAt={(id, x, y) =>
             props.actions.addComponentNode(id, { x, y })
+          }
+          onRemoveSelection={props.actions.removeSelection}
+          onRemoveConnection={props.actions.removeDirectConnection}
+          onRefreshComponentInStore={(componentId) =>
+            void props.actions.refreshComponentInStore(componentId)
           }
         />
 

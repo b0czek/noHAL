@@ -14,7 +14,7 @@ import type {
 import { KonvaSheetScene } from "../canvas/konvaSheetScene";
 import { useI18n } from "../i18n";
 import type { Selection } from "../state/store";
-import CanvasComponentMenu from "./CanvasComponentMenu";
+import { useCanvasContextMenu } from "./useCanvasContextMenu";
 
 interface CanvasProps {
   project: NoHALProject;
@@ -33,6 +33,9 @@ interface CanvasProps {
   onMoveSheetPort: (id: string, x: number, y: number) => void;
   onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
   onAddComponentAt: (componentId: string, x: number, y: number) => void;
+  onRemoveSelection: () => void;
+  onRemoveConnection: (connectionId: string) => void;
+  onRefreshComponentInStore: (componentId: string) => void;
 }
 
 export default function Canvas(props: CanvasProps) {
@@ -40,12 +43,6 @@ export default function Canvas(props: CanvasProps) {
   let hostEl!: HTMLDivElement;
   let scene: KonvaSheetScene | null = null;
   let resizeObserver: ResizeObserver | null = null;
-  const [menu, setMenu] = createSignal<{
-    x: number;
-    y: number;
-    worldX: number;
-    worldY: number;
-  } | null>(null);
   const [camera, setCamera] = createSignal({ x: 0, y: 0, scale: 1 });
 
   const wrapOffset = (value: number, spacing: number) => {
@@ -67,11 +64,20 @@ export default function Canvas(props: CanvasProps) {
     ].join(";");
   });
 
-  const componentChoices = createMemo(() =>
-    Object.values(props.project.library.components).sort((a, b) =>
-      a.halComponentName.localeCompare(b.halComponentName),
-    ),
-  );
+  const canvasContextMenu = useCanvasContextMenu({
+    getHostEl: () => hostEl,
+    getScene: () => scene,
+    getProject: () => props.project,
+    getSheet: () => props.sheet,
+    getSelection: () => props.selection,
+    onSelect: props.onSelect,
+    onOpenNode: props.onOpenNode,
+    onMoveConnectionWaypoints: props.onMoveConnectionWaypoints,
+    onAddComponentAt: props.onAddComponentAt,
+    onRemoveSelection: props.onRemoveSelection,
+    onRemoveConnection: props.onRemoveConnection,
+    onRefreshComponentInStore: props.onRefreshComponentInStore,
+  });
 
   onMount(() => {
     scene = new KonvaSheetScene(hostEl, {
@@ -85,6 +91,7 @@ export default function Canvas(props: CanvasProps) {
       onMoveSheetPort: props.onMoveSheetPort,
       onMoveConnectionWaypoints: props.onMoveConnectionWaypoints,
       onCameraChange: setCamera,
+      onContextMenuRequest: canvasContextMenu.handleSceneContextMenuRequest,
     });
     resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -124,13 +131,7 @@ export default function Canvas(props: CanvasProps) {
   });
 
   return (
-    <div
-      class="canvas-shell"
-      role="presentation"
-      onPointerDown={() => {
-        if (menu()) setMenu(null);
-      }}
-    >
+    <div class="canvas-shell" role="presentation">
       <div class="canvas-grid" style={gridStyle()}>
         <div
           ref={(el) => {
@@ -140,35 +141,10 @@ export default function Canvas(props: CanvasProps) {
           role="application"
           aria-label={t("canvas.ariaWorkspace")}
           onContextMenu={(evt) => {
+            if (evt.defaultPrevented) return;
             evt.preventDefault();
-            const rect = hostEl.getBoundingClientRect();
-            const localX = Math.max(0, evt.clientX - rect.left);
-            const localY = Math.max(0, evt.clientY - rect.top);
-            const menuW = 360;
-            const menuH = 440;
-            const x = Math.max(8, Math.min(localX, rect.width - menuW - 8));
-            const y = Math.max(8, Math.min(localY, rect.height - menuH - 8));
-            const world = scene?.clientToWorld(evt.clientX, evt.clientY) ?? {
-              x: 120,
-              y: 120,
-            };
-            setMenu({ x, y, worldX: world.x, worldY: world.y });
+            canvasContextMenu.openBackgroundMenu(evt.clientX, evt.clientY);
           }}
-        />
-        <CanvasComponentMenu
-          open={menu() !== null}
-          x={menu()?.x ?? 0}
-          y={menu()?.y ?? 0}
-          components={componentChoices()}
-          onAddComponent={(componentId) => {
-            const m = menu();
-            props.onAddComponentAt(
-              componentId,
-              m?.worldX ?? 120,
-              m?.worldY ?? 120,
-            );
-          }}
-          onClose={() => setMenu(null)}
         />
       </div>
     </div>

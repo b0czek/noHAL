@@ -45,7 +45,10 @@ export interface KonvaSheetSceneWiresContext {
   stage: Konva.Stage;
   wireLayer: Konva.Layer;
   wireWorld: Konva.Group;
-  callbacks: Pick<SceneCallbacks, "onMoveConnectionWaypoints">;
+  callbacks: Pick<
+    SceneCallbacks,
+    "onMoveConnectionWaypoints" | "onContextMenuRequest"
+  >;
   clampPos: (pos: Pt) => Pt;
   screenToWorld: (pos: Pt) => Pt;
   getCursorPosCache: () => Pt | null;
@@ -558,6 +561,22 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
       insertWaypointOnConnection(ctx, conn.id, routePoints, point);
     });
 
+    wire?.on("contextmenu", (evt) => {
+      evt.cancelBubble = true;
+      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+      if ("stopPropagation" in evt.evt) evt.evt.stopPropagation();
+      ctx.setSelectedConnectionId(conn.id);
+      ctx.setSelectedWaypointIndex(null);
+      redrawWires(ctx);
+      if (evt.evt instanceof MouseEvent) {
+        ctx.callbacks.onContextMenuRequest?.({
+          clientX: evt.evt.clientX,
+          clientY: evt.evt.clientY,
+          target: { kind: "wire-connection", connectionId: conn.id },
+        });
+      }
+    });
+
     if (selected && (conn.waypoints?.length ?? 0) > 0 && wire) {
       const waypoints = conn.waypoints ?? [];
       for (let i = 0; i < waypoints.length; i += 1) {
@@ -585,6 +604,26 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
           ctx.setSelectedConnectionId(conn.id);
           ctx.setSelectedWaypointIndex(i);
           redrawWires(ctx);
+        });
+
+        handle.on("contextmenu", (evt) => {
+          evt.cancelBubble = true;
+          if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+          if ("stopPropagation" in evt.evt) evt.evt.stopPropagation();
+          ctx.setSelectedConnectionId(conn.id);
+          ctx.setSelectedWaypointIndex(i);
+          redrawWires(ctx);
+          if (evt.evt instanceof MouseEvent) {
+            ctx.callbacks.onContextMenuRequest?.({
+              clientX: evt.evt.clientX,
+              clientY: evt.evt.clientY,
+              target: {
+                kind: "wire-waypoint",
+                connectionId: conn.id,
+                waypointIndex: i,
+              },
+            });
+          }
         });
 
         handle.on("dragmove", () => {

@@ -249,7 +249,10 @@ function pruneSheetNodeReferences(
   );
 
   sheet.labelAnchors = sheet.labelAnchors.filter(
-    (a) => !(a.endpoint.kind === "node-pin" && removedNodeIds.has(a.endpoint.nodeId)),
+    (a) =>
+      !(
+        a.endpoint.kind === "node-pin" && removedNodeIds.has(a.endpoint.nodeId)
+      ),
   );
 
   if (!sheet.hal?.addfQueue) return;
@@ -732,9 +735,9 @@ export function createEditorStore(
       let nextActiveSheetId = state.activeSheetId;
       if (!next.sheets[nextActiveSheetId]) {
         nextActiveSheetId =
-          (target.parentSheetId && next.sheets[target.parentSheetId]
+          target.parentSheetId && next.sheets[target.parentSheetId]
             ? target.parentSheetId
-            : next.rootSheetId);
+            : next.rootSheetId;
       }
       syncProjectUi(next, nextActiveSheetId);
 
@@ -926,7 +929,10 @@ export function createEditorStore(
         const deletedSheetIds = new Set<string>();
         for (const node of currentSheet.nodes) {
           if (node.kind !== "sheet" || !selectedNodeIds.has(node.id)) continue;
-          for (const sheetId of collectSheetSubtreeIds(state.project, node.sheetId)) {
+          for (const sheetId of collectSheetSubtreeIds(
+            state.project,
+            node.sheetId,
+          )) {
             deletedSheetIds.add(sheetId);
           }
         }
@@ -949,23 +955,22 @@ export function createEditorStore(
           });
           pruneSheetNodeReferences(sheet, removedNodeIds);
 
-          sheet.labels = sheet.labels.filter((l) => !selectedLabelIds.has(l.id));
+          sheet.labels = sheet.labels.filter(
+            (l) => !selectedLabelIds.has(l.id),
+          );
           sheet.labelAnchors = sheet.labelAnchors.filter((a) => {
             if (selectedLabelIds.has(a.labelId)) return false;
             return !(
-              a.endpoint.kind === "sheet-port" && selectedPortIds.has(a.endpoint.portId)
+              a.endpoint.kind === "sheet-port" &&
+              selectedPortIds.has(a.endpoint.portId)
             );
           });
 
           sheet.ports = sheet.ports.filter((p) => !selectedPortIds.has(p.id));
           sheet.directConnections = sheet.directConnections.filter(
             (c) =>
-              !(
-                c.a.kind === "sheet-port" && selectedPortIds.has(c.a.portId)
-              ) &&
-              !(
-                c.b.kind === "sheet-port" && selectedPortIds.has(c.b.portId)
-              ),
+              !(c.a.kind === "sheet-port" && selectedPortIds.has(c.a.portId)) &&
+              !(c.b.kind === "sheet-port" && selectedPortIds.has(c.b.portId)),
           );
         }
 

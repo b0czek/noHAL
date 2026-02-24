@@ -2,6 +2,7 @@ import { createSignal, Show } from "solid-js";
 import { createEmptyProject } from "../shared/project";
 import EditorScreen from "./app/EditorScreen";
 import { useLandingProjectFlow } from "./app/useLandingProjectFlow";
+import { ContextMenuProvider } from "./components/ContextMenuProvider";
 import LandingPage from "./components/LandingPage";
 import ProjectCreationDialog from "./components/ProjectCreationDialog";
 import { useI18n } from "./i18n";
@@ -22,7 +23,7 @@ export default function App() {
   });
 
   return (
-    <>
+    <ContextMenuProvider>
       <ProjectCreationDialog {...landing.projectCreationDialogProps()} />
       <Show
         when={isEditorOpen()}
@@ -51,6 +52,6 @@ export default function App() {
           onOpenProjectCreationDialog={landing.openProjectCreationDialog}
         />
       </Show>
-    </>
+    </ContextMenuProvider>
   );
 }

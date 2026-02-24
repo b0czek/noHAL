@@ -139,7 +139,10 @@ function addPinDot(args: {
   args.parent.add(bead);
 }
 
-function getNodePinSetpValue(node: SheetNodeInstance, pinKey: string): string | null {
+function getNodePinSetpValue(
+  node: SheetNodeInstance,
+  pinKey: string,
+): string | null {
   if (node.kind !== "component") return null;
   const raw = node.pinInitialValues?.[pinKey];
   if (typeof raw !== "string") return null;
@@ -256,6 +259,18 @@ export function renderPorts(args: RenderPortsArgs): void {
     portGroup.on("click tap", (evt) => {
       evt.cancelBubble = true;
       callbacks.onSelect({ kind: "sheet-port", id: port.id });
+    });
+    portGroup.on("contextmenu", (evt) => {
+      evt.cancelBubble = true;
+      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+      if ("stopPropagation" in evt.evt) evt.evt.stopPropagation();
+      if (evt.evt instanceof MouseEvent) {
+        callbacks.onContextMenuRequest?.({
+          clientX: evt.evt.clientX,
+          clientY: evt.evt.clientY,
+          target: { kind: "sheet-port", id: port.id },
+        });
+      }
     });
     portGroup.on("dragend", () => {
       const pos = clampPos(portGroup.position());
@@ -605,6 +620,22 @@ export function renderNodes(args: RenderNodesArgs): void {
     nodeGroup.on("click tap", () => {
       callbacks.onSelect({ kind: "node", id: node.id });
     });
+    nodeGroup.on("contextmenu", (evt) => {
+      evt.cancelBubble = true;
+      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+      if ("stopPropagation" in evt.evt) evt.evt.stopPropagation();
+      if (evt.evt instanceof MouseEvent) {
+        callbacks.onContextMenuRequest?.({
+          clientX: evt.evt.clientX,
+          clientY: evt.evt.clientY,
+          target: {
+            kind: "node",
+            id: node.id,
+            nodeKind: node.kind === "sheet" ? "sheet" : "component",
+          },
+        });
+      }
+    });
     nodeGroup.on("dblclick dbltap", (evt) => {
       evt.cancelBubble = true;
       callbacks.onSelect({ kind: "node", id: node.id });
@@ -679,8 +710,9 @@ export function renderLabels(args: RenderLabelsArgs): void {
       height: h,
       cornerRadius: CORNER_RADIUS_MD,
       fill: labelFill(label.scope),
-      stroke:
-        selectedLabelIds.has(label.id) ? SELECTED_LABEL_BORDER : NEUTRAL_BORDER,
+      stroke: selectedLabelIds.has(label.id)
+        ? SELECTED_LABEL_BORDER
+        : NEUTRAL_BORDER,
       strokeWidth: selectedLabelIds.has(label.id) ? 2 : 1,
     });
     group.add(box);
@@ -714,6 +746,18 @@ export function renderLabels(args: RenderLabelsArgs): void {
     group.on("click tap", (evt) => {
       evt.cancelBubble = true;
       callbacks.onLabelClick(label.id);
+    });
+    group.on("contextmenu", (evt) => {
+      evt.cancelBubble = true;
+      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+      if ("stopPropagation" in evt.evt) evt.evt.stopPropagation();
+      if (evt.evt instanceof MouseEvent) {
+        callbacks.onContextMenuRequest?.({
+          clientX: evt.evt.clientX,
+          clientY: evt.evt.clientY,
+          target: { kind: "label", id: label.id },
+        });
+      }
     });
     group.on("dragend", () => {
       const pos = clampPos(group.position());

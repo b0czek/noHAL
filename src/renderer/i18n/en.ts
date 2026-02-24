@@ -50,6 +50,15 @@ export const en = {
   "topbar.globalLabel": "Global Label",
 
   "canvas.ariaWorkspace": "Canvas workspace",
+  "canvasContext.selection": "Selection",
+  "canvasContext.component": "Component",
+  "canvasContext.subsheet": "Subsheet",
+  "canvasContext.label": "Label",
+  "canvasContext.sheetPort": "Sheet Port",
+  "canvasContext.connection": "Connection",
+  "canvasContext.waypoint": "Waypoint",
+  "canvasContext.removeConnection": "Remove Connection",
+  "canvasContext.deleteWaypoint": "Delete Waypoint",
 
   "canvasComponentMenu.ariaLabel": "Add Component",
   "canvasComponentMenu.title": "Add Component",
@@ -90,7 +99,7 @@ export const en = {
   "sheetSettings.missingSheet": "missing sheet",
   "sheetSettings.missing": "missing",
 
-  "sidebar.sheets": "Sheets",
+  "sidebar.sheets": "Tree",
   "sidebar.expandSheet": "Expand {name}",
   "sidebar.collapseSheet": "Collapse {name}",
   "sidebar.orphan": "orphan",
