@@ -64,6 +64,10 @@ function normalizeType(value: string): HalValueType {
   throw new Error(`Unsupported HAL type: ${value}`);
 }
 
+function normalizeHalIdentifierName(name: string): string {
+  return name.replaceAll("_", "-").replace(/[-.]+$/g, "");
+}
+
 function splitCompHeader(text: string): { header: string; body: string } {
   const idx = text.indexOf(";;");
   if (idx < 0) {
@@ -243,6 +247,34 @@ function parseArrayToken(token: string): { len?: number; expr?: string } {
   };
 }
 
+function splitInlineArrayFromNameToken(
+  token: string,
+): { rawName: string; inlineArrayToken?: string } {
+  if (token.includes("[") || token.includes("]")) {
+    const bracketStart = token.indexOf("[");
+    const bracketEnd = token.lastIndexOf("]");
+    const hasBalancedTrailingArray =
+      bracketStart > 0 &&
+      bracketEnd === token.length - 1 &&
+      bracketEnd > bracketStart;
+    if (!hasBalancedTrailingArray) {
+      throw new Error(`Unterminated [] expression in statement: ${token}`);
+    }
+  }
+
+  if (!token.endsWith("]")) return { rawName: token };
+  const bracketStart = token.indexOf("[");
+  if (bracketStart <= 0) return { rawName: token };
+  const inlineArrayToken = token.slice(bracketStart);
+  if (!inlineArrayToken.startsWith("[") || !inlineArrayToken.endsWith("]")) {
+    return { rawName: token };
+  }
+  return {
+    rawName: token.slice(0, bracketStart),
+    inlineArrayToken,
+  };
+}
+
 function parsePinOrParam(
   stmt: TokenizedStatement,
   kind: "pin" | "param",
@@ -254,7 +286,8 @@ function parsePinOrParam(
 
   const direction = tokens[1] as PinDirection | ParamDirection;
   const typeToken = tokens[2];
-  const name = tokens[3];
+  const { rawName, inlineArrayToken } = splitInlineArrayFromNameToken(tokens[3]);
+  const name = normalizeHalIdentifierName(rawName);
 
   if (!HAL_TYPES.has(typeToken))
     throw new Error(`Unknown ${kind} type in: ${raw}`);
@@ -264,6 +297,12 @@ function parsePinOrParam(
   let arrayLen: number | undefined;
   let arrayExpr: string | undefined;
   let defaultValue: string | undefined;
+
+  if (inlineArrayToken) {
+    const parsedArray = parseArrayToken(inlineArrayToken);
+    arrayLen = parsedArray.len;
+    arrayExpr = parsedArray.expr;
+  }
 
   if (tokens[idx]?.startsWith("[")) {
     const parsedArray = parseArrayToken(tokens[idx]);
@@ -295,9 +334,9 @@ function parsePinOrParam(
     if (maybeDoc) doc = decodeCompString(maybeDoc);
   }
 
-  if (name.includes("#") && arrayLen === undefined) {
+  if (rawName.includes("#") && arrayLen === undefined) {
     warnings.push(
-      `${kind} '${name}' contains '#' but has no explicit array length`,
+      `${kind} '${rawName}' contains '#' but has no explicit array length`,
     );
   }
 
