@@ -21,6 +21,7 @@ interface UseCanvasContextMenuArgs {
   onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
   onAddComponentAt: (componentId: string, x: number, y: number) => void;
   onRemoveSelection: () => void;
+  onPutSelectionIntoSubsheet: () => void;
   onRemoveConnection: (connectionId: string) => void;
   onRefreshComponentInStore: (componentId: string) => void;
 }
@@ -112,6 +113,10 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       return {
         title: t("canvasContext.selection"),
         items: [
+          {
+            label: t("canvasContext.putEverythingIntoSubsheet"),
+            onSelect: () => args.onPutSelectionIntoSubsheet(),
+          },
           {
             label: t("inspector.deleteSelection"),
             onSelect: () => args.onRemoveSelection(),

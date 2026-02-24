@@ -34,6 +34,7 @@ interface CanvasProps {
   onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
   onAddComponentAt: (componentId: string, x: number, y: number) => void;
   onRemoveSelection: () => void;
+  onPutSelectionIntoSubsheet: () => void;
   onRemoveConnection: (connectionId: string) => void;
   onRefreshComponentInStore: (componentId: string) => void;
 }
@@ -75,6 +76,7 @@ export default function Canvas(props: CanvasProps) {
     onMoveConnectionWaypoints: props.onMoveConnectionWaypoints,
     onAddComponentAt: props.onAddComponentAt,
     onRemoveSelection: props.onRemoveSelection,
+    onPutSelectionIntoSubsheet: props.onPutSelectionIntoSubsheet,
     onRemoveConnection: props.onRemoveConnection,
     onRefreshComponentInStore: props.onRefreshComponentInStore,
   });

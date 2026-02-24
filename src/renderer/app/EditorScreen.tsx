@@ -80,6 +80,7 @@ export default function EditorScreen(props: EditorScreenProps) {
             props.actions.addComponentNode(id, { x, y })
           }
           onRemoveSelection={props.actions.removeSelection}
+          onPutSelectionIntoSubsheet={props.actions.putSelectionIntoSubsheet}
           onRemoveConnection={props.actions.removeDirectConnection}
           onRefreshComponentInStore={(componentId) =>
             void props.actions.refreshComponentInStore(componentId)

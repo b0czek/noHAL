@@ -57,6 +57,7 @@ export const en = {
   "canvasContext.sheetPort": "Sheet Port",
   "canvasContext.connection": "Connection",
   "canvasContext.waypoint": "Waypoint",
+  "canvasContext.putEverythingIntoSubsheet": "Into Subsheet",
   "canvasContext.removeConnection": "Remove Connection",
   "canvasContext.deleteWaypoint": "Delete Waypoint",
 
@@ -231,6 +232,12 @@ export const en = {
     "Deleted sheet {name} ({count} sheet definitions removed)",
   "store.status.addedLabel": "Added {scope} label",
   "store.status.addedSheetPort": "Added sheet port",
+  "store.status.cannotSubsheetEmptySelection":
+    "Select at least one node or label to create a subsheet",
+  "store.status.cannotSubsheetOnlyPortsSelection":
+    "Sheet ports cannot be moved into a subsheet directly",
+  "store.status.putSelectionIntoSubsheet":
+    "Put selection into subsheet {name} ({ports} ports created)",
   "store.status.removedSelection": "Removed selection",
   "store.status.selectedEndpointDetailed":
     "Selected endpoint {name} ({direction} {type})",
