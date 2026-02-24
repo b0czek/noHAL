@@ -137,6 +137,87 @@ function inferComponentName(instanceName: string): string {
   return segments[0] ?? instanceName;
 }
 
+function inferLoadusrProgramAndArgs(tokens: string[]): {
+  programToken?: string;
+  programArgs: string[];
+  waitForName?: string;
+  warnings: string[];
+} {
+  const warnings: string[] = [];
+  let idx = 1;
+  let waitForName: string | undefined;
+
+  while (idx < tokens.length) {
+    const token = tokens[idx];
+    if (!token) break;
+    if (token === "-W" || token === "-w" || token === "-i") {
+      idx += 1;
+      continue;
+    }
+    if (token === "-Wn") {
+      const name = tokens[idx + 1];
+      if (!name) {
+        warnings.push("loadusr -Wn missing component name");
+        idx += 1;
+        break;
+      }
+      waitForName = name;
+      idx += 2;
+      continue;
+    }
+    break;
+  }
+
+  const programToken = tokens[idx];
+  if (!programToken) {
+    warnings.push("loadusr missing program/component name");
+    return { programArgs: [], waitForName, warnings };
+  }
+
+  return {
+    programToken,
+    programArgs: tokens.slice(idx + 1),
+    waitForName,
+    warnings,
+  };
+}
+
+function inferLoadusrInstanceName(
+  programToken: string,
+  programArgs: string[],
+): { instanceName: string; explicitName?: string; warnings: string[] } {
+  const warnings: string[] = [];
+  const explicitNames: string[] = [];
+
+  for (let i = 0; i < programArgs.length; i += 1) {
+    const token = programArgs[i];
+    if (token !== "-n" && token !== "-c") continue;
+    const name = programArgs[i + 1];
+    if (!name) {
+      warnings.push(`loadusr ${token} missing component name`);
+      continue;
+    }
+    explicitNames.push(name);
+    i += 1;
+  }
+
+  const explicitName = explicitNames[0];
+  if (explicitNames.length > 1) {
+    const distinct = [...new Set(explicitNames)];
+    if (distinct.length > 1) {
+      warnings.push(
+        `loadusr has multiple component-name candidates (${distinct.join(", ")})`,
+      );
+    }
+  }
+
+  return {
+    instanceName: explicitName ?? basename(programToken),
+    ...(explicitName ? { explicitName } : {}),
+    warnings,
+  };
+}
+
 function ensureInstanceRecord(
   instances: Map<string, MutableInstance>,
   instanceName: string,
@@ -213,6 +294,15 @@ function isArrowToken(token: string): boolean {
   return token === "=>" || token === "<=" || token === "<=>";
 }
 
+function arrowRoles(
+  token: string,
+): { before: PinDirection; after: PinDirection } | null {
+  if (token === "=>") return { before: "out", after: "in" };
+  if (token === "<=") return { before: "in", after: "out" };
+  if (token === "<=>") return { before: "io", after: "io" };
+  return null;
+}
+
 function looksLikeHalPinPath(token: string): boolean {
   if (!token.includes(".")) return false;
   if (/^[+-]?\d+(\.\d+)?$/.test(token)) return false;
@@ -270,15 +360,35 @@ export function parseHalImportDraft(
     }
 
     if (cmd === "loadusr") {
-      // We don't parse loadusr flags fully yet; net/setp usage will still discover instances.
-      if (tokens.length >= 2) {
-        const programName = tokens[tokens.length - 1];
-        if (programName) {
-          warnings.push(
-            `Line ${line.line}: loadusr parsing is partial (program '${programName}')`,
-          );
-        }
+      const parsed = inferLoadusrProgramAndArgs(tokens);
+      for (const warning of parsed.warnings) {
+        warnings.push(`Line ${line.line}: ${warning}`);
       }
+      if (!parsed.programToken) continue;
+
+      const named = inferLoadusrInstanceName(parsed.programToken, parsed.programArgs);
+      for (const warning of named.warnings) {
+        warnings.push(`Line ${line.line}: ${warning}`);
+      }
+
+      const instanceName = parsed.waitForName ?? named.instanceName;
+      if (
+        parsed.waitForName &&
+        named.explicitName &&
+        parsed.waitForName !== named.explicitName
+      ) {
+        warnings.push(
+          `Line ${line.line}: loadusr -Wn name '${parsed.waitForName}' does not match component name option '${named.explicitName}'`,
+        );
+      }
+
+      knownInstances.add(instanceName);
+      ensureInstanceRecord(
+        instances,
+        instanceName,
+        basename(parsed.programToken),
+        "userspace",
+      );
       continue;
     }
 
@@ -334,11 +444,20 @@ export function parseHalImportDraft(
       const endpointTokens = tokens.slice(2);
       const endpoints: HalImportNet["endpoints"] = [];
       const endpointRoles: Array<PinDirection | null> = [];
-      let arrowRole: PinDirection | null = null;
+      let arrowRoleAfter: PinDirection | null = null;
+      let sawArrow = false;
 
       for (const token of endpointTokens) {
         if (isArrowToken(token)) {
-          arrowRole = token === "=>" ? "in" : token === "<=" ? "out" : "io";
+          const roles = arrowRoles(token);
+          if (!roles) continue;
+          if (!sawArrow) {
+            for (let i = 0; i < endpointRoles.length; i += 1) {
+              if (endpointRoles[i] == null) endpointRoles[i] = roles.before;
+            }
+          }
+          sawArrow = true;
+          arrowRoleAfter = roles.after;
           continue;
         }
         if (!looksLikeHalPinPath(token)) continue;
@@ -354,7 +473,7 @@ export function parseHalImportDraft(
           instanceName: split.instanceName,
           pinName: split.fieldName,
         });
-        endpointRoles.push(arrowRole);
+        endpointRoles.push(arrowRoleAfter);
         ensureInstanceRecord(instances, split.instanceName).pinNames.add(
           split.fieldName,
         );
