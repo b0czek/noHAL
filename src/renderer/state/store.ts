@@ -22,6 +22,7 @@ export type Selection =
   | { kind: "node"; id: string }
   | { kind: "label"; id: string }
   | { kind: "sheet-port"; id: string }
+  | { kind: "wire-connection"; id: string }
   | { kind: "multi"; nodeIds: string[]; labelIds: string[]; portIds: string[] }
   | null;
 
@@ -920,6 +921,12 @@ export function createEditorStore(
           return;
         }
       }
+      if (sel.kind === "wire-connection") {
+        actions.removeDirectConnection(sel.id);
+        setState("pendingEndpoint", null);
+        setState("pendingWirePoints", []);
+        return;
+      }
       if (sel.kind === "multi") {
         const currentSheet = actions.getCurrentSheet();
         const selectedNodeIds = new Set(sel.nodeIds);
@@ -1102,6 +1109,12 @@ export function createEditorStore(
           (c) => c.id !== connectionId,
         );
       });
+      if (
+        state.selection?.kind === "wire-connection" &&
+        state.selection.id === connectionId
+      ) {
+        setState("selection", null);
+      }
       setStatusT("store.status.removedConnection");
     },
 

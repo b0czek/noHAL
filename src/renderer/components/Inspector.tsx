@@ -87,6 +87,14 @@ export default function Inspector(props: InspectorProps) {
       if (!selection || selection.kind !== "sheet-port") return undefined;
       return props.currentSheet.ports.find((p) => p.id === selection.id);
     })();
+  const selectedConnection = () =>
+    (() => {
+      const selection = props.state.selection;
+      if (!selection || selection.kind !== "wire-connection") return undefined;
+      return props.currentSheet.directConnections.find(
+        (c) => c.id === selection.id,
+      );
+    })();
 
   return (
     <aside class="inspector">
@@ -205,6 +213,17 @@ export default function Inspector(props: InspectorProps) {
           )}
         </Show>
 
+        <Show when={selectedConnection()}>
+          {(conn) => (
+            <div class="inspector-group">
+              <div class="field-label-group">
+                {t("inspector.directConnections")}
+                <div class="mono">{conn().id}</div>
+              </div>
+            </div>
+          )}
+        </Show>
+
         <Show when={props.state.selection}>
           <Show when={props.state.selection?.kind === "multi"}>
             <div class="muted">{t("inspector.multipleSelected")}</div>
@@ -225,7 +244,14 @@ export default function Inspector(props: InspectorProps) {
         <div class="list compact">
           <For each={props.currentSheet.directConnections}>
             {(conn) => (
-              <div class="list-row">
+              <div
+                class={`list-row ${
+                  props.state.selection?.kind === "wire-connection" &&
+                  props.state.selection.id === conn.id
+                    ? "is-active"
+                    : ""
+                }`}
+              >
                 <button
                   type="button"
                   class="linkish"

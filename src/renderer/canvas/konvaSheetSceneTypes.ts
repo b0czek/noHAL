@@ -9,6 +9,7 @@ export type SceneSelection =
   | { kind: "node"; id: string }
   | { kind: "label"; id: string }
   | { kind: "sheet-port"; id: string }
+  | { kind: "wire-connection"; id: string }
   | { kind: "multi"; nodeIds: string[]; labelIds: string[]; portIds: string[] }
   | null;
 

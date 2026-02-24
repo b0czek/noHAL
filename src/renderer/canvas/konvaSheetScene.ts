@@ -966,6 +966,12 @@ export class KonvaSheetScene {
       for (const id of selection.labelIds) selectedLabelIds.add(id);
       for (const id of selection.portIds) selectedPortIds.add(id);
     }
+    const nextSelectedConnectionId =
+      selection?.kind === "wire-connection" ? selection.id : null;
+    if (this.selectedConnectionId !== nextSelectedConnectionId) {
+      this.selectedWaypointIndex = null;
+    }
+    this.selectedConnectionId = nextSelectedConnectionId;
 
     this.lastState = state;
     this.resetTransientPositions();

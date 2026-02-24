@@ -47,7 +47,7 @@ export interface KonvaSheetSceneWiresContext {
   wireWorld: Konva.Group;
   callbacks: Pick<
     SceneCallbacks,
-    "onMoveConnectionWaypoints" | "onContextMenuRequest"
+    "onMoveConnectionWaypoints" | "onContextMenuRequest" | "onSelect"
   >;
   clampPos: (pos: Pt) => Pt;
   screenToWorld: (pos: Pt) => Pt;
@@ -549,6 +549,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
         insertWaypointOnConnection(ctx, conn.id, routePoints, point);
         return;
       }
+      ctx.callbacks.onSelect?.({ kind: "wire-connection", id: conn.id });
       ctx.setSelectedConnectionId(conn.id);
       ctx.setSelectedWaypointIndex(null);
       redrawWires(ctx);
@@ -601,6 +602,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
 
         handle.on("click tap", (evt) => {
           evt.cancelBubble = true;
+          ctx.callbacks.onSelect?.({ kind: "wire-connection", id: conn.id });
           ctx.setSelectedConnectionId(conn.id);
           ctx.setSelectedWaypointIndex(i);
           redrawWires(ctx);

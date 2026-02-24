@@ -258,6 +258,16 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       args.onSelect({ kind: "label", id: request.target.id });
     } else if (request.target.kind === "sheet-port") {
       args.onSelect({ kind: "sheet-port", id: request.target.id });
+    } else if (request.target.kind === "wire-connection") {
+      args.onSelect({
+        kind: "wire-connection",
+        id: request.target.connectionId,
+      });
+    } else {
+      args.onSelect({
+        kind: "wire-connection",
+        id: request.target.connectionId,
+      });
     }
     openActionMenu(request.clientX, request.clientY, request.target);
   };
