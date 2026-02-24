@@ -91,18 +91,6 @@ export default function Inspector(props: InspectorProps) {
   return (
     <aside class="inspector">
       <section class="panel">
-        <div class="panel-title">{t("inspector.session")}</div>
-        <div class="kv">
-          <span>{t("common.status")}</span>
-          <span>{props.state.status}</span>
-        </div>
-        <div class="kv">
-          <span>{t("common.file")}</span>
-          <span>{props.state.filePath ?? t("common.unsaved")}</span>
-        </div>
-      </section>
-
-      <section class="panel">
         <div class="panel-title">{t("inspector.selection")}</div>
         <Show when={!props.state.selection}>
           <div class="muted">{t("inspector.nothingSelected")}</div>

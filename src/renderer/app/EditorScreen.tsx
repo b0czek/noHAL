@@ -4,6 +4,7 @@ import ComponentStoreDialog from "../components/ComponentStoreDialog";
 import Inspector from "../components/Inspector";
 import SheetSettingsDialog from "../components/SheetSettingsDialog";
 import Sidebar from "../components/Sidebar";
+import StatusBar from "../components/StatusBar";
 import { useEditorShortcuts } from "../shortcuts/useEditorShortcuts";
 import type { createEditorStore, EditorState } from "../state/store";
 import EditorTopbar from "./EditorTopbar";
@@ -99,6 +100,8 @@ export default function EditorScreen(props: EditorScreenProps) {
           }
         />
       </main>
+
+      <StatusBar status={props.state.status} filePath={props.state.filePath} />
 
       <ComponentNodeDialog
         open={editorUi.editingComponentNode() !== null}

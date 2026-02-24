@@ -37,7 +37,7 @@ select {
 
 .app-shell {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto 1fr auto;
   height: 100%;
 }
 
@@ -254,6 +254,51 @@ select {
     rgba(8, 18, 22, 0.96),
     rgba(5, 11, 14, 0.92)
   );
+}
+
+.workspace-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(
+    180deg,
+    rgba(9, 17, 22, 0.92),
+    rgba(7, 13, 17, 0.96)
+  );
+}
+
+.workspace-statusbar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.workspace-statusbar-item-file {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.workspace-statusbar-item-status {
+  flex: 1 1 auto;
+}
+
+.workspace-statusbar-label {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.workspace-statusbar-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel {
