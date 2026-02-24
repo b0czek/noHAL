@@ -56,6 +56,7 @@ export default function EditorScreen(props: EditorScreenProps) {
           onGoToParentSheet={() => props.actions.goToParentSheet()}
           canGoToParentSheet={Boolean(editorUi.currentSheet().parentSheetId)}
           onOpenSheetSettings={editorUi.openSheetSettings}
+          onDeleteSheet={(id) => props.actions.deleteSheetDefinition(id)}
         />
 
         <Canvas

@@ -12,6 +12,7 @@ interface SidebarProps {
   onGoToParentSheet: () => void;
   canGoToParentSheet: boolean;
   onOpenSheetSettings: (sheetId: string) => void;
+  onDeleteSheet: (sheetId: string) => void;
 }
 
 export default function Sidebar(props: SidebarProps) {
@@ -261,6 +262,18 @@ export default function Sidebar(props: SidebarProps) {
                 >
                   {t("sidebar.sheetSettings")}
                 </button>
+                <Show when={menu().sheetId !== props.project.rootSheetId}>
+                  <button
+                    type="button"
+                    class="sheet-context-item"
+                    onClick={() => {
+                      props.onDeleteSheet(menu().sheetId);
+                      setSheetContextMenu(null);
+                    }}
+                  >
+                    {t("sidebar.deleteSheet")}
+                  </button>
+                </Show>
               </div>
             </div>
           </Portal>

@@ -97,6 +97,7 @@ export const en = {
   "sidebar.goToParentSheet": "Go to parent sheet",
   "sidebar.sheetActions": "Sheet actions",
   "sidebar.sheetSettings": "Sheet Settings",
+  "sidebar.deleteSheet": "Delete Sheet",
 
   "projectCreation.projectLocalGenerated": "Project-local (generated)",
   "projectCreation.storeFallback": "Store: {componentId}",
@@ -215,6 +216,9 @@ export const en = {
   "store.status.cannotCreateRecursiveSheetHierarchy":
     "Cannot create recursive sheet hierarchy",
   "store.status.placedSubsheet": "Placed subsheet {name}",
+  "store.status.cannotDeleteRootSheet": "Cannot delete the root sheet",
+  "store.status.deletedSheet":
+    "Deleted sheet {name} ({count} sheet definitions removed)",
   "store.status.addedLabel": "Added {scope} label",
   "store.status.addedSheetPort": "Added sheet port",
   "store.status.removedSelection": "Removed selection",

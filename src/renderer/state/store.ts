@@ -235,6 +235,63 @@ function isSheetPlacedInProject(
   );
 }
 
+function pruneSheetNodeReferences(
+  sheet: SheetDefinition,
+  removedNodeIds: ReadonlySet<string>,
+): void {
+  if (removedNodeIds.size === 0) return;
+
+  sheet.directConnections = sheet.directConnections.filter(
+    (c) =>
+      !(c.a.kind === "node-pin" && removedNodeIds.has(c.a.nodeId)) &&
+      !(c.b.kind === "node-pin" && removedNodeIds.has(c.b.nodeId)),
+  );
+
+  sheet.labelAnchors = sheet.labelAnchors.filter(
+    (a) => !(a.endpoint.kind === "node-pin" && removedNodeIds.has(a.endpoint.nodeId)),
+  );
+
+  if (!sheet.hal?.addfQueue) return;
+  sheet.hal.addfQueue = sheet.hal.addfQueue.filter(
+    (nodeId) => !removedNodeIds.has(nodeId),
+  );
+  if (sheet.hal.addfQueue.length === 0) delete sheet.hal.addfQueue;
+  if (Object.keys(sheet.hal).length === 0) delete sheet.hal;
+}
+
+function collectSheetSubtreeIds(
+  project: NoHALProject,
+  rootSheetId: string,
+): Set<string> {
+  const deleted = new Set<string>();
+  const queue = [rootSheetId];
+  while (queue.length > 0) {
+    const sheetId = queue.shift();
+    if (!sheetId || deleted.has(sheetId) || !project.sheets[sheetId]) continue;
+    deleted.add(sheetId);
+    for (const sheet of Object.values(project.sheets)) {
+      if (sheet.parentSheetId === sheetId) queue.push(sheet.id);
+    }
+  }
+  return deleted;
+}
+
+function removeSheetNodeReferencesForDeletedSheets(
+  project: NoHALProject,
+  deletedSheetIds: ReadonlySet<string>,
+): void {
+  for (const sheet of Object.values(project.sheets)) {
+    const removedNodeIds = new Set<string>();
+    sheet.nodes = sheet.nodes.filter((node) => {
+      if (node.kind !== "sheet") return true;
+      if (!deletedSheetIds.has(node.sheetId)) return true;
+      removedNodeIds.add(node.id);
+      return false;
+    });
+    pruneSheetNodeReferences(sheet, removedNodeIds);
+  }
+}
+
 function syncProjectUi(project: NoHALProject, activeSheetId: string): void {
   project.ui.activeSheetId = activeSheetId;
 }
@@ -654,6 +711,43 @@ export function createEditorStore(
       setStatusT("store.status.placedSubsheet", { name: target.name });
     },
 
+    deleteSheetDefinition(sheetId: string): void {
+      const target = state.project.sheets[sheetId];
+      if (!target) return;
+      if (sheetId === state.project.rootSheetId) {
+        setStatusT("store.status.cannotDeleteRootSheet");
+        return;
+      }
+
+      const deletedSheetIds = collectSheetSubtreeIds(state.project, sheetId);
+      if (deletedSheetIds.size === 0) return;
+
+      const next = cloneProject(state.project);
+      removeSheetNodeReferencesForDeletedSheets(next, deletedSheetIds);
+      for (const deletedSheetId of deletedSheetIds) {
+        delete next.sheets[deletedSheetId];
+      }
+
+      let nextActiveSheetId = state.activeSheetId;
+      if (!next.sheets[nextActiveSheetId]) {
+        nextActiveSheetId =
+          (target.parentSheetId && next.sheets[target.parentSheetId]
+            ? target.parentSheetId
+            : next.rootSheetId);
+      }
+      syncProjectUi(next, nextActiveSheetId);
+
+      setState("project", next);
+      setState("activeSheetId", nextActiveSheetId);
+      setState("selection", null);
+      setState("pendingEndpoint", null);
+      setState("pendingWirePoints", []);
+      setStatusT("store.status.deletedSheet", {
+        name: target.name,
+        count: deletedSheetIds.size,
+      });
+    },
+
     enterSelectedSheet(): void {
       const selection = state.selection;
       if (!selection || selection.kind !== "node") return;
@@ -814,19 +908,20 @@ export function createEditorStore(
     removeSelection(): void {
       const sel = state.selection;
       if (!sel) return;
+      if (sel.kind === "node") {
+        const currentSheet = actions.getCurrentSheet();
+        const node = currentSheet.nodes.find((n) => n.id === sel.id);
+        if (node?.kind === "sheet") {
+          actions.deleteSheetDefinition(node.sheetId);
+          return;
+        }
+      }
       withProject((project) => {
         const sheet = getSheet(project, state.activeSheetId);
         if (sel.kind === "node") {
+          const removedNodeIds = new Set([sel.id]);
           sheet.nodes = sheet.nodes.filter((n) => n.id !== sel.id);
-          sheet.directConnections = sheet.directConnections.filter(
-            (c) =>
-              !(c.a.kind === "node-pin" && c.a.nodeId === sel.id) &&
-              !(c.b.kind === "node-pin" && c.b.nodeId === sel.id),
-          );
-          sheet.labelAnchors = sheet.labelAnchors.filter(
-            (a) =>
-              !(a.endpoint.kind === "node-pin" && a.endpoint.nodeId === sel.id),
-          );
+          pruneSheetNodeReferences(sheet, removedNodeIds);
         } else if (sel.kind === "label") {
           sheet.labels = sheet.labels.filter((l) => l.id !== sel.id);
           sheet.labelAnchors = sheet.labelAnchors.filter(
