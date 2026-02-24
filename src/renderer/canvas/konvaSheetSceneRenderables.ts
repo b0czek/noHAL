@@ -4,6 +4,7 @@ import type {
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
+  SheetNodeInstance,
 } from "../../shared/types";
 import {
   BASE_STROKE_WIDTH,
@@ -30,6 +31,8 @@ import {
   PORT_PANEL_FILL,
   SELECTED_BORDER,
   SELECTED_LABEL_BORDER,
+  SETP_PIN_RING,
+  SETP_PIN_RING_FILL,
   SHEET_NODE_BORDER,
   SHEET_NODE_FILL,
   SIDE_ROW_H,
@@ -79,6 +82,7 @@ function addPinDot(args: {
   y: number;
   type: string;
   pending: boolean;
+  hasSetp?: boolean;
   endpoint: SheetEndpointRef;
 }): void {
   if (args.pending) {
@@ -88,6 +92,20 @@ function addPinDot(args: {
         y: args.y,
         radius: PIN_R + PIN_HALO_RADIUS_PAD,
         fill: PIN_HALO_FILL,
+        listening: false,
+      }),
+    );
+  }
+
+  if (args.hasSetp) {
+    args.parent.add(
+      new Konva.Circle({
+        x: args.x,
+        y: args.y,
+        radius: PIN_R + 2.5,
+        fill: SETP_PIN_RING_FILL,
+        stroke: SETP_PIN_RING,
+        strokeWidth: BASE_STROKE_WIDTH,
         listening: false,
       }),
     );
@@ -109,6 +127,14 @@ function addPinDot(args: {
   });
 
   args.parent.add(bead);
+}
+
+function getNodePinSetpValue(node: SheetNodeInstance, pinKey: string): string | null {
+  if (node.kind !== "component") return null;
+  const raw = node.pinInitialValues?.[pinKey];
+  if (typeof raw !== "string") return null;
+  const value = raw.trim();
+  return value.length > 0 ? value : null;
 }
 
 export function renderPorts(args: RenderPortsArgs): void {
@@ -331,6 +357,7 @@ export function renderNodes(args: RenderNodesArgs): void {
 
     for (const pin of leftPins) {
       const p = layout.pinPositionsLocal[pin.key];
+      const hasSetp = getNodePinSetpValue(node, pin.key) !== null;
       const endpoint: SheetEndpointRef = {
         kind: "node-pin",
         nodeId: node.id,
@@ -367,6 +394,7 @@ export function renderNodes(args: RenderNodesArgs): void {
         y: p.y,
         type: pin.type,
         pending,
+        hasSetp,
         endpoint,
       });
 
@@ -385,6 +413,7 @@ export function renderNodes(args: RenderNodesArgs): void {
 
     for (const pin of rightPins) {
       const p = layout.pinPositionsLocal[pin.key];
+      const hasSetp = getNodePinSetpValue(node, pin.key) !== null;
       const endpoint: SheetEndpointRef = {
         kind: "node-pin",
         nodeId: node.id,
@@ -399,6 +428,7 @@ export function renderNodes(args: RenderNodesArgs): void {
         y: p.y,
         type: pin.type,
         pending,
+        hasSetp,
         endpoint,
       });
 
@@ -447,6 +477,7 @@ export function renderNodes(args: RenderNodesArgs): void {
       );
       for (const pin of bottomPins) {
         const p = layout.pinPositionsLocal[pin.key];
+        const hasSetp = getNodePinSetpValue(node, pin.key) !== null;
         const endpoint: SheetEndpointRef = {
           kind: "node-pin",
           nodeId: node.id,
@@ -533,6 +564,7 @@ export function renderNodes(args: RenderNodesArgs): void {
           y: dotY,
           type: pin.type,
           pending,
+          hasSetp,
           endpoint,
         });
       }

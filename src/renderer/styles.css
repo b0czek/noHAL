@@ -313,6 +313,23 @@ select {
   outline: 1px solid rgba(122, 230, 208, 0.25);
 }
 
+.pin-list-row {
+  justify-content: flex-start;
+}
+
+.pin-list-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pin-list-row-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  min-width: 0;
+}
+
 .sidebar-actions {
   display: flex;
   align-items: center;
@@ -770,6 +787,16 @@ select {
 .chip.type {
   color: #bee6dc;
   background: rgba(122, 230, 208, 0.08);
+}
+
+.chip.setp {
+  color: #ffd7a1;
+  background: rgba(242, 185, 75, 0.1);
+  border-color: rgba(242, 185, 75, 0.28);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chip.dir-in {

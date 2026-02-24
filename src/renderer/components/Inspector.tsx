@@ -372,6 +372,13 @@ function NodeInspector(props: {
       ? props.project.library.components[props.node.componentId]
       : undefined;
   const componentParamCount = () => component()?.params.length ?? 0;
+  const pinSetpValue = (pinKey: string) => {
+    if (props.node.kind !== "component") return undefined;
+    const raw = props.node.pinInitialValues?.[pinKey];
+    if (typeof raw !== "string") return undefined;
+    const value = raw.trim();
+    return value.length > 0 ? value : undefined;
+  };
 
   return (
     <div class="inspector-group">
@@ -419,13 +426,28 @@ function NodeInspector(props: {
       <div class="sub-title">{t("inspector.pins")}</div>
       <div class="list compact">
         <For each={pins()}>
-          {(pin) => (
-            <div class="list-row">
-              <span class={`chip dir-${pin.direction}`}>{pin.direction}</span>
-              <span class="mono">{pin.name}</span>
-              <span class="chip type">{pin.type}</span>
-            </div>
-          )}
+          {(pin) => {
+            const setpValue = pinSetpValue(pin.key);
+            return (
+              <div class="list-row pin-list-row">
+                <span class={`chip dir-${pin.direction}`}>{pin.direction}</span>
+                <span class="mono pin-list-row-name">{pin.name}</span>
+                <div class="pin-list-row-meta">
+                  <Show when={setpValue}>
+                    {(value) => (
+                      <span
+                        class="chip setp mono"
+                        title={`setp ${props.node.instanceName}.${pin.name} ${value()}`}
+                      >
+                        setp {value()}
+                      </span>
+                    )}
+                  </Show>
+                  <span class="chip type">{pin.type}</span>
+                </div>
+              </div>
+            );
+          }}
         </For>
       </div>
       <Show when={props.node.kind === "component" && component()}>
