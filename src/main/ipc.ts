@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { dialog, ipcMain } from "electron";
 import { parseCompComponentDefinition } from "../shared/compParser";
-import { exportProjectToHal } from "../shared/exportHal";
+import { exportProjectToHal } from "../shared/halExport";
 import { parseHalImportDraft } from "../shared/halImport";
 import { createEmptyProject, stringifyNoHALProject } from "../shared/project";
 import type { NoHALProject } from "../shared/types";
