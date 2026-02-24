@@ -8,7 +8,7 @@ export type HalValueType =
   | "port";
 export type PinDirection = "in" | "out" | "io";
 export type ParamDirection = "r" | "rw";
-export type PortSide = "left" | "right" | "bottom";
+export type PortSide = "left" | "right" | "top" | "bottom";
 export type LabelScope = "local" | "global" | "hierarchical";
 
 export interface XY {

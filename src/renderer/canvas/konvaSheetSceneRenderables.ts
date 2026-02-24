@@ -42,7 +42,7 @@ import {
 } from "./constants";
 import type { SceneCallbacks } from "./konvaSheetSceneTypes";
 import type { NodeLayout, Pt } from "./layout";
-import { directionPillFill, dirStroke, labelFill, typeFill } from "./theme";
+import { labelFill, typeFill } from "./theme";
 
 type ClampPosFn = (pos: Pt) => Pt;
 type DragSelectionTarget = {
@@ -179,18 +179,21 @@ export function renderPorts(args: RenderPortsArgs): void {
     });
     portGroups.set(port.id, portGroup);
 
-    const labelText = `${port.name}  ${port.type}`;
     const measure = new Konva.Text({
-      text: labelText,
+      text: port.name,
       fontFamily: FONT_SANS,
       fontSize: 12,
     });
-    const width = Math.ceil(measure.width()) + 38;
+    const width = Math.ceil(measure.width()) + 20;
     const h = PORT_LABEL_H;
 
     let labelRectX = 12;
     let labelRectY = -h / 2;
     if (port.side === "right") labelRectX = -width - 12;
+    if (port.side === "top") {
+      labelRectX = -width / 2;
+      labelRectY = 12;
+    }
     if (port.side === "bottom") {
       labelRectX = -width / 2;
       labelRectY = -h - 12;
@@ -217,38 +220,6 @@ export function renderPorts(args: RenderPortsArgs): void {
       fill: TEXT_PRIMARY,
     });
     portGroup.add(nameText);
-
-    const typeText = new Konva.Text({
-      x: labelRectX + 15 + nameText.width(),
-      y: labelRectY + 5,
-      text: port.type,
-      fontFamily: FONT_SANS,
-      fontSize: 11,
-      fill: TEXT_MUTED,
-    });
-    portGroup.add(typeText);
-
-    const dirRect = new Konva.Rect({
-      x: labelRectX + width - 34,
-      y: labelRectY + 4,
-      width: 28,
-      height: h - 8,
-      cornerRadius: PILL_RADIUS,
-      fill: directionPillFill(port.direction),
-      stroke: dirStroke(port.direction),
-      strokeWidth: BASE_STROKE_WIDTH,
-    });
-    portGroup.add(dirRect);
-    portGroup.add(
-      new Konva.Text({
-        x: dirRect.x() + 5,
-        y: dirRect.y() + 6,
-        text: port.direction,
-        fontFamily: FONT_SANS,
-        fontSize: 10,
-        fill: TEXT_PRIMARY,
-      }),
-    );
 
     portGroup.on("dragstart", () => {
       const pos = clampPos(portGroup.position());
@@ -393,8 +364,113 @@ export function renderNodes(args: RenderNodesArgs): void {
     const pins = getNodePins(project, node);
     const leftPins = pins.filter((p) => p.side === "left");
     const rightPins = pins.filter((p) => p.side === "right");
+    const topPins = pins.filter((p) => p.side === "top");
     const bottomPins = pins.filter((p) => p.side === "bottom");
     const rows = Math.max(leftPins.length, rightPins.length, 1);
+    const topHeight = topPins.length > 0 ? layout.topBandHeight + 10 : 0;
+
+    if (topPins.length > 0) {
+      const bandBottom = HEADER_H + topHeight;
+      const bandHeight = Math.max(
+        layout.topBandHeight,
+        layout.topLabelMode === "vertical"
+          ? BOTTOM_PIN_PILL_W + PIN_R
+          : BOTTOM_H - 4 + PIN_R,
+      );
+      for (const pin of topPins) {
+        const p = layout.pinPositionsLocal[pin.key];
+        const hasSetp = getNodePinSetpValue(node, pin.key) !== null;
+        const endpoint: SheetEndpointRef = {
+          kind: "node-pin",
+          nodeId: node.id,
+          pinKey: pin.key,
+        };
+        const pending = pendingKey === endpointKey(endpoint);
+        const measure = new Konva.Text({
+          text: pin.name,
+          fontFamily: FONT_MONO,
+          fontSize: 11,
+        });
+        const textW = Math.ceil(measure.width());
+        const textH = Math.ceil(measure.height());
+        const dotY = p.y;
+        if (layout.topLabelMode === "vertical") {
+          const pillW = BOTTOM_PIN_PILL_W;
+          const pillH = Math.min(
+            bandHeight - 6,
+            Math.max(BOTTOM_PIN_PILL_W, textW + BOTTOM_PIN_TEXT_PAD),
+          );
+          const pillX = p.x - pillW / 2;
+          const pillY = Math.min(bandBottom - pillH, dotY + 6);
+          nodeGroup.add(
+            new Konva.Rect({
+              x: pillX,
+              y: pillY,
+              width: pillW,
+              height: pillH,
+              cornerRadius: CORNER_RADIUS_MD,
+              fill: CHIP_FILL,
+              stroke: pending ? PENDING_BORDER : NEUTRAL_BORDER,
+              strokeWidth: BASE_STROKE_WIDTH,
+              listening: false,
+            }),
+          );
+          const textX = pillX + pillW / 2 - textH / 2;
+          const textY = pillY + pillH / 2 + textW / 2;
+          nodeGroup.add(
+            new Konva.Text({
+              x: textX,
+              y: textY,
+              text: pin.name,
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              fill: TEXT_PRIMARY,
+              rotation: -90,
+              listening: false,
+            }),
+          );
+        } else {
+          const pillH = Math.min(bandHeight - 6, BOTTOM_H - 4);
+          const pillW = textW + 16;
+          const pillX = p.x - pillW / 2;
+          const pillY = Math.min(bandBottom - pillH, dotY + 6);
+          nodeGroup.add(
+            new Konva.Rect({
+              x: pillX,
+              y: pillY,
+              width: pillW,
+              height: pillH,
+              cornerRadius: PILL_RADIUS,
+              fill: CHIP_FILL,
+              stroke: pending ? PENDING_BORDER : NEUTRAL_BORDER,
+              strokeWidth: BASE_STROKE_WIDTH,
+              listening: false,
+            }),
+          );
+          nodeGroup.add(
+            new Konva.Text({
+              x: pillX + 8,
+              y: pillY + 4,
+              text: pin.name,
+              fontFamily: FONT_MONO,
+              fontSize: 11,
+              fill: TEXT_PRIMARY,
+              listening: false,
+            }),
+          );
+        }
+        addPinDot({
+          callbacks,
+          parent: nodeGroup,
+          x: p.x,
+          y: dotY,
+          type: pin.type,
+          pending,
+          hasSetp,
+          endpoint,
+        });
+      }
+    }
 
     for (const pin of leftPins) {
       const p = layout.pinPositionsLocal[pin.key];
@@ -509,7 +585,7 @@ export function renderNodes(args: RenderNodesArgs): void {
     }
 
     if (bottomPins.length > 0) {
-      const bandTop = HEADER_H + rows * SIDE_ROW_H + 8;
+      const bandTop = HEADER_H + topHeight + rows * SIDE_ROW_H + 8;
       const bandHeight = Math.max(
         layout.bottomBandHeight,
         layout.bottomLabelMode === "vertical"

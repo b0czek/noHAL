@@ -23,6 +23,8 @@ export type BottomPinLabelMode = "horizontal" | "vertical";
 export interface NodeLayout {
   width: number;
   height: number;
+  topBandHeight: number;
+  topLabelMode: BottomPinLabelMode;
   bottomBandHeight: number;
   bottomLabelMode: BottomPinLabelMode;
   pinPositionsLocal: Record<string, Pt>;
@@ -109,6 +111,7 @@ export function computeNodeLayout(
   const pins = getNodePins(project, node);
   const left = pins.filter((p) => p.side === "left");
   const right = pins.filter((p) => p.side === "right");
+  const top = pins.filter((p) => p.side === "top");
   const bottom = pins.filter((p) => p.side === "bottom");
   const sideWidth = computeSidePinWidth(
     left.map((pin) => pin.name),
@@ -117,11 +120,46 @@ export function computeNodeLayout(
 
   const rows = Math.max(left.length, right.length, 1);
   const sideHeight = rows * SIDE_ROW_H;
+  const topNames = top.map((pin) => pin.name);
   const bottomNames = bottom.map((pin) => pin.name);
 
+  let topLabelMode: BottomPinLabelMode = "horizontal";
+  let topBandHeight = 0;
+  let topWidth = 0;
   let bottomLabelMode: BottomPinLabelMode = "horizontal";
   let bottomBandHeight = 0;
   let bottomWidth = 0;
+
+  if (topNames.length > 0) {
+    const candidates = (["horizontal", "vertical"] as const).map((mode) => {
+      const bandHeight =
+        mode === "horizontal"
+          ? computeBottomBandHeightHorizontal(topNames)
+          : computeBottomBandHeightVertical(topNames);
+      const widthRequirement =
+        mode === "horizontal"
+          ? computeBottomPinWidthHorizontal(topNames)
+          : computeBottomPinWidthVertical(topNames);
+      const candidateWidth = Math.max(NODE_WIDTH, sideWidth, widthRequirement);
+      const candidateHeight = HEADER_H + bandHeight + sideHeight + 10 + 12;
+      return {
+        mode,
+        bandHeight,
+        widthRequirement,
+        area: candidateWidth * candidateHeight,
+      };
+    });
+
+    const best = candidates.reduce((acc, item) => {
+      if (item.area < acc.area) return item;
+      if (item.area === acc.area && item.mode === "horizontal") return item;
+      return acc;
+    });
+
+    topLabelMode = best.mode;
+    topBandHeight = best.bandHeight;
+    topWidth = best.widthRequirement;
+  }
 
   if (bottomNames.length > 0) {
     const candidates = (["horizontal", "vertical"] as const).map((mode) => {
@@ -154,22 +192,31 @@ export function computeNodeLayout(
     bottomWidth = best.widthRequirement;
   }
 
-  const width = Math.max(NODE_WIDTH, sideWidth, bottomWidth);
+  const width = Math.max(NODE_WIDTH, sideWidth, topWidth, bottomWidth);
+  const topHeight = top.length > 0 ? topBandHeight + 10 : 0;
   const bottomHeight = bottom.length > 0 ? bottomBandHeight + 10 : 0;
-  const height = HEADER_H + sideHeight + bottomHeight + 12;
+  const height = HEADER_H + topHeight + sideHeight + bottomHeight + 12;
   const pinPositionsLocal: Record<string, Pt> = {};
+
+  top.forEach((pin, idx) => {
+    const step = width / (top.length + 1);
+    pinPositionsLocal[pin.key] = {
+      x: step * (idx + 1),
+      y: HEADER_H + 10,
+    };
+  });
 
   left.forEach((pin, idx) => {
     pinPositionsLocal[pin.key] = {
       x: 10,
-      y: HEADER_H + idx * SIDE_ROW_H + SIDE_ROW_H / 2,
+      y: HEADER_H + topHeight + idx * SIDE_ROW_H + SIDE_ROW_H / 2,
     };
   });
 
   right.forEach((pin, idx) => {
     pinPositionsLocal[pin.key] = {
       x: width - 10,
-      y: HEADER_H + idx * SIDE_ROW_H + SIDE_ROW_H / 2,
+      y: HEADER_H + topHeight + idx * SIDE_ROW_H + SIDE_ROW_H / 2,
     };
   });
 
@@ -184,6 +231,8 @@ export function computeNodeLayout(
   return {
     width,
     height,
+    topBandHeight,
+    topLabelMode,
     bottomBandHeight,
     bottomLabelMode,
     pinPositionsLocal,

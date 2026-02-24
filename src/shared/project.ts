@@ -97,7 +97,7 @@ export function createSheetPortDraft(
     type,
     side:
       side ??
-      (direction === "in" ? "left" : direction === "out" ? "right" : "bottom"),
+      (direction === "in" ? "right" : direction === "out" ? "left" : "top"),
     position: { x: 0, y: 0 },
     rotation: 0,
   };

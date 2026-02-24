@@ -26,7 +26,6 @@ interface InspectorProps {
       name?: string;
       direction?: "in" | "out" | "io";
       type?: HalValueType;
-      side?: "left" | "right" | "bottom";
       rotation?: number;
     },
   ) => void;
@@ -63,11 +62,6 @@ export default function Inspector(props: InspectorProps) {
     { value: "in", label: "in" },
     { value: "out", label: "out" },
     { value: "io", label: "io" },
-  ];
-  const portSideOptions: ReadonlyArray<SelectMenuOption> = [
-    { value: "left", label: "left" },
-    { value: "right", label: "right" },
-    { value: "bottom", label: "bottom" },
   ];
   const selectedNode = () =>
     (() => {
@@ -187,18 +181,6 @@ export default function Inspector(props: InspectorProps) {
                   onChange={(value) =>
                     props.onUpdateSheetPort(port().id, {
                       type: value as HalValueType,
-                    })
-                  }
-                />
-              </div>
-              <div class="field-label-group">
-                {t("common.side")}
-                <SelectMenu
-                  value={port().side}
-                  options={portSideOptions}
-                  onChange={(value) =>
-                    props.onUpdateSheetPort(port().id, {
-                      side: value as "left" | "right" | "bottom",
                     })
                   }
                 />

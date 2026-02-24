@@ -342,12 +342,15 @@ export class KonvaSheetScene {
     height: number;
   } {
     const pos = position ?? port.position;
-    const labelText = `${port.name}  ${port.type}`;
-    const width = Math.ceil(labelText.length * 7.2) + 38;
+    const width = Math.ceil(port.name.length * 7.2) + 20;
     const height = 24;
     let x = pos.x + 12;
     let y = pos.y - height / 2;
     if (port.side === "right") x = pos.x - width - 12;
+    if (port.side === "top") {
+      x = pos.x - width / 2;
+      y = pos.y + 12;
+    }
     if (port.side === "bottom") {
       x = pos.x - width / 2;
       y = pos.y - height - 12;

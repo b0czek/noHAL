@@ -191,12 +191,21 @@ function defaultLabelPosition(sheet: SheetDefinition): {
 
 function defaultPortPosition(
   sheet: SheetDefinition,
-  side: "left" | "right" | "bottom",
+  side: "left" | "right" | "top" | "bottom",
 ): { x: number; y: number } {
   const count = sheet.ports.filter((p) => p.side === side).length;
   if (side === "left") return { x: 20, y: 120 + count * 50 };
   if (side === "right") return { x: 1380, y: 120 + count * 50 };
+  if (side === "top") return { x: 220 + count * 120, y: 20 };
   return { x: 220 + count * 120, y: 740 };
+}
+
+function forcedPortSideForDirection(
+  direction: "in" | "out" | "io",
+): "left" | "right" | "top" {
+  if (direction === "in") return "right";
+  if (direction === "out") return "left";
+  return "top";
 }
 
 function findNode(
@@ -796,13 +805,11 @@ export function createEditorStore(
           resolved.name || "sig",
           resolved.direction,
           resolved.type,
-          resolved.side,
         );
         if (childPortNames.has(port.name)) {
           port.name = nextName(port.name, childPortNames);
         }
         childPortNames.add(port.name);
-        port.side = resolved.side;
         port.position = defaultPortPosition(child, port.side);
         child.ports.push(port);
         const result = { id: port.id };
@@ -1204,7 +1211,6 @@ export function createEditorStore(
         name?: string;
         direction?: "in" | "out" | "io";
         type?: HalValueType;
-        side?: "left" | "right" | "bottom";
         rotation?: number;
       },
     ): void {
@@ -1213,9 +1219,12 @@ export function createEditorStore(
         const port = sheet.ports.find((p) => p.id === portId);
         if (!port) return;
         if (patch.name !== undefined) port.name = patch.name;
-        if (patch.direction !== undefined) port.direction = patch.direction;
+        if (patch.direction !== undefined) {
+          port.direction = patch.direction;
+          port.side = forcedPortSideForDirection(patch.direction);
+          port.position = defaultPortPosition(sheet, port.side);
+        }
         if (patch.type !== undefined) port.type = patch.type;
-        if (patch.side !== undefined) port.side = patch.side;
         if (patch.rotation !== undefined) {
           port.rotation = normalizeRotationDegrees(patch.rotation);
         }
