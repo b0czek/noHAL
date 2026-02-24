@@ -1,4 +1,6 @@
 import {
+  HiOutlineArrowUturnLeft,
+  HiOutlineArrowUturnRight,
   HiOutlineArchiveBoxArrowDown,
   HiOutlineDocumentPlus,
   HiOutlineFolderOpen,
@@ -10,6 +12,10 @@ interface EditorTopbarProps {
   onOpenProjectCreationDialog: () => void;
   onOpenProject: () => void;
   onSaveProject: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
   onExportHal: () => void;
   onOpenComponentStore: () => void;
   onAddSubsheet: () => void;
@@ -61,6 +67,26 @@ export default function EditorTopbar(props: EditorTopbarProps) {
           title={t("topbar.saveProject")}
         >
           <HiOutlineArchiveBoxArrowDown size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="btn subtle icon-btn"
+          onClick={props.onUndo}
+          disabled={!props.canUndo}
+          aria-label={t("topbar.undo")}
+          title={`${t("topbar.undo")} (Ctrl/Cmd+Z)`}
+        >
+          <HiOutlineArrowUturnLeft size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="btn subtle icon-btn"
+          onClick={props.onRedo}
+          disabled={!props.canRedo}
+          aria-label={t("topbar.redo")}
+          title={`${t("topbar.redo")} (Ctrl/Cmd+Y)`}
+        >
+          <HiOutlineArrowUturnRight size={16} aria-hidden="true" />
         </button>
         <button type="button" class="btn accent" onClick={props.onExportHal}>
           {t("topbar.exportHal")}

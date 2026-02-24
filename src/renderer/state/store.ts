@@ -35,11 +35,21 @@ export interface EditorState {
   componentStore: ComponentStore;
   filePath: string | null;
   activeSheetId: string;
+  canUndo: boolean;
+  canRedo: boolean;
   selection: Selection;
   pendingEndpoint: SheetEndpointRef | null;
   pendingWirePoints: XY[];
   status: string;
   exportWarnings: string[];
+}
+
+interface EditorHistorySnapshot {
+  project: NoHALProject;
+  activeSheetId: string;
+  selection: Selection;
+  pendingEndpoint: SheetEndpointRef | null;
+  pendingWirePoints: XY[];
 }
 
 type TranslationParams = Record<
@@ -362,11 +372,14 @@ export function createEditorStore(
   initialProject: NoHALProject,
   t: TranslateFn,
 ) {
+  const MAX_HISTORY_ENTRIES = 200;
   const [state, setState] = createStore<EditorState>({
     project: initialProject,
     componentStore: createEmptyComponentStore(),
     filePath: null,
     activeSheetId: initialProject.ui.activeSheetId,
+    canUndo: false,
+    canRedo: false,
     selection: null,
     pendingEndpoint: null,
     pendingWirePoints: [],
@@ -374,10 +387,62 @@ export function createEditorStore(
     exportWarnings: [],
   });
 
-  const withProject = (mutate: (project: NoHALProject) => void) => {
+  const undoStack: EditorHistorySnapshot[] = [];
+  const redoStack: EditorHistorySnapshot[] = [];
+
+  const syncHistoryAvailability = (): void => {
+    setState("canUndo", undoStack.length > 0);
+    setState("canRedo", redoStack.length > 0);
+  };
+
+  const cloneSelection = (selection: Selection): Selection =>
+    selection ? structuredClone(unwrap(selection)) : null;
+
+  const clonePendingEndpoint = (
+    endpoint: SheetEndpointRef | null,
+  ): SheetEndpointRef | null =>
+    endpoint ? structuredClone(unwrap(endpoint)) : null;
+
+  const clonePendingWirePoints = (points: XY[]): XY[] =>
+    structuredClone(unwrap(points));
+
+  const captureHistorySnapshot = (): EditorHistorySnapshot => ({
+    project: cloneProject(state.project),
+    activeSheetId: state.activeSheetId,
+    selection: cloneSelection(state.selection),
+    pendingEndpoint: clonePendingEndpoint(state.pendingEndpoint),
+    pendingWirePoints: clonePendingWirePoints(state.pendingWirePoints),
+  });
+
+  const restoreHistorySnapshot = (snapshot: EditorHistorySnapshot): void => {
+    setState("project", snapshot.project);
+    setState("activeSheetId", snapshot.activeSheetId);
+    setState("selection", snapshot.selection);
+    setState("pendingEndpoint", snapshot.pendingEndpoint);
+    setState("pendingWirePoints", snapshot.pendingWirePoints);
+  };
+
+  const pushUndoSnapshot = (): void => {
+    undoStack.push(captureHistorySnapshot());
+    if (undoStack.length > MAX_HISTORY_ENTRIES) undoStack.shift();
+    redoStack.length = 0;
+    syncHistoryAvailability();
+  };
+
+  const clearHistory = (): void => {
+    undoStack.length = 0;
+    redoStack.length = 0;
+    syncHistoryAvailability();
+  };
+
+  const withProject = (
+    mutate: (project: NoHALProject) => void,
+    options?: { recordHistory?: boolean },
+  ) => {
     const next = cloneProject(state.project);
     mutate(next);
     syncProjectUi(next, state.activeSheetId);
+    if (options?.recordHistory !== false) pushUndoSnapshot();
     setState("project", next);
   };
 
@@ -390,11 +455,15 @@ export function createEditorStore(
   };
 
   const replaceComponentStore = (componentStore: ComponentStore) => {
+    clearHistory();
     setState("componentStore", componentStore);
-    withProject((project) => {
-      pruneMissingStoredComponentsFromProject(project, componentStore);
-      applyComponentStoreToProject(project, componentStore);
-    });
+    withProject(
+      (project) => {
+        pruneMissingStoredComponentsFromProject(project, componentStore);
+        applyComponentStoreToProject(project, componentStore);
+      },
+      { recordHistory: false },
+    );
   };
 
   const replaceProjectState = (
@@ -403,11 +472,14 @@ export function createEditorStore(
     status: string,
   ): void => {
     applyComponentStoreToProject(project, state.componentStore);
+    clearHistory();
     setState({
       project,
       componentStore: state.componentStore,
       filePath,
       activeSheetId: project.ui.activeSheetId,
+      canUndo: false,
+      canRedo: false,
       selection: null,
       pendingEndpoint: null,
       pendingWirePoints: [],
@@ -421,6 +493,26 @@ export function createEditorStore(
   };
 
   const actions = {
+    undo(): boolean {
+      const snapshot = undoStack.pop();
+      if (!snapshot) return false;
+      redoStack.push(captureHistorySnapshot());
+      if (redoStack.length > MAX_HISTORY_ENTRIES) redoStack.shift();
+      syncHistoryAvailability();
+      restoreHistorySnapshot(snapshot);
+      return true;
+    },
+
+    redo(): boolean {
+      const snapshot = redoStack.pop();
+      if (!snapshot) return false;
+      undoStack.push(captureHistorySnapshot());
+      if (undoStack.length > MAX_HISTORY_ENTRIES) undoStack.shift();
+      syncHistoryAvailability();
+      restoreHistorySnapshot(snapshot);
+      return true;
+    },
+
     getCurrentSheet(): SheetDefinition {
       return getSheet(state.project, state.activeSheetId);
     },
@@ -664,17 +756,21 @@ export function createEditorStore(
 
       try {
         const entry = await window.nohal.refreshComponentInStore(componentId);
+        clearHistory();
         withComponentStore((componentStore) => {
           componentStore.components[entry.componentId] = entry;
         });
-        withProject((project) => {
-          project.library.components[entry.componentId] = entry.parsed;
-          reconcileComponentNodesForDefinition(
-            project,
-            entry.componentId,
-            entry.parsed,
-          );
-        });
+        withProject(
+          (project) => {
+            project.library.components[entry.componentId] = entry.parsed;
+            reconcileComponentNodesForDefinition(
+              project,
+              entry.componentId,
+              entry.parsed,
+            );
+          },
+          { recordHistory: false },
+        );
         setStatusT("store.status.refreshedComponent", {
           componentName: entry.parsed.halComponentName,
         });
@@ -994,6 +1090,7 @@ export function createEditorStore(
       next.sheets[child.id] = child;
 
       syncProjectUi(next, state.activeSheetId);
+      pushUndoSnapshot();
       setState("project", next);
       setState("selection", { kind: "node", id: subsheetNodeId });
       setState("pendingEndpoint", null);
@@ -1061,6 +1158,7 @@ export function createEditorStore(
       }
       syncProjectUi(next, nextActiveSheetId);
 
+      pushUndoSnapshot();
       setState("project", next);
       setState("activeSheetId", nextActiveSheetId);
       setState("selection", null);
@@ -1303,6 +1401,7 @@ export function createEditorStore(
         }
 
         syncProjectUi(next, state.activeSheetId);
+        pushUndoSnapshot();
         setState("project", next);
         setState("selection", null);
         setState("pendingEndpoint", null);

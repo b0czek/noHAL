@@ -37,6 +37,8 @@ export const en = {
   "topbar.newProject": "New project",
   "topbar.openProject": "Open project",
   "topbar.saveProject": "Save project",
+  "topbar.undo": "Undo",
+  "topbar.redo": "Redo",
   "topbar.exportHal": "Export HAL",
   "topbar.componentStore": "Component Store",
   "topbar.addSubsheet": "+ Subsheet",

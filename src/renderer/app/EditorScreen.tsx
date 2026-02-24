@@ -31,6 +31,8 @@ export default function EditorScreen(props: EditorScreenProps) {
     cancelPendingWire: props.actions.clearPendingEndpoint,
     hasSelection: () => props.state.selection !== null,
     deleteSelection: props.actions.removeSelection,
+    undo: props.actions.undo,
+    redo: props.actions.redo,
   });
 
   return (
@@ -39,6 +41,10 @@ export default function EditorScreen(props: EditorScreenProps) {
         onOpenProjectCreationDialog={props.onOpenProjectCreationDialog}
         onOpenProject={() => void props.actions.openProject()}
         onSaveProject={() => void props.actions.saveProject()}
+        onUndo={() => void props.actions.undo()}
+        onRedo={() => void props.actions.redo()}
+        canUndo={props.state.canUndo}
+        canRedo={props.state.canRedo}
         onExportHal={() => void props.actions.exportHal()}
         onOpenComponentStore={editorUi.openComponentStore}
         onAddSubsheet={() => props.actions.addSheetDefinition()}

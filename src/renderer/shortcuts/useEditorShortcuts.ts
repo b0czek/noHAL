@@ -7,6 +7,8 @@ interface EditorShortcutsOptions {
   cancelPendingWire: () => void;
   hasSelection: () => boolean;
   deleteSelection: () => void;
+  undo: () => boolean;
+  redo: () => boolean;
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -41,6 +43,27 @@ export function useEditorShortcuts(options: EditorShortcutsOptions): void {
         if (!options.hasSelection()) return;
         evt.preventDefault();
         options.deleteSelection();
+        return;
+      }
+
+      if (isEditableTarget(evt.target)) return;
+
+      const key = evt.key.toLowerCase();
+      const primaryModifier = evt.ctrlKey || evt.metaKey;
+      if (!primaryModifier || evt.altKey) return;
+
+      const isUndo = key === "z" && !evt.shiftKey;
+      const isRedo = key === "y" || (key === "z" && evt.shiftKey);
+
+      if (isUndo) {
+        if (!options.undo()) return;
+        evt.preventDefault();
+        return;
+      }
+
+      if (isRedo) {
+        if (!options.redo()) return;
+        evt.preventDefault();
       }
     };
 
