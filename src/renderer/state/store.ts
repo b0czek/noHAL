@@ -22,6 +22,7 @@ export type Selection =
   | { kind: "node"; id: string }
   | { kind: "label"; id: string }
   | { kind: "sheet-port"; id: string }
+  | { kind: "multi"; nodeIds: string[]; labelIds: string[]; portIds: string[] }
   | null;
 
 export interface EditorState {
@@ -915,6 +916,66 @@ export function createEditorStore(
           actions.deleteSheetDefinition(node.sheetId);
           return;
         }
+      }
+      if (sel.kind === "multi") {
+        const currentSheet = actions.getCurrentSheet();
+        const selectedNodeIds = new Set(sel.nodeIds);
+        const selectedLabelIds = new Set(sel.labelIds);
+        const selectedPortIds = new Set(sel.portIds);
+
+        const deletedSheetIds = new Set<string>();
+        for (const node of currentSheet.nodes) {
+          if (node.kind !== "sheet" || !selectedNodeIds.has(node.id)) continue;
+          for (const sheetId of collectSheetSubtreeIds(state.project, node.sheetId)) {
+            deletedSheetIds.add(sheetId);
+          }
+        }
+
+        const next = cloneProject(state.project);
+        if (deletedSheetIds.size > 0) {
+          removeSheetNodeReferencesForDeletedSheets(next, deletedSheetIds);
+          for (const deletedSheetId of deletedSheetIds) {
+            delete next.sheets[deletedSheetId];
+          }
+        }
+
+        const sheet = next.sheets[state.activeSheetId];
+        if (sheet) {
+          const removedNodeIds = new Set<string>();
+          sheet.nodes = sheet.nodes.filter((n) => {
+            if (!selectedNodeIds.has(n.id)) return true;
+            removedNodeIds.add(n.id);
+            return false;
+          });
+          pruneSheetNodeReferences(sheet, removedNodeIds);
+
+          sheet.labels = sheet.labels.filter((l) => !selectedLabelIds.has(l.id));
+          sheet.labelAnchors = sheet.labelAnchors.filter((a) => {
+            if (selectedLabelIds.has(a.labelId)) return false;
+            return !(
+              a.endpoint.kind === "sheet-port" && selectedPortIds.has(a.endpoint.portId)
+            );
+          });
+
+          sheet.ports = sheet.ports.filter((p) => !selectedPortIds.has(p.id));
+          sheet.directConnections = sheet.directConnections.filter(
+            (c) =>
+              !(
+                c.a.kind === "sheet-port" && selectedPortIds.has(c.a.portId)
+              ) &&
+              !(
+                c.b.kind === "sheet-port" && selectedPortIds.has(c.b.portId)
+              ),
+          );
+        }
+
+        syncProjectUi(next, state.activeSheetId);
+        setState("project", next);
+        setState("selection", null);
+        setState("pendingEndpoint", null);
+        setState("pendingWirePoints", []);
+        setStatusT("store.status.removedSelection");
+        return;
       }
       withProject((project) => {
         const sheet = getSheet(project, state.activeSheetId);

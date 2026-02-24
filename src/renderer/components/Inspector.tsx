@@ -70,19 +70,23 @@ export default function Inspector(props: InspectorProps) {
     { value: "bottom", label: "bottom" },
   ];
   const selectedNode = () =>
-    props.state.selection?.kind === "node"
-      ? props.currentSheet.nodes.find((n) => n.id === props.state.selection?.id)
-      : undefined;
+    (() => {
+      const selection = props.state.selection;
+      if (!selection || selection.kind !== "node") return undefined;
+      return props.currentSheet.nodes.find((n) => n.id === selection.id);
+    })();
   const selectedLabel = () =>
-    props.state.selection?.kind === "label"
-      ? props.currentSheet.labels.find(
-          (l) => l.id === props.state.selection?.id,
-        )
-      : undefined;
+    (() => {
+      const selection = props.state.selection;
+      if (!selection || selection.kind !== "label") return undefined;
+      return props.currentSheet.labels.find((l) => l.id === selection.id);
+    })();
   const selectedPort = () =>
-    props.state.selection?.kind === "sheet-port"
-      ? props.currentSheet.ports.find((p) => p.id === props.state.selection?.id)
-      : undefined;
+    (() => {
+      const selection = props.state.selection;
+      if (!selection || selection.kind !== "sheet-port") return undefined;
+      return props.currentSheet.ports.find((p) => p.id === selection.id);
+    })();
 
   return (
     <aside class="inspector">
@@ -214,6 +218,9 @@ export default function Inspector(props: InspectorProps) {
         </Show>
 
         <Show when={props.state.selection}>
+          <Show when={props.state.selection?.kind === "multi"}>
+            <div class="muted">{t("inspector.multipleSelected")}</div>
+          </Show>
           <button
             type="button"
             class="btn danger"

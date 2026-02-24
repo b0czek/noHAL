@@ -165,6 +165,7 @@ export const en = {
   "inspector.session": "Session",
   "inspector.selection": "Selection",
   "inspector.nothingSelected": "Nothing selected.",
+  "inspector.multipleSelected": "Multiple items selected.",
   "inspector.deleteSelection": "Delete Selection",
   "inspector.currentSheetNets": "Current Sheet Nets",
   "inspector.directConnections": "Direct Connections",

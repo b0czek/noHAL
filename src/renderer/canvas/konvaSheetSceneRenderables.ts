@@ -45,34 +45,44 @@ import type { NodeLayout, Pt } from "./layout";
 import { directionPillFill, dirStroke, labelFill, typeFill } from "./theme";
 
 type ClampPosFn = (pos: Pt) => Pt;
+type DragSelectionTarget = {
+  kind: "node" | "label" | "sheet-port";
+  id: string;
+};
 
 interface RenderSharedArgs {
   mainWorld: Konva.Group;
   callbacks: SceneCallbacks;
   clampPos: ClampPosFn;
   redrawWires: () => void;
+  onSelectionDragStart: (target: DragSelectionTarget, pos: Pt) => boolean;
+  onSelectionDragMove: (target: DragSelectionTarget, pos: Pt) => boolean;
+  onSelectionDragEnd: (target: DragSelectionTarget, pos: Pt) => boolean;
 }
 
 interface RenderPortsArgs extends RenderSharedArgs {
   sheet: SheetDefinition;
   pendingKey: string | null;
-  selectedPortId: string | null;
+  selectedPortIds: ReadonlySet<string>;
   livePortPositions: Map<string, Pt>;
+  portGroups: Map<string, Konva.Group>;
 }
 
 interface RenderNodesArgs extends RenderSharedArgs {
   project: NoHALProject;
   sheet: SheetDefinition;
   pendingKey: string | null;
-  selectedNodeId: string | null;
+  selectedNodeIds: ReadonlySet<string>;
   nodeLayouts: Map<string, NodeLayout>;
   liveNodePositions: Map<string, Pt>;
+  nodeGroups: Map<string, Konva.Group>;
 }
 
 interface RenderLabelsArgs extends RenderSharedArgs {
   sheet: SheetDefinition;
-  selectedLabelId: string | null;
+  selectedLabelIds: ReadonlySet<string>;
   liveLabelPositions: Map<string, Pt>;
+  labelGroups: Map<string, Konva.Group>;
 }
 
 function addPinDot(args: {
@@ -141,12 +151,13 @@ export function renderPorts(args: RenderPortsArgs): void {
   const {
     sheet,
     pendingKey,
-    selectedPortId,
+    selectedPortIds,
     mainWorld,
     callbacks,
     clampPos,
     redrawWires,
     livePortPositions,
+    portGroups,
   } = args;
 
   for (const port of sheet.ports) {
@@ -163,6 +174,7 @@ export function renderPorts(args: RenderPortsArgs): void {
       draggable: true,
       dragBoundFunc: (pos) => clampPos(pos),
     });
+    portGroups.set(port.id, portGroup);
 
     const labelText = `${port.name}  ${port.type}`;
     const measure = new Konva.Text({
@@ -188,8 +200,8 @@ export function renderPorts(args: RenderPortsArgs): void {
       height: h,
       cornerRadius: CORNER_RADIUS_MD,
       fill: PORT_PANEL_FILL,
-      stroke: selectedPortId === port.id ? SELECTED_BORDER : NEUTRAL_BORDER,
-      strokeWidth: selectedPortId === port.id ? 2 : 1,
+      stroke: selectedPortIds.has(port.id) ? SELECTED_BORDER : NEUTRAL_BORDER,
+      strokeWidth: selectedPortIds.has(port.id) ? 2 : 1,
     });
     portGroup.add(box);
 
@@ -235,6 +247,12 @@ export function renderPorts(args: RenderPortsArgs): void {
       }),
     );
 
+    portGroup.on("dragstart", () => {
+      const pos = clampPos(portGroup.position());
+      portGroup.position(pos);
+      livePortPositions.set(port.id, pos);
+      args.onSelectionDragStart({ kind: "sheet-port", id: port.id }, pos);
+    });
     portGroup.on("click tap", (evt) => {
       evt.cancelBubble = true;
       callbacks.onSelect({ kind: "sheet-port", id: port.id });
@@ -242,6 +260,9 @@ export function renderPorts(args: RenderPortsArgs): void {
     portGroup.on("dragend", () => {
       const pos = clampPos(portGroup.position());
       portGroup.position(pos);
+      if (args.onSelectionDragEnd({ kind: "sheet-port", id: port.id }, pos)) {
+        return;
+      }
       livePortPositions.set(port.id, pos);
       redrawWires();
       callbacks.onMoveSheetPort(port.id, pos.x, pos.y);
@@ -249,6 +270,9 @@ export function renderPorts(args: RenderPortsArgs): void {
     portGroup.on("dragmove", () => {
       const pos = clampPos(portGroup.position());
       portGroup.position(pos);
+      if (args.onSelectionDragMove({ kind: "sheet-port", id: port.id }, pos)) {
+        return;
+      }
       livePortPositions.set(port.id, pos);
       redrawWires();
     });
@@ -272,25 +296,27 @@ export function renderNodes(args: RenderNodesArgs): void {
     project,
     sheet,
     pendingKey,
-    selectedNodeId,
+    selectedNodeIds,
     nodeLayouts,
     mainWorld,
     callbacks,
     clampPos,
     redrawWires,
     liveNodePositions,
+    nodeGroups,
   } = args;
 
   for (const node of sheet.nodes) {
     const layout = nodeLayouts.get(node.id);
     if (!layout) continue;
-    const selected = selectedNodeId === node.id;
+    const selected = selectedNodeIds.has(node.id);
     const nodeGroup = new Konva.Group({
       x: node.position.x,
       y: node.position.y,
       draggable: true,
       dragBoundFunc: (pos) => clampPos(pos),
     });
+    nodeGroups.set(node.id, nodeGroup);
 
     nodeGroup.add(
       new Konva.Rect({
@@ -570,6 +596,12 @@ export function renderNodes(args: RenderNodesArgs): void {
       }
     }
 
+    nodeGroup.on("dragstart", () => {
+      const pos = clampPos(nodeGroup.position());
+      nodeGroup.position(pos);
+      liveNodePositions.set(node.id, pos);
+      args.onSelectionDragStart({ kind: "node", id: node.id }, pos);
+    });
     nodeGroup.on("click tap", () => {
       callbacks.onSelect({ kind: "node", id: node.id });
     });
@@ -581,12 +613,18 @@ export function renderNodes(args: RenderNodesArgs): void {
     nodeGroup.on("dragmove", () => {
       const pos = clampPos(nodeGroup.position());
       nodeGroup.position(pos);
+      if (args.onSelectionDragMove({ kind: "node", id: node.id }, pos)) {
+        return;
+      }
       liveNodePositions.set(node.id, pos);
       redrawWires();
     });
     nodeGroup.on("dragend", () => {
       const pos = clampPos(nodeGroup.position());
       nodeGroup.position(pos);
+      if (args.onSelectionDragEnd({ kind: "node", id: node.id }, pos)) {
+        return;
+      }
       liveNodePositions.set(node.id, pos);
       redrawWires();
       callbacks.onMoveNode(node.id, pos.x, pos.y);
@@ -599,12 +637,13 @@ export function renderNodes(args: RenderNodesArgs): void {
 export function renderLabels(args: RenderLabelsArgs): void {
   const {
     sheet,
-    selectedLabelId,
+    selectedLabelIds,
     mainWorld,
     callbacks,
     clampPos,
     redrawWires,
     liveLabelPositions,
+    labelGroups,
   } = args;
 
   for (const label of sheet.labels) {
@@ -615,6 +654,7 @@ export function renderLabels(args: RenderLabelsArgs): void {
       draggable: true,
       dragBoundFunc: (pos) => clampPos(pos),
     });
+    labelGroups.set(label.id, group);
     const scopeMeasure = new Konva.Text({
       text: label.scope,
       fontFamily: FONT_SANS,
@@ -640,8 +680,8 @@ export function renderLabels(args: RenderLabelsArgs): void {
       cornerRadius: CORNER_RADIUS_MD,
       fill: labelFill(label.scope),
       stroke:
-        selectedLabelId === label.id ? SELECTED_LABEL_BORDER : NEUTRAL_BORDER,
-      strokeWidth: selectedLabelId === label.id ? 2 : 1,
+        selectedLabelIds.has(label.id) ? SELECTED_LABEL_BORDER : NEUTRAL_BORDER,
+      strokeWidth: selectedLabelIds.has(label.id) ? 2 : 1,
     });
     group.add(box);
     group.add(
@@ -665,6 +705,12 @@ export function renderLabels(args: RenderLabelsArgs): void {
       }),
     );
 
+    group.on("dragstart", () => {
+      const pos = clampPos(group.position());
+      group.position(pos);
+      liveLabelPositions.set(label.id, pos);
+      args.onSelectionDragStart({ kind: "label", id: label.id }, pos);
+    });
     group.on("click tap", (evt) => {
       evt.cancelBubble = true;
       callbacks.onLabelClick(label.id);
@@ -672,6 +718,9 @@ export function renderLabels(args: RenderLabelsArgs): void {
     group.on("dragend", () => {
       const pos = clampPos(group.position());
       group.position(pos);
+      if (args.onSelectionDragEnd({ kind: "label", id: label.id }, pos)) {
+        return;
+      }
       liveLabelPositions.set(label.id, pos);
       redrawWires();
       callbacks.onMoveLabel(label.id, pos.x, pos.y);
@@ -679,6 +728,9 @@ export function renderLabels(args: RenderLabelsArgs): void {
     group.on("dragmove", () => {
       const pos = clampPos(group.position());
       group.position(pos);
+      if (args.onSelectionDragMove({ kind: "label", id: label.id }, pos)) {
+        return;
+      }
       liveLabelPositions.set(label.id, pos);
       redrawWires();
     });
