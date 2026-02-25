@@ -6,60 +6,43 @@ import SheetSettingsDialog from "../components/SheetSettingsDialog";
 import Sidebar from "../components/Sidebar";
 import StatusBar from "../components/StatusBar";
 import { useEditorShortcuts } from "../shortcuts/useEditorShortcuts";
+import { EditorUiProvider } from "../state/EditorUiProvider";
 import EditorTopbar from "./EditorTopbar";
-import { useEditorUiState } from "./useEditorUiState";
 
 interface EditorScreenProps {
   onOpenProjectCreationDialog: () => void;
 }
 
 export default function EditorScreen(props: EditorScreenProps) {
-  const editorUi = useEditorUiState();
+  return (
+    <EditorUiProvider>
+      <EditorScreenContent
+        onOpenProjectCreationDialog={props.onOpenProjectCreationDialog}
+      />
+    </EditorUiProvider>
+  );
+}
 
-  useEditorShortcuts({
-    isComponentDialogOpen: () => editorUi.componentEditorNodeId() !== null,
-    closeComponentDialog: editorUi.closeComponentEditor,
-  });
+function EditorScreenContent(props: EditorScreenProps) {
+  useEditorShortcuts();
 
   return (
     <div class="app-shell">
       <EditorTopbar
         onOpenProjectCreationDialog={props.onOpenProjectCreationDialog}
-        onOpenComponentStore={editorUi.openComponentStore}
       />
 
       <main class="workspace">
-        <Sidebar onOpenSheetSettings={editorUi.openSheetSettings} />
-
-        <Canvas
-          onOpenNode={editorUi.openComponentEditorForNode}
-          onLabelClick={editorUi.labelClick}
-          onCommentClick={editorUi.commentClick}
-        />
-
-        <Inspector
-          onOpenSelectedComponentEditor={editorUi.openSelectedComponentEditor}
-        />
+        <Sidebar />
+        <Canvas />
+        <Inspector />
       </main>
 
       <StatusBar />
 
-      <ComponentNodeDialog
-        open={editorUi.editingComponentNode() !== null}
-        node={editorUi.editingComponentNode()}
-        onClose={editorUi.closeComponentEditor}
-      />
-
-      <ComponentStoreDialog
-        open={editorUi.isComponentStoreOpen()}
-        onClose={editorUi.closeComponentStore}
-      />
-
-      <SheetSettingsDialog
-        open={editorUi.sheetSettingsSheetId() !== null}
-        sheetId={editorUi.sheetSettingsSheetId()}
-        onClose={editorUi.closeSheetSettings}
-      />
+      <ComponentNodeDialog />
+      <ComponentStoreDialog />
+      <SheetSettingsDialog />
     </div>
   );
 }

@@ -8,10 +8,7 @@ import type {
 } from "../../shared/types";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
-
-interface InspectorProps {
-  onOpenSelectedComponentEditor: () => void;
-}
+import { useEditorUi } from "../state/EditorUiProvider";
 
 type SelectMenuOption = {
   value: string;
@@ -28,9 +25,10 @@ const PORT_TYPE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
   { value: "port", label: "port" },
 ];
 
-export default function Inspector(props: InspectorProps) {
+export default function Inspector() {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
+  const editorUi = useEditorUi();
   const currentSheet = () => getSheet(state.project, state.activeSheetId);
   const labelScopeOptions: ReadonlyArray<SelectMenuOption> = [
     { value: "local", label: "local" },
@@ -70,7 +68,9 @@ export default function Inspector(props: InspectorProps) {
     (() => {
       const selection = state.selection;
       if (!selection || selection.kind !== "wire-connection") return undefined;
-      return currentSheet().directConnections.find((c) => c.id === selection.id);
+      return currentSheet().directConnections.find(
+        (c) => c.id === selection.id,
+      );
     })();
 
   return (
@@ -86,7 +86,7 @@ export default function Inspector(props: InspectorProps) {
             <NodeInspector
               project={state.project}
               node={node()}
-              onOpenComponentEditor={props.onOpenSelectedComponentEditor}
+              onOpenComponentEditor={editorUi.openSelectedComponentEditor}
               onRename={(name) => actions.renameNode(node().id, name)}
               onEnterSelectedSheet={actions.enterSelectedSheet}
               onRefreshComponentInStore={(componentId) =>

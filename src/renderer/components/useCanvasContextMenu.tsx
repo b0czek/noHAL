@@ -6,20 +6,21 @@ import type {
   SceneContextMenuTarget,
 } from "../canvas/konvaSheetSceneTypes";
 import { useI18n } from "../i18n";
-import type { Selection } from "../state/store";
 import { useEditorStore } from "../state/EditorStoreProvider";
+import { useEditorUi } from "../state/EditorUiProvider";
+import type { Selection } from "../state/store";
 import CanvasComponentMenu from "./CanvasComponentMenu";
 import { useContextMenu } from "./ContextMenuProvider";
 
 interface UseCanvasContextMenuArgs {
   getHostEl: () => HTMLDivElement;
   getScene: () => KonvaSheetScene | null;
-  onOpenNode: (nodeId: string) => void;
 }
 
 export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
+  const editorUi = useEditorUi();
   const contextMenu = useContextMenu();
   const currentSheet = () => getSheet(state.project, state.activeSheetId);
 
@@ -84,7 +85,9 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   };
 
   const deleteWaypoint = (connectionId: string, waypointIndex: number) => {
-    const conn = currentSheet().directConnections.find((c) => c.id === connectionId);
+    const conn = currentSheet().directConnections.find(
+      (c) => c.id === connectionId,
+    );
     if (!conn?.waypoints) return;
     if (waypointIndex < 0 || waypointIndex >= conn.waypoints.length) return;
     const next = conn.waypoints.filter((_, idx) => idx !== waypointIndex);
@@ -126,7 +129,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           items: [
             {
               label: t("inspector.openComponentSettings"),
-              onSelect: () => args.onOpenNode(node.id),
+              onSelect: () => editorUi.openComponentEditorForNode(node.id),
             },
             {
               label: t("inspector.refreshComponentDefinition"),
@@ -148,7 +151,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
         items: [
           {
             label: t("inspector.enterSubsheet"),
-            onSelect: () => args.onOpenNode(node.id),
+            onSelect: () => editorUi.openComponentEditorForNode(node.id),
           },
           {
             label: t("inspector.deleteSelection"),

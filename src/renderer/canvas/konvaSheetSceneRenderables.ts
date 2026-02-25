@@ -906,7 +906,9 @@ export function renderComments(args: RenderCommentsArgs): void {
       height: Math.max(28, Math.ceil(text.height())),
       cornerRadius: CORNER_RADIUS_MD,
       fill: "rgba(12, 24, 28, 0.72)",
-      stroke: selectedCommentIds.has(comment.id) ? SELECTED_BORDER : NEUTRAL_BORDER,
+      stroke: selectedCommentIds.has(comment.id)
+        ? SELECTED_BORDER
+        : NEUTRAL_BORDER,
       strokeWidth: selectedCommentIds.has(comment.id) ? 2 : 1,
     });
     group.add(box);

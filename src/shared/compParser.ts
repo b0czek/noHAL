@@ -247,9 +247,10 @@ function parseArrayToken(token: string): { len?: number; expr?: string } {
   };
 }
 
-function splitInlineArrayFromNameToken(
-  token: string,
-): { rawName: string; inlineArrayToken?: string } {
+function splitInlineArrayFromNameToken(token: string): {
+  rawName: string;
+  inlineArrayToken?: string;
+} {
   if (token.includes("[") || token.includes("]")) {
     const bracketStart = token.indexOf("[");
     const bracketEnd = token.lastIndexOf("]");
@@ -286,7 +287,9 @@ function parsePinOrParam(
 
   const direction = tokens[1] as PinDirection | ParamDirection;
   const typeToken = tokens[2];
-  const { rawName, inlineArrayToken } = splitInlineArrayFromNameToken(tokens[3]);
+  const { rawName, inlineArrayToken } = splitInlineArrayFromNameToken(
+    tokens[3],
+  );
   const name = normalizeHalIdentifierName(rawName);
 
   if (!HAL_TYPES.has(typeToken))

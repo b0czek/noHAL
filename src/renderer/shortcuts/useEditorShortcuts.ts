@@ -1,10 +1,6 @@
 import { onCleanup, onMount } from "solid-js";
 import { useEditorStore } from "../state/EditorStoreProvider";
-
-interface EditorShortcutsOptions {
-  isComponentDialogOpen: () => boolean;
-  closeComponentDialog: () => void;
-}
+import { useEditorUi } from "../state/EditorUiProvider";
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -17,15 +13,16 @@ function isEditableTarget(target: EventTarget | null): boolean {
   );
 }
 
-export function useEditorShortcuts(options: EditorShortcutsOptions): void {
+export function useEditorShortcuts(): void {
   const { state, actions } = useEditorStore();
+  const editorUi = useEditorUi();
 
   onMount(() => {
     const onKeyDown = (evt: KeyboardEvent) => {
       if (evt.key === "Escape") {
-        if (options.isComponentDialogOpen()) {
+        if (editorUi.componentEditorNodeId() !== null) {
           evt.preventDefault();
-          options.closeComponentDialog();
+          editorUi.closeComponentEditor();
           return;
         }
         if (state.pendingEndpoint !== null) {

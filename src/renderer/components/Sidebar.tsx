@@ -2,15 +2,13 @@ import { createEffect, createMemo, createSignal, For } from "solid-js";
 import type { SheetDefinition } from "../../shared/types";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
+import { useEditorUi } from "../state/EditorUiProvider";
 import { useContextMenu } from "./ContextMenuProvider";
 
-interface SidebarProps {
-  onOpenSheetSettings: (sheetId: string) => void;
-}
-
-export default function Sidebar(props: SidebarProps) {
+export default function Sidebar() {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
+  const editorUi = useEditorUi();
   const contextMenu = useContextMenu();
   type SheetTreeNode = {
     sheet: SheetDefinition;
@@ -72,7 +70,11 @@ export default function Sidebar(props: SidebarProps) {
 
     const roots: SheetTreeNode[] = [];
     if (byId.has(state.project.rootSheetId)) {
-      const root = buildNode(state.project.rootSheetId, new Set<string>(), false);
+      const root = buildNode(
+        state.project.rootSheetId,
+        new Set<string>(),
+        false,
+      );
       if (root) roots.push(root);
     }
 
@@ -165,15 +167,17 @@ export default function Sidebar(props: SidebarProps) {
               const items = [
                 {
                   label: t("sidebar.sheetSettings"),
-                  onSelect: () =>
-                    props.onOpenSheetSettings(branchProps.node.sheet.id),
+                  onSelect: () => {
+                    editorUi.openSheetSettings(branchProps.node.sheet.id);
+                  },
                 },
               ];
               if (branchProps.node.sheet.id !== state.project.rootSheetId) {
                 items.push({
                   label: t("sidebar.deleteSheet"),
-                  onSelect: () =>
-                    actions.deleteSheetDefinition(branchProps.node.sheet.id),
+                  onSelect: () => {
+                    actions.deleteSheetDefinition(branchProps.node.sheet.id);
+                  },
                 });
               }
               contextMenu.openActions({

@@ -1,8 +1,15 @@
-import { createEffect, createMemo, createSignal } from "solid-js";
+import {
+  createContext,
+  createEffect,
+  createMemo,
+  createSignal,
+  type ParentProps,
+  useContext,
+} from "solid-js";
 import { getSheet } from "../../shared/graph";
-import { useEditorStore } from "../state/EditorStoreProvider";
+import { useEditorStore } from "./EditorStoreProvider";
 
-export function useEditorUiState() {
+function createEditorUiState() {
   const { state, actions } = useEditorStore();
   const [componentEditorNodeId, setComponentEditorNodeId] = createSignal<
     string | null
@@ -80,4 +87,23 @@ export function useEditorUiState() {
     openSheetSettings: (sheetId: string) => setSheetSettingsSheetId(sheetId),
     closeSheetSettings: () => setSheetSettingsSheetId(null),
   };
+}
+
+type EditorUiContextValue = ReturnType<typeof createEditorUiState>;
+
+const EditorUiContext = createContext<EditorUiContextValue>();
+
+export function EditorUiProvider(props: ParentProps) {
+  const ui = createEditorUiState();
+  return (
+    <EditorUiContext.Provider value={ui}>
+      {props.children}
+    </EditorUiContext.Provider>
+  );
+}
+
+export function useEditorUi() {
+  const ctx = useContext(EditorUiContext);
+  if (!ctx) throw new Error("EditorUiProvider is missing");
+  return ctx;
 }

@@ -1,27 +1,30 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { getNodePins, getNodeTitle } from "../../shared/graph";
-import type { ComponentNode } from "../../shared/types";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
+import { useEditorUi } from "../state/EditorUiProvider";
 
-interface ComponentNodeDialogProps {
-  open: boolean;
-  node: ComponentNode | null;
-  onClose: () => void;
-}
-
-export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
+export default function ComponentNodeDialog() {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
-  const component = createMemo(() =>
-    props.node
-      ? state.project.library.components[props.node.componentId]
-      : undefined,
-  );
-  const pins = createMemo(() =>
-    props.node ? getNodePins(state.project, props.node) : [],
-  );
+  const editorUi = useEditorUi();
+  const node = () => editorUi.editingComponentNode();
+  const component = createMemo(() => {
+    const currentNode = node();
+    if (!currentNode) return undefined;
+    return state.project.library.components[currentNode.componentId];
+  });
+  const pins = createMemo(() => {
+    const currentNode = node();
+    if (!currentNode) return [];
+    return getNodePins(state.project, currentNode);
+  });
+  const nodeTitle = createMemo(() => {
+    const currentNode = node();
+    if (!currentNode) return "";
+    return getNodeTitle(state.project, currentNode);
+  });
   const componentParams = createMemo(() => component()?.params ?? []);
   const pinFilterModes = ["all", "in", "out", "io"] as const;
   const [pinFilter, setPinFilter] =
@@ -44,12 +47,12 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
   };
 
   return (
-    <Show when={props.open && props.node}>
+    <Show when={node()}>
       <Portal>
         <div
           class="modal-backdrop"
           role="presentation"
-          onPointerDown={() => props.onClose()}
+          onPointerDown={() => editorUi.closeComponentEditor()}
         >
           <div
             class="modal component-settings-dialog"
@@ -62,11 +65,13 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
             <div class="modal-header">
               <div>
                 <div class="modal-title">{t("componentDialog.title")}</div>
-                <div class="modal-sub mono">
-                  {props.node ? getNodeTitle(state.project, props.node) : ""}
-                </div>
+                <div class="modal-sub mono">{nodeTitle()}</div>
               </div>
-              <button type="button" class="btn subtle" onClick={props.onClose}>
+              <button
+                type="button"
+                class="btn subtle"
+                onClick={editorUi.closeComponentEditor}
+              >
                 {t("common.close")}
               </button>
             </div>
@@ -77,11 +82,14 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                 <label>
                   {t("componentDialog.instanceName")}
                   <input
-                    value={props.node?.instanceName ?? ""}
+                    value={node()?.instanceName ?? ""}
                     onInput={(evt) => {
-                      const node = props.node;
-                      if (!node) return;
-                      actions.renameNode(node.id, evt.currentTarget.value);
+                      const currentNode = node();
+                      if (!currentNode) return;
+                      actions.renameNode(
+                        currentNode.id,
+                        evt.currentTarget.value,
+                      );
                     }}
                   />
                 </label>
@@ -125,12 +133,12 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                         <label>
                           <span class="mono">{param.name}</span>
                           <input
-                            value={props.node?.paramValues[param.key] ?? ""}
+                            value={node()?.paramValues[param.key] ?? ""}
                             onInput={(evt) => {
-                              const node = props.node;
-                              if (!node) return;
+                              const currentNode = node();
+                              if (!currentNode) return;
                               actions.updateNodeParam(
-                                node.id,
+                                currentNode.id,
                                 param.key,
                                 evt.currentTarget.value,
                               );
@@ -160,14 +168,12 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                         <label>
                           <span class="mono">{pin.name}</span>
                           <input
-                            value={
-                              props.node?.pinInitialValues?.[pin.key] ?? ""
-                            }
+                            value={node()?.pinInitialValues?.[pin.key] ?? ""}
                             onInput={(evt) => {
-                              const node = props.node;
-                              if (!node) return;
+                              const currentNode = node();
+                              if (!currentNode) return;
                               actions.updateNodePinInitialValue(
-                                node.id,
+                                currentNode.id,
                                 pin.key,
                                 evt.currentTarget.value,
                               );

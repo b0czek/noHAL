@@ -9,17 +9,13 @@ import { getSheet } from "../../shared/graph";
 import { KonvaSheetScene } from "../canvas/konvaSheetScene";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
+import { useEditorUi } from "../state/EditorUiProvider";
 import { useCanvasContextMenu } from "./useCanvasContextMenu";
 
-interface CanvasProps {
-  onOpenNode: (nodeId: string) => void;
-  onLabelClick: (labelId: string) => void;
-  onCommentClick: (commentId: string) => void;
-}
-
-export default function Canvas(props: CanvasProps) {
+export default function Canvas() {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
+  const editorUi = useEditorUi();
   let hostEl!: HTMLDivElement;
   let scene: KonvaSheetScene | null = null;
   let resizeObserver: ResizeObserver | null = null;
@@ -48,17 +44,16 @@ export default function Canvas(props: CanvasProps) {
   const canvasContextMenu = useCanvasContextMenu({
     getHostEl: () => hostEl,
     getScene: () => scene,
-    onOpenNode: props.onOpenNode,
   });
 
   onMount(() => {
     scene = new KonvaSheetScene(hostEl, {
       onSelect: actions.select,
-      onOpenNode: props.onOpenNode,
+      onOpenNode: editorUi.openComponentEditorForNode,
       onEndpointClick: actions.endpointClick,
       onBackgroundClick: actions.addPendingWirePoint,
-      onLabelClick: props.onLabelClick,
-      onCommentClick: props.onCommentClick,
+      onLabelClick: editorUi.labelClick,
+      onCommentClick: editorUi.commentClick,
       onMoveNode: actions.moveNode,
       onMoveLabel: actions.moveLabel,
       onMoveComment: actions.moveComment,

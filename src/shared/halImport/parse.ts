@@ -366,7 +366,10 @@ export function parseHalImportDraft(
       }
       if (!parsed.programToken) continue;
 
-      const named = inferLoadusrInstanceName(parsed.programToken, parsed.programArgs);
+      const named = inferLoadusrInstanceName(
+        parsed.programToken,
+        parsed.programArgs,
+      );
       for (const warning of named.warnings) {
         warnings.push(`Line ${line.line}: ${warning}`);
       }

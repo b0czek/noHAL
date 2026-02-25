@@ -9,7 +9,10 @@ function parseHal(text: string, sourcePath = "/configs/demo/custom.hal") {
 function groupByComponentName(text: string) {
   const draft = parseHal(text);
   const groups = new Map(
-    draft.componentGroups.map((group) => [group.inferredHalComponentName, group]),
+    draft.componentGroups.map((group) => [
+      group.inferredHalComponentName,
+      group,
+    ]),
   );
   return { draft, groups };
 }
@@ -27,21 +30,17 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
       inferredHalComponentName: "and2",
       runtimeHint: "rt",
     });
-    expect(groups.get("and2")?.instances.map((instance) => instance.instanceName)).toEqual([
-      "and2.0",
-      "and2.1",
-      "and2.2",
-    ]);
+    expect(
+      groups.get("and2")?.instances.map((instance) => instance.instanceName),
+    ).toEqual(["and2.0", "and2.1", "and2.2"]);
 
     expect(groups.get("or2")).toMatchObject({
       inferredHalComponentName: "or2",
       runtimeHint: "rt",
     });
-    expect(groups.get("or2")?.instances.map((instance) => instance.instanceName)).toEqual([
-      "aa",
-      "ab",
-    ]);
-
+    expect(
+      groups.get("or2")?.instances.map((instance) => instance.instanceName),
+    ).toEqual(["aa", "ab"]);
   });
 
   it("parses documented net forms with optional arrows and repeated signal names while inferring endpoint directions", () => {
@@ -55,7 +54,11 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
 
     expect(draft.warnings).toEqual([]);
     expect(draft.nets.filter((net) => net.name === "xStep")).toHaveLength(2);
-    expect(draft.nets.map((net) => net.name)).toEqual(["xStep", "xStep", "home-x"]);
+    expect(draft.nets.map((net) => net.name)).toEqual([
+      "xStep",
+      "xStep",
+      "home-x",
+    ]);
 
     expect(draft.nets[0]).toMatchObject({
       name: "xStep",
@@ -108,13 +111,16 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
   });
 
   it("parses setp values and addf position/thread metadata, preserving halcmd INI substitutions and quoted hashes", () => {
-    const draft = parseHal(`
+    const draft = parseHal(
+      `
       loadrt lowpass count=1
       addf lowpass.0 servo-thread 17
       setp lowpass.0.gain .01
       setp stepgen.0.maxvel [JOINT_0]MAX_VELOCITY
       setp demo.0.note "abc # not a comment"
-    `, "/machine/configs/softstart.hal");
+    `,
+      "/machine/configs/softstart.hal",
+    );
 
     expect(draft.sourcePath).toBe("/machine/configs/softstart.hal");
     expect(draft.sourceFileName).toBe("softstart.hal");
@@ -191,33 +197,35 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
       inferredHalComponentName: "halscope",
       runtimeHint: "userspace",
     });
-    expect(groups.get("halscope")?.instances.map((item) => item.instanceName)).toEqual([
-      "halscope",
-    ]);
+    expect(
+      groups.get("halscope")?.instances.map((item) => item.instanceName),
+    ).toEqual(["halscope"]);
 
     expect(groups.get("hal_manualtoolchange")).toMatchObject({
       inferredHalComponentName: "hal_manualtoolchange",
       runtimeHint: "userspace",
     });
     expect(
-      groups.get("hal_manualtoolchange")?.instances.map((item) => item.instanceName),
+      groups
+        .get("hal_manualtoolchange")
+        ?.instances.map((item) => item.instanceName),
     ).toEqual(["hal_manualtoolchange"]);
 
     expect(groups.get("gs2_vfd")).toMatchObject({
       inferredHalComponentName: "gs2_vfd",
       runtimeHint: "userspace",
     });
-    expect(groups.get("gs2_vfd")?.instances.map((item) => item.instanceName)).toEqual([
-      "spindle",
-    ]);
+    expect(
+      groups.get("gs2_vfd")?.instances.map((item) => item.instanceName),
+    ).toEqual(["spindle"]);
 
     expect(groups.get("gladevcp")).toMatchObject({
       inferredHalComponentName: "gladevcp",
       runtimeHint: "userspace",
     });
-    expect(groups.get("gladevcp")?.instances.map((item) => item.instanceName)).toEqual([
-      "winder",
-    ]);
+    expect(
+      groups.get("gladevcp")?.instances.map((item) => item.instanceName),
+    ).toEqual(["winder"]);
   });
 
   it("uses `<=` / `<=>` arrows to infer direction hints for endpoints before the arrow token", () => {
@@ -249,11 +257,25 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
 });
 
 describe("parseHalImportDraft (documented HAL features not imported yet)", () => {
-  it.todo("imports `sets <signal> <value>` commands (HAL basic-hal.adoc) as signal value assignments");
-  it.todo("imports `unlinkp <pin>` commands (HAL basic-hal.adoc) as graph edits / disconnect operations");
-  it.todo("imports explicit `newsig` declarations and legacy `linksp`/`linkps` compatibility commands");
-  it.todo("imports `alias pin ...` / `alias param ...` naming aliases used in LinuxCNC configs");
-  it.todo("maps bare `loadrt component` to canonical runtime instance paths like `component.0.*` used by LinuxCNC examples");
-  it.todo("validates `net` writer/reader constraints from the HAL spec (single writer, IO vs OUT rules)");
-  it.todo("handles `source` includes / multi-file HAL import instead of parsing one file in isolation");
+  it.todo(
+    "imports `sets <signal> <value>` commands (HAL basic-hal.adoc) as signal value assignments",
+  );
+  it.todo(
+    "imports `unlinkp <pin>` commands (HAL basic-hal.adoc) as graph edits / disconnect operations",
+  );
+  it.todo(
+    "imports explicit `newsig` declarations and legacy `linksp`/`linkps` compatibility commands",
+  );
+  it.todo(
+    "imports `alias pin ...` / `alias param ...` naming aliases used in LinuxCNC configs",
+  );
+  it.todo(
+    "maps bare `loadrt component` to canonical runtime instance paths like `component.0.*` used by LinuxCNC examples",
+  );
+  it.todo(
+    "validates `net` writer/reader constraints from the HAL spec (single writer, IO vs OUT rules)",
+  );
+  it.todo(
+    "handles `source` includes / multi-file HAL import instead of parsing one file in isolation",
+  );
 });

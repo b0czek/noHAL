@@ -1,16 +1,16 @@
 import {
+  HiOutlineArchiveBoxArrowDown,
   HiOutlineArrowUturnLeft,
   HiOutlineArrowUturnRight,
-  HiOutlineArchiveBoxArrowDown,
   HiOutlineDocumentPlus,
   HiOutlineFolderOpen,
 } from "solid-icons/hi";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
+import { useEditorUi } from "../state/EditorUiProvider";
 
 interface EditorTopbarProps {
   onOpenProjectCreationDialog: () => void;
-  onOpenComponentStore: () => void;
 }
 
 function closeToolbarMenu(el: HTMLElement) {
@@ -21,6 +21,7 @@ function closeToolbarMenu(el: HTMLElement) {
 export default function EditorTopbar(props: EditorTopbarProps) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
+  const editorUi = useEditorUi();
 
   return (
     <header class="topbar">
@@ -79,13 +80,17 @@ export default function EditorTopbar(props: EditorTopbarProps) {
         >
           <HiOutlineArrowUturnRight size={16} aria-hidden="true" />
         </button>
-        <button type="button" class="btn accent" onClick={() => void actions.exportHal()}>
+        <button
+          type="button"
+          class="btn accent"
+          onClick={() => void actions.exportHal()}
+        >
           {t("topbar.exportHal")}
         </button>
       </div>
 
       <div class="toolbar-group">
-        <button type="button" class="btn" onClick={props.onOpenComponentStore}>
+        <button type="button" class="btn" onClick={editorUi.openComponentStore}>
           {t("topbar.componentStore")}
         </button>
       </div>

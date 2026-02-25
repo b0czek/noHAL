@@ -10,12 +10,7 @@ import { Portal } from "solid-js/web";
 import type { NoHALProject, SheetNodeInstance } from "../../shared/types";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
-
-interface SheetSettingsDialogProps {
-  open: boolean;
-  sheetId: string | null;
-  onClose: () => void;
-}
+import { useEditorUi } from "../state/EditorUiProvider";
 
 interface SheetQueueRow {
   nodeId: string;
@@ -91,27 +86,31 @@ function buildSheetQueueRows(
   });
 }
 
-export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
+export default function SheetSettingsDialog() {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
+  const editorUi = useEditorUi();
   const [draggingNodeId, setDraggingNodeId] = createSignal<string | null>(null);
   const [dropTargetNodeId, setDropTargetNodeId] = createSignal<string | null>(
     null,
   );
 
-  const sheet = createMemo(() =>
-    props.sheetId ? state.project.sheets[props.sheetId] : undefined,
-  );
+  const sheet = createMemo(() => {
+    const sheetId = editorUi.sheetSettingsSheetId();
+    if (!sheetId) return undefined;
+    return state.project.sheets[sheetId];
+  });
   const rows = createMemo(() =>
-    buildSheetQueueRows(state.project, props.sheetId, {
+    buildSheetQueueRows(state.project, editorUi.sheetSettingsSheetId(), {
       missingSheet: t("sheetSettings.missingSheet"),
       missing: t("sheetSettings.missing"),
     }),
   );
 
   const commitNodeOrder = (nodeIds: string[]) => {
-    if (!props.sheetId) return;
-    actions.setSheetAddfQueue(props.sheetId, nodeIds);
+    const sheetId = editorUi.sheetSettingsSheetId();
+    if (!sheetId) return;
+    actions.setSheetAddfQueue(sheetId, nodeIds);
   };
 
   createEffect(() => {
@@ -129,12 +128,12 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
   });
 
   return (
-    <Show when={props.open && sheet()}>
+    <Show when={sheet()}>
       <Portal>
         <div
           class="modal-backdrop"
           role="presentation"
-          onPointerDown={() => props.onClose()}
+          onPointerDown={() => editorUi.closeSheetSettings()}
         >
           <div
             class="modal sheet-settings-dialog"
@@ -149,7 +148,11 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                 <div class="modal-title">{t("sheetSettings.title")}</div>
                 <div class="modal-sub mono">{sheet()?.name}</div>
               </div>
-              <button type="button" class="btn subtle" onClick={props.onClose}>
+              <button
+                type="button"
+                class="btn subtle"
+                onClick={editorUi.closeSheetSettings}
+              >
                 {t("common.close")}
               </button>
             </div>

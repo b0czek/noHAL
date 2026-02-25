@@ -2,15 +2,12 @@ import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
+import { useEditorUi } from "../state/EditorUiProvider";
 
-interface ComponentStoreDialogProps {
-  open: boolean;
-  onClose: () => void;
-}
-
-export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
+export default function ComponentStoreDialog() {
   const { t, formatDateTime } = useI18n();
   const { state, actions } = useEditorStore();
+  const editorUi = useEditorUi();
   const [query, setQuery] = createSignal("");
 
   const filteredEntries = createMemo(() => {
@@ -36,12 +33,12 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
   );
 
   return (
-    <Show when={props.open}>
+    <Show when={editorUi.isComponentStoreOpen()}>
       <Portal>
         <div
           class="modal-backdrop"
           role="presentation"
-          onPointerDown={() => props.onClose()}
+          onPointerDown={() => editorUi.closeComponentStore()}
         >
           <div
             class="modal component-store-dialog"
@@ -62,7 +59,11 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                   })}
                 </div>
               </div>
-              <button type="button" class="btn subtle" onClick={props.onClose}>
+              <button
+                type="button"
+                class="btn subtle"
+                onClick={editorUi.closeComponentStore}
+              >
                 {t("common.close")}
               </button>
             </div>
@@ -212,7 +213,9 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                             type="button"
                             class="mini"
                             onClick={() =>
-                              void actions.refreshComponentInStore(entry.componentId)
+                              void actions.refreshComponentInStore(
+                                entry.componentId,
+                              )
                             }
                           >
                             {t("componentStore.refresh")}

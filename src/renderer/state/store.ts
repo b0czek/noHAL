@@ -8,12 +8,12 @@ import { createId, slugify } from "../../shared/id";
 import { createSheet, createSheetPortDraft } from "../../shared/project";
 import type {
   ComponentDefinition,
-  SheetComment,
   ComponentNode,
   ComponentStore,
   HalValueType,
   LabelScope,
   NoHALProject,
+  SheetComment,
   SheetDefinition,
   SheetEndpointRef,
   SheetNode,

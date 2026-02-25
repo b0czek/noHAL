@@ -26,4 +26,3 @@ export function useEditorStore() {
   if (!ctx) throw new Error("EditorStoreProvider is missing");
   return ctx;
 }
-

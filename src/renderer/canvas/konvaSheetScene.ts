@@ -461,8 +461,14 @@ export class KonvaSheetScene {
       );
       bounds.minX = Math.min(bounds.minX, comment.position.x - margin);
       bounds.minY = Math.min(bounds.minY, comment.position.y - margin);
-      bounds.maxX = Math.max(bounds.maxX, comment.position.x + size.width + margin);
-      bounds.maxY = Math.max(bounds.maxY, comment.position.y + size.height + margin);
+      bounds.maxX = Math.max(
+        bounds.maxX,
+        comment.position.x + size.width + margin,
+      );
+      bounds.maxY = Math.max(
+        bounds.maxY,
+        comment.position.y + size.height + margin,
+      );
     }
 
     for (const port of state.sheet.ports) {
