@@ -1099,6 +1099,151 @@ textarea {
   white-space: nowrap;
 }
 
+.ini-editor-dialog {
+  width: min(1100px, calc(100vw - 36px));
+}
+
+.ini-editor-body {
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+}
+
+.ini-editor-sections-panel {
+  min-width: 0;
+}
+
+.ini-editor-sections {
+  display: grid;
+  gap: 12px;
+  max-height: 62vh;
+  overflow: auto;
+}
+
+.ini-editor-section {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.ini-editor-section-title {
+  color: #bee6dc;
+  font-size: 12px;
+}
+
+.ini-editor-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.ini-editor-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.ini-editor-key {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ini-editor-path {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.machine-hal-file-list {
+  max-height: 320px;
+}
+
+.machine-hal-file-row {
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.machine-hal-file-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.machine-hal-file-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.machine-hal-file-toggle-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  margin-right: 4px;
+}
+
+.machine-hal-file-toggle-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.machine-hal-file-switch {
+  width: 34px;
+  min-width: 34px;
+  height: 20px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  position: relative;
+  cursor: pointer;
+}
+
+.machine-hal-file-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+  transition:
+    transform 120ms ease,
+    background-color 120ms ease;
+}
+
+.machine-hal-file-switch:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.machine-hal-file-switch.is-on {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.machine-hal-file-switch.is-on::after {
+  transform: translateX(14px);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.machine-hal-file-switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.machine-hal-file-list-footer {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-start;
+}
+
 .pin-filter-row {
   margin-bottom: 8px;
 }
@@ -1117,6 +1262,14 @@ textarea {
   }
 
   .new-project-link-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ini-editor-body {
+    grid-template-columns: 1fr;
+  }
+
+  .ini-editor-row {
     grid-template-columns: 1fr;
   }
 }

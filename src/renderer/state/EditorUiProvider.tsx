@@ -15,6 +15,7 @@ function createEditorUiState() {
     string | null
   >(null);
   const [isComponentStoreOpen, setIsComponentStoreOpen] = createSignal(false);
+  const [isIniEditorOpen, setIsIniEditorOpen] = createSignal(false);
   const [sheetSettingsSheetId, setSheetSettingsSheetId] = createSignal<
     string | null
   >(null);
@@ -76,6 +77,7 @@ function createEditorUiState() {
     editingComponentNode,
     componentEditorNodeId,
     isComponentStoreOpen,
+    isIniEditorOpen,
     sheetSettingsSheetId,
     labelClick,
     commentClick,
@@ -84,6 +86,8 @@ function createEditorUiState() {
     closeComponentEditor: () => setComponentEditorNodeId(null),
     openComponentStore: () => setIsComponentStoreOpen(true),
     closeComponentStore: () => setIsComponentStoreOpen(false),
+    openIniEditor: () => setIsIniEditorOpen(true),
+    closeIniEditor: () => setIsIniEditorOpen(false),
     openSheetSettings: (sheetId: string) => setSheetSettingsSheetId(sheetId),
     closeSheetSettings: () => setSheetSettingsSheetId(null),
   };

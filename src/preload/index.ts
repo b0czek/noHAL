@@ -2,8 +2,9 @@ import { contextBridge, ipcRenderer } from "electron";
 import type {
   ComponentStore,
   ComponentStoreEntry,
-  HalImportDraft,
   ImportedComponentDefinition,
+  MachineConfigImportDraft,
+  MachineConfigImportSetupDraft,
   NoHALProject,
 } from "../shared/types";
 import type { NoHALApi } from "./api";
@@ -56,10 +57,18 @@ const api: NoHALApi = {
       filePath: string;
       warnings: string[];
     } | null>,
-  importHalFile: () =>
+  pickMachineIniFile: () =>
     ipcRenderer.invoke(
-      "nohal:import-hal-file",
-    ) as Promise<HalImportDraft | null>,
+      "nohal:pick-machine-ini-file",
+    ) as Promise<MachineConfigImportSetupDraft | null>,
+  pickMachineHalFile: () =>
+    ipcRenderer.invoke("nohal:pick-machine-hal-file") as Promise<string | null>,
+  buildMachineConfigurationImport: (iniPath, halFilePaths) =>
+    ipcRenderer.invoke(
+      "nohal:build-machine-configuration-import",
+      iniPath,
+      halFilePaths,
+    ) as Promise<MachineConfigImportDraft>,
   importCompFile: () =>
     ipcRenderer.invoke(
       "nohal:import-comp-file",

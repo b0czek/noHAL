@@ -1,13 +1,21 @@
+import {
+  HiOutlineFolderOpen,
+  HiOutlinePlus,
+  HiOutlineTrash,
+} from "solid-icons/hi";
 import { createMemo, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import type {
   ComponentStore,
   HalImportDraft,
   HalImportPlacementHeuristic,
+  MachineConfigHalFileSelection,
+  MachineConfigImportDraft,
+  MachineConfigImportSetupDraft,
 } from "../../shared/types";
 import { useI18n } from "../i18n";
 
-type ProjectCreationDialogStep = "choose" | "link";
+type ProjectCreationDialogStep = "choose" | "machine-files" | "link";
 
 export interface ProjectCreationDialogProps {
   open: boolean;
@@ -15,15 +23,24 @@ export interface ProjectCreationDialogProps {
   isBusy: boolean;
   componentStore: ComponentStore;
   importDraft: HalImportDraft | null;
+  machineConfigImport: MachineConfigImportDraft | null;
+  machineConfigSetup: MachineConfigImportSetupDraft | null;
+  selectedMachineHalFiles: MachineConfigHalFileSelection[];
   linkSelections: Record<string, string>;
   linkReasons: Record<string, string>;
   placementHeuristic: HalImportPlacementHeuristic;
   errorMessage: string | null;
   onClose: () => void;
   onCreateBlank: () => void;
-  onPickHalFile: () => void;
+  onPickMachineIniFile: () => void;
+  onAddBlankMachineHalFile: () => void;
+  onRemoveMachineHalFile: (index: number) => void;
+  onUpdateMachineHalFile: (index: number, value: string) => void;
+  onToggleMachineHalFileResolveIni: (index: number, value: boolean) => void;
+  onPickMachineHalFileAtRow: (index: number) => void;
+  onContinueMachineConfig: () => void;
   onBackToChoice: () => void;
-  onRepickHalFile: () => void;
+  onBackToMachineConfig: () => void;
   onChangeLinkSelection: (groupId: string, value: string) => void;
   onChangePlacementHeuristic: (value: HalImportPlacementHeuristic) => void;
   onCreateImportedProject: () => void;
@@ -72,6 +89,13 @@ export default function ProjectCreationDialog(
     });
   };
 
+  const iniKeyCount = createMemo(() =>
+    (props.machineConfigSetup?.ini.sections ?? []).reduce(
+      (count, section) => count + section.entries.length,
+      0,
+    ),
+  );
+
   return (
     <Show when={props.open}>
       <Portal>
@@ -94,7 +118,9 @@ export default function ProjectCreationDialog(
                 <div class="modal-sub">
                   {props.step === "choose"
                     ? t("projectCreation.subtitleChoose")
-                    : t("projectCreation.subtitleLink")}
+                    : props.step === "machine-files"
+                      ? t("projectCreation.subtitleMachineFiles")
+                      : t("projectCreation.subtitleLink")}
                 </div>
               </div>
               <button
@@ -135,23 +161,192 @@ export default function ProjectCreationDialog(
 
                   <section class="panel">
                     <div class="panel-title">
-                      {t("projectCreation.importExistingHal")}
+                      {t("projectCreation.importMachineConfig")}
                     </div>
                     <div class="muted">
-                      {t("projectCreation.importExistingHalHelp")}
+                      {t("projectCreation.importMachineConfigHelp")}
                     </div>
                     <div class="new-project-choice-actions">
                       <button
                         type="button"
                         class="btn"
-                        onClick={props.onPickHalFile}
+                        onClick={props.onPickMachineIniFile}
                         disabled={props.isBusy}
                       >
-                        {t("projectCreation.pickHalFile")}
+                        {t("projectCreation.pickMachineIniFile")}
                       </button>
                     </div>
                   </section>
                 </div>
+              </Show>
+
+              <Show
+                when={
+                  props.step === "machine-files" && props.machineConfigSetup
+                }
+              >
+                {(setup) => (
+                  <>
+                    <section class="panel">
+                      <div class="panel-title">
+                        {t("projectCreation.machineConfigIniSource")}
+                      </div>
+                      <div class="list compact">
+                        <div class="list-row">
+                          <span class="muted">{t("common.file")}</span>
+                          <span class="mono new-project-path">
+                            {setup().ini.sourcePath ?? t("common.unspecified")}
+                          </span>
+                        </div>
+                        <div class="list-row">
+                          <span class="muted">
+                            {t("projectCreation.iniKeys")}
+                          </span>
+                          <span>{iniKeyCount()}</span>
+                        </div>
+                      </div>
+                    </section>
+
+                    <Show when={setup().warnings.length > 0}>
+                      <section class="panel warn">
+                        <div class="panel-title">
+                          {t("projectCreation.parserWarnings")}
+                        </div>
+                        <div class="list compact">
+                          <For each={setup().warnings.slice(0, 20)}>
+                            {(warning) => (
+                              <div class="warning-item">{warning}</div>
+                            )}
+                          </For>
+                        </div>
+                      </section>
+                    </Show>
+
+                    <section class="panel">
+                      <div class="panel-title">
+                        {t("projectCreation.selectedHalFilesList")}
+                      </div>
+                      <Show
+                        when={props.selectedMachineHalFiles.length > 0}
+                        fallback={
+                          <div class="muted">
+                            {t("projectCreation.noSelectedHalFiles")}
+                          </div>
+                        }
+                      >
+                        <div class="list machine-hal-file-list">
+                          <For each={props.selectedMachineHalFiles}>
+                            {(halFile, index) => (
+                              <div class="list-row machine-hal-file-row">
+                                <input
+                                  type="text"
+                                  class="mono machine-hal-file-input"
+                                  value={halFile.filePath}
+                                  onInput={(evt) =>
+                                    props.onUpdateMachineHalFile(
+                                      index(),
+                                      evt.currentTarget.value,
+                                    )
+                                  }
+                                />
+                                <div class="machine-hal-file-actions">
+                                  <div class="machine-hal-file-toggle-control">
+                                    <span class="machine-hal-file-toggle-label">
+                                      {t("projectCreation.resolveIniInHalFile")}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      class={`machine-hal-file-switch${
+                                        halFile.resolveIniSubstitutions
+                                          ? " is-on"
+                                          : ""
+                                      }`}
+                                      role="switch"
+                                      aria-checked={
+                                        halFile.resolveIniSubstitutions
+                                      }
+                                      onClick={() =>
+                                        props.onToggleMachineHalFileResolveIni(
+                                          index(),
+                                          !halFile.resolveIniSubstitutions,
+                                        )
+                                      }
+                                      disabled={props.isBusy}
+                                      title={t(
+                                        "projectCreation.resolveIniInHalFile",
+                                      )}
+                                      aria-label={t(
+                                        "projectCreation.resolveIniInHalFile",
+                                      )}
+                                    />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    class="mini icon-btn"
+                                    onClick={() =>
+                                      props.onPickMachineHalFileAtRow(index())
+                                    }
+                                    disabled={props.isBusy}
+                                    title={t("projectCreation.browseHalFile")}
+                                    aria-label={t(
+                                      "projectCreation.browseHalFile",
+                                    )}
+                                  >
+                                    <HiOutlineFolderOpen
+                                      size={15}
+                                      aria-hidden="true"
+                                    />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    class="mini icon-btn"
+                                    onClick={() =>
+                                      props.onRemoveMachineHalFile(index())
+                                    }
+                                    disabled={props.isBusy}
+                                    title={t(
+                                      "projectCreation.removeHalFileRow",
+                                    )}
+                                    aria-label={t(
+                                      "projectCreation.removeHalFileRow",
+                                    )}
+                                  >
+                                    <HiOutlineTrash
+                                      size={15}
+                                      aria-hidden="true"
+                                    />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </For>
+                        </div>
+                      </Show>
+                      <div class="machine-hal-file-list-footer">
+                        <button
+                          type="button"
+                          class="btn"
+                          onClick={props.onAddBlankMachineHalFile}
+                          disabled={props.isBusy}
+                        >
+                          <HiOutlinePlus size={16} aria-hidden="true" />
+                          {t("projectCreation.addHalFileRow")}
+                        </button>
+                      </div>
+                    </section>
+
+                    <div class="new-project-dialog-footer">
+                      <button
+                        type="button"
+                        class="btn accent"
+                        onClick={props.onContinueMachineConfig}
+                        disabled={props.isBusy}
+                      >
+                        {t("projectCreation.continueToComponentLinking")}
+                      </button>
+                    </div>
+                  </>
+                )}
               </Show>
 
               <Show when={props.step === "link" && props.importDraft}>
@@ -165,9 +360,28 @@ export default function ProjectCreationDialog(
                         <div class="list-row">
                           <span class="muted">{t("common.file")}</span>
                           <span class="mono new-project-path">
-                            {draft().sourcePath ?? t("common.unspecified")}
+                            {props.machineConfigImport?.machineConfig.ini
+                              .sourcePath ??
+                              draft().sourcePath ??
+                              t("common.unspecified")}
                           </span>
                         </div>
+                        <Show when={props.machineConfigImport}>
+                          {(machineImport) => (
+                            <div class="list-row">
+                              <span class="muted">
+                                {t("projectCreation.halFiles")}
+                              </span>
+                              <span>
+                                {
+                                  machineImport().machineConfig.halSources.filter(
+                                    (source) => source.status === "loaded",
+                                  ).length
+                                }
+                              </span>
+                            </div>
+                          )}
+                        </Show>
                         <div class="list-row">
                           <span class="muted">
                             {t("projectCreation.components")}
@@ -217,18 +431,10 @@ export default function ProjectCreationDialog(
                         <button
                           type="button"
                           class="mini"
-                          onClick={props.onBackToChoice}
+                          onClick={props.onBackToMachineConfig}
                           disabled={props.isBusy}
                         >
                           {t("common.back")}
-                        </button>
-                        <button
-                          type="button"
-                          class="mini"
-                          onClick={props.onRepickHalFile}
-                          disabled={props.isBusy}
-                        >
-                          {t("projectCreation.pickDifferentFile")}
                         </button>
                       </div>
                     </section>

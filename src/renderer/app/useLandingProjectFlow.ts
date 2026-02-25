@@ -5,7 +5,7 @@ import {
   onMount,
   type Setter,
 } from "solid-js";
-import { createStore } from "solid-js/store";
+import { createStore, unwrap } from "solid-js/store";
 import {
   buildProjectFromHalImport as buildImportedProject,
   suggestHalImportLinks,
@@ -13,6 +13,9 @@ import {
 import type {
   HalImportDraft,
   HalImportPlacementHeuristic,
+  MachineConfigHalFileSelection,
+  MachineConfigImportDraft,
+  MachineConfigImportSetupDraft,
   RecentProjectEntry,
 } from "../../shared/types";
 import type { ProjectCreationDialogProps } from "../components/ProjectCreationDialog";
@@ -30,6 +33,9 @@ type ProjectCreationDialogState = {
   isBusy: boolean;
   errorMessage: string | null;
   importDraft: HalImportDraft | null;
+  machineConfigImport: MachineConfigImportDraft | null;
+  machineConfigSetup: MachineConfigImportSetupDraft | null;
+  selectedMachineHalFiles: MachineConfigHalFileSelection[];
   linkSelections: Record<string, string>;
   linkReasons: Record<string, string>;
   placementHeuristic: HalImportPlacementHeuristic;
@@ -43,9 +49,18 @@ type ProjectCreationDialogEvent =
   | {
       type: "importDraftLoaded";
       draft: HalImportDraft;
+      machineConfigImport: MachineConfigImportDraft;
       linkSelections: Record<string, string>;
       linkReasons: Record<string, string>;
     }
+  | {
+      type: "machineConfigSetupLoaded";
+      setup: MachineConfigImportSetupDraft;
+    }
+  | { type: "updateMachineHalFile"; index: number; filePath: string }
+  | { type: "setMachineHalFileResolveIni"; index: number; value: boolean }
+  | { type: "removeMachineHalFile"; index: number }
+  | { type: "addBlankMachineHalFile" }
   | { type: "setStep"; step: ProjectCreationDialogProps["step"] }
   | { type: "setLinkSelection"; groupId: string; value: string }
   | {
@@ -60,10 +75,20 @@ function createInitialProjectCreationDialogState(): ProjectCreationDialogState {
     isBusy: false,
     errorMessage: null,
     importDraft: null,
+    machineConfigImport: null,
+    machineConfigSetup: null,
+    selectedMachineHalFiles: [],
     linkSelections: {},
     linkReasons: {},
     placementHeuristic: "related-groups",
   };
+}
+
+function makeMachineHalSelection(
+  filePath: string,
+  resolveIniSubstitutions = true,
+): MachineConfigHalFileSelection {
+  return { filePath, resolveIniSubstitutions };
 }
 
 function reduceProjectCreationDialogState(
@@ -90,9 +115,57 @@ function reduceProjectCreationDialogState(
       return {
         ...state,
         importDraft: event.draft,
+        machineConfigImport: event.machineConfigImport,
         linkSelections: event.linkSelections,
         linkReasons: event.linkReasons,
         step: "link",
+      };
+    case "machineConfigSetupLoaded":
+      return {
+        ...state,
+        machineConfigSetup: event.setup,
+        machineConfigImport: null,
+        importDraft: null,
+        selectedMachineHalFiles: event.setup.suggestedHalFilePaths.map(
+          (filePath) => makeMachineHalSelection(filePath),
+        ),
+        errorMessage: null,
+        step: "machine-files",
+      };
+    case "updateMachineHalFile":
+      return {
+        ...state,
+        selectedMachineHalFiles: state.selectedMachineHalFiles.map(
+          (item, index) =>
+            index === event.index
+              ? { ...item, filePath: event.filePath }
+              : item,
+        ),
+      };
+    case "setMachineHalFileResolveIni":
+      return {
+        ...state,
+        selectedMachineHalFiles: state.selectedMachineHalFiles.map(
+          (item, index) =>
+            index === event.index
+              ? { ...item, resolveIniSubstitutions: event.value }
+              : item,
+        ),
+      };
+    case "removeMachineHalFile":
+      return {
+        ...state,
+        selectedMachineHalFiles: state.selectedMachineHalFiles.filter(
+          (_filePath, index) => index !== event.index,
+        ),
+      };
+    case "addBlankMachineHalFile":
+      return {
+        ...state,
+        selectedMachineHalFiles: [
+          ...state.selectedMachineHalFiles,
+          makeMachineHalSelection(""),
+        ],
       };
     case "setStep":
       return { ...state, step: event.step };
@@ -184,8 +257,67 @@ export function useLandingProjectFlow({
     dispatchProjectCreationDialog({ type: "setError", message: null });
     dispatchProjectCreationDialog({ type: "setBusy", value: true });
     try {
-      const draft = await window.nohal.importHalFile();
-      if (!draft) return;
+      dispatchProjectCreationDialog({
+        type: "setStep",
+        step: "choose",
+      });
+      const setup = await window.nohal.pickMachineIniFile();
+      if (!setup) return;
+      dispatchProjectCreationDialog({
+        type: "machineConfigSetupLoaded",
+        setup,
+      });
+    } catch (error) {
+      dispatchProjectCreationDialog({
+        type: "setError",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      dispatchProjectCreationDialog({ type: "setBusy", value: false });
+    }
+  };
+
+  const pickMachineHalFileForRow = async (index: number) => {
+    dispatchProjectCreationDialog({ type: "setError", message: null });
+    dispatchProjectCreationDialog({ type: "setBusy", value: true });
+    try {
+      const filePath = await window.nohal.pickMachineHalFile();
+      if (!filePath) return;
+      dispatchProjectCreationDialog({
+        type: "updateMachineHalFile",
+        index,
+        filePath,
+      });
+    } catch (error) {
+      dispatchProjectCreationDialog({
+        type: "setError",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      dispatchProjectCreationDialog({ type: "setBusy", value: false });
+    }
+  };
+
+  const continueMachineConfigToLinkStep = async () => {
+    const setup = projectCreationDialog.machineConfigSetup;
+    const iniPath = setup?.ini.sourcePath;
+    if (!setup || !iniPath) return;
+    dispatchProjectCreationDialog({ type: "setError", message: null });
+    dispatchProjectCreationDialog({ type: "setBusy", value: true });
+    try {
+      const halSelections = unwrap(
+        projectCreationDialog.selectedMachineHalFiles,
+      )
+        .filter((item) => item.filePath.trim())
+        .map((item) => ({
+          filePath: item.filePath,
+          resolveIniSubstitutions: item.resolveIniSubstitutions,
+        }));
+      const machineImport = await window.nohal.buildMachineConfigurationImport(
+        iniPath,
+        halSelections,
+      );
+      const draft = machineImport.halImport;
       const suggestions = suggestHalImportLinks(draft, state.componentStore);
       const nextSelections: Record<string, string> = {};
       const nextReasons: Record<string, string> = {};
@@ -199,6 +331,7 @@ export function useLandingProjectFlow({
       dispatchProjectCreationDialog({
         type: "importDraftLoaded",
         draft,
+        machineConfigImport: machineImport,
         linkSelections: nextSelections,
         linkReasons: nextReasons,
       });
@@ -245,9 +378,19 @@ export function useLandingProjectFlow({
         linkSelections,
         placementHeuristic: projectCreationDialog.placementHeuristic,
       });
+      if (projectCreationDialog.machineConfigImport) {
+        result.project.machineConfig = structuredClone(
+          unwrap(projectCreationDialog.machineConfigImport.machineConfig),
+        );
+      }
       const opened = await actions.openPreparedProject(result.project, {
-        status: t("landing.importedHalStatus", {
-          suffix: draft.sourcePath ? `: ${draft.sourcePath}` : "",
+        status: t("landing.importedMachineStatus", {
+          suffix: projectCreationDialog.machineConfigImport?.machineConfig.ini
+            .sourcePath
+            ? `: ${projectCreationDialog.machineConfigImport.machineConfig.ini.sourcePath}`
+            : draft.sourcePath
+              ? `: ${draft.sourcePath}`
+              : "",
         }),
         warnings: result.warnings,
       });
@@ -277,8 +420,38 @@ export function useLandingProjectFlow({
     dispatchProjectCreationDialog({ type: "setError", message: null });
   };
 
+  const backToMachineConfigFilesStep = () => {
+    if (projectCreationDialog.isBusy) return;
+    if (!projectCreationDialog.machineConfigSetup) {
+      dispatchProjectCreationDialog({ type: "setStep", step: "choose" });
+      return;
+    }
+    dispatchProjectCreationDialog({ type: "setStep", step: "machine-files" });
+    dispatchProjectCreationDialog({ type: "setError", message: null });
+  };
+
   const changeHalImportLinkSelection = (groupId: string, value: string) =>
     dispatchProjectCreationDialog({ type: "setLinkSelection", groupId, value });
+
+  const updateMachineHalFilePath = (index: number, filePath: string) =>
+    dispatchProjectCreationDialog({
+      type: "updateMachineHalFile",
+      index,
+      filePath,
+    });
+
+  const updateMachineHalFileResolveIni = (index: number, value: boolean) =>
+    dispatchProjectCreationDialog({
+      type: "setMachineHalFileResolveIni",
+      index,
+      value,
+    });
+
+  const removeMachineHalFilePath = (index: number) =>
+    dispatchProjectCreationDialog({ type: "removeMachineHalFile", index });
+
+  const addBlankMachineHalFilePath = () =>
+    dispatchProjectCreationDialog({ type: "addBlankMachineHalFile" });
 
   const changeHalImportPlacementHeuristic = (
     value: HalImportPlacementHeuristic,
@@ -295,15 +468,25 @@ export function useLandingProjectFlow({
       isBusy: projectCreationDialog.isBusy,
       componentStore: state.componentStore,
       importDraft: projectCreationDialog.importDraft,
+      machineConfigImport: projectCreationDialog.machineConfigImport,
+      machineConfigSetup: projectCreationDialog.machineConfigSetup,
+      selectedMachineHalFiles: projectCreationDialog.selectedMachineHalFiles,
       linkSelections: projectCreationDialog.linkSelections,
       linkReasons: projectCreationDialog.linkReasons,
       placementHeuristic: projectCreationDialog.placementHeuristic,
       errorMessage: projectCreationDialog.errorMessage,
       onClose: closeProjectCreationDialog,
       onCreateBlank: () => void createBlankProjectFromDialog(),
-      onPickHalFile: () => void pickHalFileForNewProject(),
+      onPickMachineIniFile: () => void pickHalFileForNewProject(),
+      onAddBlankMachineHalFile: addBlankMachineHalFilePath,
+      onRemoveMachineHalFile: removeMachineHalFilePath,
+      onUpdateMachineHalFile: updateMachineHalFilePath,
+      onToggleMachineHalFileResolveIni: updateMachineHalFileResolveIni,
+      onPickMachineHalFileAtRow: (index) =>
+        void pickMachineHalFileForRow(index),
+      onContinueMachineConfig: () => void continueMachineConfigToLinkStep(),
       onBackToChoice: backToNewProjectChoice,
-      onRepickHalFile: () => void pickHalFileForNewProject(),
+      onBackToMachineConfig: backToMachineConfigFilesStep,
       onChangeLinkSelection: changeHalImportLinkSelection,
       onChangePlacementHeuristic: changeHalImportPlacementHeuristic,
       onCreateImportedProject: () => void createImportedProjectFromDialog(),
@@ -329,9 +512,16 @@ export function useLandingProjectFlow({
     closeProjectCreationDialog,
     createBlankProjectFromDialog,
     pickHalFileForNewProject,
+    pickMachineHalFileForRow,
+    continueMachineConfigToLinkStep,
     createImportedProjectFromDialog,
     backToNewProjectChoice,
+    backToMachineConfigFilesStep,
     changeHalImportLinkSelection,
+    updateMachineHalFilePath,
+    updateMachineHalFileResolveIni,
+    removeMachineHalFilePath,
+    addBlankMachineHalFilePath,
     changeHalImportPlacementHeuristic,
   };
 }

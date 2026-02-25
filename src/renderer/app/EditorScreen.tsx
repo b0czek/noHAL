@@ -1,6 +1,7 @@
 import Canvas from "../components/Canvas";
 import ComponentNodeDialog from "../components/ComponentNodeDialog";
 import ComponentStoreDialog from "../components/ComponentStoreDialog";
+import IniEditorDialog from "../components/IniEditorDialog";
 import Inspector from "../components/Inspector";
 import SheetSettingsDialog from "../components/SheetSettingsDialog";
 import Sidebar from "../components/Sidebar";
@@ -42,6 +43,7 @@ function EditorScreenContent(props: EditorScreenProps) {
 
       <ComponentNodeDialog />
       <ComponentStoreDialog />
+      <IniEditorDialog />
       <SheetSettingsDialog />
     </div>
   );

@@ -1,4 +1,5 @@
 import type { ComponentDefinition } from "./components";
+import type { ProjectMachineConfig } from "./ini";
 import type { SheetDefinition } from "./sheet";
 
 export interface RecentProjectEntry {
@@ -47,6 +48,7 @@ export interface NoHALProject {
   rootSheetId: string;
   sheets: Record<string, SheetDefinition>;
   library: ProjectLibrary;
+  machineConfig?: ProjectMachineConfig;
   halExport?: HalExportConfig;
   ui: {
     activeSheetId: string;

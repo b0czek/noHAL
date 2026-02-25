@@ -2,9 +2,11 @@ import { readFile, writeFile } from "node:fs/promises";
 import { BrowserWindow, dialog, ipcMain } from "electron";
 import { parseCompComponentDefinition } from "../shared/compParser";
 import { exportProjectToHal } from "../shared/halExport";
-import { parseHalImportDraft } from "../shared/halImport";
 import { createEmptyProject } from "../shared/project";
-import type { NoHALProject } from "../shared/types";
+import type {
+  MachineConfigHalFileSelection,
+  NoHALProject,
+} from "../shared/types";
 import {
   addComponentDirSourceToStore,
   deleteComponentSourceFromStore,
@@ -14,6 +16,10 @@ import {
   saveParsedCompFileToStore,
   scanCompDirectory,
 } from "./componentStore";
+import {
+  buildMachineConfigImportDraft,
+  parseMachineConfigImportSetupDraft,
+} from "./machineConfigImport";
 import { readProjectPath, writeProjectDirectory } from "./projects";
 import { listRecentProjects, touchRecentProject } from "./recentProjects";
 import {
@@ -107,17 +113,31 @@ export function registerIpcHandlers(): void {
     },
   );
 
-  ipcMain.handle("nohal:import-hal-file", async () => {
+  ipcMain.handle("nohal:pick-machine-ini-file", async () => {
     const res = await dialog.showOpenDialog({
-      title: "Import HAL File",
+      title: "Select LinuxCNC INI File",
+      properties: ["openFile"],
+      filters: [{ name: "INI File", extensions: ["ini"] }],
+    });
+    if (res.canceled || res.filePaths.length === 0) return null;
+    return parseMachineConfigImportSetupDraft(res.filePaths[0]);
+  });
+
+  ipcMain.handle("nohal:pick-machine-hal-file", async () => {
+    const res = await dialog.showOpenDialog({
+      title: "Select HAL File",
       properties: ["openFile"],
       filters: [{ name: "HAL File", extensions: ["hal"] }],
     });
     if (res.canceled || res.filePaths.length === 0) return null;
-    const filePath = res.filePaths[0];
-    const content = await readFile(filePath, "utf8");
-    return parseHalImportDraft(content, filePath);
+    return res.filePaths[0];
   });
+
+  ipcMain.handle(
+    "nohal:build-machine-configuration-import",
+    async (_evt, iniPath: string, halFiles: MachineConfigHalFileSelection[]) =>
+      buildMachineConfigImportDraft(iniPath, halFiles),
+  );
 
   ipcMain.handle("nohal:load-component-store", async () =>
     readComponentStoreFile(),

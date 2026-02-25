@@ -10,7 +10,6 @@ export const en = {
   "common.scope": "Scope",
   "common.direction": "Direction",
   "common.type": "Type",
-  "common.side": "Side",
   "common.rotation": "Rotation",
   "common.status": "Status",
   "common.file": "File",
@@ -34,7 +33,7 @@ export const en = {
   "landing.noRecentProjectsPrefix": "No recent projects yet. Use ",
   "landing.noRecentProjectsOr": " or ",
   "landing.noRecentProjectsSuffix": ".",
-  "landing.importedHalStatus": "Imported HAL{suffix}",
+  "landing.importedMachineStatus": "Imported machine configuration{suffix}",
 
   "topbar.newProject": "New project",
   "topbar.openProject": "Open project",
@@ -42,6 +41,7 @@ export const en = {
   "topbar.undo": "Undo",
   "topbar.redo": "Redo",
   "topbar.exportHal": "Export HAL",
+  "topbar.iniEditor": "INI Editor",
   "topbar.componentStore": "Component Store",
   "topbar.addSubsheet": "+ Subsheet",
   "topbar.addText": "+ Text",
@@ -110,7 +110,6 @@ export const en = {
   "sidebar.expandSheet": "Expand {name}",
   "sidebar.collapseSheet": "Collapse {name}",
   "sidebar.orphan": "orphan",
-  "sidebar.goToParentSheet": "Go to parent sheet",
   "sidebar.sheetActions": "Sheet actions",
   "sidebar.sheetSettings": "Sheet Settings",
   "sidebar.deleteSheet": "Delete Sheet",
@@ -121,17 +120,30 @@ export const en = {
   "projectCreation.ariaCreateProject": "Create New Project",
   "projectCreation.title": "New Project",
   "projectCreation.subtitleChoose":
-    "Choose a blank project or import an existing HAL file.",
+    "Choose a blank project or import a LinuxCNC machine configuration (INI + HAL).",
+  "projectCreation.subtitleMachineFiles":
+    "Select the INI file first, then configure which HAL files to include before component linking.",
   "projectCreation.subtitleLink":
     "Verify component links before building the imported sheet.",
   "projectCreation.blankProject": "Blank Project",
   "projectCreation.blankProjectHelp":
     "Start with an empty top sheet and existing built-in/store components.",
   "projectCreation.createBlank": "Create Blank",
-  "projectCreation.importExistingHal": "Import Existing HAL",
-  "projectCreation.importExistingHalHelp":
-    "Parse a `.hal` file, link components to the component store, and generate a project-local sheet.",
-  "projectCreation.pickHalFile": "Pick HAL File",
+  "projectCreation.importMachineConfig": "Import Machine Configuration",
+  "projectCreation.importMachineConfigHelp":
+    "Pick a LinuxCNC `.ini` file first. Then review parsed HALFILE entries and manually choose HAL files before continuing to component linking.",
+  "projectCreation.pickMachineIniFile": "Pick INI File",
+  "projectCreation.addHalFileRow": "Add Row",
+  "projectCreation.continueToComponentLinking": "Continue to Component Linking",
+  "projectCreation.machineConfigIniSource": "INI Source",
+  "projectCreation.iniKeys": "INI keys",
+  "projectCreation.selectedHalFilesList": "Selected HAL Files",
+  "projectCreation.resolveIniInHalFile": "Resolve INI",
+  "projectCreation.browseHalFile": "Pick HAL file",
+  "projectCreation.removeHalFileRow": "Remove HAL file row",
+  "projectCreation.noSelectedHalFiles":
+    "No HAL files selected yet. Defaults are usually prefilled from the INI if those files exist.",
+  "projectCreation.halFiles": "HAL files",
   "projectCreation.importSource": "Import Source",
   "projectCreation.components": "Components",
   "projectCreation.nets": "Nets",
@@ -143,7 +155,6 @@ export const en = {
   "projectCreation.placementAlphabetical": "Alphabetical",
   "projectCreation.placementHelp":
     "Groups connected components together before laying out the imported sheet, which usually reduces long crossing wires.",
-  "projectCreation.pickDifferentFile": "Pick Different File",
   "projectCreation.componentLinking": "Component Linking",
   "projectCreation.componentLinkingHelp":
     "Review automatic matches. Any group left as project-local will generate a component definition stored in this project.",
@@ -178,7 +189,21 @@ export const en = {
   "componentStore.noStoredComponents": "No stored components yet.",
   "componentStore.noMatchingComponents": "No matching stored components.",
 
-  "inspector.session": "Session",
+  "iniEditor.ariaLabel": "INI Editor",
+  "iniEditor.title": "INI Editor",
+  "iniEditor.subtitle":
+    "Edit imported LinuxCNC INI values used by HAL `[SECTION]KEY` substitutions.",
+  "iniEditor.noConfigTitle": "No machine configuration loaded",
+  "iniEditor.noConfigHelp":
+    "Import a machine configuration from the New Project flow to edit INI values here.",
+  "iniEditor.summaryTitle": "Machine Configuration",
+  "iniEditor.sections": "Sections",
+  "iniEditor.halSources": "HAL sources",
+  "iniEditor.substitutionHint":
+    "HAL import preserves `[SECTION]KEY` tokens. Change INI values here so a future machine-config build/export can resolve them correctly.",
+  "iniEditor.valuesTitle": "INI Values",
+  "iniEditor.emptySection": "No key/value entries in this section.",
+
   "inspector.selection": "Selection",
   "inspector.nothingSelected": "Nothing selected.",
   "inspector.multipleSelected": "Multiple items selected.",
@@ -204,8 +229,6 @@ export const en = {
   "store.status.addedWireWaypoint": "Added wire waypoint ({count})",
   "store.status.createdNewProject": "Created new project",
   "store.status.failedCreateProject": "Failed to create project: {error}",
-  "store.confirm.discardUnsavedChanges":
-    "Discard unsaved project changes and continue?",
   "store.status.openedProject": "Opened project",
   "store.status.failedLoadPreparedProject":
     "Failed to load prepared project: {error}",
@@ -214,6 +237,9 @@ export const en = {
   "store.status.savedProjectPath": "Saved project folder: {projectPath}",
   "store.status.failedSaveProject": "Failed to save project: {error}",
   "store.status.exportedHal": "Exported HAL: {filePath}",
+  "store.status.updatedIniValue": "Updated INI value",
+  "store.status.noMachineConfigLoaded":
+    "No imported machine configuration is loaded",
   "store.status.importedCompToStore":
     "Imported .comp to store: {componentName}",
   "store.status.addedDirSource":

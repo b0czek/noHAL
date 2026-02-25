@@ -1,8 +1,10 @@
 import type {
   ComponentStore,
   ComponentStoreEntry,
-  HalImportDraft,
   ImportedComponentDefinition,
+  MachineConfigHalFileSelection,
+  MachineConfigImportDraft,
+  MachineConfigImportSetupDraft,
   NoHALProject,
   RecentProjectEntry,
 } from "../shared/types";
@@ -27,7 +29,12 @@ export interface NoHALApi {
     project: NoHALProject,
     filePath?: string | null,
   ): Promise<{ filePath: string; warnings: string[] } | null>;
-  importHalFile(): Promise<HalImportDraft | null>;
+  pickMachineIniFile(): Promise<MachineConfigImportSetupDraft | null>;
+  pickMachineHalFile(): Promise<string | null>;
+  buildMachineConfigurationImport(
+    iniPath: string,
+    halFiles: MachineConfigHalFileSelection[],
+  ): Promise<MachineConfigImportDraft>;
   importCompFile(): Promise<ImportedComponentDefinition | null>;
   pickDirectory(defaultPath?: string | null): Promise<string | null>;
   scanCompDir(dirPath: string): Promise<{
