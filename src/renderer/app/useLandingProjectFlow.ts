@@ -17,13 +17,9 @@ import type {
 } from "../../shared/types";
 import type { ProjectCreationDialogProps } from "../components/ProjectCreationDialog";
 import { useI18n } from "../i18n";
-import type { createEditorStore, EditorState } from "../state/store";
-
-type EditorActions = ReturnType<typeof createEditorStore>["actions"];
+import { useEditorStore } from "../state/EditorStoreProvider";
 
 interface UseLandingProjectFlowArgs {
-  state: EditorState;
-  actions: EditorActions;
   isEditorOpen: Accessor<boolean>;
   setIsEditorOpen: Setter<boolean>;
 }
@@ -114,12 +110,11 @@ function reduceProjectCreationDialogState(
 }
 
 export function useLandingProjectFlow({
-  state,
-  actions,
   isEditorOpen,
   setIsEditorOpen,
 }: UseLandingProjectFlowArgs) {
   const { t } = useI18n();
+  const { state, actions } = useEditorStore();
   const [recentProjects, setRecentProjects] = createSignal<
     RecentProjectEntry[]
   >([]);

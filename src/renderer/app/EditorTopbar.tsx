@@ -5,23 +5,12 @@ import {
   HiOutlineDocumentPlus,
   HiOutlineFolderOpen,
 } from "solid-icons/hi";
-import type { HalValueType, LabelScope } from "../../shared/types";
 import { useI18n } from "../i18n";
+import { useEditorStore } from "../state/EditorStoreProvider";
 
 interface EditorTopbarProps {
   onOpenProjectCreationDialog: () => void;
-  onOpenProject: () => void;
-  onSaveProject: () => void;
-  onUndo: () => void;
-  onRedo: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
-  onExportHal: () => void;
   onOpenComponentStore: () => void;
-  onAddSubsheet: () => void;
-  onAddPort: (direction: "in" | "out" | "io", valueType: HalValueType) => void;
-  onAddLabel: (scope: LabelScope) => void;
-  onAddComment: () => void;
 }
 
 function closeToolbarMenu(el: HTMLElement) {
@@ -31,6 +20,7 @@ function closeToolbarMenu(el: HTMLElement) {
 
 export default function EditorTopbar(props: EditorTopbarProps) {
   const { t } = useI18n();
+  const { state, actions } = useEditorStore();
 
   return (
     <header class="topbar">
@@ -54,7 +44,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
         <button
           type="button"
           class="btn subtle icon-btn"
-          onClick={props.onOpenProject}
+          onClick={() => void actions.openProject()}
           aria-label={t("topbar.openProject")}
           title={t("topbar.openProject")}
         >
@@ -63,7 +53,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
         <button
           type="button"
           class="btn subtle icon-btn"
-          onClick={props.onSaveProject}
+          onClick={() => void actions.saveProject()}
           aria-label={t("topbar.saveProject")}
           title={t("topbar.saveProject")}
         >
@@ -72,8 +62,8 @@ export default function EditorTopbar(props: EditorTopbarProps) {
         <button
           type="button"
           class="btn subtle icon-btn"
-          onClick={props.onUndo}
-          disabled={!props.canUndo}
+          onClick={() => void actions.undo()}
+          disabled={!state.canUndo}
           aria-label={t("topbar.undo")}
           title={`${t("topbar.undo")} (Ctrl/Cmd+Z)`}
         >
@@ -82,14 +72,14 @@ export default function EditorTopbar(props: EditorTopbarProps) {
         <button
           type="button"
           class="btn subtle icon-btn"
-          onClick={props.onRedo}
-          disabled={!props.canRedo}
+          onClick={() => void actions.redo()}
+          disabled={!state.canRedo}
           aria-label={t("topbar.redo")}
           title={`${t("topbar.redo")} (Ctrl/Cmd+Y)`}
         >
           <HiOutlineArrowUturnRight size={16} aria-hidden="true" />
         </button>
-        <button type="button" class="btn accent" onClick={props.onExportHal}>
+        <button type="button" class="btn accent" onClick={() => void actions.exportHal()}>
           {t("topbar.exportHal")}
         </button>
       </div>
@@ -101,10 +91,14 @@ export default function EditorTopbar(props: EditorTopbarProps) {
       </div>
 
       <div class="toolbar-group">
-        <button type="button" class="btn" onClick={props.onAddSubsheet}>
+        <button
+          type="button"
+          class="btn"
+          onClick={() => actions.addSheetDefinition()}
+        >
           {t("topbar.addSubsheet")}
         </button>
-        <button type="button" class="btn" onClick={props.onAddComment}>
+        <button type="button" class="btn" onClick={actions.addComment}>
           {t("topbar.addText")}
         </button>
         <details class="toolbar-menu">
@@ -116,7 +110,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
               type="button"
               class="toolbar-menu-item"
               onClick={(evt) => {
-                props.onAddPort("in", "bit");
+                actions.addSheetPort("in", "bit");
                 closeToolbarMenu(evt.currentTarget);
               }}
             >
@@ -126,7 +120,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
               type="button"
               class="toolbar-menu-item"
               onClick={(evt) => {
-                props.onAddPort("out", "bit");
+                actions.addSheetPort("out", "bit");
                 closeToolbarMenu(evt.currentTarget);
               }}
             >
@@ -136,7 +130,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
               type="button"
               class="toolbar-menu-item"
               onClick={(evt) => {
-                props.onAddPort("io", "float");
+                actions.addSheetPort("io", "float");
                 closeToolbarMenu(evt.currentTarget);
               }}
             >
@@ -153,7 +147,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
               type="button"
               class="toolbar-menu-item"
               onClick={(evt) => {
-                props.onAddLabel("local");
+                actions.addLabel("local");
                 closeToolbarMenu(evt.currentTarget);
               }}
             >
@@ -163,7 +157,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
               type="button"
               class="toolbar-menu-item"
               onClick={(evt) => {
-                props.onAddLabel("hierarchical");
+                actions.addLabel("hierarchical");
                 closeToolbarMenu(evt.currentTarget);
               }}
             >
@@ -173,7 +167,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
               type="button"
               class="toolbar-menu-item"
               onClick={(evt) => {
-                props.onAddLabel("global");
+                actions.addLabel("global");
                 closeToolbarMenu(evt.currentTarget);
               }}
             >

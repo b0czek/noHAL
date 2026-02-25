@@ -1,15 +1,9 @@
 import { createEffect, createMemo, createSignal } from "solid-js";
 import { getSheet } from "../../shared/graph";
-import type { createEditorStore, EditorState } from "../state/store";
+import { useEditorStore } from "../state/EditorStoreProvider";
 
-type EditorActions = ReturnType<typeof createEditorStore>["actions"];
-
-interface UseEditorUiStateArgs {
-  state: EditorState;
-  actions: EditorActions;
-}
-
-export function useEditorUiState({ state, actions }: UseEditorUiStateArgs) {
+export function useEditorUiState() {
+  const { state, actions } = useEditorStore();
   const [componentEditorNodeId, setComponentEditorNodeId] = createSignal<
     string | null
   >(null);

@@ -1,26 +1,28 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
-import { createEmptyProject } from "../shared/project";
 import EditorScreen from "./app/EditorScreen";
 import { useLandingProjectFlow } from "./app/useLandingProjectFlow";
 import { ContextMenuProvider } from "./components/ContextMenuProvider";
 import LandingPage from "./components/LandingPage";
 import ProjectCreationDialog from "./components/ProjectCreationDialog";
 import { useI18n } from "./i18n";
-import { createEditorStore } from "./state/store";
+import {
+  EditorStoreProvider,
+  useEditorStore,
+} from "./state/EditorStoreProvider";
 
 export default function App() {
-  const { t } = useI18n();
-  const { state, actions } = createEditorStore(
-    createEmptyProject(t("app.defaultProjectName")),
-    t,
+  return (
+    <EditorStoreProvider>
+      <AppContent />
+    </EditorStoreProvider>
   );
+}
+
+function AppContent() {
+  const { t } = useI18n();
+  const { state, actions } = useEditorStore();
   const [isEditorOpen, setIsEditorOpen] = createSignal(false);
-  const landing = useLandingProjectFlow({
-    state,
-    actions,
-    isEditorOpen,
-    setIsEditorOpen,
-  });
+  const landing = useLandingProjectFlow({ isEditorOpen, setIsEditorOpen });
 
   createEffect(() => {
     if (!isEditorOpen()) {
@@ -73,8 +75,6 @@ export default function App() {
         }
       >
         <EditorScreen
-          state={state}
-          actions={actions}
           onOpenProjectCreationDialog={landing.openProjectCreationDialog}
         />
       </Show>

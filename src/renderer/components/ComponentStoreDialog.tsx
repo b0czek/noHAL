@@ -1,26 +1,21 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
-import type { ComponentStore } from "../../shared/types";
 import { useI18n } from "../i18n";
+import { useEditorStore } from "../state/EditorStoreProvider";
 
 interface ComponentStoreDialogProps {
   open: boolean;
-  componentStore: ComponentStore;
-  onImportCompFile: () => void;
-  onAddCompDirSource: () => void;
-  onRefreshComponentSource: (sourceId: string) => void;
-  onDeleteComponentSource: (sourceId: string) => void;
-  onRefreshStoredComponent: (componentId: string) => void;
   onClose: () => void;
 }
 
 export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
   const { t, formatDateTime } = useI18n();
+  const { state, actions } = useEditorStore();
   const [query, setQuery] = createSignal("");
 
   const filteredEntries = createMemo(() => {
     const q = query().trim().toLowerCase();
-    const entries = Object.values(props.componentStore.components).sort(
+    const entries = Object.values(state.componentStore.components).sort(
       (a, b) =>
         a.parsed.halComponentName.localeCompare(b.parsed.halComponentName),
     );
@@ -33,7 +28,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
   });
 
   const componentSources = createMemo(() =>
-    Object.values(props.componentStore.sources).sort((a, b) => {
+    Object.values(state.componentStore.sources).sort((a, b) => {
       const aPath = a.kind === "comp-dir" ? a.dirPath : a.filePath;
       const bPath = b.kind === "comp-dir" ? b.dirPath : b.filePath;
       return aPath.localeCompare(bPath);
@@ -61,7 +56,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                 <div class="modal-title">{t("componentStore.title")}</div>
                 <div class="modal-sub">
                   {t("componentStore.summary", {
-                    components: Object.keys(props.componentStore.components)
+                    components: Object.keys(state.componentStore.components)
                       .length,
                     sources: componentSources().length,
                   })}
@@ -80,14 +75,14 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                     <button
                       type="button"
                       class="btn"
-                      onClick={props.onAddCompDirSource}
+                      onClick={() => void actions.addComponentDirSource()}
                     >
                       {t("componentStore.addDirSource")}
                     </button>
                     <button
                       type="button"
                       class="btn"
-                      onClick={props.onImportCompFile}
+                      onClick={() => void actions.importCompFile()}
                     >
                       {t("componentStore.importCompFile")}
                     </button>
@@ -98,7 +93,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                   <For each={componentSources()}>
                     {(source) => {
                       const sourceComponentCount = () =>
-                        Object.values(props.componentStore.components).filter(
+                        Object.values(state.componentStore.components).filter(
                           (entry) => entry.sourceRef.sourceId === source.id,
                         ).length;
                       const sourcePath = () =>
@@ -135,7 +130,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                               type="button"
                               class="mini"
                               onClick={() =>
-                                props.onRefreshComponentSource(source.id)
+                                void actions.refreshComponentSource(source.id)
                               }
                             >
                               {t("componentStore.refresh")}
@@ -144,7 +139,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                               type="button"
                               class="mini"
                               onClick={() =>
-                                props.onDeleteComponentSource(source.id)
+                                void actions.deleteComponentSource(source.id)
                               }
                             >
                               {t("componentStore.deleteSource")}
@@ -217,7 +212,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
                             type="button"
                             class="mini"
                             onClick={() =>
-                              props.onRefreshStoredComponent(entry.componentId)
+                              void actions.refreshComponentInStore(entry.componentId)
                             }
                           >
                             {t("componentStore.refresh")}
@@ -229,7 +224,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
 
                   <Show when={filteredEntries().length === 0}>
                     <div class="muted component-store-empty">
-                      {Object.keys(props.componentStore.components).length === 0
+                      {Object.keys(state.componentStore.components).length === 0
                         ? t("componentStore.noStoredComponents")
                         : t("componentStore.noMatchingComponents")}
                     </div>

@@ -1,28 +1,26 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { getNodePins, getNodeTitle } from "../../shared/graph";
-import type { ComponentNode, NoHALProject } from "../../shared/types";
+import type { ComponentNode } from "../../shared/types";
 import { useI18n } from "../i18n";
+import { useEditorStore } from "../state/EditorStoreProvider";
 
 interface ComponentNodeDialogProps {
   open: boolean;
-  project: NoHALProject;
   node: ComponentNode | null;
-  onRename: (name: string) => void;
-  onUpdateParam: (key: string, value: string) => void;
-  onUpdatePinInitialValue: (key: string, value: string) => void;
   onClose: () => void;
 }
 
 export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
   const { t } = useI18n();
+  const { state, actions } = useEditorStore();
   const component = createMemo(() =>
     props.node
-      ? props.project.library.components[props.node.componentId]
+      ? state.project.library.components[props.node.componentId]
       : undefined,
   );
   const pins = createMemo(() =>
-    props.node ? getNodePins(props.project, props.node) : [],
+    props.node ? getNodePins(state.project, props.node) : [],
   );
   const componentParams = createMemo(() => component()?.params ?? []);
   const pinFilterModes = ["all", "in", "out", "io"] as const;
@@ -65,7 +63,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
               <div>
                 <div class="modal-title">{t("componentDialog.title")}</div>
                 <div class="modal-sub mono">
-                  {props.node ? getNodeTitle(props.project, props.node) : ""}
+                  {props.node ? getNodeTitle(state.project, props.node) : ""}
                 </div>
               </div>
               <button type="button" class="btn subtle" onClick={props.onClose}>
@@ -80,7 +78,11 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                   {t("componentDialog.instanceName")}
                   <input
                     value={props.node?.instanceName ?? ""}
-                    onInput={(evt) => props.onRename(evt.currentTarget.value)}
+                    onInput={(evt) => {
+                      const node = props.node;
+                      if (!node) return;
+                      actions.renameNode(node.id, evt.currentTarget.value);
+                    }}
                   />
                 </label>
                 <Show when={component()}>
@@ -124,12 +126,15 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                           <span class="mono">{param.name}</span>
                           <input
                             value={props.node?.paramValues[param.key] ?? ""}
-                            onInput={(evt) =>
-                              props.onUpdateParam(
+                            onInput={(evt) => {
+                              const node = props.node;
+                              if (!node) return;
+                              actions.updateNodeParam(
+                                node.id,
                                 param.key,
                                 evt.currentTarget.value,
-                              )
-                            }
+                              );
+                            }}
                             placeholder={param.defaultValue ?? ""}
                           />
                         </label>
@@ -158,12 +163,15 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                             value={
                               props.node?.pinInitialValues?.[pin.key] ?? ""
                             }
-                            onInput={(evt) =>
-                              props.onUpdatePinInitialValue(
+                            onInput={(evt) => {
+                              const node = props.node;
+                              if (!node) return;
+                              actions.updateNodePinInitialValue(
+                                node.id,
                                 pin.key,
                                 evt.currentTarget.value,
-                              )
-                            }
+                              );
+                            }}
                             placeholder={t(
                               "componentDialog.optionalPlaceholder",
                             )}

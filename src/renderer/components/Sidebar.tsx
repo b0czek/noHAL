@@ -1,19 +1,16 @@
 import { createEffect, createMemo, createSignal, For } from "solid-js";
-import type { NoHALProject, SheetDefinition } from "../../shared/types";
+import type { SheetDefinition } from "../../shared/types";
 import { useI18n } from "../i18n";
+import { useEditorStore } from "../state/EditorStoreProvider";
 import { useContextMenu } from "./ContextMenuProvider";
 
 interface SidebarProps {
-  project: NoHALProject;
-  activeSheetId: string;
-  onPlaceSheet: (sheetId: string) => void;
-  onGoToSheet: (sheetId: string) => void;
   onOpenSheetSettings: (sheetId: string) => void;
-  onDeleteSheet: (sheetId: string) => void;
 }
 
 export default function Sidebar(props: SidebarProps) {
   const { t } = useI18n();
+  const { state, actions } = useEditorStore();
   const contextMenu = useContextMenu();
   type SheetTreeNode = {
     sheet: SheetDefinition;
@@ -26,7 +23,7 @@ export default function Sidebar(props: SidebarProps) {
   );
   const placedSheetIds = createMemo(() => {
     const ids = new Set<string>();
-    for (const sheet of Object.values(props.project.sheets)) {
+    for (const sheet of Object.values(state.project.sheets)) {
       for (const node of sheet.nodes) {
         if (node.kind === "sheet") ids.add(node.sheetId);
       }
@@ -35,7 +32,7 @@ export default function Sidebar(props: SidebarProps) {
   });
 
   const treeRoots = createMemo<SheetTreeNode[]>(() => {
-    const allSheets = Object.values(props.project.sheets);
+    const allSheets = Object.values(state.project.sheets);
     const byId = new Map(allSheets.map((sheet) => [sheet.id, sheet]));
     const childrenByParent = new Map<string | null, SheetDefinition[]>();
 
@@ -74,12 +71,8 @@ export default function Sidebar(props: SidebarProps) {
     };
 
     const roots: SheetTreeNode[] = [];
-    if (byId.has(props.project.rootSheetId)) {
-      const root = buildNode(
-        props.project.rootSheetId,
-        new Set<string>(),
-        false,
-      );
+    if (byId.has(state.project.rootSheetId)) {
+      const root = buildNode(state.project.rootSheetId, new Set<string>(), false);
       if (root) roots.push(root);
     }
 
@@ -95,8 +88,8 @@ export default function Sidebar(props: SidebarProps) {
   });
 
   createEffect(() => {
-    const activeId = props.activeSheetId;
-    const sheets = props.project.sheets;
+    const activeId = state.activeSheetId;
+    const sheets = state.project.sheets;
     const openIds: string[] = [];
     const seen = new Set<string>([activeId]);
 
@@ -133,7 +126,7 @@ export default function Sidebar(props: SidebarProps) {
   const TreeBranch = (branchProps: { node: SheetTreeNode }) => {
     const hasChildren = () => branchProps.node.children.length > 0;
     const collapsed = () => isCollapsed(branchProps.node.sheet.id);
-    const isActive = () => branchProps.node.sheet.id === props.activeSheetId;
+    const isActive = () => branchProps.node.sheet.id === state.activeSheetId;
     const canPlace = () =>
       !isActive() && !placedSheetIds().has(branchProps.node.sheet.id);
 
@@ -165,7 +158,7 @@ export default function Sidebar(props: SidebarProps) {
           <button
             type="button"
             class={`linkish sheet-tree-name ${isActive() ? "is-active" : ""}`}
-            onClick={() => props.onGoToSheet(branchProps.node.sheet.id)}
+            onClick={() => actions.setActiveSheet(branchProps.node.sheet.id)}
             onContextMenu={(evt) => {
               evt.preventDefault();
               evt.stopPropagation();
@@ -176,11 +169,11 @@ export default function Sidebar(props: SidebarProps) {
                     props.onOpenSheetSettings(branchProps.node.sheet.id),
                 },
               ];
-              if (branchProps.node.sheet.id !== props.project.rootSheetId) {
+              if (branchProps.node.sheet.id !== state.project.rootSheetId) {
                 items.push({
                   label: t("sidebar.deleteSheet"),
                   onSelect: () =>
-                    props.onDeleteSheet(branchProps.node.sheet.id),
+                    actions.deleteSheetDefinition(branchProps.node.sheet.id),
                 });
               }
               contextMenu.openActions({
@@ -206,7 +199,9 @@ export default function Sidebar(props: SidebarProps) {
             <button
               type="button"
               class="mini sheet-tree-place"
-              onClick={() => props.onPlaceSheet(branchProps.node.sheet.id)}
+              onClick={() =>
+                actions.placeExistingSheetNode(branchProps.node.sheet.id)
+              }
             >
               {t("common.place")}
             </button>

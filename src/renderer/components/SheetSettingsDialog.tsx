@@ -9,12 +9,11 @@ import {
 import { Portal } from "solid-js/web";
 import type { NoHALProject, SheetNodeInstance } from "../../shared/types";
 import { useI18n } from "../i18n";
+import { useEditorStore } from "../state/EditorStoreProvider";
 
 interface SheetSettingsDialogProps {
   open: boolean;
-  project: NoHALProject;
   sheetId: string | null;
-  onSetSheetAddfQueue: (sheetId: string, nodeOrder: string[]) => void;
   onClose: () => void;
 }
 
@@ -94,16 +93,17 @@ function buildSheetQueueRows(
 
 export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
   const { t } = useI18n();
+  const { state, actions } = useEditorStore();
   const [draggingNodeId, setDraggingNodeId] = createSignal<string | null>(null);
   const [dropTargetNodeId, setDropTargetNodeId] = createSignal<string | null>(
     null,
   );
 
   const sheet = createMemo(() =>
-    props.sheetId ? props.project.sheets[props.sheetId] : undefined,
+    props.sheetId ? state.project.sheets[props.sheetId] : undefined,
   );
   const rows = createMemo(() =>
-    buildSheetQueueRows(props.project, props.sheetId, {
+    buildSheetQueueRows(state.project, props.sheetId, {
       missingSheet: t("sheetSettings.missingSheet"),
       missing: t("sheetSettings.missing"),
     }),
@@ -111,7 +111,7 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
 
   const commitNodeOrder = (nodeIds: string[]) => {
     if (!props.sheetId) return;
-    props.onSetSheetAddfQueue(props.sheetId, nodeIds);
+    actions.setSheetAddfQueue(props.sheetId, nodeIds);
   };
 
   createEffect(() => {

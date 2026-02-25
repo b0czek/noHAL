@@ -5,48 +5,26 @@ import {
   onCleanup,
   onMount,
 } from "solid-js";
-import type {
-  NoHALProject,
-  SheetDefinition,
-  SheetEndpointRef,
-  XY,
-} from "../../shared/types";
+import { getSheet } from "../../shared/graph";
 import { KonvaSheetScene } from "../canvas/konvaSheetScene";
 import { useI18n } from "../i18n";
-import type { Selection } from "../state/store";
+import { useEditorStore } from "../state/EditorStoreProvider";
 import { useCanvasContextMenu } from "./useCanvasContextMenu";
 
 interface CanvasProps {
-  project: NoHALProject;
-  sheet: SheetDefinition;
-  activeSheetId: string;
-  selection: Selection;
-  pendingEndpoint: SheetEndpointRef | null;
-  pendingWirePoints: XY[];
-  onSelect: (selection: Selection) => void;
   onOpenNode: (nodeId: string) => void;
-  onEndpointClick: (endpoint: SheetEndpointRef) => void;
-  onCanvasBackgroundClick: (point: XY) => void;
   onLabelClick: (labelId: string) => void;
   onCommentClick: (commentId: string) => void;
-  onMoveNode: (id: string, x: number, y: number) => void;
-  onMoveLabel: (id: string, x: number, y: number) => void;
-  onMoveComment: (id: string, x: number, y: number) => void;
-  onMoveSheetPort: (id: string, x: number, y: number) => void;
-  onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
-  onAddComponentAt: (componentId: string, x: number, y: number) => void;
-  onRemoveSelection: () => void;
-  onPutSelectionIntoSubsheet: () => void;
-  onRemoveConnection: (connectionId: string) => void;
-  onRefreshComponentInStore: (componentId: string) => void;
 }
 
 export default function Canvas(props: CanvasProps) {
   const { t } = useI18n();
+  const { state, actions } = useEditorStore();
   let hostEl!: HTMLDivElement;
   let scene: KonvaSheetScene | null = null;
   let resizeObserver: ResizeObserver | null = null;
   const [camera, setCamera] = createSignal({ x: 0, y: 0, scale: 1 });
+  const sheet = createMemo(() => getSheet(state.project, state.activeSheetId));
 
   const wrapOffset = (value: number, spacing: number) => {
     if (spacing <= 0) return 0;
@@ -70,32 +48,22 @@ export default function Canvas(props: CanvasProps) {
   const canvasContextMenu = useCanvasContextMenu({
     getHostEl: () => hostEl,
     getScene: () => scene,
-    getProject: () => props.project,
-    getSheet: () => props.sheet,
-    getSelection: () => props.selection,
-    onSelect: props.onSelect,
     onOpenNode: props.onOpenNode,
-    onMoveConnectionWaypoints: props.onMoveConnectionWaypoints,
-    onAddComponentAt: props.onAddComponentAt,
-    onRemoveSelection: props.onRemoveSelection,
-    onPutSelectionIntoSubsheet: props.onPutSelectionIntoSubsheet,
-    onRemoveConnection: props.onRemoveConnection,
-    onRefreshComponentInStore: props.onRefreshComponentInStore,
   });
 
   onMount(() => {
     scene = new KonvaSheetScene(hostEl, {
-      onSelect: props.onSelect,
+      onSelect: actions.select,
       onOpenNode: props.onOpenNode,
-      onEndpointClick: props.onEndpointClick,
-      onBackgroundClick: props.onCanvasBackgroundClick,
+      onEndpointClick: actions.endpointClick,
+      onBackgroundClick: actions.addPendingWirePoint,
       onLabelClick: props.onLabelClick,
       onCommentClick: props.onCommentClick,
-      onMoveNode: props.onMoveNode,
-      onMoveLabel: props.onMoveLabel,
-      onMoveComment: props.onMoveComment,
-      onMoveSheetPort: props.onMoveSheetPort,
-      onMoveConnectionWaypoints: props.onMoveConnectionWaypoints,
+      onMoveNode: actions.moveNode,
+      onMoveLabel: actions.moveLabel,
+      onMoveComment: actions.moveComment,
+      onMoveSheetPort: actions.moveSheetPort,
+      onMoveConnectionWaypoints: actions.updateDirectConnectionWaypoints,
       onCameraChange: setCamera,
       onContextMenuRequest: canvasContextMenu.handleSceneContextMenuRequest,
     });
@@ -106,26 +74,26 @@ export default function Canvas(props: CanvasProps) {
     });
     resizeObserver.observe(hostEl);
     scene.render({
-      project: props.project,
-      sheet: props.sheet,
-      selection: props.selection,
-      pendingEndpoint: props.pendingEndpoint,
-      pendingWirePoints: props.pendingWirePoints,
+      project: state.project,
+      sheet: sheet(),
+      selection: state.selection,
+      pendingEndpoint: state.pendingEndpoint,
+      pendingWirePoints: state.pendingWirePoints,
     });
   });
 
   createEffect(() => {
-    props.project;
-    props.sheet;
-    props.selection;
-    props.pendingEndpoint;
-    props.pendingWirePoints;
+    state.project;
+    sheet();
+    state.selection;
+    state.pendingEndpoint;
+    state.pendingWirePoints;
     scene?.render({
-      project: props.project,
-      sheet: props.sheet,
-      selection: props.selection,
-      pendingEndpoint: props.pendingEndpoint,
-      pendingWirePoints: props.pendingWirePoints,
+      project: state.project,
+      sheet: sheet(),
+      selection: state.selection,
+      pendingEndpoint: state.pendingEndpoint,
+      pendingWirePoints: state.pendingWirePoints,
     });
   });
 

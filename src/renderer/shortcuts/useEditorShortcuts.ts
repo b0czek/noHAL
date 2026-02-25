@@ -1,14 +1,9 @@
 import { onCleanup, onMount } from "solid-js";
+import { useEditorStore } from "../state/EditorStoreProvider";
 
 interface EditorShortcutsOptions {
   isComponentDialogOpen: () => boolean;
   closeComponentDialog: () => void;
-  hasPendingWire: () => boolean;
-  cancelPendingWire: () => void;
-  hasSelection: () => boolean;
-  deleteSelection: () => void;
-  undo: () => boolean;
-  redo: () => boolean;
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -23,6 +18,8 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 export function useEditorShortcuts(options: EditorShortcutsOptions): void {
+  const { state, actions } = useEditorStore();
+
   onMount(() => {
     const onKeyDown = (evt: KeyboardEvent) => {
       if (evt.key === "Escape") {
@@ -31,18 +28,18 @@ export function useEditorShortcuts(options: EditorShortcutsOptions): void {
           options.closeComponentDialog();
           return;
         }
-        if (options.hasPendingWire()) {
+        if (state.pendingEndpoint !== null) {
           evt.preventDefault();
-          options.cancelPendingWire();
+          actions.clearPendingEndpoint();
           return;
         }
         return;
       }
 
       if (evt.key === "Delete" && !isEditableTarget(evt.target)) {
-        if (!options.hasSelection()) return;
+        if (state.selection === null) return;
         evt.preventDefault();
-        options.deleteSelection();
+        actions.removeSelection();
         return;
       }
 
@@ -56,13 +53,13 @@ export function useEditorShortcuts(options: EditorShortcutsOptions): void {
       const isRedo = key === "y" || (key === "z" && evt.shiftKey);
 
       if (isUndo) {
-        if (!options.undo()) return;
+        if (!actions.undo()) return;
         evt.preventDefault();
         return;
       }
 
       if (isRedo) {
-        if (!options.redo()) return;
+        if (!actions.redo()) return;
         evt.preventDefault();
       }
     };

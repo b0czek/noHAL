@@ -1,43 +1,16 @@
 import { For, Show } from "solid-js";
-import { getNodePins, getNodeTitle } from "../../shared/graph";
+import { getNodePins, getNodeTitle, getSheet } from "../../shared/graph";
 import type {
   HalValueType,
   LabelScope,
   NoHALProject,
-  SheetDefinition,
   SheetNodeInstance,
 } from "../../shared/types";
 import { useI18n } from "../i18n";
-import type { EditorState } from "../state/store";
+import { useEditorStore } from "../state/EditorStoreProvider";
 
 interface InspectorProps {
-  state: EditorState;
-  currentSheet: SheetDefinition;
   onOpenSelectedComponentEditor: () => void;
-  onRenameNode: (nodeId: string, name: string) => void;
-  onUpdateNodeParam: (nodeId: string, key: string, value: string) => void;
-  onUpdateLabel: (
-    labelId: string,
-    patch: { name?: string; scope?: LabelScope; rotation?: number },
-  ) => void;
-  onUpdateComment: (
-    commentId: string,
-    patch: { text?: string; rotation?: number },
-  ) => void;
-  onUpdateSheetPort: (
-    portId: string,
-    patch: {
-      name?: string;
-      direction?: "in" | "out" | "io";
-      type?: HalValueType;
-      rotation?: number;
-    },
-  ) => void;
-  onRemoveSelection: () => void;
-  onRemoveConnection: (id: string) => void;
-  onRemoveLabelAnchor: (id: string) => void;
-  onEnterSelectedSheet: () => void;
-  onRefreshComponentInStore: (componentId: string) => void;
 }
 
 type SelectMenuOption = {
@@ -57,6 +30,8 @@ const PORT_TYPE_OPTIONS: ReadonlyArray<SelectMenuOption> = [
 
 export default function Inspector(props: InspectorProps) {
   const { t } = useI18n();
+  const { state, actions } = useEditorStore();
+  const currentSheet = () => getSheet(state.project, state.activeSheetId);
   const labelScopeOptions: ReadonlyArray<SelectMenuOption> = [
     { value: "local", label: "local" },
     { value: "hierarchical", label: "hierarchical" },
@@ -69,54 +44,54 @@ export default function Inspector(props: InspectorProps) {
   ];
   const selectedNode = () =>
     (() => {
-      const selection = props.state.selection;
+      const selection = state.selection;
       if (!selection || selection.kind !== "node") return undefined;
-      return props.currentSheet.nodes.find((n) => n.id === selection.id);
+      return currentSheet().nodes.find((n) => n.id === selection.id);
     })();
   const selectedLabel = () =>
     (() => {
-      const selection = props.state.selection;
+      const selection = state.selection;
       if (!selection || selection.kind !== "label") return undefined;
-      return props.currentSheet.labels.find((l) => l.id === selection.id);
+      return currentSheet().labels.find((l) => l.id === selection.id);
     })();
   const selectedPort = () =>
     (() => {
-      const selection = props.state.selection;
+      const selection = state.selection;
       if (!selection || selection.kind !== "sheet-port") return undefined;
-      return props.currentSheet.ports.find((p) => p.id === selection.id);
+      return currentSheet().ports.find((p) => p.id === selection.id);
     })();
   const selectedComment = () =>
     (() => {
-      const selection = props.state.selection;
+      const selection = state.selection;
       if (!selection || selection.kind !== "comment") return undefined;
-      return props.currentSheet.comments.find((c) => c.id === selection.id);
+      return currentSheet().comments.find((c) => c.id === selection.id);
     })();
   const selectedConnection = () =>
     (() => {
-      const selection = props.state.selection;
+      const selection = state.selection;
       if (!selection || selection.kind !== "wire-connection") return undefined;
-      return props.currentSheet.directConnections.find(
-        (c) => c.id === selection.id,
-      );
+      return currentSheet().directConnections.find((c) => c.id === selection.id);
     })();
 
   return (
     <aside class="inspector">
       <section class="panel">
         <div class="panel-title">{t("inspector.selection")}</div>
-        <Show when={!props.state.selection}>
+        <Show when={!state.selection}>
           <div class="muted">{t("inspector.nothingSelected")}</div>
         </Show>
 
         <Show when={selectedNode()}>
           {(node) => (
             <NodeInspector
-              project={props.state.project}
+              project={state.project}
               node={node()}
               onOpenComponentEditor={props.onOpenSelectedComponentEditor}
-              onRename={(name) => props.onRenameNode(node().id, name)}
-              onEnterSelectedSheet={props.onEnterSelectedSheet}
-              onRefreshComponentInStore={props.onRefreshComponentInStore}
+              onRename={(name) => actions.renameNode(node().id, name)}
+              onEnterSelectedSheet={actions.enterSelectedSheet}
+              onRefreshComponentInStore={(componentId) =>
+                void actions.refreshComponentInStore(componentId)
+              }
             />
           )}
         </Show>
@@ -129,7 +104,7 @@ export default function Inspector(props: InspectorProps) {
                 <input
                   value={label().name}
                   onInput={(e) =>
-                    props.onUpdateLabel(label().id, {
+                    actions.updateLabel(label().id, {
                       name: e.currentTarget.value,
                     })
                   }
@@ -141,7 +116,7 @@ export default function Inspector(props: InspectorProps) {
                   value={label().scope}
                   options={labelScopeOptions}
                   onChange={(value) =>
-                    props.onUpdateLabel(label().id, {
+                    actions.updateLabel(label().id, {
                       scope: value as LabelScope,
                     })
                   }
@@ -150,7 +125,7 @@ export default function Inspector(props: InspectorProps) {
               <RotationEditor
                 value={label().rotation ?? 0}
                 onChange={(rotation) =>
-                  props.onUpdateLabel(label().id, { rotation })
+                  actions.updateLabel(label().id, { rotation })
                 }
               />
             </div>
@@ -166,7 +141,7 @@ export default function Inspector(props: InspectorProps) {
                   rows={4}
                   value={comment().text}
                   onInput={(e) =>
-                    props.onUpdateComment(comment().id, {
+                    actions.updateComment(comment().id, {
                       text: e.currentTarget.value,
                     })
                   }
@@ -175,7 +150,7 @@ export default function Inspector(props: InspectorProps) {
               <RotationEditor
                 value={comment().rotation ?? 0}
                 onChange={(rotation) =>
-                  props.onUpdateComment(comment().id, { rotation })
+                  actions.updateComment(comment().id, { rotation })
                 }
               />
             </div>
@@ -190,7 +165,7 @@ export default function Inspector(props: InspectorProps) {
                 <input
                   value={port().name}
                   onInput={(e) =>
-                    props.onUpdateSheetPort(port().id, {
+                    actions.updateSheetPort(port().id, {
                       name: e.currentTarget.value,
                     })
                   }
@@ -202,7 +177,7 @@ export default function Inspector(props: InspectorProps) {
                   value={port().direction}
                   options={portDirectionOptions}
                   onChange={(value) =>
-                    props.onUpdateSheetPort(port().id, {
+                    actions.updateSheetPort(port().id, {
                       direction: value as "in" | "out" | "io",
                     })
                   }
@@ -214,7 +189,7 @@ export default function Inspector(props: InspectorProps) {
                   value={port().type}
                   options={PORT_TYPE_OPTIONS}
                   onChange={(value) =>
-                    props.onUpdateSheetPort(port().id, {
+                    actions.updateSheetPort(port().id, {
                       type: value as HalValueType,
                     })
                   }
@@ -223,7 +198,7 @@ export default function Inspector(props: InspectorProps) {
               <RotationEditor
                 value={port().rotation ?? 0}
                 onChange={(rotation) =>
-                  props.onUpdateSheetPort(port().id, { rotation })
+                  actions.updateSheetPort(port().id, { rotation })
                 }
               />
             </div>
@@ -241,14 +216,14 @@ export default function Inspector(props: InspectorProps) {
           )}
         </Show>
 
-        <Show when={props.state.selection}>
-          <Show when={props.state.selection?.kind === "multi"}>
+        <Show when={state.selection}>
+          <Show when={state.selection?.kind === "multi"}>
             <div class="muted">{t("inspector.multipleSelected")}</div>
           </Show>
           <button
             type="button"
             class="btn danger"
-            onClick={props.onRemoveSelection}
+            onClick={actions.removeSelection}
           >
             {t("inspector.deleteSelection")}
           </button>
@@ -259,12 +234,12 @@ export default function Inspector(props: InspectorProps) {
         <div class="panel-title">{t("inspector.currentSheetNets")}</div>
         <div class="sub-title">{t("inspector.directConnections")}</div>
         <div class="list compact">
-          <For each={props.currentSheet.directConnections}>
+          <For each={currentSheet().directConnections}>
             {(conn) => (
               <div
                 class={`list-row ${
-                  props.state.selection?.kind === "wire-connection" &&
-                  props.state.selection.id === conn.id
+                  state.selection?.kind === "wire-connection" &&
+                  state.selection.id === conn.id
                     ? "is-active"
                     : ""
                 }`}
@@ -272,7 +247,7 @@ export default function Inspector(props: InspectorProps) {
                 <button
                   type="button"
                   class="linkish"
-                  onClick={() => props.onRemoveConnection(conn.id)}
+                  onClick={() => actions.removeDirectConnection(conn.id)}
                 >
                   {t("common.remove")}
                 </button>
@@ -284,13 +259,13 @@ export default function Inspector(props: InspectorProps) {
 
         <div class="sub-title">{t("inspector.labelAnchors")}</div>
         <div class="list compact">
-          <For each={props.currentSheet.labelAnchors}>
+          <For each={currentSheet().labelAnchors}>
             {(anchor) => (
               <div class="list-row">
                 <button
                   type="button"
                   class="linkish"
-                  onClick={() => props.onRemoveLabelAnchor(anchor.id)}
+                  onClick={() => actions.removeLabelAnchor(anchor.id)}
                 >
                   {t("common.remove")}
                 </button>
@@ -301,11 +276,11 @@ export default function Inspector(props: InspectorProps) {
         </div>
       </section>
 
-      <Show when={props.state.exportWarnings.length > 0}>
+      <Show when={state.exportWarnings.length > 0}>
         <section class="panel warn">
           <div class="panel-title">{t("inspector.warnings")}</div>
           <div class="list compact">
-            <For each={props.state.exportWarnings}>
+            <For each={state.exportWarnings}>
               {(warning) => <div class="warning-item">{warning}</div>}
             </For>
           </div>

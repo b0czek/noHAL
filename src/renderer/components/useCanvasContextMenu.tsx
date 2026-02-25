@@ -1,5 +1,5 @@
 import { createMemo } from "solid-js";
-import type { NoHALProject, SheetDefinition, XY } from "../../shared/types";
+import { getSheet } from "../../shared/graph";
 import type { KonvaSheetScene } from "../canvas/konvaSheetScene";
 import type {
   SceneContextMenuRequest,
@@ -7,31 +7,24 @@ import type {
 } from "../canvas/konvaSheetSceneTypes";
 import { useI18n } from "../i18n";
 import type { Selection } from "../state/store";
+import { useEditorStore } from "../state/EditorStoreProvider";
 import CanvasComponentMenu from "./CanvasComponentMenu";
 import { useContextMenu } from "./ContextMenuProvider";
 
 interface UseCanvasContextMenuArgs {
   getHostEl: () => HTMLDivElement;
   getScene: () => KonvaSheetScene | null;
-  getProject: () => NoHALProject;
-  getSheet: () => SheetDefinition;
-  getSelection: () => Selection;
-  onSelect: (selection: Selection) => void;
   onOpenNode: (nodeId: string) => void;
-  onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
-  onAddComponentAt: (componentId: string, x: number, y: number) => void;
-  onRemoveSelection: () => void;
-  onPutSelectionIntoSubsheet: () => void;
-  onRemoveConnection: (connectionId: string) => void;
-  onRefreshComponentInStore: (componentId: string) => void;
 }
 
 export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   const { t } = useI18n();
+  const { state, actions } = useEditorStore();
   const contextMenu = useContextMenu();
+  const currentSheet = () => getSheet(state.project, state.activeSheetId);
 
   const componentChoices = createMemo(() =>
-    Object.values(args.getProject().library.components).sort((a, b) =>
+    Object.values(state.project.library.components).sort((a, b) =>
       a.halComponentName.localeCompare(b.halComponentName),
     ),
   );
@@ -82,7 +75,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
         <CanvasComponentMenu
           components={componentChoices()}
           onAddComponent={(componentId) =>
-            args.onAddComponentAt(componentId, world.x, world.y)
+            actions.addComponentNode(componentId, { x: world.x, y: world.y })
           }
           onClose={close}
         />
@@ -91,13 +84,11 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   };
 
   const deleteWaypoint = (connectionId: string, waypointIndex: number) => {
-    const conn = args
-      .getSheet()
-      .directConnections.find((c) => c.id === connectionId);
+    const conn = currentSheet().directConnections.find((c) => c.id === connectionId);
     if (!conn?.waypoints) return;
     if (waypointIndex < 0 || waypointIndex >= conn.waypoints.length) return;
     const next = conn.waypoints.filter((_, idx) => idx !== waypointIndex);
-    args.onMoveConnectionWaypoints(
+    actions.updateDirectConnectionWaypoints(
       connectionId,
       next.map((p) => ({ x: p.x, y: p.y })),
     );
@@ -109,18 +100,18 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     title: string;
     items: { label: string; onSelect: () => void }[];
   } | null => {
-    const sheet = args.getSheet();
+    const sheet = currentSheet();
     if (target.kind === "group") {
       return {
         title: t("canvasContext.selection"),
         items: [
           {
             label: t("canvasContext.putEverythingIntoSubsheet"),
-            onSelect: () => args.onPutSelectionIntoSubsheet(),
+            onSelect: () => actions.putSelectionIntoSubsheet(),
           },
           {
             label: t("inspector.deleteSelection"),
-            onSelect: () => args.onRemoveSelection(),
+            onSelect: () => actions.removeSelection(),
           },
         ],
       };
@@ -139,13 +130,14 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
             },
             {
               label: t("inspector.refreshComponentDefinition"),
-              onSelect: () => args.onRefreshComponentInStore(node.componentId),
+              onSelect: () =>
+                void actions.refreshComponentInStore(node.componentId),
             },
             {
               label: t("inspector.deleteSelection"),
               onSelect: () => {
-                args.onSelect({ kind: "node", id: node.id });
-                args.onRemoveSelection();
+                actions.select({ kind: "node", id: node.id });
+                actions.removeSelection();
               },
             },
           ],
@@ -161,8 +153,8 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           {
             label: t("inspector.deleteSelection"),
             onSelect: () => {
-              args.onSelect({ kind: "node", id: node.id });
-              args.onRemoveSelection();
+              actions.select({ kind: "node", id: node.id });
+              actions.removeSelection();
             },
           },
         ],
@@ -176,8 +168,8 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           {
             label: t("inspector.deleteSelection"),
             onSelect: () => {
-              args.onSelect({ kind: "label", id: target.id });
-              args.onRemoveSelection();
+              actions.select({ kind: "label", id: target.id });
+              actions.removeSelection();
             },
           },
         ],
@@ -191,8 +183,8 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           {
             label: t("inspector.deleteSelection"),
             onSelect: () => {
-              args.onSelect({ kind: "comment", id: target.id });
-              args.onRemoveSelection();
+              actions.select({ kind: "comment", id: target.id });
+              actions.removeSelection();
             },
           },
         ],
@@ -206,8 +198,8 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           {
             label: t("inspector.deleteSelection"),
             onSelect: () => {
-              args.onSelect({ kind: "sheet-port", id: target.id });
-              args.onRemoveSelection();
+              actions.select({ kind: "sheet-port", id: target.id });
+              actions.removeSelection();
             },
           },
         ],
@@ -220,7 +212,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
         items: [
           {
             label: t("canvasContext.removeConnection"),
-            onSelect: () => args.onRemoveConnection(target.connectionId),
+            onSelect: () => actions.removeDirectConnection(target.connectionId),
           },
         ],
       };
@@ -236,7 +228,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
         },
         {
           label: t("canvasContext.removeConnection"),
-          onSelect: () => args.onRemoveConnection(target.connectionId),
+          onSelect: () => actions.removeDirectConnection(target.connectionId),
         },
       ],
     };
@@ -262,7 +254,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   };
 
   const handleSceneContextMenuRequest = (request: SceneContextMenuRequest) => {
-    const selection = args.getSelection();
+    const selection = state.selection;
     if (
       (request.target.kind === "node" ||
         request.target.kind === "label" ||
@@ -275,20 +267,20 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     }
 
     if (request.target.kind === "node") {
-      args.onSelect({ kind: "node", id: request.target.id });
+      actions.select({ kind: "node", id: request.target.id });
     } else if (request.target.kind === "label") {
-      args.onSelect({ kind: "label", id: request.target.id });
+      actions.select({ kind: "label", id: request.target.id });
     } else if (request.target.kind === "comment") {
-      args.onSelect({ kind: "comment", id: request.target.id });
+      actions.select({ kind: "comment", id: request.target.id });
     } else if (request.target.kind === "sheet-port") {
-      args.onSelect({ kind: "sheet-port", id: request.target.id });
+      actions.select({ kind: "sheet-port", id: request.target.id });
     } else if (request.target.kind === "wire-connection") {
-      args.onSelect({
+      actions.select({
         kind: "wire-connection",
         id: request.target.connectionId,
       });
     } else {
-      args.onSelect({
+      actions.select({
         kind: "wire-connection",
         id: request.target.connectionId,
       });
