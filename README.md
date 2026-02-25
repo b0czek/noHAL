@@ -1,69 +1,111 @@
 # NoHAL
 
-Visual LinuxCNC HAL IDE prototype (Electron + TypeScript + SolidJS).
+Visual LinuxCNC HAL editor/import-export application built with Electron, TypeScript, SolidJS, and Konva.
 
-## What This MVP Does
+## Current Status
 
-- Creates and saves a visual HAL project (`.nohal.json`)
-- New Project flow supports:
-  - blank project creation
-  - importing an existing `.hal` file
-  - component-link verification against the Component Store before project creation
-- Offline-only editing (no LinuxCNC runtime introspection)
-- Hierarchical sheets (subsheet nodes)
-- Sheet edge ports (`in`/`out`/`io`) with editable names/types/sides
-- Local / hierarchical / global net labels
-- Direct endpoint wiring with type + direction validation
-- `.comp` import (pragmatic parser for declaration block before `;;`)
-- `.hal` export focused on:
-  - `loadrt` (RT components; grouped with `names=...`)
-  - `addf` (per-sheet queue ordering; subsheets expand as ordered blocks)
-  - `net`
-  - `setp`
-  - userspace/unknown runtime summary comments
+NoHAL is an offline desktop editor for building and editing LinuxCNC HAL networks visually.
+It can create/open/save NoHAL projects, import many existing `.hal` files into an editable graph, manage a local component store from `.comp` files, and export HAL text back out.
+
+It is a real offline authoring tool but it is not a full LinuxCNC runtime-integrated IDE yet.
+
+## What Works Today
+
+- Electron desktop app with landing page and recent projects list
+- Create blank projects or create a project from imported `.hal`
+- Open/save projects as a project directory (not a single JSON file)
+- Visual editor with:
+  - hierarchical sheets (subsheet nodes)
+  - sheet ports (`in` / `out` / `io`)
+  - local / hierarchical / global labels
+  - text comments
+  - direct wiring with validation
+  - wire waypoints/routing edits
+  - inspector + component settings dialogs
+  - sheet `addf` queue editing
+  - undo/redo (`Ctrl/Cmd+Z`, `Ctrl/Cmd+Y`, `Cmd+Shift+Z`)
+- Component Store:
+  - import a single `.comp` file
+  - add/scan a directory of `.comp` files (recursive)
+  - refresh sources/components
+  - link HAL import component groups to stored components
+- `.comp` parsing (pragmatic, header/declaration section before `;;`) for:
+  - component name, pins, params
+  - docs metadata (`description`, `author`, `license`, etc.)
+  - options/metadata
 - `.hal` import (pragmatic parser) for:
-  - `loadrt` (names/count inference)
-  - `net`
+  - `loadrt` (including `count=` / `names=`)
+  - `loadusr` instance-name inference for common flag forms (`-W`, `-Wn`, `-n`, `-c`)
+  - `addf`
   - `setp`
-  - `addf` (mapped into top-sheet addf queue when function names match instances)
-  - unresolved components become project-local component definitions in the imported `.nohal.json`
+  - `net` (with common arrow forms)
+  - import warnings surfaced in the project creation flow
+  - component-link review (store match vs project-local generated component)
+  - placement heuristic choices (`related-groups` / `alphabetical`)
+- `.hal` export for:
+  - `loadrt` (RT components grouped with `names=...`)
+  - `addf` (expanded from per-sheet queues; subsheets act as ordered blocks)
+  - `setp` (params + pin initial values)
+  - `net`
+  - runtime summary comments for userspace/unknown components
+  - optional export tuning via `project.halExport` (`loadOrder`, per-component rules, addf config)
 
-## What It Does Not Do Yet
+## Project Format (Current)
 
-- `loadusr` generation (still manual flags/args)
-- Full-fidelity `.hal` import (the importer is pragmatic and currently builds a single top-level sheet)
-- `loadusr` parsing/linking is partial during import (net/setp-driven reconstruction still works for many files)
-- Array pin expansion (`foo##` style pins are detected but not expanded)
-- Full visual editor uses a custom HAL scene on top of Konva (schematic-oriented UX)
+Projects are saved as a directory with a manifest plus per-sheet files:
 
-## Why The `.comp` Parser Is Hybrid/Pragmatic
+```text
+my-project.nohal/
+  project.nohal.json
+  library.nohal.json
+  sheets/
+    top__abc123.nohal-sheet.json
+    axis-logic__def456.nohal-sheet.json
+```
 
-LinuxCNC `.comp` files are parsed from the declaration section before `;;`.
-This implementation extracts:
+Notes:
 
-- `component`
-- `pin`
-- `param`
-- docs (`description`, `author`, `license`, etc.)
-- `option` flags (stored as metadata)
+- `project.nohal.json` stores manifest/project metadata and sheet file references
+- `library.nohal.json` stores project-local/used component definitions
+- built-in components are merged in on load
 
-It intentionally does not attempt full `halcompile` behavior or codegen semantics.
+## Known Limitations
 
-Reference used from the provided LinuxCNC tree:
+- No LinuxCNC runtime introspection/control (offline editor only)
+- `loadusr` export is not generated yet (export writes summary comments instead)
+- HAL import is pragmatic, not full `halcmd`/LinuxCNC semantics
+- Imported HAL currently builds a single top-level visual sheet (no hierarchy reconstruction)
+- Array pin expansion (`foo##`-style) is not expanded during export
+- Built-in component library is intentionally small; real workflows benefit from populating the Component Store
+
+## `.comp` Parser Scope
+
+The `.comp` parser intentionally extracts useful metadata from the declaration section before `;;` and does not try to fully reproduce `halcompile` behavior/codegen.
+
+Reference grammar used during implementation:
+
 - `linuxcnc/src/hal/utils/halcompile.g`
 
 ## Project Layout
 
-- `src/main/` Electron main process + IPC
-- `src/preload/` secure renderer API bridge
-- `src/renderer/` Solid UI (Konva-based schematic scene + inspector/toolbars)
-- `src/shared/` project schema, `.comp` parser, validation, HAL exporter
+- `src/main/` Electron main process, project IO, component store, IPC handlers
+- `src/preload/` renderer API bridge (`window.nohal`)
+- `src/renderer/` SolidJS UI, Konva canvas/editor, dialogs, state
+- `src/shared/` project types/schema, HAL import/export, `.comp` parser, validation
 
-## Run (after installing dependencies)
+## Development
 
 ```bash
-cd nohal
-npm install
-npm run dev
+cd noHAL
+pnpm install
+pnpm dev
 ```
 
+Alternative (works too): `npm install && npm run dev`
+
+Useful scripts:
+
+- `pnpm test`
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm build`
