@@ -43,7 +43,7 @@ async function runProjectTransition(
     const next = await load();
     if (!next) return false;
     deps.replaceProjectState(next.project, next.projectPath, next.status);
-    if (next.warnings) deps.setExportWarnings([...next.warnings]);
+    if (next.warnings) deps.setState("exportWarnings", [...next.warnings]);
     return true;
   } catch (error) {
     deps.setStatusT(errorStatusKey, { error: toErrorMessage(error) });

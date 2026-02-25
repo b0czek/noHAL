@@ -15,6 +15,7 @@ import { createSelectionActions } from "./store/actions/selectionActions";
 import { createSheetActions } from "./store/actions/sheetActions";
 import type {
   EditorSelection,
+  EditorState,
   EditorStoreActionContext,
 } from "./store/actions/types";
 import { createWireActions } from "./store/actions/wireActions";
@@ -30,21 +31,6 @@ import {
 } from "./store/helpers";
 
 export type Selection = EditorSelection;
-
-export interface EditorState {
-  project: NoHALProject;
-  componentStore: ComponentStore;
-  projectPath: string | null;
-  isDirty: boolean;
-  activeSheetId: string;
-  canUndo: boolean;
-  canRedo: boolean;
-  selection: Selection;
-  pendingEndpoint: SheetEndpointRef | null;
-  pendingWirePoints: XY[];
-  status: string;
-  exportWarnings: string[];
-}
 
 interface EditorHistorySnapshot {
   project: NoHALProject;
@@ -276,34 +262,13 @@ export function createEditorStore(
     clearPendingConnectionUi();
   };
 
-  const getProject = (): NoHALProject => state.project;
-  const getActiveSheetId = (): string => state.activeSheetId;
-  const getCurrentSheet = (): SheetDefinition =>
-    getSheet(state.project, state.activeSheetId);
-  const getSelection = (): Selection => state.selection;
-  const getPendingEndpoint = (): SheetEndpointRef | null =>
-    state.pendingEndpoint;
-  const getPendingWirePoints = (): XY[] => state.pendingWirePoints;
-  const getCurrentComponentStore = (): ComponentStore => state.componentStore;
-  const getCurrentSheetDirectConnections =
-    (): SheetDefinition["directConnections"] =>
-      getCurrentSheet().directConnections;
+  const setActionState: EditorStoreActionContext["setState"] = (key, value) => {
+    setState(key, value);
+  };
 
-  const setStatus = (message: string): void => setState("status", message);
-  const setExportWarnings = (warnings: string[]): void =>
-    setState("exportWarnings", warnings);
-  const setProject = (project: NoHALProject): void =>
-    setState("project", project);
-  const setActiveSheetId = (sheetId: string): void =>
-    setState("activeSheetId", sheetId);
   const setProjectUiActiveSheetId = (sheetId: string): void =>
     setState("project", "ui", "activeSheetId", sheetId);
-  const setSelection = (selection: Selection): void =>
-    setState("selection", selection);
-  const setPendingEndpoint = (endpoint: SheetEndpointRef | null): void =>
-    setState("pendingEndpoint", endpoint);
-  const setPendingWirePoints = (points: XY[]): void =>
-    setState("pendingWirePoints", points);
+
   const clearSelectionIfWireConnection = (connectionId: string): void => {
     if (
       state.selection?.kind === "wire-connection" &&
@@ -314,31 +279,18 @@ export function createEditorStore(
   };
 
   const actionCtx: EditorStoreActionContext = {
+    state,
+    setState: setActionState,
     t,
     setStatusT,
-    setStatus,
     confirmProceedWithUnsavedChanges,
     replaceProjectState,
-    setExportWarnings,
     reloadComponentStoreState,
     setImportErrorWarnings,
-    getCurrentComponentStore,
     clearHistory,
     withComponentStore,
     withProject,
-    getProject,
-    getActiveSheetId,
-    getSelection,
-    getCurrentSheet,
-    getPendingEndpoint,
-    getPendingWirePoints,
-    getCurrentSheetDirectConnections,
-    setProject,
-    setActiveSheetId,
     setProjectUiActiveSheetId,
-    setSelection,
-    setPendingEndpoint,
-    setPendingWirePoints,
     clearSelectionIfWireConnection,
     clearPendingConnectionUi,
     clearSelectionAndPendingUi,

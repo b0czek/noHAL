@@ -31,8 +31,8 @@ import type { EditorStoreActionContext } from "./types";
 
 export function createSheetActions(deps: EditorStoreActionContext) {
   const setActiveSheet = (sheetId: string): void => {
-    if (!deps.getProject().sheets[sheetId]) return;
-    deps.setActiveSheetId(sheetId);
+    if (!deps.state.project.sheets[sheetId]) return;
+    deps.setState("activeSheetId", sheetId);
     deps.setProjectUiActiveSheetId(sheetId);
     deps.clearSelectionAndPendingUi();
   };
@@ -57,13 +57,13 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     setActiveSheet,
 
     addSheetDefinition(): void {
-      const current = deps.getCurrentSheet();
+      const current = getSheet(deps.state.project, deps.state.activeSheetId);
       const allNames = new Set(
-        Object.values(deps.getProject().sheets).map((s) => s.name),
+        Object.values(deps.state.project.sheets).map((s) => s.name),
       );
       const name = nextName("Sheet", allNames);
       const child = createSheet(name, current.id);
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
 
       deps.withProject((project) => {
         project.sheets[child.id] = child;
@@ -82,11 +82,11 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     },
 
     putSelectionIntoSubsheet(): void {
-      const selection = deps.getSelection();
+      const selection = deps.state.selection;
       if (!selection || selection.kind !== "multi") return;
 
-      const activeSheetId = deps.getActiveSheetId();
-      const currentProject = deps.getProject();
+      const activeSheetId = deps.state.activeSheetId;
+      const currentProject = deps.state.project;
       const selectedNodeIds = new Set(selection.nodeIds);
       const selectedLabelIds = new Set(selection.labelIds);
       const selectedPortIds = new Set(selection.portIds);
@@ -341,9 +341,9 @@ export function createSheetActions(deps: EditorStoreActionContext) {
 
       syncProjectUi(next, activeSheetId);
       deps.pushUndoSnapshot();
-      deps.setProject(next);
+      deps.setState("project", next);
       deps.markProjectChanged();
-      deps.setSelection({ kind: "node", id: subsheetNodeId });
+      deps.setState("selection", { kind: "node", id: subsheetNodeId });
       deps.clearPendingConnectionUi();
       deps.setStatusT("store.status.putSelectionIntoSubsheet", {
         name: childName,
@@ -352,8 +352,8 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     },
 
     placeExistingSheetNode(sheetIdToPlace: string): void {
-      const project = deps.getProject();
-      const activeSheetId = deps.getActiveSheetId();
+      const project = deps.state.project;
+      const activeSheetId = deps.state.activeSheetId;
       if (sheetIdToPlace === activeSheetId) {
         deps.setStatusT("store.status.cannotPlaceSheetInsideItself");
         return;
@@ -384,7 +384,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     },
 
     deleteSheetDefinition(sheetId: string): void {
-      const project = deps.getProject();
+      const project = deps.state.project;
       const target = project.sheets[sheetId];
       if (!target) return;
       if (sheetId === project.rootSheetId) {
@@ -401,7 +401,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         delete next.sheets[deletedSheetId];
       }
 
-      let nextActiveSheetId = deps.getActiveSheetId();
+      let nextActiveSheetId = deps.state.activeSheetId;
       if (!next.sheets[nextActiveSheetId]) {
         nextActiveSheetId =
           target.parentSheetId && next.sheets[target.parentSheetId]
@@ -411,9 +411,9 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       syncProjectUi(next, nextActiveSheetId);
 
       deps.pushUndoSnapshot();
-      deps.setProject(next);
+      deps.setState("project", next);
       deps.markProjectChanged();
-      deps.setActiveSheetId(nextActiveSheetId);
+      deps.setState("activeSheetId", nextActiveSheetId);
       deps.clearSelectionAndPendingUi();
       deps.setStatusT("store.status.deletedSheet", {
         name: target.name,
@@ -422,16 +422,16 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     },
 
     enterSelectedSheet(): void {
-      const selection = deps.getSelection();
+      const selection = deps.state.selection;
       if (!selection || selection.kind !== "node") return;
-      const sheet = deps.getCurrentSheet();
+      const sheet = getSheet(deps.state.project, deps.state.activeSheetId);
       const node = findNode(sheet, selection.id);
       if (!node || node.kind !== "sheet") return;
       setActiveSheet(node.sheetId);
     },
 
     goToParentSheet(): void {
-      const current = deps.getCurrentSheet();
+      const current = getSheet(deps.state.project, deps.state.activeSheetId);
       if (!current.parentSheetId) return;
       setActiveSheet(current.parentSheetId);
     },

@@ -6,26 +6,27 @@ import type { EditorStoreActionContext } from "./types";
 
 export function createWireActions(deps: EditorStoreActionContext) {
   const selectPendingEndpoint = (endpoint: SheetEndpointRef): void => {
-    deps.setPendingEndpoint(endpoint);
-    deps.setPendingWirePoints([]);
+    deps.setState("pendingEndpoint", endpoint);
+    deps.setState("pendingWirePoints", []);
   };
 
   const clearPendingEndpoint = (): void => {
-    deps.setPendingEndpoint(null);
-    deps.setPendingWirePoints([]);
+    deps.setState("pendingEndpoint", null);
+    deps.setState("pendingWirePoints", []);
   };
 
   return {
     endpointClick(endpoint: SheetEndpointRef): void {
-      const pending = deps.getPendingEndpoint();
-      const project = deps.getProject();
-      const activeSheetId = deps.getActiveSheetId();
+      const pending = deps.state.pendingEndpoint;
+      const project = deps.state.project;
+      const activeSheetId = deps.state.activeSheetId;
 
       if (!pending) {
         selectPendingEndpoint(endpoint);
         try {
           const info = resolveEndpointInSheet(project, activeSheetId, endpoint);
-          deps.setStatus(
+          deps.setState(
+            "status",
             deps.t("store.status.selectedEndpointDetailed", {
               name: info.name,
               direction: info.direction,
@@ -43,17 +44,19 @@ export function createWireActions(deps: EditorStoreActionContext) {
         activeSheetId,
         pending,
         endpoint,
-        deps.getCurrentSheetDirectConnections(),
+        getSheet(deps.state.project, deps.state.activeSheetId)
+          .directConnections,
       );
       if (!validation.ok) {
-        deps.setStatus(
+        deps.setState(
+          "status",
           validation.reason ?? deps.t("store.status.invalidConnection"),
         );
         selectPendingEndpoint(endpoint);
         return;
       }
 
-      const pendingWirePoints = deps.getPendingWirePoints();
+      const pendingWirePoints = deps.state.pendingWirePoints;
       deps.withProject((nextProject) => {
         const sheet = getSheet(nextProject, activeSheetId);
         sheet.directConnections.push({
@@ -70,9 +73,9 @@ export function createWireActions(deps: EditorStoreActionContext) {
     },
 
     anchorPendingToLabel(labelId: string): void {
-      const pending = deps.getPendingEndpoint();
+      const pending = deps.state.pendingEndpoint;
       if (!pending) return;
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const exists = sheet.labelAnchors.some(
@@ -93,7 +96,7 @@ export function createWireActions(deps: EditorStoreActionContext) {
     },
 
     removeDirectConnection(connectionId: string): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         sheet.directConnections = sheet.directConnections.filter(
@@ -108,7 +111,7 @@ export function createWireActions(deps: EditorStoreActionContext) {
       connectionId: string,
       waypoints: XY[],
     ): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const conn = sheet.directConnections.find((c) => c.id === connectionId);
@@ -120,7 +123,7 @@ export function createWireActions(deps: EditorStoreActionContext) {
     },
 
     removeLabelAnchor(anchorId: string): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         sheet.labelAnchors = sheet.labelAnchors.filter(

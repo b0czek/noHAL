@@ -77,7 +77,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
     async deleteComponentSource(sourceId: string): Promise<void> {
       try {
         const previousPath = getComponentSourceDisplayPath(
-          deps.getCurrentComponentStore(),
+          deps.state.componentStore,
           sourceId,
         );
         const result =

@@ -24,7 +24,7 @@ import type { EditorStoreActionContext } from "./types";
 export function createNodeActions(deps: EditorStoreActionContext) {
   return {
     async refreshComponentInStore(componentId: string): Promise<void> {
-      const current = deps.getProject().library.components[componentId];
+      const current = deps.state.project.library.components[componentId];
       if (!current || current.source !== "comp") {
         deps.setStatusT("store.status.selectedComponentNotStoredComp");
         return;
@@ -61,9 +61,9 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       componentId: string,
       position?: { x: number; y: number },
     ): void {
-      const comp = deps.getProject().library.components[componentId];
+      const comp = deps.state.project.library.components[componentId];
       if (!comp) return;
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const instanceName = ensureInstanceName(sheet, comp.halComponentName);
@@ -87,7 +87,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     },
 
     addLabel(scope: LabelScope): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const used = new Set(sheet.labels.map((l) => l.name));
@@ -111,7 +111,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
 
     addComment(): void {
       let createdId: string | null = null;
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const comment: SheetComment = {
@@ -123,7 +123,8 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         createdId = comment.id;
         sheet.comments.push(comment);
       });
-      if (createdId) deps.setSelection({ kind: "comment", id: createdId });
+      if (createdId)
+        deps.setState("selection", { kind: "comment", id: createdId });
       deps.setStatusT("store.status.addedComment");
     },
 
@@ -131,7 +132,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       direction: "in" | "out" | "io",
       type: "bit" | "float" | "s32" | "u32" | "s64" | "u64" | "port",
     ): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const used = new Set(sheet.ports.map((p) => p.name));
@@ -150,7 +151,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     },
 
     moveNode(nodeId: string, x: number, y: number): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const node = sheet.nodes.find((n) => n.id === nodeId);
@@ -159,7 +160,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     },
 
     moveLabel(labelId: string, x: number, y: number): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const label = sheet.labels.find((l) => l.id === labelId);
@@ -168,7 +169,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     },
 
     moveComment(commentId: string, x: number, y: number): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const comment = sheet.comments.find((c) => c.id === commentId);
@@ -177,7 +178,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     },
 
     moveSheetPort(portId: string, x: number, y: number): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const port = sheet.ports.find((p) => p.id === portId);
@@ -186,7 +187,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     },
 
     renameNode(nodeId: string, instanceName: string): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const node = sheet.nodes.find((n) => n.id === nodeId);
@@ -195,7 +196,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     },
 
     updateNodeParam(nodeId: string, paramKey: string, value: string): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const node = sheet.nodes.find((n) => n.id === nodeId);
@@ -210,7 +211,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       pinKey: string,
       value: string,
     ): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const node = sheet.nodes.find((n) => n.id === nodeId);
@@ -227,7 +228,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       labelId: string,
       patch: { name?: string; scope?: LabelScope; rotation?: number },
     ): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const label = sheet.labels.find((l) => l.id === labelId);
@@ -244,7 +245,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       commentId: string,
       patch: { text?: string; rotation?: number },
     ): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const comment = sheet.comments.find((c) => c.id === commentId);
@@ -265,7 +266,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         rotation?: number;
       },
     ): void {
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const port = sheet.ports.find((p) => p.id === portId);

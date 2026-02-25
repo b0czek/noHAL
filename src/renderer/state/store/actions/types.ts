@@ -1,7 +1,6 @@
 import type {
   ComponentStore,
   NoHALProject,
-  SheetDefinition,
   SheetEndpointRef,
   XY,
 } from "../../../../shared/types";
@@ -15,6 +14,11 @@ export type ActionStatusParams = Record<
 export type SetStatusT = (
   key: TranslationKey,
   params?: ActionStatusParams,
+) => void;
+
+export type SetEditorState = <K extends keyof EditorState>(
+  key: K,
+  value: EditorState[K],
 ) => void;
 
 export type WithProjectOptions = {
@@ -31,23 +35,37 @@ export type EditorSelection =
   | { kind: "multi"; nodeIds: string[]; labelIds: string[]; portIds: string[] }
   | null;
 
+export interface EditorState {
+  project: NoHALProject;
+  componentStore: ComponentStore;
+  projectPath: string | null;
+  isDirty: boolean;
+  activeSheetId: string;
+  canUndo: boolean;
+  canRedo: boolean;
+  selection: EditorSelection;
+  pendingEndpoint: SheetEndpointRef | null;
+  pendingWirePoints: XY[];
+  status: string;
+  exportWarnings: string[];
+}
+
 export interface EditorStoreActionContext {
+  state: Readonly<EditorState>;
+  setState: SetEditorState;
   t: (key: TranslationKey, params?: ActionStatusParams) => string;
   setStatusT: SetStatusT;
-  setStatus: (message: string) => void;
   confirmProceedWithUnsavedChanges: () => Promise<boolean>;
   replaceProjectState: (
     project: NoHALProject,
     projectPath: string | null,
     status: string,
   ) => void;
-  setExportWarnings: (warnings: string[]) => void;
 
   reloadComponentStoreState: () => Promise<ComponentStore>;
   setImportErrorWarnings: (
     errors: ReadonlyArray<{ filePath: string; error: string }>,
   ) => void;
-  getCurrentComponentStore: () => ComponentStore;
   clearHistory: () => void;
   withComponentStore: (
     mutate: (componentStore: ComponentStore) => void,
@@ -57,19 +75,7 @@ export interface EditorStoreActionContext {
     mutate: (project: NoHALProject) => void,
     options?: WithProjectOptions,
   ) => void;
-  getProject: () => NoHALProject;
-  getActiveSheetId: () => string;
-  getSelection: () => EditorSelection;
-  getCurrentSheet: () => SheetDefinition;
-  getPendingEndpoint: () => SheetEndpointRef | null;
-  getPendingWirePoints: () => XY[];
-  getCurrentSheetDirectConnections: () => SheetDefinition["directConnections"];
-  setProject: (project: NoHALProject) => void;
-  setActiveSheetId: (sheetId: string) => void;
   setProjectUiActiveSheetId: (sheetId: string) => void;
-  setSelection: (selection: EditorSelection) => void;
-  setPendingEndpoint: (endpoint: SheetEndpointRef | null) => void;
-  setPendingWirePoints: (points: XY[]) => void;
   clearSelectionIfWireConnection: (connectionId: string) => void;
   clearPendingConnectionUi: () => void;
   clearSelectionAndPendingUi: () => void;

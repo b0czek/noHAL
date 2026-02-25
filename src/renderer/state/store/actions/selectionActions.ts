@@ -20,7 +20,7 @@ export function createSelectionActions(
 ) {
   return {
     select(sel: EditorSelection): void {
-      deps.setSelection(sel);
+      deps.setState("selection", sel);
     },
 
     clearPendingEndpoint(): void {
@@ -28,20 +28,23 @@ export function createSelectionActions(
     },
 
     addPendingWirePoint(point: XY): void {
-      if (!deps.getPendingEndpoint()) return;
-      const currentPoints = deps.getPendingWirePoints();
-      deps.setPendingWirePoints([...currentPoints, point]);
+      if (!deps.state.pendingEndpoint) return;
+      const currentPoints = deps.state.pendingWirePoints;
+      deps.setState("pendingWirePoints", [...currentPoints, point]);
       deps.setStatusT("store.status.addedWireWaypoint", {
         count: currentPoints.length + 1,
       });
     },
 
     removeSelection(): void {
-      const sel = deps.getSelection();
+      const sel = deps.state.selection;
       if (!sel) return;
 
       if (sel.kind === "node") {
-        const currentSheet = deps.getCurrentSheet();
+        const currentSheet = getSheet(
+          deps.state.project,
+          deps.state.activeSheetId,
+        );
         const node = currentSheet.nodes.find((n) => n.id === sel.id);
         if (node?.kind === "sheet") {
           links.deleteSheetDefinition(node.sheetId);
@@ -56,7 +59,10 @@ export function createSelectionActions(
       }
 
       if (sel.kind === "multi") {
-        const currentSheet = deps.getCurrentSheet();
+        const currentSheet = getSheet(
+          deps.state.project,
+          deps.state.activeSheetId,
+        );
         const selectedNodeIds = new Set(sel.nodeIds);
         const selectedLabelIds = new Set(sel.labelIds);
         const selectedPortIds = new Set(sel.portIds);
@@ -65,14 +71,14 @@ export function createSelectionActions(
         for (const node of currentSheet.nodes) {
           if (node.kind !== "sheet" || !selectedNodeIds.has(node.id)) continue;
           for (const sheetId of collectSheetSubtreeIds(
-            deps.getProject(),
+            deps.state.project,
             node.sheetId,
           )) {
             deletedSheetIds.add(sheetId);
           }
         }
 
-        const next = cloneProject(deps.getProject());
+        const next = cloneProject(deps.state.project);
         if (deletedSheetIds.size > 0) {
           removeSheetNodeReferencesForDeletedSheets(next, deletedSheetIds);
           for (const deletedSheetId of deletedSheetIds) {
@@ -80,7 +86,7 @@ export function createSelectionActions(
           }
         }
 
-        const sheet = next.sheets[deps.getActiveSheetId()];
+        const sheet = next.sheets[deps.state.activeSheetId];
         if (sheet) {
           const removedNodeIds = new Set<string>();
           sheet.nodes = sheet.nodes.filter((n) => {
@@ -109,16 +115,16 @@ export function createSelectionActions(
           );
         }
 
-        syncProjectUi(next, deps.getActiveSheetId());
+        syncProjectUi(next, deps.state.activeSheetId);
         deps.pushUndoSnapshot();
-        deps.setProject(next);
+        deps.setState("project", next);
         deps.markProjectChanged();
         deps.clearSelectionAndPendingUi();
         deps.setStatusT("store.status.removedSelection");
         return;
       }
 
-      const activeSheetId = deps.getActiveSheetId();
+      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         if (sel.kind === "node") {
