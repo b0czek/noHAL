@@ -2,7 +2,7 @@ import type { ComponentDefinition } from "./components";
 import type { SheetDefinition } from "./sheet";
 
 export interface RecentProjectEntry {
-  filePath: string;
+  projectPath: string;
   name?: string;
   lastOpenedAt: string;
 }

@@ -12,17 +12,17 @@ interface LandingPageProps {
   onCreateProject: () => void;
   onOpenProject: () => void;
   onRefreshRecentProjects: () => void;
-  onOpenRecentProject: (filePath: string) => void;
+  onOpenRecentProject: (projectPath: string) => void;
 }
 
 function recentProjectName(entry: RecentProjectEntry): string {
   if (entry.name?.trim()) return entry.name;
-  return entry.filePath.split(/[\\/]/).pop() ?? entry.filePath;
+  return entry.projectPath.split(/[\\/]/).pop() ?? entry.projectPath;
 }
 
-function recentProjectPathTail(filePath: string): string {
-  const segments = filePath.split(/[\\/]/).filter(Boolean);
-  if (segments.length <= 3) return filePath;
+function recentProjectPathTail(projectPath: string): string {
+  const segments = projectPath.split(/[\\/]/).filter(Boolean);
+  if (segments.length <= 3) return projectPath;
   return `.../${segments.slice(-3).join("/")}`;
 }
 
@@ -108,15 +108,17 @@ export default function LandingPage(props: LandingPageProps) {
                       type="button"
                       class="landing-recent-row"
                       disabled={props.isActionPending}
-                      onClick={() => props.onOpenRecentProject(entry.filePath)}
-                      title={entry.filePath}
+                      onClick={() =>
+                        props.onOpenRecentProject(entry.projectPath)
+                      }
+                      title={entry.projectPath}
                     >
                       <div class="landing-recent-main">
                         <div class="landing-recent-name">
                           {recentProjectName(entry)}
                         </div>
                         <div class="landing-recent-path mono">
-                          {recentProjectPathTail(entry.filePath)}
+                          {recentProjectPathTail(entry.projectPath)}
                         </div>
                       </div>
                       <div class="landing-recent-time">

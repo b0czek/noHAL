@@ -1,9 +1,9 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { dialog, ipcMain } from "electron";
+import { BrowserWindow, dialog, ipcMain } from "electron";
 import { parseCompComponentDefinition } from "../shared/compParser";
 import { exportProjectToHal } from "../shared/halExport";
 import { parseHalImportDraft } from "../shared/halImport";
-import { createEmptyProject, stringifyNoHALProject } from "../shared/project";
+import { createEmptyProject } from "../shared/project";
 import type { NoHALProject } from "../shared/types";
 import {
   addComponentDirSourceToStore,
@@ -14,10 +14,38 @@ import {
   saveParsedCompFileToStore,
   scanCompDirectory,
 } from "./componentStore";
-import { readProjectFile } from "./projects";
+import { readProjectPath, writeProjectDirectory } from "./projects";
 import { listRecentProjects, touchRecentProject } from "./recentProjects";
+import {
+  promptUnsavedChangesChoice,
+  resolveRendererSaveBeforeCloseRequest,
+  setWindowDirtyState,
+} from "./window";
 
 export function registerIpcHandlers(): void {
+  ipcMain.on("nohal:set-window-dirty-state", (evt, isDirty: boolean) => {
+    const win = BrowserWindow.fromWebContents(evt.sender);
+    if (!win) return;
+    setWindowDirtyState(win, Boolean(isDirty));
+  });
+
+  ipcMain.on(
+    "nohal:reply-save-before-close",
+    (evt, requestId: number, didSave: boolean) => {
+      resolveRendererSaveBeforeCloseRequest(
+        evt.sender.id,
+        requestId,
+        Boolean(didSave),
+      );
+    },
+  );
+
+  ipcMain.handle("nohal:prompt-unsaved-changes", async (evt) => {
+    const win = BrowserWindow.fromWebContents(evt.sender);
+    if (!win) return "cancel" as const;
+    return promptUnsavedChangesChoice(win);
+  });
+
   ipcMain.handle("nohal:new-project", async () =>
     createEmptyProject("NoHAL Project"),
   );
@@ -27,40 +55,36 @@ export function registerIpcHandlers(): void {
   ipcMain.handle("nohal:open-project", async () => {
     const res = await dialog.showOpenDialog({
       title: "Open NoHAL Project",
-      properties: ["openFile"],
-      filters: [{ name: "NoHAL Project", extensions: ["nohal.json", "json"] }],
+      properties: ["openDirectory"],
     });
     if (res.canceled || res.filePaths.length === 0) return null;
-    const result = await readProjectFile(res.filePaths[0]);
-    await touchRecentProject(result.filePath, result.project.name);
+    const result = await readProjectPath(res.filePaths[0]);
+    await touchRecentProject(result.projectPath, result.project.name);
     return result;
   });
 
-  ipcMain.handle("nohal:open-project-at", async (_evt, filePath: string) => {
-    const result = await readProjectFile(filePath);
-    await touchRecentProject(result.filePath, result.project.name);
+  ipcMain.handle("nohal:open-project-at", async (_evt, projectPath: string) => {
+    const result = await readProjectPath(projectPath);
+    await touchRecentProject(result.projectPath, result.project.name);
     return result;
   });
 
   ipcMain.handle(
     "nohal:save-project",
-    async (_evt, project: NoHALProject, filePath?: string | null) => {
-      let target = filePath ?? null;
+    async (_evt, project: NoHALProject, projectPath?: string | null) => {
+      let target = projectPath ?? null;
       if (!target) {
         const res = await dialog.showSaveDialog({
-          title: "Save NoHAL Project",
-          defaultPath: `${project.name || "project"}.nohal.json`,
-          filters: [
-            { name: "NoHAL Project", extensions: ["nohal.json", "json"] },
-          ],
+          title: "Save NoHAL Project Folder",
+          defaultPath: `${project.name || "project"}.nohal`,
         });
         if (res.canceled || !res.filePath) return null;
         target = res.filePath;
       }
 
-      await writeFile(target, stringifyNoHALProject(project), "utf8");
-      await touchRecentProject(target, project.name);
-      return { filePath: target };
+      const savedProjectPath = await writeProjectDirectory(project, target);
+      await touchRecentProject(savedProjectPath, project.name);
+      return { projectPath: savedProjectPath };
     },
   );
 

@@ -33,7 +33,8 @@ export type Selection =
 export interface EditorState {
   project: NoHALProject;
   componentStore: ComponentStore;
-  filePath: string | null;
+  projectPath: string | null;
+  isDirty: boolean;
   activeSheetId: string;
   canUndo: boolean;
   canRedo: boolean;
@@ -46,6 +47,7 @@ export interface EditorState {
 
 interface EditorHistorySnapshot {
   project: NoHALProject;
+  projectRevision: number;
   activeSheetId: string;
   selection: Selection;
   pendingEndpoint: SheetEndpointRef | null;
@@ -376,7 +378,8 @@ export function createEditorStore(
   const [state, setState] = createStore<EditorState>({
     project: initialProject,
     componentStore: createEmptyComponentStore(),
-    filePath: null,
+    projectPath: null,
+    isDirty: false,
     activeSheetId: initialProject.ui.activeSheetId,
     canUndo: false,
     canRedo: false,
@@ -389,6 +392,27 @@ export function createEditorStore(
 
   const undoStack: EditorHistorySnapshot[] = [];
   const redoStack: EditorHistorySnapshot[] = [];
+  let projectRevision = 0;
+  let savedProjectRevision = 0;
+
+  const syncDirtyFlag = (): void => {
+    setState("isDirty", projectRevision !== savedProjectRevision);
+  };
+
+  const markProjectChanged = (): void => {
+    projectRevision += 1;
+    syncDirtyFlag();
+  };
+
+  const markProjectSaved = (): void => {
+    savedProjectRevision = projectRevision;
+    syncDirtyFlag();
+  };
+
+  const resetProjectDirtyTracking = (): void => {
+    projectRevision = 0;
+    savedProjectRevision = 0;
+  };
 
   const syncHistoryAvailability = (): void => {
     setState("canUndo", undoStack.length > 0);
@@ -408,6 +432,7 @@ export function createEditorStore(
 
   const captureHistorySnapshot = (): EditorHistorySnapshot => ({
     project: cloneProject(state.project),
+    projectRevision,
     activeSheetId: state.activeSheetId,
     selection: cloneSelection(state.selection),
     pendingEndpoint: clonePendingEndpoint(state.pendingEndpoint),
@@ -415,11 +440,13 @@ export function createEditorStore(
   });
 
   const restoreHistorySnapshot = (snapshot: EditorHistorySnapshot): void => {
+    projectRevision = snapshot.projectRevision;
     setState("project", snapshot.project);
     setState("activeSheetId", snapshot.activeSheetId);
     setState("selection", snapshot.selection);
     setState("pendingEndpoint", snapshot.pendingEndpoint);
     setState("pendingWirePoints", snapshot.pendingWirePoints);
+    syncDirtyFlag();
   };
 
   const pushUndoSnapshot = (): void => {
@@ -437,13 +464,16 @@ export function createEditorStore(
 
   const withProject = (
     mutate: (project: NoHALProject) => void,
-    options?: { recordHistory?: boolean },
+    options?: { recordHistory?: boolean; markDirty?: boolean },
   ) => {
     const next = cloneProject(state.project);
     mutate(next);
     syncProjectUi(next, state.activeSheetId);
     if (options?.recordHistory !== false) pushUndoSnapshot();
     setState("project", next);
+    const shouldMarkDirty =
+      options?.markDirty ?? options?.recordHistory !== false;
+    if (shouldMarkDirty) markProjectChanged();
   };
 
   const withComponentStore = (
@@ -462,21 +492,23 @@ export function createEditorStore(
         pruneMissingStoredComponentsFromProject(project, componentStore);
         applyComponentStoreToProject(project, componentStore);
       },
-      { recordHistory: false },
+      { recordHistory: false, markDirty: false },
     );
   };
 
   const replaceProjectState = (
     project: NoHALProject,
-    filePath: string | null,
+    projectPath: string | null,
     status: string,
   ): void => {
     applyComponentStoreToProject(project, state.componentStore);
+    resetProjectDirtyTracking();
     clearHistory();
     setState({
       project,
       componentStore: state.componentStore,
-      filePath,
+      projectPath,
+      isDirty: false,
       activeSheetId: project.ui.activeSheetId,
       canUndo: false,
       canRedo: false,
@@ -490,6 +522,35 @@ export function createEditorStore(
 
   const setStatusT = (key: TranslationKey, params?: TranslationParams) => {
     setState("status", t(key, params));
+  };
+
+  const performSaveProject = async (): Promise<boolean> => {
+    try {
+      const result = await window.nohal.saveProject(
+        snapshotProjectForIpc(state.project),
+        state.projectPath,
+      );
+      if (!result) return false;
+      setState("projectPath", result.projectPath);
+      markProjectSaved();
+      setStatusT("store.status.savedProjectPath", {
+        projectPath: result.projectPath,
+      });
+      return true;
+    } catch (error) {
+      setStatusT("store.status.failedSaveProject", {
+        error: toErrorMessage(error),
+      });
+      return false;
+    }
+  };
+
+  const confirmProceedWithUnsavedChanges = async (): Promise<boolean> => {
+    if (!state.isDirty) return true;
+    const choice = await window.nohal.promptUnsavedChanges();
+    if (choice === "cancel") return false;
+    if (choice === "discard") return true;
+    return performSaveProject();
   };
 
   const actions = {
@@ -569,6 +630,7 @@ export function createEditorStore(
     },
 
     async newProject(): Promise<boolean> {
+      if (!(await confirmProceedWithUnsavedChanges())) return false;
       try {
         const project = await window.nohal.newProject();
         replaceProjectState(project, null, t("store.status.createdNewProject"));
@@ -581,18 +643,19 @@ export function createEditorStore(
       }
     },
 
-    openPreparedProject(
+    async openPreparedProject(
       project: NoHALProject,
       options?: {
-        filePath?: string | null;
+        projectPath?: string | null;
         status?: string;
         warnings?: string[];
       },
-    ): boolean {
+    ): Promise<boolean> {
+      if (!(await confirmProceedWithUnsavedChanges())) return false;
       try {
         replaceProjectState(
           project,
-          options?.filePath ?? null,
+          options?.projectPath ?? null,
           options?.status ?? t("store.status.openedProject"),
         );
         if (options?.warnings) {
@@ -608,13 +671,16 @@ export function createEditorStore(
     },
 
     async openProject(): Promise<boolean> {
+      if (!(await confirmProceedWithUnsavedChanges())) return false;
       try {
         const result = await window.nohal.openProject();
         if (!result) return false;
         replaceProjectState(
           result.project,
-          result.filePath,
-          t("store.status.openedFile", { filePath: result.filePath }),
+          result.projectPath,
+          t("store.status.openedProjectPath", {
+            projectPath: result.projectPath,
+          }),
         );
         return true;
       } catch (error) {
@@ -625,13 +691,16 @@ export function createEditorStore(
       }
     },
 
-    async openProjectAt(filePath: string): Promise<boolean> {
+    async openProjectAt(projectPath: string): Promise<boolean> {
+      if (!(await confirmProceedWithUnsavedChanges())) return false;
       try {
-        const result = await window.nohal.openProjectAt(filePath);
+        const result = await window.nohal.openProjectAt(projectPath);
         replaceProjectState(
           result.project,
-          result.filePath,
-          t("store.status.openedFile", { filePath: result.filePath }),
+          result.projectPath,
+          t("store.status.openedProjectPath", {
+            projectPath: result.projectPath,
+          }),
         );
         return true;
       } catch (error) {
@@ -642,14 +711,8 @@ export function createEditorStore(
       }
     },
 
-    async saveProject(): Promise<void> {
-      const result = await window.nohal.saveProject(
-        snapshotProjectForIpc(state.project),
-        state.filePath,
-      );
-      if (!result) return;
-      setState("filePath", result.filePath);
-      setStatusT("store.status.savedFile", { filePath: result.filePath });
+    async saveProject(): Promise<boolean> {
+      return performSaveProject();
     },
 
     async exportHal(): Promise<void> {
@@ -1092,6 +1155,7 @@ export function createEditorStore(
       syncProjectUi(next, state.activeSheetId);
       pushUndoSnapshot();
       setState("project", next);
+      markProjectChanged();
       setState("selection", { kind: "node", id: subsheetNodeId });
       setState("pendingEndpoint", null);
       setState("pendingWirePoints", []);
@@ -1160,6 +1224,7 @@ export function createEditorStore(
 
       pushUndoSnapshot();
       setState("project", next);
+      markProjectChanged();
       setState("activeSheetId", nextActiveSheetId);
       setState("selection", null);
       setState("pendingEndpoint", null);
@@ -1403,6 +1468,7 @@ export function createEditorStore(
         syncProjectUi(next, state.activeSheetId);
         pushUndoSnapshot();
         setState("project", next);
+        markProjectChanged();
         setState("selection", null);
         setState("pendingEndpoint", null);
         setState("pendingWirePoints", []);

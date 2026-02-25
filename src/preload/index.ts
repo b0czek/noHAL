@@ -9,25 +9,47 @@ import type {
 import type { NoHALApi } from "./api";
 
 const api: NoHALApi = {
+  setWindowDirtyState: (isDirty) => {
+    ipcRenderer.send("nohal:set-window-dirty-state", isDirty);
+  },
+  promptUnsavedChanges: () =>
+    ipcRenderer.invoke("nohal:prompt-unsaved-changes") as Promise<
+      "save" | "discard" | "cancel"
+    >,
+  onRequestSaveBeforeClose: (listener) => {
+    const handler = async (_event: unknown, requestId: number) => {
+      let didSave = false;
+      try {
+        didSave = (await listener()) === true;
+      } catch {
+        didSave = false;
+      }
+      ipcRenderer.send("nohal:reply-save-before-close", requestId, didSave);
+    };
+    ipcRenderer.on("nohal:request-save-before-close", handler);
+    return () => {
+      ipcRenderer.off("nohal:request-save-before-close", handler);
+    };
+  },
   newProject: () =>
     ipcRenderer.invoke("nohal:new-project") as Promise<NoHALProject>,
   getRecentProjects: () =>
     ipcRenderer.invoke("nohal:get-recent-projects") as Promise<
-      Array<{ filePath: string; name?: string; lastOpenedAt: string }>
+      Array<{ projectPath: string; name?: string; lastOpenedAt: string }>
     >,
   openProject: () =>
     ipcRenderer.invoke("nohal:open-project") as Promise<{
       project: NoHALProject;
-      filePath: string;
+      projectPath: string;
     } | null>,
-  openProjectAt: (filePath) =>
-    ipcRenderer.invoke("nohal:open-project-at", filePath) as Promise<{
+  openProjectAt: (projectPath) =>
+    ipcRenderer.invoke("nohal:open-project-at", projectPath) as Promise<{
       project: NoHALProject;
-      filePath: string;
+      projectPath: string;
     }>,
-  saveProject: (project, filePath) =>
-    ipcRenderer.invoke("nohal:save-project", project, filePath) as Promise<{
-      filePath: string;
+  saveProject: (project, projectPath) =>
+    ipcRenderer.invoke("nohal:save-project", project, projectPath) as Promise<{
+      projectPath: string;
     } | null>,
   exportHal: (project, filePath) =>
     ipcRenderer.invoke("nohal:export-hal", project, filePath) as Promise<{

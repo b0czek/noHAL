@@ -7,17 +7,22 @@ import type {
   RecentProjectEntry,
 } from "../shared/types";
 
+export type UnsavedChangesChoice = "save" | "discard" | "cancel";
+
 export interface NoHALApi {
+  setWindowDirtyState(isDirty: boolean): void;
+  promptUnsavedChanges(): Promise<UnsavedChangesChoice>;
+  onRequestSaveBeforeClose(listener: () => Promise<boolean>): () => void;
   newProject(): Promise<NoHALProject>;
   getRecentProjects(): Promise<RecentProjectEntry[]>;
-  openProject(): Promise<{ project: NoHALProject; filePath: string } | null>;
+  openProject(): Promise<{ project: NoHALProject; projectPath: string } | null>;
   openProjectAt(
-    filePath: string,
-  ): Promise<{ project: NoHALProject; filePath: string }>;
+    projectPath: string,
+  ): Promise<{ project: NoHALProject; projectPath: string }>;
   saveProject(
     project: NoHALProject,
-    filePath?: string | null,
-  ): Promise<{ filePath: string } | null>;
+    projectPath?: string | null,
+  ): Promise<{ projectPath: string } | null>;
   exportHal(
     project: NoHALProject,
     filePath?: string | null,

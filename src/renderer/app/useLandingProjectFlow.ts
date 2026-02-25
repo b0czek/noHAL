@@ -250,7 +250,7 @@ export function useLandingProjectFlow({
         linkSelections,
         placementHeuristic: projectCreationDialog.placementHeuristic,
       });
-      const opened = actions.openPreparedProject(result.project, {
+      const opened = await actions.openPreparedProject(result.project, {
         status: t("landing.importedHalStatus", {
           suffix: draft.sourcePath ? `: ${draft.sourcePath}` : "",
         }),

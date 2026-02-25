@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { createEmptyProject } from "../shared/project";
 import EditorScreen from "./app/EditorScreen";
 import { useLandingProjectFlow } from "./app/useLandingProjectFlow";
@@ -22,6 +22,32 @@ export default function App() {
     setIsEditorOpen,
   });
 
+  createEffect(() => {
+    if (!isEditorOpen()) {
+      document.title = "NoHAL";
+      return;
+    }
+    const projectName =
+      state.project.name.trim() || t("app.defaultProjectName");
+    document.title = `${projectName}${state.isDirty ? "*" : ""} - NoHAL`;
+  });
+
+  createEffect(() => {
+    window.nohal.setWindowDirtyState(isEditorOpen() && state.isDirty);
+  });
+
+  onMount(() => {
+    const disposeSaveBeforeClose = window.nohal.onRequestSaveBeforeClose(
+      async () => {
+        if (!isEditorOpen()) return true;
+        return actions.saveProject();
+      },
+    );
+    onCleanup(() => {
+      disposeSaveBeforeClose();
+    });
+  });
+
   return (
     <ContextMenuProvider>
       <ProjectCreationDialog {...landing.projectCreationDialogProps()} />
@@ -38,9 +64,9 @@ export default function App() {
               void landing.runLandingAction(() => actions.openProject())
             }
             onRefreshRecentProjects={() => void landing.refreshRecentProjects()}
-            onOpenRecentProject={(filePath) =>
+            onOpenRecentProject={(projectPath) =>
               void landing.runLandingAction(() =>
-                actions.openProjectAt(filePath),
+                actions.openProjectAt(projectPath),
               )
             }
           />

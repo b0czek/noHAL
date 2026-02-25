@@ -111,7 +111,11 @@ export default function EditorScreen(props: EditorScreenProps) {
         />
       </main>
 
-      <StatusBar status={props.state.status} filePath={props.state.filePath} />
+      <StatusBar
+        status={props.state.status}
+        projectPath={props.state.projectPath}
+        isDirty={props.state.isDirty}
+      />
 
       <ComponentNodeDialog
         open={editorUi.editingComponentNode() !== null}

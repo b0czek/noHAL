@@ -13,6 +13,7 @@ export const en = {
   "common.rotation": "Rotation",
   "common.status": "Status",
   "common.file": "File",
+  "common.project": "Project",
   "common.unsaved": "(unsaved)",
   "common.unspecified": "(unspecified)",
   "common.unknown": "unknown",
@@ -24,7 +25,7 @@ export const en = {
   "landing.brandSubtitle": "Visual HAL IDE for LinuxCNC",
   "landing.title": "Pick a project and get to work.",
   "landing.copy":
-    "Open an existing `.nohal.json` file or create a new project and jump into the editor only when you are ready.",
+    "Open an existing project folder or create a new project and jump into the editor only when you are ready.",
   "landing.newProject": "New Project",
   "landing.openProject": "Open Project",
   "landing.recentProjects": "Recent Projects",
@@ -142,7 +143,7 @@ export const en = {
   "projectCreation.pickDifferentFile": "Pick Different File",
   "projectCreation.componentLinking": "Component Linking",
   "projectCreation.componentLinkingHelp":
-    "Review automatic matches. Any group left as project-local will generate a component definition stored in this project's `.nohal.json`.",
+    "Review automatic matches. Any group left as project-local will generate a component definition stored in this project.",
   "projectCreation.groupStats":
     "{instances} instances • {pins} pins • {params} params • runtime {runtime}",
   "projectCreation.autoReason": "Auto: {reason}",
@@ -200,12 +201,15 @@ export const en = {
   "store.status.addedWireWaypoint": "Added wire waypoint ({count})",
   "store.status.createdNewProject": "Created new project",
   "store.status.failedCreateProject": "Failed to create project: {error}",
+  "store.confirm.discardUnsavedChanges":
+    "Discard unsaved project changes and continue?",
   "store.status.openedProject": "Opened project",
   "store.status.failedLoadPreparedProject":
     "Failed to load prepared project: {error}",
-  "store.status.openedFile": "Opened {filePath}",
+  "store.status.openedProjectPath": "Opened project folder: {projectPath}",
   "store.status.failedOpenProject": "Failed to open project: {error}",
-  "store.status.savedFile": "Saved {filePath}",
+  "store.status.savedProjectPath": "Saved project folder: {projectPath}",
+  "store.status.failedSaveProject": "Failed to save project: {error}",
   "store.status.exportedHal": "Exported HAL: {filePath}",
   "store.status.importedCompToStore":
     "Imported .comp to store: {componentName}",
