@@ -52,6 +52,7 @@ export default function EditorScreen(props: EditorScreenProps) {
           props.actions.addSheetPort(direction, valueType)
         }
         onAddLabel={(scope) => props.actions.addLabel(scope)}
+        onAddComment={props.actions.addComment}
       />
 
       <main class="workspace">
@@ -76,8 +77,10 @@ export default function EditorScreen(props: EditorScreenProps) {
           onEndpointClick={props.actions.endpointClick}
           onCanvasBackgroundClick={props.actions.addPendingWirePoint}
           onLabelClick={editorUi.labelClick}
+          onCommentClick={editorUi.commentClick}
           onMoveNode={props.actions.moveNode}
           onMoveLabel={props.actions.moveLabel}
+          onMoveComment={props.actions.moveComment}
           onMoveSheetPort={props.actions.moveSheetPort}
           onMoveConnectionWaypoints={
             props.actions.updateDirectConnectionWaypoints
@@ -100,6 +103,7 @@ export default function EditorScreen(props: EditorScreenProps) {
           onRenameNode={props.actions.renameNode}
           onUpdateNodeParam={props.actions.updateNodeParam}
           onUpdateLabel={props.actions.updateLabel}
+          onUpdateComment={props.actions.updateComment}
           onUpdateSheetPort={props.actions.updateSheetPort}
           onRemoveSelection={props.actions.removeSelection}
           onRemoveConnection={props.actions.removeDirectConnection}

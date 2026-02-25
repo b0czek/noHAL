@@ -8,6 +8,7 @@ import { createId, slugify } from "../../shared/id";
 import { createSheet, createSheetPortDraft } from "../../shared/project";
 import type {
   ComponentDefinition,
+  SheetComment,
   ComponentNode,
   ComponentStore,
   HalValueType,
@@ -25,6 +26,7 @@ import type { TranslationKey } from "../i18n";
 export type Selection =
   | { kind: "node"; id: string }
   | { kind: "label"; id: string }
+  | { kind: "comment"; id: string }
   | { kind: "sheet-port"; id: string }
   | { kind: "wire-connection"; id: string }
   | { kind: "multi"; nodeIds: string[]; labelIds: string[]; portIds: string[] }
@@ -199,6 +201,14 @@ function defaultLabelPosition(sheet: SheetDefinition): {
 } {
   const index = sheet.labels.length;
   return { x: 160 + (index % 5) * 160, y: 520 + Math.floor(index / 5) * 70 };
+}
+
+function defaultCommentPosition(sheet: SheetDefinition): {
+  x: number;
+  y: number;
+} {
+  const index = sheet.comments.length;
+  return { x: 180 + (index % 4) * 220, y: 620 + Math.floor(index / 4) * 90 };
 }
 
 function defaultPortPosition(
@@ -1272,6 +1282,23 @@ export function createEditorStore(
       setStatusT("store.status.addedLabel", { scope });
     },
 
+    addComment(): void {
+      let createdId: string | null = null;
+      withProject((project) => {
+        const sheet = getSheet(project, state.activeSheetId);
+        const comment: SheetComment = {
+          id: createId("comment"),
+          text: "Comment",
+          position: defaultCommentPosition(sheet),
+          rotation: 0,
+        };
+        createdId = comment.id;
+        sheet.comments.push(comment);
+      });
+      if (createdId) setState("selection", { kind: "comment", id: createdId });
+      setStatusT("store.status.addedComment");
+    },
+
     addSheetPort(
       direction: "in" | "out" | "io",
       type: "bit" | "float" | "s32" | "u32" | "s64" | "u64" | "port",
@@ -1306,6 +1333,14 @@ export function createEditorStore(
         const sheet = getSheet(project, state.activeSheetId);
         const label = sheet.labels.find((l) => l.id === labelId);
         if (label) label.position = { x, y };
+      });
+    },
+
+    moveComment(commentId: string, x: number, y: number): void {
+      withProject((project) => {
+        const sheet = getSheet(project, state.activeSheetId);
+        const comment = sheet.comments.find((c) => c.id === commentId);
+        if (comment) comment.position = { x, y };
       });
     },
 
@@ -1364,6 +1399,21 @@ export function createEditorStore(
         if (patch.scope !== undefined) label.scope = patch.scope;
         if (patch.rotation !== undefined) {
           label.rotation = normalizeRotationDegrees(patch.rotation);
+        }
+      });
+    },
+
+    updateComment(
+      commentId: string,
+      patch: { text?: string; rotation?: number },
+    ): void {
+      withProject((project) => {
+        const sheet = getSheet(project, state.activeSheetId);
+        const comment = sheet.comments.find((c) => c.id === commentId);
+        if (!comment) return;
+        if (patch.text !== undefined) comment.text = patch.text;
+        if (patch.rotation !== undefined) {
+          comment.rotation = normalizeRotationDegrees(patch.rotation);
         }
       });
     },
@@ -1486,6 +1536,8 @@ export function createEditorStore(
           sheet.labelAnchors = sheet.labelAnchors.filter(
             (a) => a.labelId !== sel.id,
           );
+        } else if (sel.kind === "comment") {
+          sheet.comments = sheet.comments.filter((c) => c.id !== sel.id);
         } else if (sel.kind === "sheet-port") {
           sheet.ports = sheet.ports.filter((p) => p.id !== sel.id);
           sheet.directConnections = sheet.directConnections.filter(

@@ -20,6 +20,10 @@ interface InspectorProps {
     labelId: string,
     patch: { name?: string; scope?: LabelScope; rotation?: number },
   ) => void;
+  onUpdateComment: (
+    commentId: string,
+    patch: { text?: string; rotation?: number },
+  ) => void;
   onUpdateSheetPort: (
     portId: string,
     patch: {
@@ -81,6 +85,12 @@ export default function Inspector(props: InspectorProps) {
       if (!selection || selection.kind !== "sheet-port") return undefined;
       return props.currentSheet.ports.find((p) => p.id === selection.id);
     })();
+  const selectedComment = () =>
+    (() => {
+      const selection = props.state.selection;
+      if (!selection || selection.kind !== "comment") return undefined;
+      return props.currentSheet.comments.find((c) => c.id === selection.id);
+    })();
   const selectedConnection = () =>
     (() => {
       const selection = props.state.selection;
@@ -141,6 +151,31 @@ export default function Inspector(props: InspectorProps) {
                 value={label().rotation ?? 0}
                 onChange={(rotation) =>
                   props.onUpdateLabel(label().id, { rotation })
+                }
+              />
+            </div>
+          )}
+        </Show>
+
+        <Show when={selectedComment()}>
+          {(comment) => (
+            <div class="inspector-group">
+              <label>
+                {t("common.text")}
+                <textarea
+                  rows={4}
+                  value={comment().text}
+                  onInput={(e) =>
+                    props.onUpdateComment(comment().id, {
+                      text: e.currentTarget.value,
+                    })
+                  }
+                />
+              </label>
+              <RotationEditor
+                value={comment().rotation ?? 0}
+                onChange={(rotation) =>
+                  props.onUpdateComment(comment().id, { rotation })
                 }
               />
             </div>

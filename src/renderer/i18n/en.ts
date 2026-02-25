@@ -6,6 +6,7 @@ export const en = {
   "common.back": "Back",
   "common.remove": "remove",
   "common.name": "Name",
+  "common.text": "Text",
   "common.scope": "Scope",
   "common.direction": "Direction",
   "common.type": "Type",
@@ -43,6 +44,7 @@ export const en = {
   "topbar.exportHal": "Export HAL",
   "topbar.componentStore": "Component Store",
   "topbar.addSubsheet": "+ Subsheet",
+  "topbar.addText": "+ Text",
   "topbar.addPort": "+ Port",
   "topbar.addLabel": "+ Label",
   "topbar.inPortBit": "In Port (bit)",
@@ -57,6 +59,7 @@ export const en = {
   "canvasContext.component": "Component",
   "canvasContext.subsheet": "Subsheet",
   "canvasContext.label": "Label",
+  "canvasContext.comment": "Text",
   "canvasContext.sheetPort": "Sheet Port",
   "canvasContext.connection": "Connection",
   "canvasContext.waypoint": "Waypoint",
@@ -237,6 +240,7 @@ export const en = {
   "store.status.deletedSheet":
     "Deleted sheet {name} ({count} sheet definitions removed)",
   "store.status.addedLabel": "Added {scope} label",
+  "store.status.addedComment": "Added text comment",
   "store.status.addedSheetPort": "Added sheet port",
   "store.status.cannotSubsheetEmptySelection":
     "Select at least one node or label to create a subsheet",

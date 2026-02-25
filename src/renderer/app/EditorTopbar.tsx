@@ -21,6 +21,7 @@ interface EditorTopbarProps {
   onAddSubsheet: () => void;
   onAddPort: (direction: "in" | "out" | "io", valueType: HalValueType) => void;
   onAddLabel: (scope: LabelScope) => void;
+  onAddComment: () => void;
 }
 
 function closeToolbarMenu(el: HTMLElement) {
@@ -102,6 +103,9 @@ export default function EditorTopbar(props: EditorTopbarProps) {
       <div class="toolbar-group">
         <button type="button" class="btn" onClick={props.onAddSubsheet}>
           {t("topbar.addSubsheet")}
+        </button>
+        <button type="button" class="btn" onClick={props.onAddComment}>
+          {t("topbar.addText")}
         </button>
         <details class="toolbar-menu">
           <summary class="btn toolbar-menu-summary">

@@ -46,7 +46,7 @@ import { labelFill, typeFill } from "./theme";
 
 type ClampPosFn = (pos: Pt) => Pt;
 type DragSelectionTarget = {
-  kind: "node" | "label" | "sheet-port";
+  kind: "node" | "label" | "comment" | "sheet-port";
   id: string;
 };
 
@@ -83,6 +83,13 @@ interface RenderLabelsArgs extends RenderSharedArgs {
   selectedLabelIds: ReadonlySet<string>;
   liveLabelPositions: Map<string, Pt>;
   labelGroups: Map<string, Konva.Group>;
+}
+
+interface RenderCommentsArgs extends RenderSharedArgs {
+  sheet: SheetDefinition;
+  selectedCommentIds: ReadonlySet<string>;
+  liveCommentPositions: Map<string, Pt>;
+  commentGroups: Map<string, Konva.Group>;
 }
 
 function addPinDot(args: {
@@ -852,6 +859,98 @@ export function renderLabels(args: RenderLabelsArgs): void {
         return;
       }
       liveLabelPositions.set(label.id, pos);
+      redrawWires();
+    });
+
+    mainWorld.add(group);
+  }
+}
+
+export function renderComments(args: RenderCommentsArgs): void {
+  const {
+    sheet,
+    selectedCommentIds,
+    mainWorld,
+    callbacks,
+    clampPos,
+    redrawWires,
+    liveCommentPositions,
+    commentGroups,
+  } = args;
+
+  for (const comment of sheet.comments) {
+    const group = new Konva.Group({
+      x: comment.position.x,
+      y: comment.position.y,
+      rotation: comment.rotation ?? 0,
+      draggable: true,
+      dragBoundFunc: (pos) => clampPos(pos),
+    });
+    commentGroups.set(comment.id, group);
+
+    const content = (comment.text || "").trimEnd() || " ";
+    const text = new Konva.Text({
+      x: 0,
+      y: 0,
+      text: content,
+      fontFamily: FONT_SANS,
+      fontSize: 14,
+      lineHeight: 1.25,
+      fill: TEXT_PRIMARY,
+      padding: 10,
+    });
+    const box = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: Math.max(48, Math.ceil(text.width())),
+      height: Math.max(28, Math.ceil(text.height())),
+      cornerRadius: CORNER_RADIUS_MD,
+      fill: "rgba(12, 24, 28, 0.72)",
+      stroke: selectedCommentIds.has(comment.id) ? SELECTED_BORDER : NEUTRAL_BORDER,
+      strokeWidth: selectedCommentIds.has(comment.id) ? 2 : 1,
+    });
+    group.add(box);
+    group.add(text);
+
+    group.on("dragstart", () => {
+      const pos = clampPos(group.position());
+      group.position(pos);
+      liveCommentPositions.set(comment.id, pos);
+      args.onSelectionDragStart({ kind: "comment", id: comment.id }, pos);
+    });
+    group.on("click tap", (evt) => {
+      evt.cancelBubble = true;
+      callbacks.onCommentClick(comment.id);
+    });
+    group.on("contextmenu", (evt) => {
+      evt.cancelBubble = true;
+      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+      if ("stopPropagation" in evt.evt) evt.evt.stopPropagation();
+      if (evt.evt instanceof MouseEvent) {
+        callbacks.onContextMenuRequest?.({
+          clientX: evt.evt.clientX,
+          clientY: evt.evt.clientY,
+          target: { kind: "comment", id: comment.id },
+        });
+      }
+    });
+    group.on("dragend", () => {
+      const pos = clampPos(group.position());
+      group.position(pos);
+      if (args.onSelectionDragEnd({ kind: "comment", id: comment.id }, pos)) {
+        return;
+      }
+      liveCommentPositions.set(comment.id, pos);
+      redrawWires();
+      callbacks.onMoveComment(comment.id, pos.x, pos.y);
+    });
+    group.on("dragmove", () => {
+      const pos = clampPos(group.position());
+      group.position(pos);
+      if (args.onSelectionDragMove({ kind: "comment", id: comment.id }, pos)) {
+        return;
+      }
+      liveCommentPositions.set(comment.id, pos);
       redrawWires();
     });
 

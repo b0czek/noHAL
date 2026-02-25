@@ -15,6 +15,7 @@ function createDefaultTopSheet(): SheetDefinition {
     nodes: [],
     ports: [],
     labels: [],
+    comments: [],
     directConnections: [],
     labelAnchors: [],
   };
@@ -61,7 +62,13 @@ function assertProjectShape(input: unknown): asserts input is NoHALProject {
 export function parseNoHALProject(content: string): NoHALProject {
   const parsed = JSON.parse(content) as unknown;
   assertProjectShape(parsed);
-  return parsed;
+  const project = parsed as NoHALProject;
+  for (const sheet of Object.values(project.sheets)) {
+    if (!Array.isArray((sheet as Partial<SheetDefinition>).comments)) {
+      (sheet as SheetDefinition).comments = [];
+    }
+  }
+  return project;
 }
 
 export function stringifyNoHALProject(project: NoHALProject): string {
@@ -79,6 +86,7 @@ export function createSheet(
     nodes: [],
     ports: [],
     labels: [],
+    comments: [],
     directConnections: [],
     labelAnchors: [],
   };

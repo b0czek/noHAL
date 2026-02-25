@@ -41,6 +41,10 @@ export function useEditorUiState({ state, actions }: UseEditorUiStateArgs) {
     actions.select({ kind: "label", id: labelId });
   };
 
+  const commentClick = (commentId: string) => {
+    actions.select({ kind: "comment", id: commentId });
+  };
+
   const openComponentEditorForNode = (nodeId: string) => {
     const node = currentSheet().nodes.find((n) => n.id === nodeId);
     if (!node) return;
@@ -73,6 +77,7 @@ export function useEditorUiState({ state, actions }: UseEditorUiStateArgs) {
     isComponentStoreOpen,
     sheetSettingsSheetId,
     labelClick,
+    commentClick,
     openComponentEditorForNode,
     openSelectedComponentEditor,
     closeComponentEditor: () => setComponentEditorNodeId(null),

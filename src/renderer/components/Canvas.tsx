@@ -28,8 +28,10 @@ interface CanvasProps {
   onEndpointClick: (endpoint: SheetEndpointRef) => void;
   onCanvasBackgroundClick: (point: XY) => void;
   onLabelClick: (labelId: string) => void;
+  onCommentClick: (commentId: string) => void;
   onMoveNode: (id: string, x: number, y: number) => void;
   onMoveLabel: (id: string, x: number, y: number) => void;
+  onMoveComment: (id: string, x: number, y: number) => void;
   onMoveSheetPort: (id: string, x: number, y: number) => void;
   onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
   onAddComponentAt: (componentId: string, x: number, y: number) => void;
@@ -88,8 +90,10 @@ export default function Canvas(props: CanvasProps) {
       onEndpointClick: props.onEndpointClick,
       onBackgroundClick: props.onCanvasBackgroundClick,
       onLabelClick: props.onLabelClick,
+      onCommentClick: props.onCommentClick,
       onMoveNode: props.onMoveNode,
       onMoveLabel: props.onMoveLabel,
+      onMoveComment: props.onMoveComment,
       onMoveSheetPort: props.onMoveSheetPort,
       onMoveConnectionWaypoints: props.onMoveConnectionWaypoints,
       onCameraChange: setCamera,

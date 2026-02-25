@@ -3,6 +3,7 @@ import { endpointKey } from "../../shared/graph";
 import type { SheetEndpointRef } from "../../shared/types";
 import { SCENE_HEIGHT, SCENE_WIDTH } from "./constants";
 import {
+  renderComments,
   renderLabels,
   renderNodes,
   renderPorts,
@@ -22,7 +23,7 @@ const CAMERA_OVERSCROLL_PX = 220;
 const MARQUEE_SELECT_THRESHOLD_PX = 4;
 
 type SelectionDragTarget = {
-  kind: "node" | "label" | "sheet-port";
+  kind: "node" | "label" | "comment" | "sheet-port";
   id: string;
 };
 
@@ -50,9 +51,11 @@ export class KonvaSheetScene {
   private nodeLayouts = new Map<string, NodeLayout>();
   private liveNodePositions = new Map<string, Pt>();
   private liveLabelPositions = new Map<string, Pt>();
+  private liveCommentPositions = new Map<string, Pt>();
   private livePortPositions = new Map<string, Pt>();
   private nodeGroups = new Map<string, Konva.Group>();
   private labelGroups = new Map<string, Konva.Group>();
+  private commentGroups = new Map<string, Konva.Group>();
   private portGroups = new Map<string, Konva.Group>();
   private cursorPos: Pt | null = null;
   private camera = { x: 0, y: 0, scale: 1 };
@@ -332,6 +335,16 @@ export class KonvaSheetScene {
     };
   }
 
+  private estimateCommentSize(text: string): { width: number; height: number } {
+    const lines = text.replace(/\r/g, "").split("\n");
+    const maxLineLength = Math.max(1, ...lines.map((line) => line.length));
+    const lineCount = Math.max(1, lines.length);
+    return {
+      width: Math.max(48, Math.ceil(maxLineLength * 8.1) + 20),
+      height: Math.max(28, Math.ceil(lineCount * 17.5) + 8),
+    };
+  }
+
   private estimatePortBox(
     port: SceneRenderState["sheet"]["ports"][number],
     position?: Pt,
@@ -431,6 +444,25 @@ export class KonvaSheetScene {
       bounds.minY = Math.min(bounds.minY, label.position.y - margin);
       bounds.maxX = Math.max(bounds.maxX, label.position.x + margin);
       bounds.maxY = Math.max(bounds.maxY, label.position.y + margin);
+    }
+
+    for (const comment of state.sheet.comments) {
+      const size = this.estimateCommentSize(comment.text);
+      this.expandBoundsWithRotatedRect(
+        bounds,
+        {
+          x: comment.position.x,
+          y: comment.position.y,
+          width: size.width,
+          height: size.height,
+        },
+        comment.rotation ?? 0,
+        comment.position,
+      );
+      bounds.minX = Math.min(bounds.minX, comment.position.x - margin);
+      bounds.minY = Math.min(bounds.minY, comment.position.y - margin);
+      bounds.maxX = Math.max(bounds.maxX, comment.position.x + size.width + margin);
+      bounds.maxY = Math.max(bounds.maxY, comment.position.y + size.height + margin);
     }
 
     for (const port of state.sheet.ports) {
@@ -671,6 +703,7 @@ export class KonvaSheetScene {
     if (selection.kind !== "multi") return false;
     if (target.kind === "node") return selection.nodeIds.includes(target.id);
     if (target.kind === "label") return selection.labelIds.includes(target.id);
+    if (target.kind === "comment") return false;
     return selection.portIds.includes(target.id);
   }
 
@@ -744,7 +777,9 @@ export class KonvaSheetScene {
         ? this.nodeGroups.get(target.id)
         : target.kind === "label"
           ? this.labelGroups.get(target.id)
-          : this.portGroups.get(target.id);
+          : target.kind === "comment"
+            ? this.commentGroups.get(target.id)
+            : this.portGroups.get(target.id);
     if (group) group.position(pos);
   }
 
@@ -755,6 +790,8 @@ export class KonvaSheetScene {
     if (target.kind === "node") this.liveNodePositions.set(target.id, pos);
     else if (target.kind === "label")
       this.liveLabelPositions.set(target.id, pos);
+    else if (target.kind === "comment")
+      this.liveCommentPositions.set(target.id, pos);
     else this.livePortPositions.set(target.id, pos);
   }
 
@@ -916,9 +953,11 @@ export class KonvaSheetScene {
     this.groupDragSession = null;
     this.liveNodePositions.clear();
     this.liveLabelPositions.clear();
+    this.liveCommentPositions.clear();
     this.livePortPositions.clear();
     this.nodeGroups.clear();
     this.labelGroups.clear();
+    this.commentGroups.clear();
     this.portGroups.clear();
   }
   private wireContext(): KonvaSheetSceneWiresContext {
@@ -959,9 +998,12 @@ export class KonvaSheetScene {
     const pendingKey = this.pendingKey(pendingEndpoint);
     const selectedNodeIds = new Set<string>();
     const selectedLabelIds = new Set<string>();
+    const selectedCommentIds = new Set<string>();
     const selectedPortIds = new Set<string>();
     if (selection?.kind === "node") selectedNodeIds.add(selection.id);
     else if (selection?.kind === "label") selectedLabelIds.add(selection.id);
+    else if (selection?.kind === "comment")
+      selectedCommentIds.add(selection.id);
     else if (selection?.kind === "sheet-port")
       selectedPortIds.add(selection.id);
     else if (selection?.kind === "multi") {
@@ -1028,6 +1070,19 @@ export class KonvaSheetScene {
       onSelectionDragEnd: this.onSelectionDragEnd,
       liveLabelPositions: this.liveLabelPositions,
       labelGroups: this.labelGroups,
+    });
+    renderComments({
+      sheet,
+      selectedCommentIds,
+      mainWorld: this.mainWorld,
+      callbacks: this.callbacks,
+      clampPos: (pos) => this.clampPos(pos),
+      redrawWires: () => this.redrawWires(),
+      onSelectionDragStart: this.onSelectionDragStart,
+      onSelectionDragMove: this.onSelectionDragMove,
+      onSelectionDragEnd: this.onSelectionDragEnd,
+      liveCommentPositions: this.liveCommentPositions,
+      commentGroups: this.commentGroups,
     });
 
     this.mainLayer.batchDraw();

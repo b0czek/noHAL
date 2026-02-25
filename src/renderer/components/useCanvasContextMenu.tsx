@@ -60,6 +60,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     if (!selection || selection.kind !== "multi") return false;
     if (target.kind === "node") return selection.nodeIds.includes(target.id);
     if (target.kind === "label") return selection.labelIds.includes(target.id);
+    if (target.kind === "comment") return false;
     if (target.kind === "sheet-port")
       return selection.portIds.includes(target.id);
     return false;
@@ -183,6 +184,21 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       };
     }
 
+    if (target.kind === "comment") {
+      return {
+        title: t("canvasContext.comment"),
+        items: [
+          {
+            label: t("inspector.deleteSelection"),
+            onSelect: () => {
+              args.onSelect({ kind: "comment", id: target.id });
+              args.onRemoveSelection();
+            },
+          },
+        ],
+      };
+    }
+
     if (target.kind === "sheet-port") {
       return {
         title: t("canvasContext.sheetPort"),
@@ -250,6 +266,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     if (
       (request.target.kind === "node" ||
         request.target.kind === "label" ||
+        request.target.kind === "comment" ||
         request.target.kind === "sheet-port") &&
       selectionContainsContextTarget(selection, request.target)
     ) {
@@ -261,6 +278,8 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       args.onSelect({ kind: "node", id: request.target.id });
     } else if (request.target.kind === "label") {
       args.onSelect({ kind: "label", id: request.target.id });
+    } else if (request.target.kind === "comment") {
+      args.onSelect({ kind: "comment", id: request.target.id });
     } else if (request.target.kind === "sheet-port") {
       args.onSelect({ kind: "sheet-port", id: request.target.id });
     } else if (request.target.kind === "wire-connection") {

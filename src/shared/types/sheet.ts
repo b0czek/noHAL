@@ -44,6 +44,13 @@ export interface SheetLabel {
   rotation?: number;
 }
 
+export interface SheetComment {
+  id: string;
+  text: string;
+  position: XY;
+  rotation?: number;
+}
+
 export interface NodePinEndpointRef {
   kind: "node-pin";
   nodeId: string;
@@ -77,6 +84,7 @@ export interface SheetDefinition {
   nodes: SheetNodeInstance[];
   ports: SheetPort[];
   labels: SheetLabel[];
+  comments: SheetComment[];
   directConnections: DirectConnection[];
   labelAnchors: LabelAnchor[];
   hal?: {

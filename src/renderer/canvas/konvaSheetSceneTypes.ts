@@ -8,6 +8,7 @@ import type {
 export type SceneSelection =
   | { kind: "node"; id: string }
   | { kind: "label"; id: string }
+  | { kind: "comment"; id: string }
   | { kind: "sheet-port"; id: string }
   | { kind: "wire-connection"; id: string }
   | { kind: "multi"; nodeIds: string[]; labelIds: string[]; portIds: string[] }
@@ -16,6 +17,7 @@ export type SceneSelection =
 export type SceneContextMenuTarget =
   | { kind: "node"; id: string; nodeKind: "component" | "sheet" }
   | { kind: "label"; id: string }
+  | { kind: "comment"; id: string }
   | { kind: "sheet-port"; id: string }
   | { kind: "wire-connection"; connectionId: string }
   | { kind: "wire-waypoint"; connectionId: string; waypointIndex: number };
@@ -31,8 +33,10 @@ export interface SceneCallbacks {
   onOpenNode: (nodeId: string) => void;
   onEndpointClick: (endpoint: SheetEndpointRef) => void;
   onLabelClick: (labelId: string) => void;
+  onCommentClick: (commentId: string) => void;
   onMoveNode: (id: string, x: number, y: number) => void;
   onMoveLabel: (id: string, x: number, y: number) => void;
+  onMoveComment: (id: string, x: number, y: number) => void;
   onMoveSheetPort: (id: string, x: number, y: number) => void;
   onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
   onBackgroundClick?: (point: XY) => void;
