@@ -11,15 +11,13 @@ import { EditorUiProvider } from "../state/EditorUiProvider";
 import EditorTopbar from "./EditorTopbar";
 
 interface EditorScreenProps {
-  onOpenProjectCreationDialog: () => void;
+  onGoToLanding: () => void;
 }
 
 export default function EditorScreen(props: EditorScreenProps) {
   return (
     <EditorUiProvider>
-      <EditorScreenContent
-        onOpenProjectCreationDialog={props.onOpenProjectCreationDialog}
-      />
+      <EditorScreenContent onGoToLanding={props.onGoToLanding} />
     </EditorUiProvider>
   );
 }
@@ -29,9 +27,7 @@ function EditorScreenContent(props: EditorScreenProps) {
 
   return (
     <div class="app-shell">
-      <EditorTopbar
-        onOpenProjectCreationDialog={props.onOpenProjectCreationDialog}
-      />
+      <EditorTopbar onGoToLanding={props.onGoToLanding} />
 
       <main class="workspace">
         <Sidebar />

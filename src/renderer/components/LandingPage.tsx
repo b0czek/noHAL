@@ -1,18 +1,13 @@
 import { HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
 import { For, Show } from "solid-js";
 import type { RecentProjectEntry } from "../../shared/types";
+import type { LandingProjectFlowController } from "../app/useLandingProjectFlow";
 import { useI18n } from "../i18n";
 import "./LandingPage.css";
 
 interface LandingPageProps {
-  recentProjects: RecentProjectEntry[];
-  isRecentProjectsLoading: boolean;
-  isActionPending: boolean;
-  errorMessage: string | null;
-  onCreateProject: () => void;
-  onOpenProject: () => void;
-  onRefreshRecentProjects: () => void;
-  onOpenRecentProject: (projectPath: string) => void;
+  landing: LandingProjectFlowController;
+  onImportMachineConfiguration: () => void;
 }
 
 function recentProjectName(entry: RecentProjectEntry): string {
@@ -28,6 +23,7 @@ function recentProjectPathTail(projectPath: string): string {
 
 export default function LandingPage(props: LandingPageProps) {
   const { t, formatDateTime } = useI18n();
+  const landing = () => props.landing;
 
   return (
     <div class="landing-shell">
@@ -47,23 +43,31 @@ export default function LandingPage(props: LandingPageProps) {
             <button
               type="button"
               class="btn accent landing-action-btn"
-              disabled={props.isActionPending}
-              onClick={props.onCreateProject}
+              disabled={landing().isLandingActionPending()}
+              onClick={() => void landing().createBlankProject()}
             >
               <HiOutlineDocumentPlus size={18} aria-hidden="true" />
-              {t("landing.newProject")}
+              {t("projectCreation.createBlank")}
             </button>
             <button
               type="button"
               class="btn landing-action-btn"
-              disabled={props.isActionPending}
-              onClick={props.onOpenProject}
+              disabled={landing().isLandingActionPending()}
+              onClick={props.onImportMachineConfiguration}
+            >
+              {t("projectCreation.importMachineConfig")}
+            </button>
+            <button
+              type="button"
+              class="btn landing-action-btn"
+              disabled={landing().isLandingActionPending()}
+              onClick={() => void landing().openProject()}
             >
               <HiOutlineFolderOpen size={18} aria-hidden="true" />
               {t("landing.openProject")}
             </button>
           </div>
-          <Show when={props.errorMessage}>
+          <Show when={landing().landingError()}>
             {(message) => <div class="landing-error">{message()}</div>}
           </Show>
         </section>
@@ -74,15 +78,18 @@ export default function LandingPage(props: LandingPageProps) {
             <button
               type="button"
               class="mini"
-              onClick={props.onRefreshRecentProjects}
-              disabled={props.isRecentProjectsLoading || props.isActionPending}
+              onClick={() => void landing().refreshRecentProjects()}
+              disabled={
+                landing().isRecentProjectsLoading() ||
+                landing().isLandingActionPending()
+              }
             >
               {t("common.refresh")}
             </button>
           </div>
 
           <Show
-            when={!props.isRecentProjectsLoading}
+            when={!landing().isRecentProjectsLoading()}
             fallback={
               <div class="landing-recents-empty muted">
                 {t("landing.loadingRecentProjects")}
@@ -90,26 +97,22 @@ export default function LandingPage(props: LandingPageProps) {
             }
           >
             <Show
-              when={props.recentProjects.length > 0}
+              when={landing().recentProjects().length > 0}
               fallback={
                 <div class="landing-recents-empty muted">
-                  {t("landing.noRecentProjectsPrefix")}
-                  <span class="mono">{t("landing.newProject")}</span>
-                  {t("landing.noRecentProjectsOr")}
-                  <span class="mono">{t("landing.openProject")}</span>
-                  {t("landing.noRecentProjectsSuffix")}
+                  {t("landing.noRecentProjectsHint")}
                 </div>
               }
             >
               <div class="landing-recents-list">
-                <For each={props.recentProjects}>
+                <For each={landing().recentProjects()}>
                   {(entry) => (
                     <button
                       type="button"
                       class="landing-recent-row"
-                      disabled={props.isActionPending}
+                      disabled={landing().isLandingActionPending()}
                       onClick={() =>
-                        props.onOpenRecentProject(entry.projectPath)
+                        void landing().openRecentProject(entry.projectPath)
                       }
                       title={entry.projectPath}
                     >

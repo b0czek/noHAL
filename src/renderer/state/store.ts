@@ -348,6 +348,10 @@ export function createEditorStore(
       return performSaveProject();
     },
 
+    async confirmProceedWithUnsavedChanges(): Promise<boolean> {
+      return confirmProceedWithUnsavedChanges();
+    },
+
     async exportHal(): Promise<void> {
       const result = await window.nohal.exportHal(
         snapshotProjectForIpc(state.project),

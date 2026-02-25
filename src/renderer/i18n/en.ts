@@ -30,12 +30,11 @@ export const en = {
   "landing.openProject": "Open Project",
   "landing.recentProjects": "Recent Projects",
   "landing.loadingRecentProjects": "Loading recent projects...",
-  "landing.noRecentProjectsPrefix": "No recent projects yet. Use ",
-  "landing.noRecentProjectsOr": " or ",
-  "landing.noRecentProjectsSuffix": ".",
+  "landing.noRecentProjectsHint":
+    "No recent projects yet. Create a blank project, import a machine configuration, or open an existing project.",
   "landing.importedMachineStatus": "Imported machine configuration{suffix}",
 
-  "topbar.newProject": "New project",
+  "topbar.goToLanding": "Go to landing page",
   "topbar.openProject": "Open project",
   "topbar.saveProject": "Save project",
   "topbar.undo": "Undo",
