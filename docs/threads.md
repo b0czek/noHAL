@@ -20,7 +20,7 @@ Each HAL thread has:
 
 - `id` (stable identity)
 - `name` (for example `servo-thread`, `base-thread`)
-- `periodNs` (currently stored and editable, not yet emitted in HAL export)
+- `periodNs` (stored, editable, and exported in `loadrt threads`)
 - `floatMode` (`fp` or `nofp`)
 
 These are managed in the global `Threads` dialog.
@@ -90,6 +90,14 @@ Important:
 
 ## Export Behavior (current)
 
+HAL export emits real thread definitions from `project.halThreads` using
+`threads(9)` syntax:
+
+- `loadrt threads nameN=... periodN=... fpN=...`
+- up to 3 threads per `loadrt threads` line (multiple lines emitted if needed)
+- threads are exported fastest-to-slowest (`periodNs` ascending), as required by
+  `threads(9)`
+
 HAL export resolves `addf` threads in this order:
 
 1. Queue row `sheetThreadOutputId` (local to current sheet)
@@ -123,7 +131,7 @@ export time.
 
 Not implemented yet:
 
-- Exporting actual HAL thread definitions/setup (`periodNs` is not emitted yet)
 - Explicit validation UI for missing/invalid root bindings (export warns, but no
   dedicated validation panel yet)
-- Per-thread timing or `loadrt threads` generation from `project.halThreads`
+- Motion-specific thread parameter integration (for example `motmod`
+  `base_thread_fp`/period-related settings) is not generated yet

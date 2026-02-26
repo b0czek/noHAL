@@ -479,6 +479,40 @@ function buildRuntimeSections(
   });
 
   const loadrtLines: string[] = [];
+  const projectHalThreads = (project.halThreads ?? []).filter(
+    (thread) =>
+      thread.name.trim().length > 0 && Number.isFinite(thread.periodNs),
+  );
+  if (projectHalThreads.length > 0) {
+    const sortedHalThreads = [...projectHalThreads].sort((a, b) => {
+      const periodDiff = a.periodNs - b.periodNs;
+      if (periodDiff !== 0) return periodDiff;
+      return a.name.localeCompare(b.name);
+    });
+    const originalOrderKey = projectHalThreads
+      .map((thread) => `${thread.name}:${thread.periodNs}`)
+      .join("|");
+    const sortedOrderKey = sortedHalThreads
+      .map((thread) => `${thread.name}:${thread.periodNs}`)
+      .join("|");
+    if (originalOrderKey !== sortedOrderKey) {
+      ctx.warnings.push(
+        `HAL thread definitions were reordered fastest-to-slowest for 'loadrt threads' export (threads(9) requirement)`,
+      );
+    }
+    for (let offset = 0; offset < sortedHalThreads.length; offset += 3) {
+      const chunk = sortedHalThreads.slice(offset, offset + 3);
+      const args: string[] = [];
+      for (const [index, thread] of chunk.entries()) {
+        const slot = index + 1;
+        args.push(`name${slot}=${thread.name}`);
+        args.push(`period${slot}=${Math.max(1, Math.round(thread.periodNs))}`);
+        args.push(`fp${slot}=${thread.floatMode === "nofp" ? 0 : 1}`);
+      }
+      loadrtLines.push(`loadrt threads ${args.join(" ")}`);
+    }
+  }
+
   for (const [componentName, items] of sortedRtGroups) {
     const rule = rules[componentName];
     const combine = rule?.loadCombine ?? "names";
