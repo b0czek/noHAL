@@ -21,6 +21,7 @@ export type { SceneRenderState } from "./konvaSheetSceneTypes";
 const SCENE_POSITION_PADDING = 2400;
 const CAMERA_OVERSCROLL_PX = 220;
 const MARQUEE_SELECT_THRESHOLD_PX = 4;
+const CULL_SCREEN_MARGIN_PX = 180;
 
 type SelectionDragTarget = {
   kind: "node" | "label" | "comment" | "sheet-port";
@@ -35,6 +36,18 @@ type GroupDragSession = {
   anchorStartPos: Pt;
   appliedDx: number;
   appliedDy: number;
+};
+
+type Rect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+type CullModel = {
+  localRect: Rect;
+  rotationDeg: number;
 };
 
 export class KonvaSheetScene {
@@ -57,6 +70,9 @@ export class KonvaSheetScene {
   private labelGroups = new Map<string, Konva.Group>();
   private commentGroups = new Map<string, Konva.Group>();
   private portGroups = new Map<string, Konva.Group>();
+  private labelCullModels = new Map<string, CullModel>();
+  private commentCullModels = new Map<string, CullModel>();
+  private portCullModels = new Map<string, CullModel>();
   private cursorPos: Pt | null = null;
   private camera = { x: 0, y: 0, scale: 1 };
   private selectedConnectionId: string | null = null;
@@ -316,10 +332,135 @@ export class KonvaSheetScene {
     };
     this.wireWorld.setAttrs(transform);
     this.mainWorld.setAttrs(transform);
+    this.updateCullVisibility();
     this.wireLayer.batchDraw();
     this.mainLayer.batchDraw();
-    this.uiLayer.batchDraw();
     this.callbacks.onCameraChange?.({ ...this.camera });
+  }
+
+  private viewportWorldRect(): Rect {
+    const margin = CULL_SCREEN_MARGIN_PX;
+    return this.normalizedRect(
+      this.screenToWorld({ x: -margin, y: -margin }),
+      this.screenToWorld({
+        x: this.stage.width() + margin,
+        y: this.stage.height() + margin,
+      }),
+    );
+  }
+
+  private rectIntersects(a: Rect, b: Rect): boolean {
+    return (
+      a.x < b.x + b.width &&
+      a.x + a.width > b.x &&
+      a.y < b.y + b.height &&
+      a.y + a.height > b.y
+    );
+  }
+
+  private worldBoundsFromLocalRect(pos: Pt, model: CullModel): Rect {
+    const worldRect = {
+      x: pos.x + model.localRect.x,
+      y: pos.y + model.localRect.y,
+      width: model.localRect.width,
+      height: model.localRect.height,
+    };
+    if (Math.abs(model.rotationDeg) < 1e-6) return worldRect;
+    return this.rotatedRectBounds(worldRect, model.rotationDeg, pos);
+  }
+
+  private updateMainCullVisibility(): void {
+    const view = this.viewportWorldRect();
+
+    for (const [id, group] of this.nodeGroups) {
+      const layout = this.nodeLayouts.get(id);
+      if (!layout) continue;
+      const pos = group.position();
+      group.visible(
+        this.rectIntersects(view, {
+          x: pos.x,
+          y: pos.y,
+          width: layout.width,
+          height: layout.height,
+        }),
+      );
+    }
+
+    for (const [id, group] of this.labelGroups) {
+      const model = this.labelCullModels.get(id);
+      if (!model) continue;
+      group.visible(
+        this.rectIntersects(view, this.worldBoundsFromLocalRect(group.position(), model)),
+      );
+    }
+
+    for (const [id, group] of this.commentGroups) {
+      const model = this.commentCullModels.get(id);
+      if (!model) continue;
+      group.visible(
+        this.rectIntersects(view, this.worldBoundsFromLocalRect(group.position(), model)),
+      );
+    }
+
+    for (const [id, group] of this.portGroups) {
+      const model = this.portCullModels.get(id);
+      if (!model) continue;
+      group.visible(
+        this.rectIntersects(view, this.worldBoundsFromLocalRect(group.position(), model)),
+      );
+    }
+  }
+
+  private updateWireCullVisibility(): void {
+    const view = this.viewportWorldRect();
+    for (const child of this.wireWorld.getChildren()) {
+      const bounds = child.getAttr("cullBounds") as Rect | undefined;
+      if (!bounds) {
+        child.visible(true);
+        continue;
+      }
+      child.visible(this.rectIntersects(view, bounds));
+    }
+  }
+
+  private updateCullVisibility(): void {
+    this.updateMainCullVisibility();
+    this.updateWireCullVisibility();
+  }
+
+  private rebuildCullModels(state: SceneRenderState): void {
+    this.labelCullModels.clear();
+    this.commentCullModels.clear();
+    this.portCullModels.clear();
+
+    for (const label of state.sheet.labels) {
+      const size = this.estimateLabelSize(label.scope, label.name);
+      this.labelCullModels.set(label.id, {
+        localRect: {
+          x: 0,
+          y: -size.height / 2,
+          width: size.width,
+          height: size.height,
+        },
+        rotationDeg: label.rotation ?? 0,
+      });
+    }
+
+    for (const comment of state.sheet.comments) {
+      const size = this.estimateCommentSize(comment.text);
+      this.commentCullModels.set(comment.id, {
+        localRect: { x: 0, y: 0, width: size.width, height: size.height },
+        rotationDeg: comment.rotation ?? 0,
+      });
+    }
+
+    for (const port of state.sheet.ports) {
+      const rect = this.estimatePortBox(port, { x: 0, y: 0 });
+      this.portCullModels.set(port.id, {
+        localRect: rect,
+        rotationDeg: port.rotation ?? 0,
+      });
+    }
   }
 
   private estimateLabelSize(
@@ -575,7 +716,7 @@ export class KonvaSheetScene {
   private normalizedRect(
     a: Pt,
     b: Pt,
-  ): { x: number; y: number; width: number; height: number } {
+  ): Rect {
     const x1 = Math.min(a.x, b.x);
     const y1 = Math.min(a.y, b.y);
     const x2 = Math.max(a.x, b.x);
@@ -965,6 +1106,9 @@ export class KonvaSheetScene {
     this.labelGroups.clear();
     this.commentGroups.clear();
     this.portGroups.clear();
+    this.labelCullModels.clear();
+    this.commentCullModels.clear();
+    this.portCullModels.clear();
   }
   private wireContext(): KonvaSheetSceneWiresContext {
     return {
@@ -997,6 +1141,7 @@ export class KonvaSheetScene {
 
   private redrawWires(): void {
     redrawSceneWires(this.wireContext());
+    this.updateWireCullVisibility();
   }
 
   render(state: SceneRenderState): void {
@@ -1030,6 +1175,7 @@ export class KonvaSheetScene {
 
     const { nodeLayouts } = buildSheetSceneLayout(project, sheet);
     this.nodeLayouts = nodeLayouts;
+    this.rebuildCullModels(state);
     this.sceneBounds = this.computeSceneBounds(state);
     this.applyCamera();
     this.redrawWires();
@@ -1091,6 +1237,7 @@ export class KonvaSheetScene {
       commentGroups: this.commentGroups,
     });
 
+    this.updateMainCullVisibility();
     this.mainLayer.batchDraw();
   }
 }

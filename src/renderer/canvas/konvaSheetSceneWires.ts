@@ -41,6 +41,13 @@ type WireAttrs = {
   hitStrokeWidth?: number | "auto";
 };
 
+type CullBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export interface KonvaSheetSceneWiresContext {
   stage: Konva.Stage;
   wireLayer: Konva.Layer;
@@ -251,6 +258,32 @@ function makeBezierWire(a: Pt, b: Pt, attrs: WireAttrs): Konva.Line {
   });
 }
 
+function boundsFromPoints(points: Pt[], pad = 0): CullBounds {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const p of points) {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  if (!Number.isFinite(minX)) {
+    return { x: 0, y: 0, width: 0, height: 0 };
+  }
+  return {
+    x: minX - pad,
+    y: minY - pad,
+    width: maxX - minX + pad * 2,
+    height: maxY - minY + pad * 2,
+  };
+}
+
+function setCullBounds(node: Konva.Node, bounds: CullBounds): void {
+  node.setAttr("cullBounds", bounds);
+}
+
 function drawWire(
   ctx: KonvaSheetSceneWiresContext,
   a: Pt,
@@ -258,12 +291,20 @@ function drawWire(
   attrs: WireAttrs,
 ): Konva.Line {
   const line = makeBezierWire(a, b, attrs);
+  const hitStroke =
+    typeof attrs.hitStrokeWidth === "number" ? attrs.hitStrokeWidth : 0;
+  const pad = Math.max(attrs.strokeWidth, hitStroke) * 0.5 + 10;
+  setCullBounds(line, boundsFromPoints([a, b], pad));
   ctx.wireWorld.add(line);
   return line;
 }
 
 function updateWirePathShape(line: Konva.Line, points: Pt[]): void {
   if (points.length < 2) return;
+  const rawHitStroke = line.hitStrokeWidth();
+  const hitStroke = typeof rawHitStroke === "number" ? rawHitStroke : 0;
+  const pad = Math.max(line.strokeWidth(), hitStroke) * 0.5 + 10;
+  setCullBounds(line, boundsFromPoints(points, pad));
   if (points.length === 2) {
     const bez = makeBezierWire(points[0], points[1], {
       stroke: line.stroke(),
@@ -310,6 +351,10 @@ function drawWirePath(
     lineCap: "round",
     lineJoin: "round",
   });
+  const hitStroke =
+    typeof attrs.hitStrokeWidth === "number" ? attrs.hitStrokeWidth : 0;
+  const pad = Math.max(attrs.strokeWidth, hitStroke) * 0.5 + 10;
+  setCullBounds(line, boundsFromPoints(points, pad));
   ctx.wireWorld.add(line);
   return line;
 }
@@ -600,6 +645,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
           hitStrokeWidth: WAYPOINT_HANDLE_HIT_STROKE_WIDTH,
           dragBoundFunc: (pos) => ctx.clampPos(pos),
         });
+        setCullBounds(handle, boundsFromPoints([p], WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12));
 
         handle.on("click tap", (evt) => {
           evt.cancelBubble = true;
@@ -632,6 +678,10 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
         handle.on("dragmove", () => {
           const pos = ctx.clampPos(handle.position());
           handle.position(pos);
+          setCullBounds(
+            handle,
+            boundsFromPoints([pos], WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12),
+          );
           ctx.setSelectedConnectionId(conn.id);
           ctx.setSelectedWaypointIndex(i);
           routePoints[waypointIndex] = pos;
@@ -651,6 +701,10 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
         handle.on("dragend", () => {
           const pos = ctx.clampPos(handle.position());
           handle.position(pos);
+          setCullBounds(
+            handle,
+            boundsFromPoints([pos], WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12),
+          );
           ctx.setSelectedConnectionId(conn.id);
           ctx.setSelectedWaypointIndex(i);
           routePoints[waypointIndex] = pos;
@@ -683,13 +737,20 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
       : getLabelPosition(ctx, sheet, anchor.labelId);
     if (!ep || !labelPos) continue;
     ctx.wireWorld.add(
-      new Konva.Line({
-        points: [ep.x, ep.y, labelPos.x, labelPos.y],
-        stroke: LABEL_ANCHOR_STROKE,
-        strokeWidth: LABEL_ANCHOR_STROKE_WIDTH,
-        dash: LABEL_ANCHOR_DASH,
-        listening: false,
-      }),
+      (() => {
+        const line = new Konva.Line({
+          points: [ep.x, ep.y, labelPos.x, labelPos.y],
+          stroke: LABEL_ANCHOR_STROKE,
+          strokeWidth: LABEL_ANCHOR_STROKE_WIDTH,
+          dash: LABEL_ANCHOR_DASH,
+          listening: false,
+        });
+        setCullBounds(
+          line,
+          boundsFromPoints([ep, labelPos], LABEL_ANCHOR_STROKE_WIDTH * 0.5 + 8),
+        );
+        return line;
+      })(),
     );
   }
 
