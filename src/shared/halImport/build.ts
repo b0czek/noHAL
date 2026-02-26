@@ -89,7 +89,9 @@ function buildObservedFunctionsForImportedGroup(
   group: HalImportComponentGroup,
   draft: HalImportBuildOptions["draft"],
 ): ComponentFunctionDefinition[] {
-  const instanceNames = new Set(group.instances.map((item) => item.instanceName));
+  const instanceNames = new Set(
+    group.instances.map((item) => item.instanceName),
+  );
   const out: ComponentFunctionDefinition[] = [];
   const usedKeys = new Set<string>();
 
@@ -275,7 +277,10 @@ export function buildProjectFromHalImport(
       group.inferredHalComponentName,
       usedProjectComponentIds,
     );
-    const observedFunctions = buildObservedFunctionsForImportedGroup(group, draft);
+    const observedFunctions = buildObservedFunctionsForImportedGroup(
+      group,
+      draft,
+    );
     const generated: ComponentDefinition = {
       id: localId,
       name: group.inferredHalComponentName,

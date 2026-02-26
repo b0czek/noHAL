@@ -48,7 +48,8 @@ export default function ComponentNodeDialog() {
   };
   const addfTargetForFunction = (halSuffix: string) => {
     const instanceName = node()?.instanceName ?? "";
-    if (!instanceName) return halSuffix ? `{instance}.${halSuffix}` : "{instance}";
+    if (!instanceName)
+      return halSuffix ? `{instance}.${halSuffix}` : "{instance}";
     return halSuffix ? `${instanceName}.${halSuffix}` : instanceName;
   };
 
@@ -136,10 +137,7 @@ export default function ComponentNodeDialog() {
                   <div class="list compact">
                     <For each={componentFunctions()}>
                       {(fn) => (
-                        <div
-                          class="list-row"
-                          title={fn.doc ?? ""}
-                        >
+                        <div class="list-row" title={fn.doc ?? ""}>
                           <span class="chip type">{fn.floatMode}</span>
                           <span class="mono">
                             {fn.declaredName === "_"

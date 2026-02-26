@@ -389,10 +389,7 @@ function parseDocStatement(
   return { key, value: decodeCompString(stringToken) };
 }
 
-function uniqueFunctionKey(
-  preferred: string,
-  used: Set<string>,
-): string {
+function uniqueFunctionKey(preferred: string, used: Set<string>): string {
   let base = safeKey(preferred);
   if (!base) base = "default";
   let key = base;

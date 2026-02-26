@@ -151,8 +151,11 @@ export function createProjectActions(deps: EditorStoreActionContext) {
 
     addMachineIniSection(): void {
       deps.withProject((project) => {
-        const machineConfig =
-          project.machineConfig ?? (project.machineConfig = createEmptyMachineConfig());
+        let machineConfig = project.machineConfig;
+        if (!machineConfig) {
+          machineConfig = createEmptyMachineConfig();
+          project.machineConfig = machineConfig;
+        }
         const nextLine = Math.max(0, machineConfig.ini.lineCount) + 1;
         const nextName = nextUniqueIniLabel(
           "SECTION",
@@ -170,7 +173,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     },
 
     removeMachineIniSection(sectionIndex: number): void {
-      const section = deps.state.project.machineConfig?.ini.sections[sectionIndex];
+      const section =
+        deps.state.project.machineConfig?.ini.sections[sectionIndex];
       if (!section) {
         deps.setStatusT("store.status.noMachineConfigLoaded");
         return;
@@ -184,7 +188,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     },
 
     updateMachineIniSectionName(sectionIndex: number, name: string): void {
-      const existing = deps.state.project.machineConfig?.ini.sections[sectionIndex];
+      const existing =
+        deps.state.project.machineConfig?.ini.sections[sectionIndex];
       if (!existing) {
         deps.setStatusT("store.status.noMachineConfigLoaded");
         return;
@@ -198,7 +203,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     },
 
     addMachineIniField(sectionIndex: number): void {
-      const section = deps.state.project.machineConfig?.ini.sections[sectionIndex];
+      const section =
+        deps.state.project.machineConfig?.ini.sections[sectionIndex];
       if (!section) {
         deps.setStatusT("store.status.noMachineConfigLoaded");
         return;
@@ -233,7 +239,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         return;
       }
       deps.withProject((project) => {
-        const entries = project.machineConfig?.ini.sections[sectionIndex]?.entries;
+        const entries =
+          project.machineConfig?.ini.sections[sectionIndex]?.entries;
         if (!entries || !entries[entryIndex]) return;
         entries.splice(entryIndex, 1);
       });
@@ -290,7 +297,11 @@ export function createProjectActions(deps: EditorStoreActionContext) {
 
     addHalThread(): void {
       deps.withProject((project) => {
-        const threads = project.halThreads ?? (project.halThreads = []);
+        let threads = project.halThreads;
+        if (!threads) {
+          threads = [];
+          project.halThreads = threads;
+        }
         const nextName = nextUniqueThreadName(
           "servo-thread",
           threads.map((thread) => thread.name),
@@ -342,7 +353,9 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       }
 
       deps.withProject((project) => {
-        const target = project.halThreads?.find((thread) => thread.id === threadId);
+        const target = project.halThreads?.find(
+          (thread) => thread.id === threadId,
+        );
         if (target) target.name = trimmed;
       });
       deps.setStatusT("store.status.updatedHalThreadName", { name: trimmed });
@@ -358,7 +371,9 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       if (existing.periodNs === normalized) return;
 
       deps.withProject((project) => {
-        const target = project.halThreads?.find((thread) => thread.id === threadId);
+        const target = project.halThreads?.find(
+          (thread) => thread.id === threadId,
+        );
         if (target) target.periodNs = normalized;
       });
       deps.setStatusT("store.status.updatedHalThreadPeriod", {

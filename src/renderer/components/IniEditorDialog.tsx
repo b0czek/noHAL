@@ -4,7 +4,7 @@ import {
   HiOutlinePlus,
   HiOutlineTrash,
 } from "solid-icons/hi";
-import { For, Show, createSignal } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
@@ -57,11 +57,7 @@ export default function IniEditorDialog() {
                 <div class="modal-title">{t("iniEditor.title")}</div>
                 <div class="modal-sub">{t("iniEditor.subtitle")}</div>
               </div>
-              <button
-                type="button"
-                class="btn subtle"
-                onClick={closeIniEditor}
-              >
+              <button type="button" class="btn subtle" onClick={closeIniEditor}>
                 {t("common.close")}
               </button>
             </div>
@@ -138,7 +134,9 @@ export default function IniEditorDialog() {
                       </div>
                       <div class="ini-editor-sections">
                         <Show when={cfg().ini.sections.length === 0}>
-                          <div class="muted">{t("iniEditor.emptyDocument")}</div>
+                          <div class="muted">
+                            {t("iniEditor.emptyDocument")}
+                          </div>
                         </Show>
                         <For each={cfg().ini.sections}>
                           {(section, sectionIndex) => (
@@ -174,12 +172,17 @@ export default function IniEditorDialog() {
                                       type="button"
                                       class="btn subtle icon-btn"
                                       onClick={() =>
-                                        actions.addMachineIniField(sectionIndex())
+                                        actions.addMachineIniField(
+                                          sectionIndex(),
+                                        )
                                       }
                                       title={t("iniEditor.addField")}
                                       aria-label={t("iniEditor.addField")}
                                     >
-                                      <HiOutlinePlus size={16} aria-hidden="true" />
+                                      <HiOutlinePlus
+                                        size={16}
+                                        aria-hidden="true"
+                                      />
                                     </button>
                                     <button
                                       type="button"
@@ -200,7 +203,10 @@ export default function IniEditorDialog() {
                                       title={t("iniEditor.removeSection")}
                                       aria-label={t("iniEditor.removeSection")}
                                     >
-                                      <HiOutlineTrash size={16} aria-hidden="true" />
+                                      <HiOutlineTrash
+                                        size={16}
+                                        aria-hidden="true"
+                                      />
                                     </button>
                                   </div>
                                 </Show>
@@ -263,7 +269,9 @@ export default function IniEditorDialog() {
                                             );
                                           }}
                                           title={t("iniEditor.removeField")}
-                                          aria-label={t("iniEditor.removeField")}
+                                          aria-label={t(
+                                            "iniEditor.removeField",
+                                          )}
                                         >
                                           <HiOutlineTrash
                                             size={16}

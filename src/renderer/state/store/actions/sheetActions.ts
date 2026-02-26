@@ -10,6 +10,7 @@ import {
 } from "../../../../shared/graph";
 import { createId } from "../../../../shared/id";
 import { createSheet, createSheetPortDraft } from "../../../../shared/project";
+import { normalizeSheetThreadOutputs } from "../../../../shared/sheetThreads";
 import type {
   SheetAddfQueueStoredEntry,
   SheetDefinition,
@@ -332,7 +333,11 @@ export function createSheetActions(deps: EditorStoreActionContext) {
                     const nodeId = addfQueueEntryNodeId(entry);
                     return !(nodeId && movedNodeIdSet.has(nodeId));
                   }).length;
-          parentQueue.splice(insertAt, 0, makeAddfQueueNodeEntry(subsheetNodeId));
+          parentQueue.splice(
+            insertAt,
+            0,
+            makeAddfQueueNodeEntry(subsheetNodeId),
+          );
           if (!parentSheet.hal) parentSheet.hal = {};
           parentSheet.hal.addfQueue = normalizeAddfQueueEntries(parentQueue);
           child.hal = {

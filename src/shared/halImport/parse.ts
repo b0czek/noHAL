@@ -445,7 +445,10 @@ export function parseHalImportDraft(
       }
       const thread = tokens[2];
       const position = Number.parseInt(tokens[3] ?? "", 10);
-      const parsedTarget = splitAddfFunctionTarget(functionName, knownInstances);
+      const parsedTarget = splitAddfFunctionTarget(
+        functionName,
+        knownInstances,
+      );
       addfs.push({
         line: line.line,
         functionName,
