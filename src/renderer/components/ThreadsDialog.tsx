@@ -1,6 +1,7 @@
 import { HiOutlineTrash } from "solid-icons/hi";
 import { For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
+import { isRequiredHalThreadName } from "../../shared/project";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
@@ -11,6 +12,8 @@ export default function ThreadsDialog() {
   const editorUi = useEditorUi();
 
   const threads = () => state.project.halThreads ?? [];
+  const isMotmodOwnedThread = (name: string) =>
+    name === "servo-thread" || name === "base-thread";
 
   return (
     <Show when={editorUi.isThreadsDialogOpen()}>
@@ -69,6 +72,7 @@ export default function ThreadsDialog() {
                             type="text"
                             class="mono"
                             value={thread.name}
+                            disabled={isRequiredHalThreadName(thread.name)}
                             onChange={(evt) =>
                               actions.updateHalThreadName(
                                 thread.id,
@@ -129,10 +133,21 @@ export default function ThreadsDialog() {
                           </div>
                         </label>
                         <div class="threads-row-meta">
+                          <Show when={isMotmodOwnedThread(thread.name)}>
+                            <span
+                              class="chip threads-origin-chip"
+                              title={t("threadsDialog.loadedViaMotmod")}
+                            >
+                              motmod
+                            </span>
+                          </Show>
                           <button
                             type="button"
                             class="btn subtle icon-btn"
-                            disabled={threads().length <= 1}
+                            disabled={
+                              threads().length <= 1 ||
+                              isRequiredHalThreadName(thread.name)
+                            }
                             onClick={() => actions.removeHalThread(thread.id)}
                             title={t("threadsDialog.removeThread")}
                             aria-label={t("threadsDialog.removeThread")}

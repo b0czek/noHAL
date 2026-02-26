@@ -1,5 +1,5 @@
 import type { ComponentStore } from "./componentStore";
-import type { NoHALProject } from "./project";
+import type { NoHALProject, ProjectMotmodConfig } from "./project";
 
 export interface HalImportObservedPin {
   name: string;
@@ -66,6 +66,7 @@ export interface HalImportDraft {
   nets: HalImportNet[];
   setps: HalImportSetp[];
   addfs: HalImportAddf[];
+  motmod?: Partial<ProjectMotmodConfig>;
   warnings: string[];
 }
 

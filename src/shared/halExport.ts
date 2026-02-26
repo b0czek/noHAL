@@ -483,13 +483,67 @@ function buildRuntimeSections(
     (thread) =>
       thread.name.trim().length > 0 && Number.isFinite(thread.periodNs),
   );
-  if (projectHalThreads.length > 0) {
-    const sortedHalThreads = [...projectHalThreads].sort((a, b) => {
+  const motionOwnedThreadNames = new Set(["servo-thread", "base-thread"]);
+  const halThreadByName = new Map(
+    projectHalThreads.map((thread) => [thread.name, thread]),
+  );
+  const motmodRule = rules.motmod;
+  const motmodExtraArgs = (motmodRule?.loadrtArgs ?? [])
+    .map((arg) => `${arg}`.trim())
+    .filter(Boolean);
+  const motmodCfg = project.motmod;
+  const emitMotmodLoadrt = (): void => {
+    const servoThread = halThreadByName.get("servo-thread");
+    const baseThread = halThreadByName.get("base-thread");
+    if (!servoThread) {
+      ctx.warnings.push(
+        `motmod export could not find HAL thread 'servo-thread'; omitting servo/traj period arguments`,
+      );
+    }
+    const args: string[] = [];
+    if (servoThread) {
+      const servoPeriodNs = Math.max(1, Math.round(servoThread.periodNs));
+      args.push(`servo_period_nsec=${servoPeriodNs}`);
+      const trajPeriodNs = Math.max(
+        0,
+        Math.round(motmodCfg?.trajPeriodNs ?? 0),
+      );
+      if (trajPeriodNs > 0) {
+        args.push(`traj_period_nsec=${trajPeriodNs}`);
+      }
+    }
+    if (baseThread) {
+      args.push(
+        `base_period_nsec=${Math.max(1, Math.round(baseThread.periodNs))}`,
+      );
+      args.push(`base_thread_fp=${baseThread.floatMode === "nofp" ? 0 : 1}`);
+    }
+    if (motmodCfg) {
+      args.push(`num_joints=${Math.max(1, Math.round(motmodCfg.numJoints))}`);
+      args.push(`num_dio=${Math.max(0, Math.round(motmodCfg.numDio))}`);
+      args.push(`num_aio=${Math.max(0, Math.round(motmodCfg.numAio))}`);
+      args.push(
+        `num_spindles=${Math.max(1, Math.round(motmodCfg.numSpindles))}`,
+      );
+      args.push(
+        `num_misc_error=${Math.max(0, Math.round(motmodCfg.numMiscError))}`,
+      );
+    }
+    args.push(...motmodExtraArgs);
+    loadrtLines.push(`loadrt motmod ${args.join(" ")}`.trim());
+  };
+
+  emitMotmodLoadrt();
+  const exportableHalThreads = projectHalThreads.filter(
+    (thread) => !motionOwnedThreadNames.has(thread.name),
+  );
+  if (exportableHalThreads.length > 0) {
+    const sortedHalThreads = [...exportableHalThreads].sort((a, b) => {
       const periodDiff = a.periodNs - b.periodNs;
       if (periodDiff !== 0) return periodDiff;
       return a.name.localeCompare(b.name);
     });
-    const originalOrderKey = projectHalThreads
+    const originalOrderKey = exportableHalThreads
       .map((thread) => `${thread.name}:${thread.periodNs}`)
       .join("|");
     const sortedOrderKey = sortedHalThreads
@@ -519,6 +573,16 @@ function buildRuntimeSections(
     const extraArgs = (rule?.loadrtArgs ?? [])
       .map((arg) => `${arg}`.trim())
       .filter(Boolean);
+
+    if (componentName === "motmod") {
+      if (items.length > 1) {
+        ctx.warnings.push(
+          `Multiple motmod instances detected (${items.length}); exporting a single 'loadrt motmod' line`,
+        );
+      }
+      continue;
+    }
+
     const sortedNames = items
       .map((item) => item.instancePath)
       .sort((a, b) => a.localeCompare(b));

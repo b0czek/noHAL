@@ -40,6 +40,7 @@ export const en = {
   "topbar.undo": "Undo",
   "topbar.redo": "Redo",
   "topbar.build": "Build",
+  "topbar.projectSettings": "Project Settings",
   "topbar.threads": "Threads",
   "topbar.iniEditor": "INI Editor",
   "topbar.componentStore": "Component Store",
@@ -110,6 +111,23 @@ export const en = {
   "threadsDialog.floatMode": "Float Support",
   "threadsDialog.floatFp": "fp",
   "threadsDialog.floatNoFp": "nofp",
+  "threadsDialog.loadedViaMotmod": "Loaded via motmod",
+
+  "projectSettings.ariaLabel": "Project Settings",
+  "projectSettings.title": "Project Settings",
+  "projectSettings.tabs": "Tabs",
+  "projectSettings.tabMotmod": "motmod",
+  "projectSettings.motmodTitle": "Motion Module (motmod)",
+  "projectSettings.motmodHelp": "Configure common motmod loadrt parameters.",
+  "projectSettings.motmod.numJoints": "num_joints",
+  "projectSettings.motmod.numDio": "num_dio",
+  "projectSettings.motmod.numAio": "num_aio",
+  "projectSettings.motmod.trajPeriodNs": "traj_period_nsec (0 = servo)",
+  "projectSettings.motmod.numSpindles": "num_spindles",
+  "projectSettings.motmod.numMiscError": "num_misc_error",
+  "projectSettings.motmod.threadsDerived": "Derived From Threads",
+  "projectSettings.motmod.threadsDerivedHelp":
+    "servo/base periods and base_thread_fp come from HAL Threads (servo-thread/base-thread).",
 
   "sheetSettings.ariaLabel": "Sheet Settings",
   "sheetSettings.title": "Sheet Settings",
@@ -308,8 +326,13 @@ export const en = {
   "store.status.updatedHalThreadPeriod": "Updated HAL thread period ({name})",
   "store.status.updatedHalThreadFloatMode":
     "Updated HAL thread float mode ({name}) to {mode}",
+  "store.status.updatedMotmodConfig": "Updated motmod settings",
   "store.status.cannotRemoveLastHalThread":
     "At least one HAL thread must exist",
+  "store.status.cannotRemoveRequiredHalThread":
+    "Cannot remove required HAL thread {name}",
+  "store.status.cannotRenameRequiredHalThread":
+    "Cannot rename required HAL thread {name}",
   "store.status.duplicateHalThreadName":
     "HAL thread name already exists: {name}",
   "store.status.noMachineConfigLoaded":

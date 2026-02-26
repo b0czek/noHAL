@@ -5,7 +5,7 @@ import {
   normalizeAddfQueueEntries,
 } from "../addfQueue";
 import { createId, safeKey, slugify } from "../id";
-import { createEmptyProject } from "../project";
+import { createDefaultMotmodConfig, createEmptyProject } from "../project";
 import { getSheetThreadOutputs } from "../sheetThreads";
 import type {
   ComponentDefinition,
@@ -140,6 +140,12 @@ export function buildProjectFromHalImport(
       : "Imported HAL");
   const project = createEmptyProject(fileBase || "Imported HAL");
   project.name = fileBase || "Imported HAL";
+  if (draft.motmod) {
+    project.motmod = {
+      ...createDefaultMotmodConfig(),
+      ...draft.motmod,
+    };
+  }
 
   const rootSheet = project.sheets[project.rootSheetId];
   rootSheet.name = "Top";

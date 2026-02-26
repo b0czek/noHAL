@@ -43,6 +43,15 @@ export interface HalExportConfig {
   addf?: HalExportAddfConfig;
 }
 
+export interface ProjectMotmodConfig {
+  numJoints: number;
+  numDio: number;
+  numAio: number;
+  numSpindles: number;
+  numMiscError: number;
+  trajPeriodNs: number;
+}
+
 export interface NoHALProject {
   format: "nohal-project";
   version: 1;
@@ -56,6 +65,7 @@ export interface NoHALProject {
   library: ProjectLibrary;
   halThreads?: HalThreadDefinition[];
   machineConfig?: ProjectMachineConfig;
+  motmod?: ProjectMotmodConfig;
   halExport?: HalExportConfig;
   ui: {
     activeSheetId: string;

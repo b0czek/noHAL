@@ -9,9 +9,16 @@ import type {
   HalThreadDefinition,
   NoHALProject,
   ProjectMachineConfig,
+  ProjectMotmodConfig,
   SheetDefinition,
   SheetPort,
 } from "./types";
+
+export const REQUIRED_HAL_THREAD_NAME = "servo-thread";
+
+export function isRequiredHalThreadName(name: string): boolean {
+  return name.trim() === REQUIRED_HAL_THREAD_NAME;
+}
 
 function createDefaultTopSheet(): SheetDefinition {
   return {
@@ -34,7 +41,7 @@ export function createDefaultHalThreads(): HalThreadDefinition[] {
   return [
     {
       id: createId("thread"),
-      name: "servo-thread",
+      name: REQUIRED_HAL_THREAD_NAME,
       periodNs: 1_000_000,
       floatMode: "fp",
     },
@@ -66,6 +73,15 @@ function normalizeHalThreads(value: unknown): HalThreadDefinition[] {
     usedNames.add(name);
   }
 
+  if (!usedNames.has(REQUIRED_HAL_THREAD_NAME)) {
+    out.unshift({
+      id: createId("thread"),
+      name: REQUIRED_HAL_THREAD_NAME,
+      periodNs: 1_000_000,
+      floatMode: "fp",
+    });
+  }
+
   if (out.length > 0) return out;
   return createDefaultHalThreads();
 }
@@ -80,6 +96,45 @@ export function createEmptyMachineConfig(): ProjectMachineConfig {
       warnings: [],
     },
     halSources: [],
+  };
+}
+
+export function createDefaultMotmodConfig(): ProjectMotmodConfig {
+  return {
+    numJoints: 3,
+    numDio: 4,
+    numAio: 4,
+    numSpindles: 1,
+    numMiscError: 0,
+    trajPeriodNs: 0,
+  };
+}
+
+function normalizeMotmodConfig(value: unknown): ProjectMotmodConfig {
+  const raw = value && typeof value === "object" ? value : {};
+  const candidate = raw as Partial<ProjectMotmodConfig>;
+  const defaults = createDefaultMotmodConfig();
+  const clampInt = (n: unknown, fallback: number, min = 0, max = 9999) => {
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, Math.round(n as number)));
+  };
+  return {
+    numJoints: clampInt(candidate.numJoints, defaults.numJoints, 1, 64),
+    numDio: clampInt(candidate.numDio, defaults.numDio, 0, 256),
+    numAio: clampInt(candidate.numAio, defaults.numAio, 0, 256),
+    numSpindles: clampInt(candidate.numSpindles, defaults.numSpindles, 1, 16),
+    numMiscError: clampInt(
+      candidate.numMiscError,
+      defaults.numMiscError,
+      0,
+      256,
+    ),
+    trajPeriodNs: clampInt(
+      candidate.trajPeriodNs,
+      defaults.trajPeriodNs,
+      0,
+      100_000_000,
+    ),
   };
 }
 
@@ -102,6 +157,7 @@ export function createEmptyProject(name: string): NoHALProject {
     },
     halThreads: createDefaultHalThreads(),
     machineConfig: createEmptyMachineConfig(),
+    motmod: createDefaultMotmodConfig(),
     ui: {
       activeSheetId: top.id,
     },
@@ -128,6 +184,7 @@ export function parseNoHALProject(content: string): NoHALProject {
   assertProjectShape(parsed);
   const project = parsed as NoHALProject;
   project.halThreads = normalizeHalThreads(project.halThreads);
+  project.motmod = normalizeMotmodConfig(project.motmod);
   for (const sheet of Object.values(project.sheets)) {
     if (!Array.isArray((sheet as Partial<SheetDefinition>).comments)) {
       (sheet as SheetDefinition).comments = [];

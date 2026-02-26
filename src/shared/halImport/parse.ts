@@ -362,6 +362,7 @@ export function parseHalImportDraft(
   const nets: HalImportNet[] = [];
   const setps: HalImportDraft["setps"] = [];
   const addfs: HalImportDraft["addfs"] = [];
+  let motmodDraft: HalImportDraft["motmod"] | undefined;
 
   for (const line of normalized) {
     const tokens = tokenizeHal(line.text);
@@ -376,6 +377,27 @@ export function parseHalImportDraft(
         continue;
       }
       const args = parseKeyValueArgs(tokens.slice(2));
+      if (componentName === "motmod") {
+        const parseIntArg = (key: string): number | undefined => {
+          const value = Number.parseInt(args[key] ?? "", 10);
+          return Number.isFinite(value) ? value : undefined;
+        };
+        const numJoints = parseIntArg("num_joints");
+        const numDio = parseIntArg("num_dio");
+        const numAio = parseIntArg("num_aio");
+        const numSpindles = parseIntArg("num_spindles");
+        const numMiscError = parseIntArg("num_misc_error");
+        const trajPeriodNs = parseIntArg("traj_period_nsec");
+        motmodDraft = {
+          ...(motmodDraft ?? {}),
+          ...(numJoints !== undefined ? { numJoints } : {}),
+          ...(numDio !== undefined ? { numDio } : {}),
+          ...(numAio !== undefined ? { numAio } : {}),
+          ...(numSpindles !== undefined ? { numSpindles } : {}),
+          ...(numMiscError !== undefined ? { numMiscError } : {}),
+          ...(trajPeriodNs !== undefined ? { trajPeriodNs } : {}),
+        };
+      }
       const namesArg = args.names?.trim();
       if (namesArg) {
         for (const rawName of namesArg.split(",")) {
@@ -667,6 +689,7 @@ export function parseHalImportDraft(
     nets,
     setps,
     addfs,
+    ...(motmodDraft ? { motmod: motmodDraft } : {}),
     warnings,
   };
 }

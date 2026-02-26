@@ -1090,12 +1090,44 @@ textarea {
   width: min(920px, calc(100vw - 36px));
 }
 
+.project-settings-dialog {
+  width: min(1040px, calc(100vw - 36px));
+}
+
 .ini-editor-body {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.project-settings-body {
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+}
+
 .threads-dialog-body {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.project-settings-sidebar {
+  min-width: 0;
+}
+
+.project-settings-content {
+  min-width: 0;
+}
+
+.project-settings-form-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  max-width: 420px;
+}
+
+.project-settings-note {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.015);
 }
 
 .threads-dialog-panel-header {
@@ -1153,6 +1185,13 @@ textarea {
   align-items: center;
   gap: 6px;
   justify-self: end;
+}
+
+.threads-origin-chip {
+  opacity: 0.6;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
 }
 
 .threads-row-index {

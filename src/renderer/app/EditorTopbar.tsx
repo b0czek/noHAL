@@ -86,6 +86,13 @@ export default function EditorTopbar(props: EditorTopbarProps) {
       </div>
 
       <div class="toolbar-group">
+        <button
+          type="button"
+          class="btn"
+          onClick={editorUi.openProjectSettings}
+        >
+          {t("topbar.projectSettings")}
+        </button>
         <button type="button" class="btn" onClick={editorUi.openThreadsDialog}>
           {t("topbar.threads")}
         </button>

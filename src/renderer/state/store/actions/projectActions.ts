@@ -1,5 +1,9 @@
 import { createId } from "../../../../shared/id";
-import { createEmptyMachineConfig } from "../../../../shared/project";
+import {
+  createDefaultMotmodConfig,
+  createEmptyMachineConfig,
+  isRequiredHalThreadName,
+} from "../../../../shared/project";
 import type {
   HalThreadDefinition,
   LinuxCncIniEntry,
@@ -325,6 +329,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       }
       const existing = currentThreads.find((thread) => thread.id === threadId);
       if (!existing) return;
+      if (isRequiredHalThreadName(existing.name)) {
+        deps.setStatusT("store.status.cannotRemoveRequiredHalThread", {
+          name: existing.name,
+        });
+        return;
+      }
 
       deps.withProject((project) => {
         const threads = project.halThreads;
@@ -349,6 +359,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       const threads = deps.state.project.halThreads ?? [];
       const existing = threads.find((thread) => thread.id === threadId);
       if (!existing) return;
+      if (isRequiredHalThreadName(existing.name) && trimmed !== existing.name) {
+        deps.setStatusT("store.status.cannotRenameRequiredHalThread", {
+          name: existing.name,
+        });
+        return;
+      }
       if (!trimmed || trimmed === existing.name) return;
       const duplicate = threads.some(
         (thread) => thread.id !== threadId && thread.name === trimmed,
@@ -406,6 +422,33 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         name: existing.name,
         mode: floatMode,
       });
+    },
+
+    updateMotmodNumericConfig(
+      key:
+        | "numJoints"
+        | "numDio"
+        | "numAio"
+        | "numSpindles"
+        | "numMiscError"
+        | "trajPeriodNs",
+      value: number,
+    ): void {
+      if (!Number.isFinite(value)) return;
+      const rounded = Math.round(value);
+      const normalized =
+        key === "numJoints"
+          ? Math.max(1, rounded)
+          : key === "numSpindles"
+            ? Math.max(1, rounded)
+            : Math.max(0, rounded);
+      deps.withProject((project) => {
+        const motmod = project.motmod ?? createDefaultMotmodConfig();
+        project.motmod = motmod;
+        if (motmod[key] === normalized) return;
+        motmod[key] = normalized;
+      });
+      deps.setStatusT("store.status.updatedMotmodConfig");
     },
   };
 }
