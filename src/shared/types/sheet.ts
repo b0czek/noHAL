@@ -71,6 +71,7 @@ export interface DirectConnection {
   id: string;
   a: SheetEndpointRef;
   b: SheetEndpointRef;
+  signalName?: string;
   waypoints?: XY[];
 }
 

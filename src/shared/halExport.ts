@@ -32,7 +32,7 @@ interface EndpointRecord {
 }
 
 interface Hint {
-  kind: "global" | "hierarchical" | "local" | "boundary";
+  kind: "connection" | "global" | "hierarchical" | "local" | "boundary";
   name: string;
 }
 
@@ -271,6 +271,11 @@ function traverseSheetInstance(
     const a = localEndpointRefToId(localIds, conn.a);
     const b = localEndpointRefToId(localIds, conn.b);
     ctx.union.union(a, b);
+    const explicitSignalName = conn.signalName?.trim();
+    if (explicitSignalName) {
+      addHint(ctx, a, { kind: "connection", name: explicitSignalName });
+      addHint(ctx, b, { kind: "connection", name: explicitSignalName });
+    }
   }
 
   const labelsById = new Map(sheet.labels.map((label) => [label.id, label]));
@@ -373,6 +378,7 @@ function chooseNetName(hints: Hint[], fallbackIndex: number): string {
     new Map(hints.map((hint) => [`${hint.kind}:${hint.name}`, hint])).values(),
   );
   const preferred =
+    unique.find((h) => h.kind === "connection") ??
     unique.find((h) => h.kind === "global") ??
     unique.find((h) => h.kind === "boundary") ??
     unique.find((h) => h.kind === "hierarchical") ??

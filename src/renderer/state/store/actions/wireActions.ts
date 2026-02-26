@@ -122,6 +122,21 @@ export function createWireActions(deps: EditorStoreActionContext) {
       deps.setStatusT("store.status.updatedWireRoute");
     },
 
+    updateDirectConnectionSignalName(
+      connectionId: string,
+      signalName: string,
+    ): void {
+      const activeSheetId = deps.state.activeSheetId;
+      const normalized = signalName.trim();
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const conn = sheet.directConnections.find((c) => c.id === connectionId);
+        if (!conn) return;
+        if (normalized.length > 0) conn.signalName = normalized;
+        else delete conn.signalName;
+      });
+    },
+
     removeLabelAnchor(anchorId: string): void {
       const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {

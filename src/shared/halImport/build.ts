@@ -1360,6 +1360,7 @@ export function buildProjectFromHalImport(
               nodeId: edge.b.nodeId,
               pinKey: edge.b.pinKey,
             },
+            signalName: net.name,
           });
         }
         return;

@@ -293,6 +293,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
             id: conn.id,
             a: cloneEndpoint(conn.a),
             b: cloneEndpoint(conn.b),
+            ...(conn.signalName ? { signalName: conn.signalName } : {}),
             ...(conn.waypoints
               ? { waypoints: conn.waypoints.map((p) => ({ x: p.x, y: p.y })) }
               : {}),
@@ -304,6 +305,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
             id: conn.id,
             a: cloneEndpoint(conn.a),
             b: cloneEndpoint(conn.b),
+            ...(conn.signalName ? { signalName: conn.signalName } : {}),
             ...(conn.waypoints
               ? { waypoints: conn.waypoints.map((p) => ({ x: p.x, y: p.y })) }
               : {}),
@@ -320,6 +322,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
           id: conn.id,
           a: aMoved ? subsheetEndpoint : cloneEndpoint(conn.a),
           b: bMoved ? subsheetEndpoint : cloneEndpoint(conn.b),
+          ...(conn.signalName ? { signalName: conn.signalName } : {}),
         };
         parentConnectionsNext.push(parentConn);
         parentConnectionPairs.add(
@@ -334,6 +337,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
           b: bMoved
             ? cloneEndpoint(conn.b)
             : ({ kind: "sheet-port", portId: port.id } as const),
+          ...(conn.signalName ? { signalName: conn.signalName } : {}),
         });
       }
 

@@ -6,6 +6,7 @@ export const en = {
   "common.back": "Back",
   "common.remove": "remove",
   "common.name": "Name",
+  "common.signalName": "Signal Name",
   "common.text": "Text",
   "common.scope": "Scope",
   "common.direction": "Direction",

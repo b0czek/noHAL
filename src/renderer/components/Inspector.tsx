@@ -208,6 +208,19 @@ export default function Inspector() {
         <Show when={selectedConnection()}>
           {(conn) => (
             <div class="inspector-group">
+              <label>
+                {t("common.signalName")}
+                <input
+                  value={conn().signalName ?? ""}
+                  placeholder={t("componentDialog.optionalPlaceholder")}
+                  onInput={(e) =>
+                    actions.updateDirectConnectionSignalName(
+                      conn().id,
+                      e.currentTarget.value,
+                    )
+                  }
+                />
+              </label>
               <div class="field-label-group">
                 {t("inspector.directConnections")}
                 <div class="mono">{conn().id}</div>
@@ -251,7 +264,7 @@ export default function Inspector() {
                 >
                   {t("common.remove")}
                 </button>
-                <span class="mono">{conn.id}</span>
+                <span class="mono">{conn.signalName?.trim() || conn.id}</span>
               </div>
             )}
           </For>
