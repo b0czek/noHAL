@@ -130,6 +130,48 @@ function splitHalPath(
   };
 }
 
+function splitAddfFunctionTarget(
+  rawTarget: string,
+  knownInstances: Set<string>,
+): { instanceName: string; functionSuffix?: string } | null {
+  const candidates = [...knownInstances]
+    .filter(
+      (instance) =>
+        rawTarget === instance || rawTarget.startsWith(`${instance}.`),
+    )
+    .sort((a, b) => b.length - a.length);
+  if (candidates.length > 0) {
+    const instanceName = candidates[0];
+    if (rawTarget === instanceName) return { instanceName };
+    const functionSuffix = rawTarget.slice(instanceName.length + 1);
+    return {
+      instanceName,
+      ...(functionSuffix ? { functionSuffix } : {}),
+    };
+  }
+
+  const segments = rawTarget.split(".");
+  if (segments.length === 0 || !segments[0]) return null;
+  if (segments.length === 1) {
+    return { instanceName: rawTarget };
+  }
+  if (segments.length === 2 && /^\d+$/.test(segments[1] ?? "")) {
+    return { instanceName: rawTarget };
+  }
+  if (segments.length >= 3 && /^\d+$/.test(segments[1] ?? "")) {
+    const functionSuffix = segments.slice(2).join(".");
+    return {
+      instanceName: `${segments[0]}.${segments[1]}`,
+      ...(functionSuffix ? { functionSuffix } : {}),
+    };
+  }
+  const functionSuffix = segments.slice(1).join(".");
+  return {
+    instanceName: segments[0],
+    ...(functionSuffix ? { functionSuffix } : {}),
+  };
+}
+
 function inferComponentName(instanceName: string): string {
   const segments = instanceName.split(".");
   if (segments.length >= 2 && /^\d+$/.test(segments[1] ?? ""))
@@ -403,9 +445,17 @@ export function parseHalImportDraft(
       }
       const thread = tokens[2];
       const position = Number.parseInt(tokens[3] ?? "", 10);
+      const parsedTarget = splitAddfFunctionTarget(functionName, knownInstances);
       addfs.push({
         line: line.line,
         functionName,
+        ...(parsedTarget ? { instanceName: parsedTarget.instanceName } : {}),
+        ...(parsedTarget?.functionSuffix
+          ? { functionSuffix: parsedTarget.functionSuffix }
+          : {}),
+        ...(parsedTarget
+          ? { isDefaultFunction: !parsedTarget.functionSuffix }
+          : {}),
         ...(thread ? { thread } : {}),
         ...(Number.isFinite(position) ? { position } : {}),
       });

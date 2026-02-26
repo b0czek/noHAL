@@ -1,6 +1,7 @@
 import { safeKey, slugify } from "./id";
 import type {
   ComponentDefinition,
+  ComponentFunctionDefinition,
   ComponentParamDefinition,
   ComponentPinDefinition,
   HalValueType,
@@ -388,6 +389,57 @@ function parseDocStatement(
   return { key, value: decodeCompString(stringToken) };
 }
 
+function uniqueFunctionKey(
+  preferred: string,
+  used: Set<string>,
+): string {
+  let base = safeKey(preferred);
+  if (!base) base = "default";
+  let key = base;
+  let idx = 2;
+  while (used.has(key)) {
+    key = `${base}_${idx}`;
+    idx += 1;
+  }
+  used.add(key);
+  return key;
+}
+
+function parseFunctionStatement(
+  stmt: TokenizedStatement,
+  usedKeys: Set<string>,
+): ComponentFunctionDefinition {
+  const { tokens, raw } = stmt;
+  if (tokens.length < 2)
+    throw new Error(`Malformed function declaration: ${raw}`);
+
+  const declaredName = tokens[1] ?? "";
+  const halSuffix = normalizeHalIdentifierName(declaredName);
+
+  let idx = 2;
+  let floatMode: ComponentFunctionDefinition["floatMode"] = "fp";
+  if (tokens[idx] === "fp" || tokens[idx] === "nofp") {
+    floatMode = tokens[idx] as ComponentFunctionDefinition["floatMode"];
+    idx += 1;
+  }
+
+  let doc: string | undefined;
+  if (idx < tokens.length) {
+    const maybeDoc = tokens
+      .slice(idx)
+      .find((token) => token.startsWith('"') || token.includes('"""'));
+    if (maybeDoc) doc = decodeCompString(maybeDoc);
+  }
+
+  return {
+    key: uniqueFunctionKey(halSuffix || "default", usedKeys),
+    declaredName,
+    halSuffix,
+    floatMode,
+    doc,
+  };
+}
+
 function toComponentId(halComponentName: string, filePath?: string): string {
   const base = filePath
     ? filePath.endsWith(".comp")
@@ -406,6 +458,8 @@ export function parseCompComponentDefinition(
   const warnings: string[] = [];
   const pins: ComponentPinDefinition[] = [];
   const params: ComponentParamDefinition[] = [];
+  const functions: ComponentFunctionDefinition[] = [];
+  const functionKeys = new Set<string>();
   const docs: ComponentDefinition["docs"] = {};
   const runtimeOptions: Record<string, string | number | boolean> = {};
   let componentName: string | null = null;
@@ -437,6 +491,11 @@ export function parseCompComponentDefinition(
       params.push(
         parsePinOrParam(stmt, "param", warnings) as ComponentParamDefinition,
       );
+      continue;
+    }
+
+    if (head === "function") {
+      functions.push(parseFunctionStatement(stmt, functionKeys));
       continue;
     }
 
@@ -479,6 +538,11 @@ export function parseCompComponentDefinition(
   }
 
   const finalComponentName = componentName ?? "component";
+  if (runtimeOptions.userspace && functions.length > 0) {
+    warnings.push(
+      "Userspace components do not support `function` declarations (LinuxCNC comp syntax); parsed metadata was kept for reference",
+    );
+  }
 
   return {
     id: toComponentId(finalComponentName, filePath),
@@ -489,6 +553,7 @@ export function parseCompComponentDefinition(
     docs,
     pins,
     params,
+    functions,
     runtime: {
       kind: runtimeOptions.userspace ? "userspace" : "rt",
       options: runtimeOptions,

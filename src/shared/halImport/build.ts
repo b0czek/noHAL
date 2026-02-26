@@ -1343,10 +1343,20 @@ export function buildProjectFromHalImport(
 
   const addfQueue: string[] = [];
   const seenQueueNodes = new Set<string>();
+  const warnedCollapsedAddfInstances = new Set<string>();
   for (const addf of draft.addfs) {
-    const nodeId = nodeIdByInstanceName.get(addf.functionName);
+    const addfInstanceName = addf.instanceName ?? addf.functionName;
+    const nodeId = nodeIdByInstanceName.get(addfInstanceName);
     if (!nodeId) continue;
-    if (seenQueueNodes.has(nodeId)) continue;
+    if (seenQueueNodes.has(nodeId)) {
+      if (!warnedCollapsedAddfInstances.has(addfInstanceName)) {
+        warnedCollapsedAddfInstances.add(addfInstanceName);
+        warnings.push(
+          `Multiple addf functions for instance '${addfInstanceName}' are not represented separately in NoHAL's sheet addf queue yet; keeping only the first imported entry`,
+        );
+      }
+      continue;
+    }
     seenQueueNodes.add(nodeId);
     addfQueue.push(nodeId);
   }

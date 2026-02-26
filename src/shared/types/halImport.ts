@@ -50,6 +50,9 @@ export interface HalImportSetp {
 export interface HalImportAddf {
   line: number;
   functionName: string;
+  instanceName?: string;
+  functionSuffix?: string;
+  isDefaultFunction?: boolean;
   thread?: string;
   position?: number;
 }

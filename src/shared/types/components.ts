@@ -22,6 +22,16 @@ export interface ComponentParamDefinition {
   defaultValue?: string;
 }
 
+export type ComponentFunctionFloatMode = "fp" | "nofp";
+
+export interface ComponentFunctionDefinition {
+  key: string;
+  declaredName: string;
+  halSuffix: string;
+  floatMode: ComponentFunctionFloatMode;
+  doc?: string;
+}
+
 export interface ComponentDefinition {
   id: string;
   name: string;
@@ -39,6 +49,7 @@ export interface ComponentDefinition {
   };
   pins: ComponentPinDefinition[];
   params: ComponentParamDefinition[];
+  functions?: ComponentFunctionDefinition[];
   runtime?: {
     kind: "rt" | "userspace" | "unknown";
     options?: Record<string, string | number | boolean>;
@@ -58,4 +69,5 @@ export interface ManualComponentDefinitionInput {
   halComponentName?: string;
   pins: ComponentPinDefinition[];
   params?: ComponentParamDefinition[];
+  functions?: ComponentFunctionDefinition[];
 }

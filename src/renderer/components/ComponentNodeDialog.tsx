@@ -26,6 +26,7 @@ export default function ComponentNodeDialog() {
     return getNodeTitle(state.project, currentNode);
   });
   const componentParams = createMemo(() => component()?.params ?? []);
+  const componentFunctions = createMemo(() => component()?.functions ?? []);
   const pinFilterModes = ["all", "in", "out", "io"] as const;
   const [pinFilter, setPinFilter] =
     createSignal<(typeof pinFilterModes)[number]>("all");
@@ -44,6 +45,11 @@ export default function ComponentNodeDialog() {
       case "io":
         return t("componentDialog.pinFilter.io");
     }
+  };
+  const addfTargetForFunction = (halSuffix: string) => {
+    const instanceName = node()?.instanceName ?? "";
+    if (!instanceName) return halSuffix ? `{instance}.${halSuffix}` : "{instance}";
+    return halSuffix ? `${instanceName}.${halSuffix}` : instanceName;
   };
 
   return (
@@ -116,6 +122,40 @@ export default function ComponentNodeDialog() {
                       </div>
                     </div>
                   )}
+                </Show>
+              </section>
+
+              <section class="panel">
+                <div class="panel-title">{t("componentDialog.functions")}</div>
+                <Show
+                  when={componentFunctions().length > 0}
+                  fallback={
+                    <div class="muted">{t("componentDialog.noFunctions")}</div>
+                  }
+                >
+                  <div class="list compact">
+                    <For each={componentFunctions()}>
+                      {(fn) => (
+                        <div
+                          class="list-row"
+                          title={fn.doc ?? ""}
+                        >
+                          <span class="chip type">{fn.floatMode}</span>
+                          <span class="mono">
+                            {fn.declaredName === "_"
+                              ? t("componentDialog.functionDefault")
+                              : fn.halSuffix}
+                          </span>
+                          <span class="muted">
+                            {t("componentDialog.functionAddf")}
+                          </span>
+                          <span class="mono">
+                            {addfTargetForFunction(fn.halSuffix)}
+                          </span>
+                        </div>
+                      )}
+                    </For>
+                  </div>
                 </Show>
               </section>
 
