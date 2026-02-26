@@ -382,6 +382,13 @@ function sortPinsForHal(records: EndpointRecord[]): EndpointRecord[] {
   return [...records].sort((a, b) => rank(a) - rank(b));
 }
 
+function describeEndpointForWarning(record: EndpointRecord): string {
+  if (record.halPinPath) return `${record.halPinPath} [${record.type}]`;
+  if (record.boundarySignalPath)
+    return `${record.boundarySignalPath} (${record.kind}) [${record.type}]`;
+  return `${record.kind}:${record.id} [${record.type}]`;
+}
+
 type RuntimeInstanceRecord = ExportContext["componentInstances"][number];
 
 interface AddfEntry {
@@ -645,24 +652,28 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
     );
     if (leafPins.length < 2) continue;
 
+    const hints = groupMembers.flatMap(
+      (id) => ctx.hintsByEndpointId.get(id) ?? [],
+    );
+    const netName = chooseNetName(hints, autoIndex++);
+
     const outputs = leafPins.filter((r) => r.direction === "out");
     if (outputs.length > 1) {
       ctx.warnings.push(
-        `Multiple output pins share one signal: ${outputs.map((r) => r.halPinPath).join(", ")}`,
+        `Multiple output pins share one signal on net '${netName}': ${outputs.map((r) => r.halPinPath).join(", ")}`,
       );
     }
 
     const types = new Set(records.map((r) => r.type));
     if (types.size > 1) {
+      const endpointDetails = records
+        .map(describeEndpointForWarning)
+        .sort()
+        .join(", ");
       ctx.warnings.push(
-        `Mixed signal types found during export: ${Array.from(types).join(", ")}`,
+        `Mixed signal types found during export on net '${netName}': ${Array.from(types).join(", ")}. Endpoints: ${endpointDetails}`,
       );
     }
-
-    const hints = groupMembers.flatMap(
-      (id) => ctx.hintsByEndpointId.get(id) ?? [],
-    );
-    const netName = chooseNetName(hints, autoIndex++);
 
     const sortedLeafs = sortPinsForHal(leafPins);
     const pinPaths = sortedLeafs
