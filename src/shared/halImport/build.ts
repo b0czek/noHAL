@@ -1,7 +1,15 @@
+import {
+  addfQueueEntryKey,
+  makeAddfQueueFunctionEntry,
+  makeAddfQueueNodeEntry,
+  normalizeAddfQueueEntries,
+} from "../addfQueue";
 import { createId, safeKey, slugify } from "../id";
-import { createEmptyProject } from "../project";
+import { createDefaultMotmodConfig, createEmptyProject } from "../project";
+import { getSheetThreadOutputs } from "../sheetThreads";
 import type {
   ComponentDefinition,
+  ComponentFunctionDefinition,
   ComponentPinDefinition,
   HalImportBuildOptions,
   HalImportBuildResult,
@@ -11,6 +19,7 @@ import type {
   HalImportPlacementHeuristic,
   HalValueType,
   PinDirection,
+  SheetAddfQueueStoredEntry,
 } from "../types";
 
 function stripExtension(fileName: string): string {
@@ -78,6 +87,42 @@ function chooseLocalComponentId(
   return id;
 }
 
+function buildObservedFunctionsForImportedGroup(
+  group: HalImportComponentGroup,
+  draft: HalImportBuildOptions["draft"],
+): ComponentFunctionDefinition[] {
+  const instanceNames = new Set(
+    group.instances.map((item) => item.instanceName),
+  );
+  const out: ComponentFunctionDefinition[] = [];
+  const usedKeys = new Set<string>();
+
+  for (const addf of draft.addfs) {
+    if (!addf.instanceName || !instanceNames.has(addf.instanceName)) continue;
+    const halSuffix = addf.functionSuffix ?? "";
+    if (out.some((item) => item.halSuffix === halSuffix)) continue;
+
+    let baseKey = safeKey(halSuffix || "default");
+    if (!baseKey) baseKey = "default";
+    let key = baseKey;
+    let idx = 2;
+    while (usedKeys.has(key)) {
+      key = `${baseKey}_${idx}`;
+      idx += 1;
+    }
+    usedKeys.add(key);
+
+    out.push({
+      key,
+      declaredName: halSuffix || "_",
+      halSuffix,
+      floatMode: "unknown",
+    });
+  }
+
+  return out;
+}
+
 export function buildProjectFromHalImport(
   options: HalImportBuildOptions,
 ): HalImportBuildResult {
@@ -95,6 +140,12 @@ export function buildProjectFromHalImport(
       : "Imported HAL");
   const project = createEmptyProject(fileBase || "Imported HAL");
   project.name = fileBase || "Imported HAL";
+  if (draft.motmod) {
+    project.motmod = {
+      ...createDefaultMotmodConfig(),
+      ...draft.motmod,
+    };
+  }
 
   const rootSheet = project.sheets[project.rootSheetId];
   rootSheet.name = "Top";
@@ -234,6 +285,10 @@ export function buildProjectFromHalImport(
       group.inferredHalComponentName,
       usedProjectComponentIds,
     );
+    const observedFunctions = buildObservedFunctionsForImportedGroup(
+      group,
+      draft,
+    );
     const generated: ComponentDefinition = {
       id: localId,
       name: group.inferredHalComponentName,
@@ -242,6 +297,7 @@ export function buildProjectFromHalImport(
       runtime: { kind: group.runtimeHint },
       pins,
       params,
+      ...(observedFunctions.length > 0 ? { functions: observedFunctions } : {}),
       docs: {
         description:
           "Generated from imported HAL file (project-local component)",
@@ -1341,17 +1397,105 @@ export function buildProjectFromHalImport(
     },
   );
 
-  const addfQueue: string[] = [];
-  const seenQueueNodes = new Set<string>();
+  const addfQueue: SheetAddfQueueStoredEntry[] = [];
+  const seenQueueItems = new Set<string>();
+  const warnedCollapsedAddfInstances = new Set<string>();
+  const sheetThreadOutputs = getSheetThreadOutputs(rootSheet);
+  if (!rootSheet.hal) rootSheet.hal = {};
+  rootSheet.hal.threadOutputs = [...sheetThreadOutputs];
+  const halThreads = project.halThreads ?? [];
+  project.halThreads = halThreads;
+  const halThreadIdByName = new Map(
+    halThreads.map((thread) => [thread.name, thread.id]),
+  );
+  const ensureHalThreadId = (threadName: string): string => {
+    const trimmed = threadName.trim();
+    const existing = halThreadIdByName.get(trimmed);
+    if (existing) return existing;
+    const nextId = createId("thread");
+    halThreads.push({
+      id: nextId,
+      name: trimmed,
+      periodNs: 1_000_000,
+      floatMode: "fp",
+    });
+    halThreadIdByName.set(trimmed, nextId);
+    return nextId;
+  };
+  const rootThreadOutputIdByName = new Map(
+    rootSheet.hal.threadOutputs.map((item) => [item.name, item.id]),
+  );
+  for (const output of rootSheet.hal.threadOutputs) {
+    const halThreadId = halThreadIdByName.get(output.name);
+    if (halThreadId) output.halThreadId = halThreadId;
+  }
   for (const addf of draft.addfs) {
-    const nodeId = nodeIdByInstanceName.get(addf.functionName);
+    const threadName = addf.thread?.trim();
+    if (!threadName || rootThreadOutputIdByName.has(threadName)) continue;
+    const halThreadId = ensureHalThreadId(threadName);
+    const outputId = createId("sheetthread");
+    rootThreadOutputIdByName.set(threadName, outputId);
+    rootSheet.hal.threadOutputs.push({
+      id: outputId,
+      name: threadName,
+      halThreadId,
+    });
+  }
+  for (const addf of draft.addfs) {
+    const threadName = addf.thread?.trim();
+    if (!threadName) continue;
+    const outputId = rootThreadOutputIdByName.get(threadName);
+    const halThreadId = ensureHalThreadId(threadName);
+    const output = rootSheet.hal.threadOutputs.find(
+      (item) => item.id === outputId,
+    );
+    if (output && output.halThreadId !== halThreadId)
+      output.halThreadId = halThreadId;
+  }
+  const defaultRootThreadOutputId = rootSheet.hal.threadOutputs[0]?.id;
+  for (const addf of draft.addfs) {
+    const addfInstanceName = addf.instanceName ?? addf.functionName;
+    const nodeId = nodeIdByInstanceName.get(addfInstanceName);
     if (!nodeId) continue;
-    if (seenQueueNodes.has(nodeId)) continue;
-    seenQueueNodes.add(nodeId);
-    addfQueue.push(nodeId);
+    const component = componentByNodeId.get(nodeId);
+
+    const threadOutputId =
+      (addf.thread?.trim() &&
+        rootThreadOutputIdByName.get(addf.thread.trim())) ||
+      defaultRootThreadOutputId;
+    let queueEntry = makeAddfQueueNodeEntry(nodeId, threadOutputId);
+    if (addf.functionSuffix !== undefined) {
+      const fn = component?.functions?.find(
+        (item) => item.halSuffix === addf.functionSuffix,
+      );
+      if (fn) {
+        queueEntry = makeAddfQueueFunctionEntry(nodeId, fn.key, threadOutputId);
+      } else if (!warnedCollapsedAddfInstances.has(addfInstanceName)) {
+        warnedCollapsedAddfInstances.add(addfInstanceName);
+        warnings.push(
+          `Imported addf target '${addf.functionName}' could not be matched to component function metadata on '${addfInstanceName}'; queue entry kept at instance level`,
+        );
+      }
+    } else if (
+      addf.isDefaultFunction === false &&
+      !warnedCollapsedAddfInstances.has(addfInstanceName)
+    ) {
+      warnedCollapsedAddfInstances.add(addfInstanceName);
+      warnings.push(
+        `Imported addf target '${addf.functionName}' uses a non-default function but no function suffix metadata was parsed; queue entry kept at instance level`,
+      );
+    }
+
+    const key = addfQueueEntryKey(queueEntry) ?? addf.functionName;
+    if (seenQueueItems.has(key)) continue;
+    seenQueueItems.add(key);
+    addfQueue.push(queueEntry);
   }
   if (addfQueue.length > 0) {
-    rootSheet.hal = { ...(rootSheet.hal ?? {}), addfQueue };
+    rootSheet.hal = {
+      ...(rootSheet.hal ?? {}),
+      addfQueue: normalizeAddfQueueEntries(addfQueue),
+    };
   }
 
   return { project, warnings };

@@ -60,10 +60,45 @@ Line two""";
       },
     });
     expect(parsed.pins).toHaveLength(1);
+    expect(parsed.functions).toEqual([]);
     expect(parsed.pins[0]).toMatchObject({
       name: "input-pin",
       doc: "Input",
     });
+  });
+
+  it("parses multiple function declarations and distinguishes fp vs nofp", () => {
+    const parsed = parseComp(`
+      component demo;
+      function _ nofp "Default integer-only update";
+      function read_inputs fp "Read hardware";
+      function write_outputs "Defaults to fp";
+      ;;
+    `);
+
+    expect(parsed.functions).toEqual([
+      {
+        key: "default",
+        declaredName: "_",
+        halSuffix: "",
+        floatMode: "nofp",
+        doc: "Default integer-only update",
+      },
+      {
+        key: "read_inputs",
+        declaredName: "read_inputs",
+        halSuffix: "read-inputs",
+        floatMode: "fp",
+        doc: "Read hardware",
+      },
+      {
+        key: "write_outputs",
+        declaredName: "write_outputs",
+        halSuffix: "write-outputs",
+        floatMode: "fp",
+        doc: "Defaults to fp",
+      },
+    ]);
   });
 
   it("parses array/default/conditional pin declarations using declaration syntax", () => {

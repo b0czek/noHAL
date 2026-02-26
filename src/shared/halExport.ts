@@ -1,4 +1,15 @@
+import {
+  addfQueueEntryKey,
+  addfQueueEntryNodeId,
+  makeAddfQueueFunctionEntry,
+  makeAddfQueueNodeEntry,
+  makeAddfQueueSubsheetOutputEntry,
+} from "./addfQueue";
 import { getNodePins, getSheet, invertDirection } from "./graph";
+import {
+  firstSheetThreadOutputId,
+  getSheetThreadOutputs,
+} from "./sheetThreads";
 import type {
   NoHALProject,
   PinDirection,
@@ -382,6 +393,13 @@ function sortPinsForHal(records: EndpointRecord[]): EndpointRecord[] {
   return [...records].sort((a, b) => rank(a) - rank(b));
 }
 
+function describeEndpointForWarning(record: EndpointRecord): string {
+  if (record.halPinPath) return `${record.halPinPath} [${record.type}]`;
+  if (record.boundarySignalPath)
+    return `${record.boundarySignalPath} (${record.kind}) [${record.type}]`;
+  return `${record.kind}:${record.id} [${record.type}]`;
+}
+
 type RuntimeInstanceRecord = ExportContext["componentInstances"][number];
 
 interface AddfEntry {
@@ -461,12 +479,110 @@ function buildRuntimeSections(
   });
 
   const loadrtLines: string[] = [];
+  const projectHalThreads = (project.halThreads ?? []).filter(
+    (thread) =>
+      thread.name.trim().length > 0 && Number.isFinite(thread.periodNs),
+  );
+  const motionOwnedThreadNames = new Set(["servo-thread", "base-thread"]);
+  const halThreadByName = new Map(
+    projectHalThreads.map((thread) => [thread.name, thread]),
+  );
+  const motmodRule = rules.motmod;
+  const motmodExtraArgs = (motmodRule?.loadrtArgs ?? [])
+    .map((arg) => `${arg}`.trim())
+    .filter(Boolean);
+  const motmodCfg = project.motmod;
+  const emitMotmodLoadrt = (): void => {
+    const servoThread = halThreadByName.get("servo-thread");
+    const baseThread = halThreadByName.get("base-thread");
+    if (!servoThread) {
+      ctx.warnings.push(
+        `motmod export could not find HAL thread 'servo-thread'; omitting servo/traj period arguments`,
+      );
+    }
+    const args: string[] = [];
+    if (servoThread) {
+      const servoPeriodNs = Math.max(1, Math.round(servoThread.periodNs));
+      args.push(`servo_period_nsec=${servoPeriodNs}`);
+      const trajPeriodNs = Math.max(
+        0,
+        Math.round(motmodCfg?.trajPeriodNs ?? 0),
+      );
+      if (trajPeriodNs > 0) {
+        args.push(`traj_period_nsec=${trajPeriodNs}`);
+      }
+    }
+    if (baseThread) {
+      args.push(
+        `base_period_nsec=${Math.max(1, Math.round(baseThread.periodNs))}`,
+      );
+      args.push(`base_thread_fp=${baseThread.floatMode === "nofp" ? 0 : 1}`);
+    }
+    if (motmodCfg) {
+      args.push(`num_joints=${Math.max(1, Math.round(motmodCfg.numJoints))}`);
+      args.push(`num_dio=${Math.max(0, Math.round(motmodCfg.numDio))}`);
+      args.push(`num_aio=${Math.max(0, Math.round(motmodCfg.numAio))}`);
+      args.push(
+        `num_spindles=${Math.max(1, Math.round(motmodCfg.numSpindles))}`,
+      );
+      args.push(
+        `num_misc_error=${Math.max(0, Math.round(motmodCfg.numMiscError))}`,
+      );
+    }
+    args.push(...motmodExtraArgs);
+    loadrtLines.push(`loadrt motmod ${args.join(" ")}`.trim());
+  };
+
+  emitMotmodLoadrt();
+  const exportableHalThreads = projectHalThreads.filter(
+    (thread) => !motionOwnedThreadNames.has(thread.name),
+  );
+  if (exportableHalThreads.length > 0) {
+    const sortedHalThreads = [...exportableHalThreads].sort((a, b) => {
+      const periodDiff = a.periodNs - b.periodNs;
+      if (periodDiff !== 0) return periodDiff;
+      return a.name.localeCompare(b.name);
+    });
+    const originalOrderKey = exportableHalThreads
+      .map((thread) => `${thread.name}:${thread.periodNs}`)
+      .join("|");
+    const sortedOrderKey = sortedHalThreads
+      .map((thread) => `${thread.name}:${thread.periodNs}`)
+      .join("|");
+    if (originalOrderKey !== sortedOrderKey) {
+      ctx.warnings.push(
+        `HAL thread definitions were reordered fastest-to-slowest for 'loadrt threads' export (threads(9) requirement)`,
+      );
+    }
+    for (let offset = 0; offset < sortedHalThreads.length; offset += 3) {
+      const chunk = sortedHalThreads.slice(offset, offset + 3);
+      const args: string[] = [];
+      for (const [index, thread] of chunk.entries()) {
+        const slot = index + 1;
+        args.push(`name${slot}=${thread.name}`);
+        args.push(`period${slot}=${Math.max(1, Math.round(thread.periodNs))}`);
+        args.push(`fp${slot}=${thread.floatMode === "nofp" ? 0 : 1}`);
+      }
+      loadrtLines.push(`loadrt threads ${args.join(" ")}`);
+    }
+  }
+
   for (const [componentName, items] of sortedRtGroups) {
     const rule = rules[componentName];
     const combine = rule?.loadCombine ?? "names";
     const extraArgs = (rule?.loadrtArgs ?? [])
       .map((arg) => `${arg}`.trim())
       .filter(Boolean);
+
+    if (componentName === "motmod") {
+      if (items.length > 1) {
+        ctx.warnings.push(
+          `Multiple motmod instances detected (${items.length}); exporting a single 'loadrt motmod' line`,
+        );
+      }
+      continue;
+    }
+
     const sortedNames = items
       .map((item) => item.instancePath)
       .sort((a, b) => a.localeCompare(b));
@@ -511,13 +627,56 @@ function buildRuntimeSections(
 
   const addfEnabled = addfConfig?.enabled ?? true;
   const emitPosition = addfConfig?.emitPosition ?? true;
-  const defaultThread = addfConfig?.defaultThread?.trim() || "servo-thread";
+  const defaultThread =
+    addfConfig?.defaultThread?.trim() ||
+    project.halThreads?.[0]?.name?.trim() ||
+    "servo-thread";
   const addfEntries: AddfEntry[] = [];
+  const halThreadFloatModeByName = new Map(
+    (project.halThreads ?? []).map((thread) => [
+      thread.name,
+      thread.floatMode ?? "fp",
+    ]),
+  );
+  const warnedFpThreadMismatch = new Set<string>();
+
+  function warnThreadFloatMismatch(
+    threadName: string,
+    functionTarget: string,
+    floatMode: "fp" | "nofp" | "unknown",
+  ): void {
+    if (floatMode !== "fp") return;
+    const threadFloatMode = halThreadFloatModeByName.get(threadName);
+    if (threadFloatMode !== "nofp") return;
+    const key = `${threadName}::${functionTarget}`;
+    if (warnedFpThreadMismatch.has(key)) return;
+    warnedFpThreadMismatch.add(key);
+    ctx.warnings.push(
+      `Function '${functionTarget}' requires fp but is scheduled in nofp thread '${threadName}'`,
+    );
+  }
+
+  function defaultAddfTemplatesForComponent(componentId: string): string[] {
+    const component = project.library.components[componentId];
+    const functions = component?.functions ?? [];
+    if (functions.length === 0) return ["{instance}"];
+    return functions.map((fn) =>
+      fn.halSuffix ? `{instance}.${fn.halSuffix}` : "{instance}",
+    );
+  }
 
   if (addfEnabled) {
-    function orderedAddfNodesForSheet(
+    type OrderedAddfQueueItem = {
+      queueKey: string;
+      node: SheetNodeInstance;
+      functionKey?: string;
+      subsheetChildOutputId?: string;
+      sheetThreadOutputId: string;
+    };
+
+    function orderedAddfQueueItemsForSheet(
       sheet: SheetDefinition,
-    ): SheetNodeInstance[] {
+    ): OrderedAddfQueueItem[] {
       const eligible = sheet.nodes.filter((node) => {
         if (node.kind === "sheet") return true;
         const component = project.library.components[node.componentId];
@@ -525,17 +684,150 @@ function buildRuntimeSections(
         return component.runtime?.kind === "rt";
       });
       const byId = new Map(eligible.map((node) => [node.id, node]));
-      const ordered: SheetNodeInstance[] = [];
+      const defaultSheetThreadId = firstSheetThreadOutputId(sheet);
+      const ordered: OrderedAddfQueueItem[] = [];
       const seen = new Set<string>();
-      for (const nodeId of sheet.hal?.addfQueue ?? []) {
+      const coveredByNodeEntry = new Set<string>();
+
+      const pushItem = (item: OrderedAddfQueueItem) => {
+        if (seen.has(item.queueKey)) return;
+        seen.add(item.queueKey);
+        ordered.push(item);
+      };
+
+      for (const entry of sheet.hal?.addfQueue ?? []) {
+        const queueKey = addfQueueEntryKey(entry);
+        const nodeId = addfQueueEntryNodeId(entry);
+        if (!queueKey || !nodeId) continue;
         const node = byId.get(nodeId);
-        if (!node || seen.has(nodeId)) continue;
-        ordered.push(node);
-        seen.add(nodeId);
+        if (!node) continue;
+
+        if (typeof entry !== "string" && entry.kind === "component-function") {
+          if (node.kind !== "component") continue;
+          const component = project.library.components[node.componentId];
+          const fn = component?.functions?.find(
+            (item) => item.key === entry.functionKey,
+          );
+          if (!fn) continue;
+          pushItem({
+            queueKey,
+            node,
+            functionKey: entry.functionKey,
+            sheetThreadOutputId:
+              entry.sheetThreadOutputId ?? defaultSheetThreadId,
+          });
+          continue;
+        }
+
+        if (typeof entry !== "string" && entry.kind === "subsheet-output") {
+          if (node.kind !== "sheet") continue;
+          const childSheet = getSheet(project, node.sheetId);
+          const childOutput = getSheetThreadOutputs(childSheet).find(
+            (output) => output.id === entry.childThreadOutputId,
+          );
+          if (!childOutput) continue;
+          pushItem({
+            queueKey,
+            node,
+            subsheetChildOutputId: childOutput.id,
+            sheetThreadOutputId:
+              entry.sheetThreadOutputId ?? defaultSheetThreadId,
+          });
+          continue;
+        }
+
+        if (node.kind === "component") {
+          const component = project.library.components[node.componentId];
+          if ((component?.functions?.length ?? 0) > 0) {
+            coveredByNodeEntry.add(node.id);
+          }
+        }
+        if (node.kind === "sheet") {
+          const childSheet = getSheet(project, node.sheetId);
+          const childOutputs = getSheetThreadOutputs(childSheet);
+          const fallbackParentOutputId =
+            (typeof entry === "string"
+              ? undefined
+              : entry.sheetThreadOutputId) ?? defaultSheetThreadId;
+          const legacyThreadMap = node.hal?.threadMap ?? {};
+          for (const childOutput of childOutputs) {
+            const mappedParentOutputId = legacyThreadMap[childOutput.id];
+            pushItem({
+              queueKey:
+                addfQueueEntryKey(
+                  makeAddfQueueSubsheetOutputEntry(
+                    node.id,
+                    childOutput.id,
+                    mappedParentOutputId ?? fallbackParentOutputId,
+                  ),
+                ) ?? `subsheet:${node.id}:${childOutput.id}`,
+              node,
+              subsheetChildOutputId: childOutput.id,
+              sheetThreadOutputId:
+                mappedParentOutputId ?? fallbackParentOutputId,
+            });
+          }
+          continue;
+        }
+
+        pushItem({
+          queueKey:
+            addfQueueEntryKey(makeAddfQueueNodeEntry(node.id)) ?? queueKey,
+          node,
+          sheetThreadOutputId:
+            (typeof entry === "string"
+              ? undefined
+              : entry.sheetThreadOutputId) ?? defaultSheetThreadId,
+        });
       }
+
       for (const node of eligible) {
-        if (seen.has(node.id)) continue;
-        ordered.push(node);
+        if (node.kind === "sheet") {
+          const childSheet = getSheet(project, node.sheetId);
+          const childOutputs = getSheetThreadOutputs(childSheet);
+          const legacyThreadMap = node.hal?.threadMap ?? {};
+          for (const childOutput of childOutputs) {
+            const mappedParentOutputId =
+              legacyThreadMap[childOutput.id] ?? defaultSheetThreadId;
+            pushItem({
+              queueKey:
+                addfQueueEntryKey(
+                  makeAddfQueueSubsheetOutputEntry(
+                    node.id,
+                    childOutput.id,
+                    mappedParentOutputId,
+                  ),
+                ) ?? `subsheet:${node.id}:${childOutput.id}`,
+              node,
+              subsheetChildOutputId: childOutput.id,
+              sheetThreadOutputId: mappedParentOutputId,
+            });
+          }
+          continue;
+        }
+        const component = project.library.components[node.componentId];
+        const functions = component?.functions ?? [];
+        if (coveredByNodeEntry.has(node.id)) continue;
+        if (functions.length === 0) {
+          pushItem({
+            queueKey:
+              addfQueueEntryKey(makeAddfQueueNodeEntry(node.id)) ??
+              `node:${node.id}`,
+            node,
+            sheetThreadOutputId: defaultSheetThreadId,
+          });
+          continue;
+        }
+        for (const fn of functions) {
+          const queueEntry = makeAddfQueueFunctionEntry(node.id, fn.key);
+          pushItem({
+            queueKey:
+              addfQueueEntryKey(queueEntry) ?? `fn:${node.id}:${fn.key}`,
+            node,
+            functionKey: fn.key,
+            sheetThreadOutputId: defaultSheetThreadId,
+          });
+        }
       }
       return ordered;
     }
@@ -543,6 +835,8 @@ function buildRuntimeSections(
     function collectAddfFromSheetInstance(
       sheetId: string,
       pathParts: string[],
+      resolvedThreadByLocalOutput: Map<string, string>,
+      onlyLocalOutputId?: string,
       stack: string[] = [],
     ): void {
       const cycleKey = `${sheetId}|${pathParts.join(".")}`;
@@ -554,11 +848,45 @@ function buildRuntimeSections(
       }
       const nextStack = [...stack, cycleKey];
       const sheet = getSheet(project, sheetId);
-      for (const node of orderedAddfNodesForSheet(sheet)) {
+      for (const queueItem of orderedAddfQueueItemsForSheet(sheet)) {
+        if (
+          onlyLocalOutputId &&
+          queueItem.sheetThreadOutputId !== onlyLocalOutputId
+        ) {
+          continue;
+        }
+        const node = queueItem.node;
         if (node.kind === "sheet") {
+          const childSheet = getSheet(project, node.sheetId);
+          const childOutputs = getSheetThreadOutputs(childSheet);
+          const fallbackParentLocalOutputId =
+            queueItem.sheetThreadOutputId || firstSheetThreadOutputId(sheet);
+          const fallbackResolvedThread =
+            resolvedThreadByLocalOutput.get(fallbackParentLocalOutputId) ??
+            defaultThread;
+          const childResolvedThreadByLocalOutput = new Map<string, string>();
+          if (queueItem.subsheetChildOutputId) {
+            childResolvedThreadByLocalOutput.set(
+              queueItem.subsheetChildOutputId,
+              fallbackResolvedThread,
+            );
+          } else {
+            const map = node.hal?.threadMap ?? {};
+            for (const childOutput of childOutputs) {
+              const parentLocalOutputId =
+                map[childOutput.id] ?? fallbackParentLocalOutputId;
+              childResolvedThreadByLocalOutput.set(
+                childOutput.id,
+                resolvedThreadByLocalOutput.get(parentLocalOutputId) ??
+                  fallbackResolvedThread,
+              );
+            }
+          }
           collectAddfFromSheetInstance(
             node.sheetId,
             [...pathParts, node.instanceName],
+            childResolvedThreadByLocalOutput,
+            queueItem.subsheetChildOutputId,
             nextStack,
           );
           continue;
@@ -574,15 +902,60 @@ function buildRuntimeSections(
         const componentName = component.halComponentName;
         const rule = rules[componentName];
         if (rule?.addf?.enabled === false) continue;
-        const thread = rule?.addf?.thread?.trim() || defaultThread;
-        const templates = (
-          rule?.addf?.functionTemplates ?? ["{instance}"]
-        ).filter((t) => t.trim().length > 0);
+        const thread =
+          resolvedThreadByLocalOutput.get(queueItem.sheetThreadOutputId) ??
+          defaultThread;
         const item = {
           componentName,
           instancePath: joinInstancePath([...pathParts, node.instanceName]),
           parentSheetPath: joinInstancePath(pathParts),
         };
+        if (queueItem.functionKey) {
+          const fn = component.functions?.find(
+            (candidate) => candidate.key === queueItem.functionKey,
+          );
+          if (!fn) {
+            ctx.warnings.push(
+              `Missing function '${queueItem.functionKey}' on component '${componentName}' for node '${node.instanceName}'`,
+            );
+            continue;
+          }
+          addfEntries.push({
+            functionName: fn.halSuffix
+              ? `${item.instancePath}.${fn.halSuffix}`
+              : item.instancePath,
+            thread,
+            parentSheetPath: item.parentSheetPath,
+          });
+          warnThreadFloatMismatch(
+            thread,
+            fn.halSuffix
+              ? `${item.instancePath}.${fn.halSuffix}`
+              : item.instancePath,
+            fn.floatMode,
+          );
+          continue;
+        }
+        const customTemplates = rule?.addf?.functionTemplates?.filter(
+          (t) => t.trim().length > 0,
+        );
+        if (!customTemplates && (component.functions?.length ?? 0) > 0) {
+          for (const fn of component.functions ?? []) {
+            const functionName = fn.halSuffix
+              ? `${item.instancePath}.${fn.halSuffix}`
+              : item.instancePath;
+            addfEntries.push({
+              functionName,
+              thread,
+              parentSheetPath: item.parentSheetPath,
+            });
+            warnThreadFloatMismatch(thread, functionName, fn.floatMode);
+          }
+          continue;
+        }
+        const templates = (
+          customTemplates ?? defaultAddfTemplatesForComponent(node.componentId)
+        ).filter((t) => t.trim().length > 0);
         for (const template of templates) {
           addfEntries.push({
             functionName: replaceAddfTemplate(template, item),
@@ -592,7 +965,33 @@ function buildRuntimeSections(
         }
       }
     }
-    collectAddfFromSheetInstance(project.rootSheetId, []);
+    const rootSheet = getSheet(project, project.rootSheetId);
+    const rootResolvedThreadByLocalOutput = new Map<string, string>();
+    const projectThreadsById = new Map(
+      (project.halThreads ?? []).map((thread) => [thread.id, thread.name]),
+    );
+    for (const output of getSheetThreadOutputs(rootSheet)) {
+      const halThreadId = output.halThreadId?.trim();
+      const boundThreadName = halThreadId
+        ? projectThreadsById.get(halThreadId)
+        : undefined;
+      if (!boundThreadName) {
+        const reason = halThreadId ? "invalid binding" : "no binding";
+        ctx.warnings.push(
+          `Root sheet thread output '${output.name}' has ${reason}; using fallback thread '${defaultThread}'`,
+        );
+      }
+      rootResolvedThreadByLocalOutput.set(
+        output.id,
+        boundThreadName ?? defaultThread,
+      );
+    }
+    collectAddfFromSheetInstance(
+      project.rootSheetId,
+      [],
+      rootResolvedThreadByLocalOutput,
+      undefined,
+    );
   }
 
   const addfLines: string[] = [];
@@ -645,24 +1044,28 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
     );
     if (leafPins.length < 2) continue;
 
+    const hints = groupMembers.flatMap(
+      (id) => ctx.hintsByEndpointId.get(id) ?? [],
+    );
+    const netName = chooseNetName(hints, autoIndex++);
+
     const outputs = leafPins.filter((r) => r.direction === "out");
     if (outputs.length > 1) {
       ctx.warnings.push(
-        `Multiple output pins share one signal: ${outputs.map((r) => r.halPinPath).join(", ")}`,
+        `Multiple output pins share one signal on net '${netName}': ${outputs.map((r) => r.halPinPath).join(", ")}`,
       );
     }
 
     const types = new Set(records.map((r) => r.type));
     if (types.size > 1) {
+      const endpointDetails = records
+        .map(describeEndpointForWarning)
+        .sort()
+        .join(", ");
       ctx.warnings.push(
-        `Mixed signal types found during export: ${Array.from(types).join(", ")}`,
+        `Mixed signal types found during export on net '${netName}': ${Array.from(types).join(", ")}. Endpoints: ${endpointDetails}`,
       );
     }
-
-    const hints = groupMembers.flatMap(
-      (id) => ctx.hintsByEndpointId.get(id) ?? [],
-    );
-    const netName = chooseNetName(hints, autoIndex++);
 
     const sortedLeafs = sortPinsForHal(leafPins);
     const pinPaths = sortedLeafs

@@ -130,6 +130,48 @@ function splitHalPath(
   };
 }
 
+function splitAddfFunctionTarget(
+  rawTarget: string,
+  knownInstances: Set<string>,
+): { instanceName: string; functionSuffix?: string } | null {
+  const candidates = [...knownInstances]
+    .filter(
+      (instance) =>
+        rawTarget === instance || rawTarget.startsWith(`${instance}.`),
+    )
+    .sort((a, b) => b.length - a.length);
+  if (candidates.length > 0) {
+    const instanceName = candidates[0];
+    if (rawTarget === instanceName) return { instanceName };
+    const functionSuffix = rawTarget.slice(instanceName.length + 1);
+    return {
+      instanceName,
+      ...(functionSuffix ? { functionSuffix } : {}),
+    };
+  }
+
+  const segments = rawTarget.split(".");
+  if (segments.length === 0 || !segments[0]) return null;
+  if (segments.length === 1) {
+    return { instanceName: rawTarget };
+  }
+  if (segments.length === 2 && /^\d+$/.test(segments[1] ?? "")) {
+    return { instanceName: rawTarget };
+  }
+  if (segments.length >= 3 && /^\d+$/.test(segments[1] ?? "")) {
+    const functionSuffix = segments.slice(2).join(".");
+    return {
+      instanceName: `${segments[0]}.${segments[1]}`,
+      ...(functionSuffix ? { functionSuffix } : {}),
+    };
+  }
+  const functionSuffix = segments.slice(1).join(".");
+  return {
+    instanceName: segments[0],
+    ...(functionSuffix ? { functionSuffix } : {}),
+  };
+}
+
 function inferComponentName(instanceName: string): string {
   const segments = instanceName.split(".");
   if (segments.length >= 2 && /^\d+$/.test(segments[1] ?? ""))
@@ -320,6 +362,7 @@ export function parseHalImportDraft(
   const nets: HalImportNet[] = [];
   const setps: HalImportDraft["setps"] = [];
   const addfs: HalImportDraft["addfs"] = [];
+  let motmodDraft: HalImportDraft["motmod"] | undefined;
 
   for (const line of normalized) {
     const tokens = tokenizeHal(line.text);
@@ -334,6 +377,27 @@ export function parseHalImportDraft(
         continue;
       }
       const args = parseKeyValueArgs(tokens.slice(2));
+      if (componentName === "motmod") {
+        const parseIntArg = (key: string): number | undefined => {
+          const value = Number.parseInt(args[key] ?? "", 10);
+          return Number.isFinite(value) ? value : undefined;
+        };
+        const numJoints = parseIntArg("num_joints");
+        const numDio = parseIntArg("num_dio");
+        const numAio = parseIntArg("num_aio");
+        const numSpindles = parseIntArg("num_spindles");
+        const numMiscError = parseIntArg("num_misc_error");
+        const trajPeriodNs = parseIntArg("traj_period_nsec");
+        motmodDraft = {
+          ...(motmodDraft ?? {}),
+          ...(numJoints !== undefined ? { numJoints } : {}),
+          ...(numDio !== undefined ? { numDio } : {}),
+          ...(numAio !== undefined ? { numAio } : {}),
+          ...(numSpindles !== undefined ? { numSpindles } : {}),
+          ...(numMiscError !== undefined ? { numMiscError } : {}),
+          ...(trajPeriodNs !== undefined ? { trajPeriodNs } : {}),
+        };
+      }
       const namesArg = args.names?.trim();
       if (namesArg) {
         for (const rawName of namesArg.split(",")) {
@@ -403,9 +467,20 @@ export function parseHalImportDraft(
       }
       const thread = tokens[2];
       const position = Number.parseInt(tokens[3] ?? "", 10);
+      const parsedTarget = splitAddfFunctionTarget(
+        functionName,
+        knownInstances,
+      );
       addfs.push({
         line: line.line,
         functionName,
+        ...(parsedTarget ? { instanceName: parsedTarget.instanceName } : {}),
+        ...(parsedTarget?.functionSuffix
+          ? { functionSuffix: parsedTarget.functionSuffix }
+          : {}),
+        ...(parsedTarget
+          ? { isDefaultFunction: !parsedTarget.functionSuffix }
+          : {}),
         ...(thread ? { thread } : {}),
         ...(Number.isFinite(position) ? { position } : {}),
       });
@@ -614,6 +689,7 @@ export function parseHalImportDraft(
     nets,
     setps,
     addfs,
+    ...(motmodDraft ? { motmod: motmodDraft } : {}),
     warnings,
   };
 }

@@ -2,8 +2,9 @@ import { contextBridge, ipcRenderer } from "electron";
 import type {
   ComponentStore,
   ComponentStoreEntry,
-  HalImportDraft,
   ImportedComponentDefinition,
+  MachineConfigImportDraft,
+  MachineConfigImportSetupDraft,
   NoHALProject,
 } from "../shared/types";
 import type { NoHALApi } from "./api";
@@ -32,7 +33,10 @@ const api: NoHALApi = {
     };
   },
   newProject: () =>
-    ipcRenderer.invoke("nohal:new-project") as Promise<NoHALProject>,
+    ipcRenderer.invoke("nohal:new-project") as Promise<{
+      project: NoHALProject;
+      projectPath: string;
+    } | null>,
   getRecentProjects: () =>
     ipcRenderer.invoke("nohal:get-recent-projects") as Promise<
       Array<{ projectPath: string; name?: string; lastOpenedAt: string }>
@@ -51,15 +55,24 @@ const api: NoHALApi = {
     ipcRenderer.invoke("nohal:save-project", project, projectPath) as Promise<{
       projectPath: string;
     } | null>,
-  exportHal: (project, filePath) =>
-    ipcRenderer.invoke("nohal:export-hal", project, filePath) as Promise<{
-      filePath: string;
+  buildProject: (project, projectPath) =>
+    ipcRenderer.invoke("nohal:build-project", project, projectPath) as Promise<{
+      buildDir: string;
+      files: string[];
       warnings: string[];
-    } | null>,
-  importHalFile: () =>
+    }>,
+  pickMachineIniFile: () =>
     ipcRenderer.invoke(
-      "nohal:import-hal-file",
-    ) as Promise<HalImportDraft | null>,
+      "nohal:pick-machine-ini-file",
+    ) as Promise<MachineConfigImportSetupDraft | null>,
+  pickMachineHalFile: () =>
+    ipcRenderer.invoke("nohal:pick-machine-hal-file") as Promise<string | null>,
+  buildMachineConfigurationImport: (iniPath, halFilePaths) =>
+    ipcRenderer.invoke(
+      "nohal:build-machine-configuration-import",
+      iniPath,
+      halFilePaths,
+    ) as Promise<MachineConfigImportDraft>,
   importCompFile: () =>
     ipcRenderer.invoke(
       "nohal:import-comp-file",

@@ -10,7 +10,6 @@ export const en = {
   "common.scope": "Scope",
   "common.direction": "Direction",
   "common.type": "Type",
-  "common.side": "Side",
   "common.rotation": "Rotation",
   "common.status": "Status",
   "common.file": "File",
@@ -31,17 +30,19 @@ export const en = {
   "landing.openProject": "Open Project",
   "landing.recentProjects": "Recent Projects",
   "landing.loadingRecentProjects": "Loading recent projects...",
-  "landing.noRecentProjectsPrefix": "No recent projects yet. Use ",
-  "landing.noRecentProjectsOr": " or ",
-  "landing.noRecentProjectsSuffix": ".",
-  "landing.importedHalStatus": "Imported HAL{suffix}",
+  "landing.noRecentProjectsHint":
+    "No recent projects yet. Create a blank project, import a machine configuration, or open an existing project.",
+  "landing.importedMachineStatus": "Imported machine configuration{suffix}",
 
-  "topbar.newProject": "New project",
+  "topbar.goToLanding": "Go to landing page",
   "topbar.openProject": "Open project",
   "topbar.saveProject": "Save project",
   "topbar.undo": "Undo",
   "topbar.redo": "Redo",
-  "topbar.exportHal": "Export HAL",
+  "topbar.build": "Build",
+  "topbar.projectSettings": "Project Settings",
+  "topbar.threads": "Threads",
+  "topbar.iniEditor": "INI Editor",
   "topbar.componentStore": "Component Store",
   "topbar.addSubsheet": "+ Subsheet",
   "topbar.addText": "+ Text",
@@ -81,6 +82,10 @@ export const en = {
   "componentDialog.halComponent": "HAL Component",
   "componentDialog.source": "Source",
   "componentDialog.runtime": "Runtime",
+  "componentDialog.functions": "Realtime Functions (addf)",
+  "componentDialog.noFunctions": "No function metadata.",
+  "componentDialog.functionDefault": "_ (default)",
+  "componentDialog.functionAddf": "addf",
   "componentDialog.parameters": "Parameters",
   "componentDialog.noParameters": "No parameters.",
   "componentDialog.pinInitialValues": "Pin Initial Values (setp)",
@@ -92,16 +97,64 @@ export const en = {
   "componentDialog.pinFilter.out": "out",
   "componentDialog.pinFilter.io": "io",
 
+  "threadsDialog.ariaLabel": "HAL Threads",
+  "threadsDialog.title": "HAL Threads",
+  "threadsDialog.subtitle":
+    "Manage thread names and periods used for addf scheduling/export defaults.",
+  "threadsDialog.threads": "Threads",
+  "threadsDialog.help":
+    "By default, projects start with one servo thread at 1000000 ns. Thread periods are stored in nanoseconds.",
+  "threadsDialog.addThread": "Add Thread",
+  "threadsDialog.removeThread": "Remove Thread",
+  "threadsDialog.name": "Name",
+  "threadsDialog.periodNsLabel": "Period (ns)",
+  "threadsDialog.floatMode": "Float Support",
+  "threadsDialog.floatFp": "fp",
+  "threadsDialog.floatNoFp": "nofp",
+  "threadsDialog.loadedViaMotmod": "Loaded via motmod",
+
+  "projectSettings.ariaLabel": "Project Settings",
+  "projectSettings.title": "Project Settings",
+  "projectSettings.tabs": "Tabs",
+  "projectSettings.tabMotmod": "motmod",
+  "projectSettings.motmodTitle": "Motion Module (motmod)",
+  "projectSettings.motmodHelp": "Configure common motmod loadrt parameters.",
+  "projectSettings.motmod.numJoints": "num_joints",
+  "projectSettings.motmod.numDio": "num_dio",
+  "projectSettings.motmod.numAio": "num_aio",
+  "projectSettings.motmod.trajPeriodNs": "traj_period_nsec (0 = servo)",
+  "projectSettings.motmod.numSpindles": "num_spindles",
+  "projectSettings.motmod.numMiscError": "num_misc_error",
+  "projectSettings.motmod.threadsDerived": "Derived From Threads",
+  "projectSettings.motmod.threadsDerivedHelp":
+    "servo/base periods and base_thread_fp come from HAL Threads (servo-thread/base-thread).",
+
   "sheetSettings.ariaLabel": "Sheet Settings",
   "sheetSettings.title": "Sheet Settings",
+  "sheetSettings.threadOutputsTitle": "Sheet Thread Outputs",
+  "sheetSettings.threadOutputsHelp":
+    "Define this sheet's local scheduling outputs. Parent sheets map subsheet outputs into their own outputs.",
+  "sheetSettings.rootThreadBindingHelp":
+    "Top sheet outputs can be explicitly bound to project HAL threads.",
+  "sheetSettings.addThreadOutput": "Add Output",
+  "sheetSettings.rootThreadBinding": "HAL thread binding",
+  "sheetSettings.rootThreadBindingUnbound": "(unbound)",
   "sheetSettings.addfQueueTitle": "addf Queue (Sheet Scope)",
   "sheetSettings.addfQueueHelp":
     "Order components and subsheets together. Subsheet entries expand using that subsheet's own queue during HAL export.",
+  "sheetSettings.subsheetThreadMappingsTitle": "Subsheet Thread Mappings",
+  "sheetSettings.subsheetThreadMappingsHelp":
+    "Map each subsheet's declared thread outputs to this sheet's thread outputs. Auto inherits the subsheet row lane from the addf queue.",
+  "sheetSettings.threadMapAutoInherit": "(auto / inherit row: {thread})",
+  "sheetSettings.noSubsheets": "No subsheets in this sheet.",
   "sheetSettings.resetAZ": "Reset (A-Z)",
   "sheetSettings.queueItems": "Queue Items",
   "sheetSettings.dragToReorder": "Drag to reorder",
+  "sheetSettings.assignThreadOutput": "Assign local thread output",
   "sheetSettings.kindSheet": "sheet",
   "sheetSettings.kindRt": "rt",
+  "sheetSettings.kindFunction": "fn",
+  "sheetSettings.defaultFunction": "default",
   "sheetSettings.empty": "No RT components or subsheets in this sheet.",
   "sheetSettings.missingSheet": "missing sheet",
   "sheetSettings.missing": "missing",
@@ -110,7 +163,6 @@ export const en = {
   "sidebar.expandSheet": "Expand {name}",
   "sidebar.collapseSheet": "Collapse {name}",
   "sidebar.orphan": "orphan",
-  "sidebar.goToParentSheet": "Go to parent sheet",
   "sidebar.sheetActions": "Sheet actions",
   "sidebar.sheetSettings": "Sheet Settings",
   "sidebar.deleteSheet": "Delete Sheet",
@@ -121,17 +173,30 @@ export const en = {
   "projectCreation.ariaCreateProject": "Create New Project",
   "projectCreation.title": "New Project",
   "projectCreation.subtitleChoose":
-    "Choose a blank project or import an existing HAL file.",
+    "Choose a blank project or import a LinuxCNC machine configuration (INI + HAL).",
+  "projectCreation.subtitleMachineFiles":
+    "Select the INI file first, then configure which HAL files to include before component linking.",
   "projectCreation.subtitleLink":
     "Verify component links before building the imported sheet.",
   "projectCreation.blankProject": "Blank Project",
   "projectCreation.blankProjectHelp":
     "Start with an empty top sheet and existing built-in/store components.",
   "projectCreation.createBlank": "Create Blank",
-  "projectCreation.importExistingHal": "Import Existing HAL",
-  "projectCreation.importExistingHalHelp":
-    "Parse a `.hal` file, link components to the component store, and generate a project-local sheet.",
-  "projectCreation.pickHalFile": "Pick HAL File",
+  "projectCreation.importMachineConfig": "Import Machine Configuration",
+  "projectCreation.importMachineConfigHelp":
+    "Pick a LinuxCNC `.ini` file first. Then review parsed HALFILE entries and manually choose HAL files before continuing to component linking.",
+  "projectCreation.pickMachineIniFile": "Pick INI File",
+  "projectCreation.addHalFileRow": "Add Row",
+  "projectCreation.continueToComponentLinking": "Continue to Component Linking",
+  "projectCreation.machineConfigIniSource": "INI Source",
+  "projectCreation.iniKeys": "INI keys",
+  "projectCreation.selectedHalFilesList": "Selected HAL Files",
+  "projectCreation.resolveIniInHalFile": "Resolve INI",
+  "projectCreation.browseHalFile": "Pick HAL file",
+  "projectCreation.removeHalFileRow": "Remove HAL file row",
+  "projectCreation.noSelectedHalFiles":
+    "No HAL files selected yet. Defaults are usually prefilled from the INI if those files exist.",
+  "projectCreation.halFiles": "HAL files",
   "projectCreation.importSource": "Import Source",
   "projectCreation.components": "Components",
   "projectCreation.nets": "Nets",
@@ -143,7 +208,6 @@ export const en = {
   "projectCreation.placementAlphabetical": "Alphabetical",
   "projectCreation.placementHelp":
     "Groups connected components together before laying out the imported sheet, which usually reduces long crossing wires.",
-  "projectCreation.pickDifferentFile": "Pick Different File",
   "projectCreation.componentLinking": "Component Linking",
   "projectCreation.componentLinkingHelp":
     "Review automatic matches. Any group left as project-local will generate a component definition stored in this project.",
@@ -178,7 +242,33 @@ export const en = {
   "componentStore.noStoredComponents": "No stored components yet.",
   "componentStore.noMatchingComponents": "No matching stored components.",
 
-  "inspector.session": "Session",
+  "iniEditor.ariaLabel": "INI Editor",
+  "iniEditor.title": "INI Editor",
+  "iniEditor.subtitle":
+    "Edit imported LinuxCNC INI values used by HAL `[SECTION]KEY` substitutions.",
+  "iniEditor.noConfigTitle": "No machine configuration loaded",
+  "iniEditor.noConfigHelp":
+    "Create an empty INI here, or import a machine configuration from the New Project flow.",
+  "iniEditor.createEmptyConfig": "Create Empty INI",
+  "iniEditor.summaryTitle": "Machine Configuration",
+  "iniEditor.sections": "Sections",
+  "iniEditor.halSources": "HAL sources",
+  "iniEditor.substitutionHint":
+    "HAL import preserves `[SECTION]KEY` tokens. Change INI values here so a future machine-config build/export can resolve them correctly.",
+  "iniEditor.valuesTitle": "INI Values",
+  "iniEditor.enterEditMode": "Edit",
+  "iniEditor.exitEditMode": "Done",
+  "iniEditor.addSection": "Add Section",
+  "iniEditor.addField": "Add Field",
+  "iniEditor.removeSection": "Remove Section",
+  "iniEditor.removeField": "Remove Field",
+  "iniEditor.confirmRemoveSection": "Remove INI section [{name}]?",
+  "iniEditor.confirmRemoveSectionWithFields":
+    "Remove INI section [{name}] and its {count} fields?",
+  "iniEditor.confirmRemoveField": "Remove INI field [{sectionName}] {key}?",
+  "iniEditor.emptyDocument": "No INI sections yet. Add a section to begin.",
+  "iniEditor.emptySection": "No key/value entries in this section.",
+
   "inspector.selection": "Selection",
   "inspector.nothingSelected": "Nothing selected.",
   "inspector.multipleSelected": "Multiple items selected.",
@@ -204,8 +294,6 @@ export const en = {
   "store.status.addedWireWaypoint": "Added wire waypoint ({count})",
   "store.status.createdNewProject": "Created new project",
   "store.status.failedCreateProject": "Failed to create project: {error}",
-  "store.confirm.discardUnsavedChanges":
-    "Discard unsaved project changes and continue?",
   "store.status.openedProject": "Opened project",
   "store.status.failedLoadPreparedProject":
     "Failed to load prepared project: {error}",
@@ -213,7 +301,42 @@ export const en = {
   "store.status.failedOpenProject": "Failed to open project: {error}",
   "store.status.savedProjectPath": "Saved project folder: {projectPath}",
   "store.status.failedSaveProject": "Failed to save project: {error}",
-  "store.status.exportedHal": "Exported HAL: {filePath}",
+  "store.status.builtProject":
+    "Built project output ({count} files): {buildDir}",
+  "store.status.failedBuildProject": "Build failed: {error}",
+  "store.status.createdEmptyMachineConfig": "Created empty machine INI",
+  "store.status.addedIniSection": "Added INI section",
+  "store.status.removedIniSection": "Removed INI section",
+  "store.status.updatedIniSectionName": "Updated INI section name",
+  "store.status.addedIniField": "Added INI field",
+  "store.status.removedIniField": "Removed INI field",
+  "store.status.updatedIniKey": "Updated INI key",
+  "store.status.updatedIniValue": "Updated INI value",
+  "store.status.addedSheetThreadOutput": "Added sheet thread output",
+  "store.status.updatedSheetThreadOutputName":
+    "Updated sheet thread output name",
+  "store.status.updatedSheetThreadOutputHalBinding":
+    "Updated sheet thread output HAL binding",
+  "store.status.removedSheetThreadOutput": "Removed sheet thread output",
+  "store.status.updatedSubsheetThreadMapping":
+    "Updated subsheet thread mapping",
+  "store.status.addedHalThread": "Added HAL thread",
+  "store.status.removedHalThread": "Removed HAL thread {name}",
+  "store.status.updatedHalThreadName": "Updated HAL thread name to {name}",
+  "store.status.updatedHalThreadPeriod": "Updated HAL thread period ({name})",
+  "store.status.updatedHalThreadFloatMode":
+    "Updated HAL thread float mode ({name}) to {mode}",
+  "store.status.updatedMotmodConfig": "Updated motmod settings",
+  "store.status.cannotRemoveLastHalThread":
+    "At least one HAL thread must exist",
+  "store.status.cannotRemoveRequiredHalThread":
+    "Cannot remove required HAL thread {name}",
+  "store.status.cannotRenameRequiredHalThread":
+    "Cannot rename required HAL thread {name}",
+  "store.status.duplicateHalThreadName":
+    "HAL thread name already exists: {name}",
+  "store.status.noMachineConfigLoaded":
+    "No imported machine configuration is loaded",
   "store.status.importedCompToStore":
     "Imported .comp to store: {componentName}",
   "store.status.addedDirSource":

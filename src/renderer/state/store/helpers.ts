@@ -1,4 +1,8 @@
 import { unwrap } from "solid-js/store";
+import {
+  addfQueueEntryNodeId,
+  normalizeAddfQueueEntries,
+} from "../../../shared/addfQueue";
 import { endpointKey } from "../../../shared/graph";
 import { slugify } from "../../../shared/id";
 import type {
@@ -246,8 +250,11 @@ export function pruneSheetNodeReferences(
   );
 
   if (!sheet.hal?.addfQueue) return;
-  sheet.hal.addfQueue = sheet.hal.addfQueue.filter(
-    (nodeId) => !removedNodeIds.has(nodeId),
+  sheet.hal.addfQueue = normalizeAddfQueueEntries(
+    sheet.hal.addfQueue.filter((entry) => {
+      const nodeId = addfQueueEntryNodeId(entry);
+      return !(nodeId && removedNodeIds.has(nodeId));
+    }),
   );
   if (sheet.hal.addfQueue.length === 0) delete sheet.hal.addfQueue;
   if (Object.keys(sheet.hal).length === 0) delete sheet.hal;

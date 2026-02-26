@@ -1,10 +1,11 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { BrowserWindow, dialog, ipcMain } from "electron";
 import { parseCompComponentDefinition } from "../shared/compParser";
-import { exportProjectToHal } from "../shared/halExport";
-import { parseHalImportDraft } from "../shared/halImport";
 import { createEmptyProject } from "../shared/project";
-import type { NoHALProject } from "../shared/types";
+import type {
+  MachineConfigHalFileSelection,
+  NoHALProject,
+} from "../shared/types";
 import {
   addComponentDirSourceToStore,
   deleteComponentSourceFromStore,
@@ -14,6 +15,11 @@ import {
   saveParsedCompFileToStore,
   scanCompDirectory,
 } from "./componentStore";
+import {
+  buildMachineConfigImportDraft,
+  parseMachineConfigImportSetupDraft,
+} from "./machineConfigImport";
+import { buildProjectIntoDirectory } from "./projectBuild";
 import { readProjectPath, writeProjectDirectory } from "./projects";
 import { listRecentProjects, touchRecentProject } from "./recentProjects";
 import {
@@ -46,9 +52,17 @@ export function registerIpcHandlers(): void {
     return promptUnsavedChangesChoice(win);
   });
 
-  ipcMain.handle("nohal:new-project", async () =>
-    createEmptyProject("NoHAL Project"),
-  );
+  ipcMain.handle("nohal:new-project", async () => {
+    const project = createEmptyProject("NoHAL Project");
+    const res = await dialog.showSaveDialog({
+      title: "Create NoHAL Project Folder",
+      defaultPath: `${project.name || "project"}.nohal`,
+    });
+    if (res.canceled || !res.filePath) return null;
+    const projectPath = await writeProjectDirectory(project, res.filePath);
+    await touchRecentProject(projectPath, project.name);
+    return { project, projectPath };
+  });
 
   ipcMain.handle("nohal:get-recent-projects", async () => listRecentProjects());
 
@@ -89,35 +103,36 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
-    "nohal:export-hal",
-    async (_evt, project: NoHALProject, filePath?: string | null) => {
-      let target = filePath ?? null;
-      if (!target) {
-        const res = await dialog.showSaveDialog({
-          title: "Export HAL",
-          defaultPath: `${project.name || "project"}.hal`,
-          filters: [{ name: "HAL File", extensions: ["hal"] }],
-        });
-        if (res.canceled || !res.filePath) return null;
-        target = res.filePath;
-      }
-      const hal = exportProjectToHal(project);
-      await writeFile(target, hal.text, "utf8");
-      return { filePath: target, warnings: hal.warnings };
-    },
+    "nohal:build-project",
+    async (_evt, project: NoHALProject, projectPath: string) =>
+      buildProjectIntoDirectory(project, projectPath),
   );
 
-  ipcMain.handle("nohal:import-hal-file", async () => {
+  ipcMain.handle("nohal:pick-machine-ini-file", async () => {
     const res = await dialog.showOpenDialog({
-      title: "Import HAL File",
+      title: "Select LinuxCNC INI File",
+      properties: ["openFile"],
+      filters: [{ name: "INI File", extensions: ["ini"] }],
+    });
+    if (res.canceled || res.filePaths.length === 0) return null;
+    return parseMachineConfigImportSetupDraft(res.filePaths[0]);
+  });
+
+  ipcMain.handle("nohal:pick-machine-hal-file", async () => {
+    const res = await dialog.showOpenDialog({
+      title: "Select HAL File",
       properties: ["openFile"],
       filters: [{ name: "HAL File", extensions: ["hal"] }],
     });
     if (res.canceled || res.filePaths.length === 0) return null;
-    const filePath = res.filePaths[0];
-    const content = await readFile(filePath, "utf8");
-    return parseHalImportDraft(content, filePath);
+    return res.filePaths[0];
   });
+
+  ipcMain.handle(
+    "nohal:build-machine-configuration-import",
+    async (_evt, iniPath: string, halFiles: MachineConfigHalFileSelection[]) =>
+      buildMachineConfigImportDraft(iniPath, halFiles),
+  );
 
   ipcMain.handle("nohal:load-component-store", async () =>
     readComponentStoreFile(),

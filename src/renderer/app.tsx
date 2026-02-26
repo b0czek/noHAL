@@ -3,7 +3,8 @@ import EditorScreen from "./app/EditorScreen";
 import { useLandingProjectFlow } from "./app/useLandingProjectFlow";
 import { ContextMenuProvider } from "./components/ContextMenuProvider";
 import LandingPage from "./components/LandingPage";
-import ProjectCreationDialog from "./components/ProjectCreationDialog";
+import MachineImportPage from "./features/machineImport/MachineImportPage";
+import { useMachineImportFlow } from "./features/machineImport/useMachineImportFlow";
 import { useI18n } from "./i18n";
 import {
   EditorStoreProvider,
@@ -22,7 +23,17 @@ function AppContent() {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
   const [isEditorOpen, setIsEditorOpen] = createSignal(false);
-  const landing = useLandingProjectFlow({ isEditorOpen, setIsEditorOpen });
+  const landing = useLandingProjectFlow({ setIsEditorOpen });
+  const machineImport = useMachineImportFlow({
+    setIsEditorOpen,
+    refreshRecentProjects: landing.refreshRecentProjects,
+  });
+
+  const goToLanding = async () => {
+    if (!isEditorOpen()) return;
+    if (!(await actions.confirmProceedWithUnsavedChanges())) return;
+    setIsEditorOpen(false);
+  };
 
   createEffect(() => {
     if (!isEditorOpen()) {
@@ -52,31 +63,25 @@ function AppContent() {
 
   return (
     <ContextMenuProvider>
-      <ProjectCreationDialog {...landing.projectCreationDialogProps()} />
       <Show
         when={isEditorOpen()}
         fallback={
-          <LandingPage
-            recentProjects={landing.recentProjects()}
-            isRecentProjectsLoading={landing.isRecentProjectsLoading()}
-            isActionPending={landing.isLandingActionPending()}
-            errorMessage={landing.landingError()}
-            onCreateProject={landing.openProjectCreationDialog}
-            onOpenProject={() =>
-              void landing.runLandingAction(() => actions.openProject())
+          <Show
+            when={machineImport.machineImportFlow.isActive}
+            fallback={
+              <LandingPage
+                landing={landing}
+                onImportMachineConfiguration={() =>
+                  void machineImport.startMachineImportFlow()
+                }
+              />
             }
-            onRefreshRecentProjects={() => void landing.refreshRecentProjects()}
-            onOpenRecentProject={(projectPath) =>
-              void landing.runLandingAction(() =>
-                actions.openProjectAt(projectPath),
-              )
-            }
-          />
+          >
+            <MachineImportPage machineImport={machineImport} />
+          </Show>
         }
       >
-        <EditorScreen
-          onOpenProjectCreationDialog={landing.openProjectCreationDialog}
-        />
+        <EditorScreen onGoToLanding={() => void goToLanding()} />
       </Show>
     </ContextMenuProvider>
   );

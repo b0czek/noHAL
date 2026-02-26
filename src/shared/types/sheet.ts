@@ -32,6 +32,9 @@ export interface SheetNode {
   sheetId: string;
   instanceName: string;
   position: XY;
+  hal?: {
+    threadMap?: Record<string, string>;
+  };
 }
 
 export type SheetNodeInstance = ComponentNode | SheetNode;
@@ -77,6 +80,38 @@ export interface LabelAnchor {
   endpoint: SheetEndpointRef;
 }
 
+export interface SheetThreadOutputDefinition {
+  id: string;
+  name: string;
+  halThreadId?: string;
+}
+
+export interface SheetAddfQueueNodeEntry {
+  kind: "node";
+  nodeId: string;
+  sheetThreadOutputId?: string;
+}
+
+export interface SheetAddfQueueFunctionEntry {
+  kind: "component-function";
+  nodeId: string;
+  functionKey: string;
+  sheetThreadOutputId?: string;
+}
+
+export interface SheetAddfQueueSubsheetOutputEntry {
+  kind: "subsheet-output";
+  nodeId: string;
+  childThreadOutputId: string;
+  sheetThreadOutputId?: string;
+}
+
+export type SheetAddfQueueEntry =
+  | SheetAddfQueueNodeEntry
+  | SheetAddfQueueFunctionEntry
+  | SheetAddfQueueSubsheetOutputEntry;
+export type SheetAddfQueueStoredEntry = string | SheetAddfQueueEntry;
+
 export interface SheetDefinition {
   id: string;
   name: string;
@@ -88,6 +123,7 @@ export interface SheetDefinition {
   directConnections: DirectConnection[];
   labelAnchors: LabelAnchor[];
   hal?: {
-    addfQueue?: string[];
+    threadOutputs?: SheetThreadOutputDefinition[];
+    addfQueue?: SheetAddfQueueStoredEntry[];
   };
 }

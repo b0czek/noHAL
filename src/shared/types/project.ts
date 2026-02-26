@@ -1,4 +1,5 @@
 import type { ComponentDefinition } from "./components";
+import type { ProjectMachineConfig } from "./ini";
 import type { SheetDefinition } from "./sheet";
 
 export interface RecentProjectEntry {
@@ -11,9 +12,15 @@ export interface ProjectLibrary {
   components: Record<string, ComponentDefinition>;
 }
 
+export interface HalThreadDefinition {
+  id: string;
+  name: string;
+  periodNs: number;
+  floatMode?: "fp" | "nofp";
+}
+
 export interface HalExportComponentAddfRule {
   enabled?: boolean;
-  thread?: string;
   functionTemplates?: string[];
 }
 
@@ -36,6 +43,15 @@ export interface HalExportConfig {
   addf?: HalExportAddfConfig;
 }
 
+export interface ProjectMotmodConfig {
+  numJoints: number;
+  numDio: number;
+  numAio: number;
+  numSpindles: number;
+  numMiscError: number;
+  trajPeriodNs: number;
+}
+
 export interface NoHALProject {
   format: "nohal-project";
   version: 1;
@@ -47,6 +63,9 @@ export interface NoHALProject {
   rootSheetId: string;
   sheets: Record<string, SheetDefinition>;
   library: ProjectLibrary;
+  halThreads?: HalThreadDefinition[];
+  machineConfig?: ProjectMachineConfig;
+  motmod?: ProjectMotmodConfig;
   halExport?: HalExportConfig;
   ui: {
     activeSheetId: string;

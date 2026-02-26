@@ -65,6 +65,14 @@ select {
   margin-right: 8px;
 }
 
+.brand-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
 .brand-mark {
   width: 34px;
   height: 34px;
@@ -382,6 +390,11 @@ select {
   padding: 0;
   display: grid;
   place-items: center;
+  line-height: 1;
+}
+
+.icon-btn svg {
+  display: block;
 }
 
 .sheet-tree {
@@ -601,6 +614,39 @@ select {
   max-height: min(60vh, 620px);
   overflow: auto;
   padding-right: 2px;
+}
+
+.addf-queue-thread-section {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.addf-queue-thread-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.addf-queue-thread-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.addf-queue-thread-dropzone {
+  min-height: 18px;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.addf-queue-thread-dropzone.is-drop-target {
+  border-color: rgba(122, 230, 208, 0.34);
+  background: rgba(122, 230, 208, 0.07);
 }
 
 .addf-queue-row {
@@ -1036,63 +1082,217 @@ textarea {
   grid-column: 1 / -1;
 }
 
-.new-project-dialog {
+.ini-editor-dialog {
   width: min(1100px, calc(100vw - 36px));
 }
 
-.new-project-dialog-body {
-  grid-template-columns: 1fr;
+.threads-dialog {
+  width: min(920px, calc(100vw - 36px));
 }
 
-.new-project-choice-grid {
+.project-settings-dialog {
+  width: min(1040px, calc(100vw - 36px));
+}
+
+.ini-editor-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.project-settings-body {
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+}
+
+.threads-dialog-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.project-settings-sidebar {
+  min-width: 0;
+}
+
+.project-settings-content {
+  min-width: 0;
+}
+
+.project-settings-form-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
+  margin-top: 12px;
+  max-width: 420px;
 }
 
-.new-project-choice-actions {
+.project-settings-note {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.threads-dialog-panel-header {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.threads-list {
+  display: grid;
   gap: 8px;
   margin-top: 10px;
 }
 
-.new-project-linking-help {
-  margin-bottom: 10px;
-}
-
-.new-project-link-list {
+.threads-row {
   display: grid;
+  grid-template-columns:
+    minmax(180px, 1fr)
+    minmax(140px, 220px)
+    minmax(120px, 160px)
+    auto;
   gap: 8px;
-  max-height: 380px;
-  overflow: auto;
-}
-
-.new-project-link-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
-  gap: 12px;
-  align-items: start;
+  align-items: end;
   padding: 10px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.015);
 }
 
-.new-project-link-main {
-  min-width: 0;
+.threads-field {
+  display: grid;
+  gap: 4px;
 }
 
-.new-project-link-select {
-  min-width: 0;
+.threads-field-label {
+  color: var(--muted);
+  font-size: 12px;
 }
 
-.new-project-dialog-footer {
+.threads-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.threads-toggle .mini {
+  min-width: 56px;
+}
+
+.threads-row-meta {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  justify-self: end;
 }
 
-.new-project-path {
+.threads-origin-chip {
+  opacity: 0.6;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+.threads-row-index {
+  min-width: 1.5em;
+  text-align: right;
+}
+
+.ini-editor-sections-panel {
+  min-width: 0;
+}
+
+.ini-editor-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ini-editor-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ini-editor-sections {
+  display: grid;
+  gap: 12px;
+  max-height: 62vh;
+  overflow: auto;
+}
+
+.ini-editor-section {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.ini-editor-section-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: #bee6dc;
+  font-size: 12px;
+}
+
+.ini-editor-section-title input {
+  min-width: 0;
+}
+
+.ini-editor-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ini-editor-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ini-editor-rows {
+  display: grid;
+  gap: 6px;
+}
+
+.ini-editor-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 240px) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.ini-editor-row-view {
+  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
+}
+
+.ini-editor-key {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ini-editor-value-static {
+  width: 100%;
+  min-width: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  padding: 6px 8px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.ini-editor-path {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1112,12 +1312,51 @@ textarea {
     grid-column: auto;
   }
 
-  .new-project-choice-grid {
+  .ini-editor-body {
     grid-template-columns: 1fr;
   }
 
-  .new-project-link-row {
+  .ini-editor-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+  }
+
+  .ini-editor-row-view {
     grid-template-columns: 1fr;
+  }
+
+  .ini-editor-row > :nth-child(1),
+  .ini-editor-row > :nth-child(2) {
+    grid-column: 1 / -1;
+  }
+
+  .ini-editor-row > :nth-child(3) {
+    justify-self: end;
+  }
+
+  .ini-editor-panel-header,
+  .ini-editor-section-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ini-editor-actions {
+    justify-content: flex-end;
+  }
+
+  .threads-dialog-panel-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .threads-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .threads-row-meta {
+    justify-self: auto;
+    justify-content: space-between;
   }
 }
 

@@ -130,6 +130,8 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
       {
         line: 2,
         functionName: "lowpass.0",
+        instanceName: "lowpass.0",
+        isDefaultFunction: true,
         thread: "servo-thread",
         position: 17,
       },
@@ -253,6 +255,50 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
       name: "sel",
       observedDirections: ["io"],
     });
+  });
+
+  it("parses addf function targets into instance names and per-component function suffixes", () => {
+    const draft = parseHal(`
+      loadrt stepgen
+      addf stepgen.make-pulses base-thread
+      addf stepgen.capture-position servo-thread
+      addf stepgen.update-freq servo-thread
+      addf stepgen servo-thread
+    `);
+
+    expect(draft.addfs).toEqual([
+      {
+        line: 2,
+        functionName: "stepgen.make-pulses",
+        instanceName: "stepgen",
+        functionSuffix: "make-pulses",
+        isDefaultFunction: false,
+        thread: "base-thread",
+      },
+      {
+        line: 3,
+        functionName: "stepgen.capture-position",
+        instanceName: "stepgen",
+        functionSuffix: "capture-position",
+        isDefaultFunction: false,
+        thread: "servo-thread",
+      },
+      {
+        line: 4,
+        functionName: "stepgen.update-freq",
+        instanceName: "stepgen",
+        functionSuffix: "update-freq",
+        isDefaultFunction: false,
+        thread: "servo-thread",
+      },
+      {
+        line: 5,
+        functionName: "stepgen",
+        instanceName: "stepgen",
+        isDefaultFunction: true,
+        thread: "servo-thread",
+      },
+    ]);
   });
 });
 

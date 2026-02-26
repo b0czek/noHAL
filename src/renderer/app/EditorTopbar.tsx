@@ -2,7 +2,6 @@ import {
   HiOutlineArchiveBoxArrowDown,
   HiOutlineArrowUturnLeft,
   HiOutlineArrowUturnRight,
-  HiOutlineDocumentPlus,
   HiOutlineFolderOpen,
 } from "solid-icons/hi";
 import { useI18n } from "../i18n";
@@ -10,7 +9,7 @@ import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 
 interface EditorTopbarProps {
-  onOpenProjectCreationDialog: () => void;
+  onGoToLanding: () => void;
 }
 
 function closeToolbarMenu(el: HTMLElement) {
@@ -25,23 +24,20 @@ export default function EditorTopbar(props: EditorTopbarProps) {
 
   return (
     <header class="topbar">
-      <div class="brand">
+      <button
+        type="button"
+        class="brand brand-button"
+        onClick={props.onGoToLanding}
+        title={t("topbar.goToLanding")}
+        aria-label={t("topbar.goToLanding")}
+      >
         <div class="brand-mark">N</div>
         <div>
           <div class="brand-name">NoHAL</div>
         </div>
-      </div>
+      </button>
 
       <div class="toolbar-group">
-        <button
-          type="button"
-          class="btn subtle icon-btn"
-          onClick={props.onOpenProjectCreationDialog}
-          aria-label={t("topbar.newProject")}
-          title={t("topbar.newProject")}
-        >
-          <HiOutlineDocumentPlus size={16} aria-hidden="true" />
-        </button>
         <button
           type="button"
           class="btn subtle icon-btn"
@@ -83,13 +79,26 @@ export default function EditorTopbar(props: EditorTopbarProps) {
         <button
           type="button"
           class="btn accent"
-          onClick={() => void actions.exportHal()}
+          onClick={() => void actions.buildProject()}
         >
-          {t("topbar.exportHal")}
+          {t("topbar.build")}
         </button>
       </div>
 
       <div class="toolbar-group">
+        <button
+          type="button"
+          class="btn"
+          onClick={editorUi.openProjectSettings}
+        >
+          {t("topbar.projectSettings")}
+        </button>
+        <button type="button" class="btn" onClick={editorUi.openThreadsDialog}>
+          {t("topbar.threads")}
+        </button>
+        <button type="button" class="btn" onClick={editorUi.openIniEditor}>
+          {t("topbar.iniEditor")}
+        </button>
         <button type="button" class="btn" onClick={editorUi.openComponentStore}>
           {t("topbar.componentStore")}
         </button>

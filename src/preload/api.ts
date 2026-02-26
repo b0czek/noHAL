@@ -1,8 +1,10 @@
 import type {
   ComponentStore,
   ComponentStoreEntry,
-  HalImportDraft,
   ImportedComponentDefinition,
+  MachineConfigHalFileSelection,
+  MachineConfigImportDraft,
+  MachineConfigImportSetupDraft,
   NoHALProject,
   RecentProjectEntry,
 } from "../shared/types";
@@ -13,7 +15,7 @@ export interface NoHALApi {
   setWindowDirtyState(isDirty: boolean): void;
   promptUnsavedChanges(): Promise<UnsavedChangesChoice>;
   onRequestSaveBeforeClose(listener: () => Promise<boolean>): () => void;
-  newProject(): Promise<NoHALProject>;
+  newProject(): Promise<{ project: NoHALProject; projectPath: string } | null>;
   getRecentProjects(): Promise<RecentProjectEntry[]>;
   openProject(): Promise<{ project: NoHALProject; projectPath: string } | null>;
   openProjectAt(
@@ -23,11 +25,16 @@ export interface NoHALApi {
     project: NoHALProject,
     projectPath?: string | null,
   ): Promise<{ projectPath: string } | null>;
-  exportHal(
+  buildProject(
     project: NoHALProject,
-    filePath?: string | null,
-  ): Promise<{ filePath: string; warnings: string[] } | null>;
-  importHalFile(): Promise<HalImportDraft | null>;
+    projectPath: string,
+  ): Promise<{ buildDir: string; files: string[]; warnings: string[] }>;
+  pickMachineIniFile(): Promise<MachineConfigImportSetupDraft | null>;
+  pickMachineHalFile(): Promise<string | null>;
+  buildMachineConfigurationImport(
+    iniPath: string,
+    halFiles: MachineConfigHalFileSelection[],
+  ): Promise<MachineConfigImportDraft>;
   importCompFile(): Promise<ImportedComponentDefinition | null>;
   pickDirectory(defaultPath?: string | null): Promise<string | null>;
   scanCompDir(dirPath: string): Promise<{
