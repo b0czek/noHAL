@@ -52,9 +52,17 @@ export function registerIpcHandlers(): void {
     return promptUnsavedChangesChoice(win);
   });
 
-  ipcMain.handle("nohal:new-project", async () =>
-    createEmptyProject("NoHAL Project"),
-  );
+  ipcMain.handle("nohal:new-project", async () => {
+    const project = createEmptyProject("NoHAL Project");
+    const res = await dialog.showSaveDialog({
+      title: "Create NoHAL Project Folder",
+      defaultPath: `${project.name || "project"}.nohal`,
+    });
+    if (res.canceled || !res.filePath) return null;
+    const projectPath = await writeProjectDirectory(project, res.filePath);
+    await touchRecentProject(projectPath, project.name);
+    return { project, projectPath };
+  });
 
   ipcMain.handle("nohal:get-recent-projects", async () => listRecentProjects());
 

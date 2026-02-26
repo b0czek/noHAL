@@ -33,7 +33,10 @@ const api: NoHALApi = {
     };
   },
   newProject: () =>
-    ipcRenderer.invoke("nohal:new-project") as Promise<NoHALProject>,
+    ipcRenderer.invoke("nohal:new-project") as Promise<{
+      project: NoHALProject;
+      projectPath: string;
+    } | null>,
   getRecentProjects: () =>
     ipcRenderer.invoke("nohal:get-recent-projects") as Promise<
       Array<{ projectPath: string; name?: string; lastOpenedAt: string }>

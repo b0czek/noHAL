@@ -15,7 +15,7 @@ export interface NoHALApi {
   setWindowDirtyState(isDirty: boolean): void;
   promptUnsavedChanges(): Promise<UnsavedChangesChoice>;
   onRequestSaveBeforeClose(listener: () => Promise<boolean>): () => void;
-  newProject(): Promise<NoHALProject>;
+  newProject(): Promise<{ project: NoHALProject; projectPath: string } | null>;
   getRecentProjects(): Promise<RecentProjectEntry[]>;
   openProject(): Promise<{ project: NoHALProject; projectPath: string } | null>;
   openProjectAt(

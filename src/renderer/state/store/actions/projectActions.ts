@@ -71,11 +71,15 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     async newProject(): Promise<boolean> {
       return runProjectTransition(
         deps,
-        async () => ({
-          project: await window.nohal.newProject(),
-          projectPath: null,
-          status: deps.t("store.status.createdNewProject"),
-        }),
+        async () => {
+          const result = await window.nohal.newProject();
+          if (!result) return null;
+          return {
+            project: result.project,
+            projectPath: result.projectPath,
+            status: deps.t("store.status.createdNewProject"),
+          };
+        },
         "store.status.failedCreateProject",
       );
     },
