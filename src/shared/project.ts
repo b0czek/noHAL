@@ -1,5 +1,9 @@
 import { createId, slugify } from "./id";
 import { createBuiltinLibrary } from "./library";
+import {
+  createDefaultSheetThreadOutputs,
+  normalizeSheetThreadOutputs,
+} from "./sheetThreads";
 import type {
   ComponentDefinition,
   HalThreadDefinition,
@@ -20,6 +24,9 @@ function createDefaultTopSheet(): SheetDefinition {
     comments: [],
     directConnections: [],
     labelAnchors: [],
+    hal: {
+      threadOutputs: createDefaultSheetThreadOutputs(),
+    },
   };
 }
 
@@ -29,13 +36,12 @@ export function createDefaultHalThreads(): HalThreadDefinition[] {
       id: createId("thread"),
       name: "servo-thread",
       periodNs: 1_000_000,
+      floatMode: "fp",
     },
   ];
 }
 
-function normalizeHalThreads(
-  value: unknown,
-): HalThreadDefinition[] {
+function normalizeHalThreads(value: unknown): HalThreadDefinition[] {
   const rawList = Array.isArray(value) ? value : [];
   const out: HalThreadDefinition[] = [];
   const usedNames = new Set<string>();
@@ -55,6 +61,7 @@ function normalizeHalThreads(
           : createId("thread"),
       name,
       periodNs,
+      floatMode: candidate.floatMode === "nofp" ? "nofp" : "fp",
     });
     usedNames.add(name);
   }
@@ -120,12 +127,25 @@ export function parseNoHALProject(content: string): NoHALProject {
   const parsed = JSON.parse(content) as unknown;
   assertProjectShape(parsed);
   const project = parsed as NoHALProject;
+  project.halThreads = normalizeHalThreads(project.halThreads);
   for (const sheet of Object.values(project.sheets)) {
     if (!Array.isArray((sheet as Partial<SheetDefinition>).comments)) {
       (sheet as SheetDefinition).comments = [];
     }
+    if (!sheet.hal) sheet.hal = {};
+    sheet.hal.threadOutputs = normalizeSheetThreadOutputs(
+      sheet.hal.threadOutputs,
+    );
   }
-  project.halThreads = normalizeHalThreads(project.halThreads);
+  const rootSheet = project.sheets[project.rootSheetId];
+  const halThreadIdByName = new Map(
+    project.halThreads.map((thread) => [thread.name, thread.id]),
+  );
+  for (const output of rootSheet.hal?.threadOutputs ?? []) {
+    if (output.halThreadId) continue;
+    const inferred = halThreadIdByName.get(output.name);
+    if (inferred) output.halThreadId = inferred;
+  }
   return project;
 }
 
@@ -147,6 +167,9 @@ export function createSheet(
     comments: [],
     directConnections: [],
     labelAnchors: [],
+    hal: {
+      threadOutputs: createDefaultSheetThreadOutputs(),
+    },
   };
 }
 

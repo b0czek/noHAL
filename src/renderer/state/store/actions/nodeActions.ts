@@ -195,6 +195,30 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       });
     },
 
+    updateSheetNodeThreadMap(
+      nodeId: string,
+      childThreadOutputId: string,
+      parentThreadOutputId: string | null,
+    ): void {
+      const activeSheetId = deps.state.activeSheetId;
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const node = sheet.nodes.find((n) => n.id === nodeId);
+        if (!node || node.kind !== "sheet") return;
+        if (!node.hal) node.hal = {};
+        if (!node.hal.threadMap) node.hal.threadMap = {};
+        if (parentThreadOutputId?.trim()) {
+          node.hal.threadMap[childThreadOutputId] = parentThreadOutputId;
+          return;
+        }
+        delete node.hal.threadMap[childThreadOutputId];
+        if (Object.keys(node.hal.threadMap).length === 0)
+          delete node.hal.threadMap;
+        if (Object.keys(node.hal).length === 0) delete node.hal;
+      });
+      deps.setStatusT("store.status.updatedSubsheetThreadMapping");
+    },
+
     updateNodeParam(nodeId: string, paramKey: string, value: string): void {
       const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {

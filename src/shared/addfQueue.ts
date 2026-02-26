@@ -18,28 +18,63 @@ export function addfQueueEntryKey(
 ): string | null {
   const nodeId = addfQueueEntryNodeId(entry);
   if (!nodeId) return null;
+  const threadSuffix =
+    typeof entry === "string"
+      ? ""
+      : entry.sheetThreadOutputId?.trim()
+        ? `@${entry.sheetThreadOutputId.trim()}`
+        : "";
   if (typeof entry === "string" || entry.kind === "node") {
-    return `node:${nodeId}`;
+    return `node:${nodeId}${threadSuffix}`;
   }
   if (entry.kind === "component-function") {
     const functionKey = entry.functionKey?.trim();
     if (!functionKey) return null;
-    return `fn:${nodeId}:${functionKey}`;
+    return `fn:${nodeId}:${functionKey}${threadSuffix}`;
+  }
+  if (entry.kind === "subsheet-output") {
+    const childThreadOutputId = entry.childThreadOutputId?.trim();
+    if (!childThreadOutputId) return null;
+    return `subsheet:${nodeId}:${childThreadOutputId}${threadSuffix}`;
   }
   return null;
 }
 
 export function makeAddfQueueNodeEntry(
   nodeId: string,
+  sheetThreadOutputId?: string,
 ): SheetAddfQueueStoredEntry {
-  return { kind: "node", nodeId };
+  return {
+    kind: "node",
+    nodeId,
+    ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
+  };
 }
 
 export function makeAddfQueueFunctionEntry(
   nodeId: string,
   functionKey: string,
+  sheetThreadOutputId?: string,
 ): SheetAddfQueueStoredEntry {
-  return { kind: "component-function", nodeId, functionKey };
+  return {
+    kind: "component-function",
+    nodeId,
+    functionKey,
+    ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
+  };
+}
+
+export function makeAddfQueueSubsheetOutputEntry(
+  nodeId: string,
+  childThreadOutputId: string,
+  sheetThreadOutputId?: string,
+): SheetAddfQueueStoredEntry {
+  return {
+    kind: "subsheet-output",
+    nodeId,
+    childThreadOutputId,
+    ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
+  };
 }
 
 export function normalizeAddfQueueEntries(
@@ -60,15 +95,35 @@ export function normalizeAddfQueueEntries(
     }
 
     if (entry.kind === "node") {
-      out.push({ kind: "node", nodeId: entry.nodeId.trim() });
+      const sheetThreadOutputId = entry.sheetThreadOutputId?.trim();
+      out.push({
+        kind: "node",
+        nodeId: entry.nodeId.trim(),
+        ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
+      });
       continue;
     }
 
     if (entry.kind === "component-function") {
+      const sheetThreadOutputId = entry.sheetThreadOutputId?.trim();
       out.push({
         kind: "component-function",
         nodeId: entry.nodeId.trim(),
         functionKey: entry.functionKey.trim(),
+        ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
+      });
+      continue;
+    }
+
+    if (entry.kind === "subsheet-output") {
+      const sheetThreadOutputId = entry.sheetThreadOutputId?.trim();
+      const childThreadOutputId = entry.childThreadOutputId?.trim();
+      if (!childThreadOutputId) continue;
+      out.push({
+        kind: "subsheet-output",
+        nodeId: entry.nodeId.trim(),
+        childThreadOutputId,
+        ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
       });
     }
   }

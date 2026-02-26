@@ -1,10 +1,12 @@
 import {
+  addfQueueEntryKey,
   makeAddfQueueFunctionEntry,
   makeAddfQueueNodeEntry,
   normalizeAddfQueueEntries,
 } from "../addfQueue";
 import { createId, safeKey, slugify } from "../id";
 import { createEmptyProject } from "../project";
+import { getSheetThreadOutputs } from "../sheetThreads";
 import type {
   ComponentDefinition,
   ComponentFunctionDefinition,
@@ -1392,19 +1394,76 @@ export function buildProjectFromHalImport(
   const addfQueue: SheetAddfQueueStoredEntry[] = [];
   const seenQueueItems = new Set<string>();
   const warnedCollapsedAddfInstances = new Set<string>();
+  const sheetThreadOutputs = getSheetThreadOutputs(rootSheet);
+  if (!rootSheet.hal) rootSheet.hal = {};
+  rootSheet.hal.threadOutputs = [...sheetThreadOutputs];
+  const halThreads = project.halThreads ?? [];
+  project.halThreads = halThreads;
+  const halThreadIdByName = new Map(
+    halThreads.map((thread) => [thread.name, thread.id]),
+  );
+  const ensureHalThreadId = (threadName: string): string => {
+    const trimmed = threadName.trim();
+    const existing = halThreadIdByName.get(trimmed);
+    if (existing) return existing;
+    const nextId = createId("thread");
+    halThreads.push({
+      id: nextId,
+      name: trimmed,
+      periodNs: 1_000_000,
+      floatMode: "fp",
+    });
+    halThreadIdByName.set(trimmed, nextId);
+    return nextId;
+  };
+  const rootThreadOutputIdByName = new Map(
+    rootSheet.hal.threadOutputs.map((item) => [item.name, item.id]),
+  );
+  for (const output of rootSheet.hal.threadOutputs) {
+    const halThreadId = halThreadIdByName.get(output.name);
+    if (halThreadId) output.halThreadId = halThreadId;
+  }
+  for (const addf of draft.addfs) {
+    const threadName = addf.thread?.trim();
+    if (!threadName || rootThreadOutputIdByName.has(threadName)) continue;
+    const halThreadId = ensureHalThreadId(threadName);
+    const outputId = createId("sheetthread");
+    rootThreadOutputIdByName.set(threadName, outputId);
+    rootSheet.hal.threadOutputs.push({
+      id: outputId,
+      name: threadName,
+      halThreadId,
+    });
+  }
+  for (const addf of draft.addfs) {
+    const threadName = addf.thread?.trim();
+    if (!threadName) continue;
+    const outputId = rootThreadOutputIdByName.get(threadName);
+    const halThreadId = ensureHalThreadId(threadName);
+    const output = rootSheet.hal.threadOutputs.find(
+      (item) => item.id === outputId,
+    );
+    if (output && output.halThreadId !== halThreadId)
+      output.halThreadId = halThreadId;
+  }
+  const defaultRootThreadOutputId = rootSheet.hal.threadOutputs[0]?.id;
   for (const addf of draft.addfs) {
     const addfInstanceName = addf.instanceName ?? addf.functionName;
     const nodeId = nodeIdByInstanceName.get(addfInstanceName);
     if (!nodeId) continue;
     const component = componentByNodeId.get(nodeId);
 
-    let queueEntry = makeAddfQueueNodeEntry(nodeId);
+    const threadOutputId =
+      (addf.thread?.trim() &&
+        rootThreadOutputIdByName.get(addf.thread.trim())) ||
+      defaultRootThreadOutputId;
+    let queueEntry = makeAddfQueueNodeEntry(nodeId, threadOutputId);
     if (addf.functionSuffix !== undefined) {
       const fn = component?.functions?.find(
         (item) => item.halSuffix === addf.functionSuffix,
       );
       if (fn) {
-        queueEntry = makeAddfQueueFunctionEntry(nodeId, fn.key);
+        queueEntry = makeAddfQueueFunctionEntry(nodeId, fn.key, threadOutputId);
       } else if (!warnedCollapsedAddfInstances.has(addfInstanceName)) {
         warnedCollapsedAddfInstances.add(addfInstanceName);
         warnings.push(
@@ -1421,12 +1480,7 @@ export function buildProjectFromHalImport(
       );
     }
 
-    const key =
-      typeof queueEntry === "string"
-        ? queueEntry
-        : queueEntry.kind === "component-function"
-          ? `fn:${queueEntry.nodeId}:${queueEntry.functionKey}`
-          : `node:${queueEntry.nodeId}`;
+    const key = addfQueueEntryKey(queueEntry) ?? addf.functionName;
     if (seenQueueItems.has(key)) continue;
     seenQueueItems.add(key);
     addfQueue.push(queueEntry);

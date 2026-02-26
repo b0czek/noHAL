@@ -204,7 +204,9 @@ function isBuildManifestLike(value: unknown): value is BuildManifest {
   );
 }
 
-async function readBuildManifest(buildDir: string): Promise<BuildManifest | null> {
+async function readBuildManifest(
+  buildDir: string,
+): Promise<BuildManifest | null> {
   const manifestPath = path.join(buildDir, BUILD_MANIFEST_FILENAME);
   try {
     const text = await readFile(manifestPath, "utf8");
@@ -246,7 +248,9 @@ export async function buildProjectIntoDirectory(
 
   const generated = createGeneratedBuildFiles(project);
   const writtenFiles: string[] = [];
-  const nextRelativePaths = new Set(generated.files.map((file) => file.relativePath));
+  const nextRelativePaths = new Set(
+    generated.files.map((file) => file.relativePath),
+  );
 
   await removeStaleGeneratedFiles(buildDir, nextRelativePaths);
 

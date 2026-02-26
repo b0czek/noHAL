@@ -16,11 +16,11 @@ export interface HalThreadDefinition {
   id: string;
   name: string;
   periodNs: number;
+  floatMode?: "fp" | "nofp";
 }
 
 export interface HalExportComponentAddfRule {
   enabled?: boolean;
-  thread?: string;
   functionTemplates?: string[];
 }
 

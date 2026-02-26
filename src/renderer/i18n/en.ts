@@ -102,21 +102,37 @@ export const en = {
     "Manage thread names and periods used for addf scheduling/export defaults.",
   "threadsDialog.threads": "Threads",
   "threadsDialog.help":
-    "By default, projects start with one servo thread at 1 ms. Thread periods are stored in nanoseconds.",
+    "By default, projects start with one servo thread at 1000000 ns. Thread periods are stored in nanoseconds.",
   "threadsDialog.addThread": "Add Thread",
   "threadsDialog.removeThread": "Remove Thread",
   "threadsDialog.name": "Name",
-  "threadsDialog.periodMs": "Period (ms)",
-  "threadsDialog.periodNs": "{ns} ns",
+  "threadsDialog.periodNsLabel": "Period (ns)",
+  "threadsDialog.floatMode": "Float Support",
+  "threadsDialog.floatFp": "fp",
+  "threadsDialog.floatNoFp": "nofp",
 
   "sheetSettings.ariaLabel": "Sheet Settings",
   "sheetSettings.title": "Sheet Settings",
+  "sheetSettings.threadOutputsTitle": "Sheet Thread Outputs",
+  "sheetSettings.threadOutputsHelp":
+    "Define this sheet's local scheduling outputs. Parent sheets map subsheet outputs into their own outputs.",
+  "sheetSettings.rootThreadBindingHelp":
+    "Top sheet outputs can be explicitly bound to project HAL threads.",
+  "sheetSettings.addThreadOutput": "Add Output",
+  "sheetSettings.rootThreadBinding": "HAL thread binding",
+  "sheetSettings.rootThreadBindingUnbound": "(unbound)",
   "sheetSettings.addfQueueTitle": "addf Queue (Sheet Scope)",
   "sheetSettings.addfQueueHelp":
     "Order components and subsheets together. Subsheet entries expand using that subsheet's own queue during HAL export.",
+  "sheetSettings.subsheetThreadMappingsTitle": "Subsheet Thread Mappings",
+  "sheetSettings.subsheetThreadMappingsHelp":
+    "Map each subsheet's declared thread outputs to this sheet's thread outputs. Auto inherits the subsheet row lane from the addf queue.",
+  "sheetSettings.threadMapAutoInherit": "(auto / inherit row: {thread})",
+  "sheetSettings.noSubsheets": "No subsheets in this sheet.",
   "sheetSettings.resetAZ": "Reset (A-Z)",
   "sheetSettings.queueItems": "Queue Items",
   "sheetSettings.dragToReorder": "Drag to reorder",
+  "sheetSettings.assignThreadOutput": "Assign local thread output",
   "sheetSettings.kindSheet": "sheet",
   "sheetSettings.kindRt": "rt",
   "sheetSettings.kindFunction": "fn",
@@ -231,8 +247,7 @@ export const en = {
   "iniEditor.confirmRemoveSection": "Remove INI section [{name}]?",
   "iniEditor.confirmRemoveSectionWithFields":
     "Remove INI section [{name}] and its {count} fields?",
-  "iniEditor.confirmRemoveField":
-    "Remove INI field [{sectionName}] {key}?",
+  "iniEditor.confirmRemoveField": "Remove INI field [{sectionName}] {key}?",
   "iniEditor.emptyDocument": "No INI sections yet. Add a section to begin.",
   "iniEditor.emptySection": "No key/value entries in this section.",
 
@@ -268,7 +283,8 @@ export const en = {
   "store.status.failedOpenProject": "Failed to open project: {error}",
   "store.status.savedProjectPath": "Saved project folder: {projectPath}",
   "store.status.failedSaveProject": "Failed to save project: {error}",
-  "store.status.builtProject": "Built project output ({count} files): {buildDir}",
+  "store.status.builtProject":
+    "Built project output ({count} files): {buildDir}",
   "store.status.failedBuildProject": "Build failed: {error}",
   "store.status.createdEmptyMachineConfig": "Created empty machine INI",
   "store.status.addedIniSection": "Added INI section",
@@ -278,10 +294,20 @@ export const en = {
   "store.status.removedIniField": "Removed INI field",
   "store.status.updatedIniKey": "Updated INI key",
   "store.status.updatedIniValue": "Updated INI value",
+  "store.status.addedSheetThreadOutput": "Added sheet thread output",
+  "store.status.updatedSheetThreadOutputName":
+    "Updated sheet thread output name",
+  "store.status.updatedSheetThreadOutputHalBinding":
+    "Updated sheet thread output HAL binding",
+  "store.status.removedSheetThreadOutput": "Removed sheet thread output",
+  "store.status.updatedSubsheetThreadMapping":
+    "Updated subsheet thread mapping",
   "store.status.addedHalThread": "Added HAL thread",
   "store.status.removedHalThread": "Removed HAL thread {name}",
   "store.status.updatedHalThreadName": "Updated HAL thread name to {name}",
   "store.status.updatedHalThreadPeriod": "Updated HAL thread period ({name})",
+  "store.status.updatedHalThreadFloatMode":
+    "Updated HAL thread float mode ({name}) to {mode}",
   "store.status.cannotRemoveLastHalThread":
     "At least one HAL thread must exist",
   "store.status.duplicateHalThreadName":

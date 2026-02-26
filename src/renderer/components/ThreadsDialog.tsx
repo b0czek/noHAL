@@ -1,13 +1,9 @@
+import { HiOutlineTrash } from "solid-icons/hi";
 import { For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
-
-function formatPeriodMs(periodNs: number): string {
-  const ms = periodNs / 1_000_000;
-  return Number.isInteger(ms) ? String(ms) : String(ms);
-}
 
 export default function ThreadsDialog() {
   const { t } = useI18n();
@@ -83,39 +79,65 @@ export default function ThreadsDialog() {
                         </label>
                         <label class="threads-field">
                           <span class="threads-field-label">
-                            {t("threadsDialog.periodMs")}
+                            {t("threadsDialog.periodNsLabel")}
                           </span>
                           <input
                             type="number"
-                            min="0.000001"
-                            step="0.001"
-                            value={formatPeriodMs(thread.periodNs)}
+                            class="mono"
+                            min="1"
+                            step="1"
+                            value={String(thread.periodNs)}
                             onChange={(evt) => {
-                              const ms = Number.parseFloat(
+                              const ns = Number.parseInt(
                                 evt.currentTarget.value,
+                                10,
                               );
-                              if (!Number.isFinite(ms) || ms <= 0) return;
-                              actions.updateHalThreadPeriodNs(
-                                thread.id,
-                                Math.round(ms * 1_000_000),
-                              );
+                              if (!Number.isFinite(ns) || ns <= 0) return;
+                              actions.updateHalThreadPeriodNs(thread.id, ns);
                             }}
                           />
                         </label>
-                        <div class="threads-row-meta">
-                          <span class="muted mono">
-                            {t("threadsDialog.periodNs", {
-                              ns: thread.periodNs,
-                            })}
+                        <label class="threads-field">
+                          <span class="threads-field-label">
+                            {t("threadsDialog.floatMode")}
                           </span>
+                          <div class="threads-toggle mono">
+                            <button
+                              type="button"
+                              class={`mini ${(thread.floatMode ?? "fp") === "nofp" ? "is-active-filter" : ""}`}
+                              onClick={() =>
+                                actions.updateHalThreadFloatMode(
+                                  thread.id,
+                                  "nofp",
+                                )
+                              }
+                            >
+                              {t("threadsDialog.floatNoFp")}
+                            </button>
+                            <button
+                              type="button"
+                              class={`mini ${(thread.floatMode ?? "fp") === "fp" ? "is-active-filter" : ""}`}
+                              onClick={() =>
+                                actions.updateHalThreadFloatMode(
+                                  thread.id,
+                                  "fp",
+                                )
+                              }
+                            >
+                              {t("threadsDialog.floatFp")}
+                            </button>
+                          </div>
+                        </label>
+                        <div class="threads-row-meta">
                           <button
                             type="button"
-                            class="mini"
+                            class="btn subtle icon-btn"
                             disabled={threads().length <= 1}
                             onClick={() => actions.removeHalThread(thread.id)}
                             title={t("threadsDialog.removeThread")}
+                            aria-label={t("threadsDialog.removeThread")}
                           >
-                            {t("common.remove")}
+                            <HiOutlineTrash size={16} aria-hidden="true" />
                           </button>
                           <span class="muted threads-row-index">
                             {index() + 1}

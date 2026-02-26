@@ -310,6 +310,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
           id: createId("thread"),
           name: nextName,
           periodNs: 1_000_000,
+          floatMode: "fp",
         };
         threads.push(next);
       });
@@ -332,6 +333,13 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         if (index < 0) return;
         if (threads.length <= 1) return;
         threads.splice(index, 1);
+        for (const sheet of Object.values(project.sheets)) {
+          const outputs = sheet.hal?.threadOutputs;
+          if (!outputs) continue;
+          for (const output of outputs) {
+            if (output.halThreadId === threadId) delete output.halThreadId;
+          }
+        }
       });
       deps.setStatusT("store.status.removedHalThread", { name: existing.name });
     },
@@ -378,6 +386,25 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       });
       deps.setStatusT("store.status.updatedHalThreadPeriod", {
         name: existing.name,
+      });
+    },
+
+    updateHalThreadFloatMode(threadId: string, floatMode: "fp" | "nofp"): void {
+      const existing = (deps.state.project.halThreads ?? []).find(
+        (thread) => thread.id === threadId,
+      );
+      if (!existing) return;
+      if ((existing.floatMode ?? "fp") === floatMode) return;
+
+      deps.withProject((project) => {
+        const target = project.halThreads?.find(
+          (thread) => thread.id === threadId,
+        );
+        if (target) target.floatMode = floatMode;
+      });
+      deps.setStatusT("store.status.updatedHalThreadFloatMode", {
+        name: existing.name,
+        mode: floatMode,
       });
     },
   };

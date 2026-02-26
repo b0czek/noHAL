@@ -390,6 +390,11 @@ select {
   padding: 0;
   display: grid;
   place-items: center;
+  line-height: 1;
+}
+
+.icon-btn svg {
+  display: block;
 }
 
 .sheet-tree {
@@ -609,6 +614,39 @@ select {
   max-height: min(60vh, 620px);
   overflow: auto;
   padding-right: 2px;
+}
+
+.addf-queue-thread-section {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.addf-queue-thread-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.addf-queue-thread-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.addf-queue-thread-dropzone {
+  min-height: 18px;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.addf-queue-thread-dropzone.is-drop-target {
+  border-color: rgba(122, 230, 208, 0.34);
+  background: rgba(122, 230, 208, 0.07);
 }
 
 .addf-queue-row {
@@ -1076,7 +1114,11 @@ textarea {
 
 .threads-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(140px, 220px) auto;
+  grid-template-columns:
+    minmax(180px, 1fr)
+    minmax(140px, 220px)
+    minmax(120px, 160px)
+    auto;
   gap: 8px;
   align-items: end;
   padding: 10px;
@@ -1093,6 +1135,17 @@ textarea {
 .threads-field-label {
   color: var(--muted);
   font-size: 12px;
+}
+
+.threads-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.threads-toggle .mini {
+  min-width: 56px;
 }
 
 .threads-row-meta {

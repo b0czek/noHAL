@@ -45,6 +45,108 @@ export function createSheetActions(deps: EditorStoreActionContext) {
   };
 
   return {
+    addSheetThreadOutput(sheetId: string): void {
+      deps.withProject((project) => {
+        const sheet = getSheet(project, sheetId);
+        if (!sheet.hal) sheet.hal = {};
+        const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
+        const usedNames = new Set(current.map((item) => item.name));
+        let name = "thread";
+        let idx = 2;
+        while (usedNames.has(name)) {
+          name = `thread-${idx}`;
+          idx += 1;
+        }
+        current.push({ id: createId("sheetthread"), name });
+        sheet.hal.threadOutputs = current;
+      });
+      deps.setStatusT("store.status.addedSheetThreadOutput");
+    },
+
+    updateSheetThreadOutputName(
+      sheetId: string,
+      outputId: string,
+      name: string,
+    ): void {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      deps.withProject((project) => {
+        const sheet = getSheet(project, sheetId);
+        if (!sheet.hal) sheet.hal = {};
+        const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
+        const target = current.find((item) => item.id === outputId);
+        if (!target) return;
+        if (target.name === trimmed) return;
+        if (
+          current.some((item) => item.id !== outputId && item.name === trimmed)
+        ) {
+          return;
+        }
+        target.name = trimmed;
+        sheet.hal.threadOutputs = current;
+      });
+      deps.setStatusT("store.status.updatedSheetThreadOutputName");
+    },
+
+    updateSheetThreadOutputHalBinding(
+      sheetId: string,
+      outputId: string,
+      halThreadId: string | null,
+    ): void {
+      deps.withProject((project) => {
+        const sheet = getSheet(project, sheetId);
+        if (!sheet.hal) sheet.hal = {};
+        const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
+        const target = current.find((item) => item.id === outputId);
+        if (!target) return;
+        const normalizedHalThreadId = halThreadId?.trim() || undefined;
+        if (target.halThreadId === normalizedHalThreadId) return;
+        if (normalizedHalThreadId) target.halThreadId = normalizedHalThreadId;
+        else delete target.halThreadId;
+        sheet.hal.threadOutputs = current;
+      });
+      deps.setStatusT("store.status.updatedSheetThreadOutputHalBinding");
+    },
+
+    removeSheetThreadOutput(sheetId: string, outputId: string): void {
+      deps.withProject((project) => {
+        const sheet = getSheet(project, sheetId);
+        if (!sheet.hal) sheet.hal = {};
+        const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
+        if (current.length <= 1) return;
+        const next = current.filter((item) => item.id !== outputId);
+        if (next.length === current.length || next.length === 0) return;
+        const fallbackId = next[0]?.id;
+        sheet.hal.threadOutputs = next;
+
+        if (sheet.hal.addfQueue && fallbackId) {
+          sheet.hal.addfQueue = normalizeAddfQueueEntries(
+            sheet.hal.addfQueue.map((entry) => {
+              if (typeof entry === "string") return entry;
+              if (entry.sheetThreadOutputId !== outputId) return entry;
+              return { ...entry, sheetThreadOutputId: fallbackId };
+            }),
+          );
+        }
+
+        for (const node of sheet.nodes) {
+          if (node.kind !== "sheet" || !node.hal?.threadMap) continue;
+          for (const [childOutputId, parentOutputId] of Object.entries(
+            node.hal.threadMap,
+          )) {
+            if (parentOutputId === outputId) {
+              delete node.hal.threadMap[childOutputId];
+            }
+          }
+          if (Object.keys(node.hal.threadMap).length === 0) {
+            delete node.hal.threadMap;
+          }
+          if (node.hal && Object.keys(node.hal).length === 0) delete node.hal;
+        }
+      });
+      deps.setStatusT("store.status.removedSheetThreadOutput");
+    },
+
     setSheetAddfQueue(
       sheetId: string,
       nodeOrder: SheetAddfQueueStoredEntry[],

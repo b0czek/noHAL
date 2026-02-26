@@ -3,8 +3,13 @@ import {
   addfQueueEntryNodeId,
   makeAddfQueueFunctionEntry,
   makeAddfQueueNodeEntry,
+  makeAddfQueueSubsheetOutputEntry,
 } from "./addfQueue";
 import { getNodePins, getSheet, invertDirection } from "./graph";
+import {
+  firstSheetThreadOutputId,
+  getSheetThreadOutputs,
+} from "./sheetThreads";
 import type {
   NoHALProject,
   PinDirection,
@@ -529,10 +534,31 @@ function buildRuntimeSections(
     project.halThreads?.[0]?.name?.trim() ||
     "servo-thread";
   const addfEntries: AddfEntry[] = [];
+  const halThreadFloatModeByName = new Map(
+    (project.halThreads ?? []).map((thread) => [
+      thread.name,
+      thread.floatMode ?? "fp",
+    ]),
+  );
+  const warnedFpThreadMismatch = new Set<string>();
 
-  function defaultAddfTemplatesForComponent(
-    componentId: string,
-  ): string[] {
+  function warnThreadFloatMismatch(
+    threadName: string,
+    functionTarget: string,
+    floatMode: "fp" | "nofp" | "unknown",
+  ): void {
+    if (floatMode !== "fp") return;
+    const threadFloatMode = halThreadFloatModeByName.get(threadName);
+    if (threadFloatMode !== "nofp") return;
+    const key = `${threadName}::${functionTarget}`;
+    if (warnedFpThreadMismatch.has(key)) return;
+    warnedFpThreadMismatch.add(key);
+    ctx.warnings.push(
+      `Function '${functionTarget}' requires fp but is scheduled in nofp thread '${threadName}'`,
+    );
+  }
+
+  function defaultAddfTemplatesForComponent(componentId: string): string[] {
     const component = project.library.components[componentId];
     const functions = component?.functions ?? [];
     if (functions.length === 0) return ["{instance}"];
@@ -546,6 +572,8 @@ function buildRuntimeSections(
       queueKey: string;
       node: SheetNodeInstance;
       functionKey?: string;
+      subsheetChildOutputId?: string;
+      sheetThreadOutputId: string;
     };
 
     function orderedAddfQueueItemsForSheet(
@@ -558,6 +586,7 @@ function buildRuntimeSections(
         return component.runtime?.kind === "rt";
       });
       const byId = new Map(eligible.map((node) => [node.id, node]));
+      const defaultSheetThreadId = firstSheetThreadOutputId(sheet);
       const ordered: OrderedAddfQueueItem[] = [];
       const seen = new Set<string>();
       const coveredByNodeEntry = new Set<string>();
@@ -582,7 +611,30 @@ function buildRuntimeSections(
             (item) => item.key === entry.functionKey,
           );
           if (!fn) continue;
-          pushItem({ queueKey, node, functionKey: entry.functionKey });
+          pushItem({
+            queueKey,
+            node,
+            functionKey: entry.functionKey,
+            sheetThreadOutputId:
+              entry.sheetThreadOutputId ?? defaultSheetThreadId,
+          });
+          continue;
+        }
+
+        if (typeof entry !== "string" && entry.kind === "subsheet-output") {
+          if (node.kind !== "sheet") continue;
+          const childSheet = getSheet(project, node.sheetId);
+          const childOutput = getSheetThreadOutputs(childSheet).find(
+            (output) => output.id === entry.childThreadOutputId,
+          );
+          if (!childOutput) continue;
+          pushItem({
+            queueKey,
+            node,
+            subsheetChildOutputId: childOutput.id,
+            sheetThreadOutputId:
+              entry.sheetThreadOutputId ?? defaultSheetThreadId,
+          });
           continue;
         }
 
@@ -592,20 +644,67 @@ function buildRuntimeSections(
             coveredByNodeEntry.add(node.id);
           }
         }
+        if (node.kind === "sheet") {
+          const childSheet = getSheet(project, node.sheetId);
+          const childOutputs = getSheetThreadOutputs(childSheet);
+          const fallbackParentOutputId =
+            (typeof entry === "string"
+              ? undefined
+              : entry.sheetThreadOutputId) ?? defaultSheetThreadId;
+          const legacyThreadMap = node.hal?.threadMap ?? {};
+          for (const childOutput of childOutputs) {
+            const mappedParentOutputId = legacyThreadMap[childOutput.id];
+            pushItem({
+              queueKey:
+                addfQueueEntryKey(
+                  makeAddfQueueSubsheetOutputEntry(
+                    node.id,
+                    childOutput.id,
+                    mappedParentOutputId ?? fallbackParentOutputId,
+                  ),
+                ) ?? `subsheet:${node.id}:${childOutput.id}`,
+              node,
+              subsheetChildOutputId: childOutput.id,
+              sheetThreadOutputId:
+                mappedParentOutputId ?? fallbackParentOutputId,
+            });
+          }
+          continue;
+        }
+
         pushItem({
-          queueKey: addfQueueEntryKey(makeAddfQueueNodeEntry(node.id)) ?? queueKey,
+          queueKey:
+            addfQueueEntryKey(makeAddfQueueNodeEntry(node.id)) ?? queueKey,
           node,
+          sheetThreadOutputId:
+            (typeof entry === "string"
+              ? undefined
+              : entry.sheetThreadOutputId) ?? defaultSheetThreadId,
         });
       }
 
       for (const node of eligible) {
         if (node.kind === "sheet") {
-          pushItem({
-            queueKey:
-              addfQueueEntryKey(makeAddfQueueNodeEntry(node.id)) ??
-              `node:${node.id}`,
-            node,
-          });
+          const childSheet = getSheet(project, node.sheetId);
+          const childOutputs = getSheetThreadOutputs(childSheet);
+          const legacyThreadMap = node.hal?.threadMap ?? {};
+          for (const childOutput of childOutputs) {
+            const mappedParentOutputId =
+              legacyThreadMap[childOutput.id] ?? defaultSheetThreadId;
+            pushItem({
+              queueKey:
+                addfQueueEntryKey(
+                  makeAddfQueueSubsheetOutputEntry(
+                    node.id,
+                    childOutput.id,
+                    mappedParentOutputId,
+                  ),
+                ) ?? `subsheet:${node.id}:${childOutput.id}`,
+              node,
+              subsheetChildOutputId: childOutput.id,
+              sheetThreadOutputId: mappedParentOutputId,
+            });
+          }
           continue;
         }
         const component = project.library.components[node.componentId];
@@ -617,6 +716,7 @@ function buildRuntimeSections(
               addfQueueEntryKey(makeAddfQueueNodeEntry(node.id)) ??
               `node:${node.id}`,
             node,
+            sheetThreadOutputId: defaultSheetThreadId,
           });
           continue;
         }
@@ -627,6 +727,7 @@ function buildRuntimeSections(
               addfQueueEntryKey(queueEntry) ?? `fn:${node.id}:${fn.key}`,
             node,
             functionKey: fn.key,
+            sheetThreadOutputId: defaultSheetThreadId,
           });
         }
       }
@@ -636,6 +737,8 @@ function buildRuntimeSections(
     function collectAddfFromSheetInstance(
       sheetId: string,
       pathParts: string[],
+      resolvedThreadByLocalOutput: Map<string, string>,
+      onlyLocalOutputId?: string,
       stack: string[] = [],
     ): void {
       const cycleKey = `${sheetId}|${pathParts.join(".")}`;
@@ -648,11 +751,44 @@ function buildRuntimeSections(
       const nextStack = [...stack, cycleKey];
       const sheet = getSheet(project, sheetId);
       for (const queueItem of orderedAddfQueueItemsForSheet(sheet)) {
+        if (
+          onlyLocalOutputId &&
+          queueItem.sheetThreadOutputId !== onlyLocalOutputId
+        ) {
+          continue;
+        }
         const node = queueItem.node;
         if (node.kind === "sheet") {
+          const childSheet = getSheet(project, node.sheetId);
+          const childOutputs = getSheetThreadOutputs(childSheet);
+          const fallbackParentLocalOutputId =
+            queueItem.sheetThreadOutputId || firstSheetThreadOutputId(sheet);
+          const fallbackResolvedThread =
+            resolvedThreadByLocalOutput.get(fallbackParentLocalOutputId) ??
+            defaultThread;
+          const childResolvedThreadByLocalOutput = new Map<string, string>();
+          if (queueItem.subsheetChildOutputId) {
+            childResolvedThreadByLocalOutput.set(
+              queueItem.subsheetChildOutputId,
+              fallbackResolvedThread,
+            );
+          } else {
+            const map = node.hal?.threadMap ?? {};
+            for (const childOutput of childOutputs) {
+              const parentLocalOutputId =
+                map[childOutput.id] ?? fallbackParentLocalOutputId;
+              childResolvedThreadByLocalOutput.set(
+                childOutput.id,
+                resolvedThreadByLocalOutput.get(parentLocalOutputId) ??
+                  fallbackResolvedThread,
+              );
+            }
+          }
           collectAddfFromSheetInstance(
             node.sheetId,
             [...pathParts, node.instanceName],
+            childResolvedThreadByLocalOutput,
+            queueItem.subsheetChildOutputId,
             nextStack,
           );
           continue;
@@ -668,7 +804,9 @@ function buildRuntimeSections(
         const componentName = component.halComponentName;
         const rule = rules[componentName];
         if (rule?.addf?.enabled === false) continue;
-        const thread = rule?.addf?.thread?.trim() || defaultThread;
+        const thread =
+          resolvedThreadByLocalOutput.get(queueItem.sheetThreadOutputId) ??
+          defaultThread;
         const item = {
           componentName,
           instancePath: joinInstancePath([...pathParts, node.instanceName]),
@@ -691,11 +829,34 @@ function buildRuntimeSections(
             thread,
             parentSheetPath: item.parentSheetPath,
           });
+          warnThreadFloatMismatch(
+            thread,
+            fn.halSuffix
+              ? `${item.instancePath}.${fn.halSuffix}`
+              : item.instancePath,
+            fn.floatMode,
+          );
+          continue;
+        }
+        const customTemplates = rule?.addf?.functionTemplates?.filter(
+          (t) => t.trim().length > 0,
+        );
+        if (!customTemplates && (component.functions?.length ?? 0) > 0) {
+          for (const fn of component.functions ?? []) {
+            const functionName = fn.halSuffix
+              ? `${item.instancePath}.${fn.halSuffix}`
+              : item.instancePath;
+            addfEntries.push({
+              functionName,
+              thread,
+              parentSheetPath: item.parentSheetPath,
+            });
+            warnThreadFloatMismatch(thread, functionName, fn.floatMode);
+          }
           continue;
         }
         const templates = (
-          rule?.addf?.functionTemplates ??
-          defaultAddfTemplatesForComponent(node.componentId)
+          customTemplates ?? defaultAddfTemplatesForComponent(node.componentId)
         ).filter((t) => t.trim().length > 0);
         for (const template of templates) {
           addfEntries.push({
@@ -706,7 +867,33 @@ function buildRuntimeSections(
         }
       }
     }
-    collectAddfFromSheetInstance(project.rootSheetId, []);
+    const rootSheet = getSheet(project, project.rootSheetId);
+    const rootResolvedThreadByLocalOutput = new Map<string, string>();
+    const projectThreadsById = new Map(
+      (project.halThreads ?? []).map((thread) => [thread.id, thread.name]),
+    );
+    for (const output of getSheetThreadOutputs(rootSheet)) {
+      const halThreadId = output.halThreadId?.trim();
+      const boundThreadName = halThreadId
+        ? projectThreadsById.get(halThreadId)
+        : undefined;
+      if (!boundThreadName) {
+        const reason = halThreadId ? "invalid binding" : "no binding";
+        ctx.warnings.push(
+          `Root sheet thread output '${output.name}' has ${reason}; using fallback thread '${defaultThread}'`,
+        );
+      }
+      rootResolvedThreadByLocalOutput.set(
+        output.id,
+        boundThreadName ?? defaultThread,
+      );
+    }
+    collectAddfFromSheetInstance(
+      project.rootSheetId,
+      [],
+      rootResolvedThreadByLocalOutput,
+      undefined,
+    );
   }
 
   const addfLines: string[] = [];
