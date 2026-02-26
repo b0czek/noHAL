@@ -1,4 +1,9 @@
 import {
+  addfQueueEntryNodeId,
+  makeAddfQueueNodeEntry,
+  normalizeAddfQueueEntries,
+} from "../../../../shared/addfQueue";
+import {
   endpointKey,
   getSheet,
   resolveEndpointInSheet,
@@ -6,6 +11,7 @@ import {
 import { createId } from "../../../../shared/id";
 import { createSheet, createSheetPortDraft } from "../../../../shared/project";
 import type {
+  SheetAddfQueueStoredEntry,
   SheetDefinition,
   SheetEndpointRef,
   SheetNode,
@@ -38,10 +44,11 @@ export function createSheetActions(deps: EditorStoreActionContext) {
   };
 
   return {
-    setSheetAddfQueue(sheetId: string, nodeOrder: string[]): void {
-      const normalized = Array.from(
-        new Set(nodeOrder.map((v) => v.trim()).filter(Boolean)),
-      );
+    setSheetAddfQueue(
+      sheetId: string,
+      nodeOrder: SheetAddfQueueStoredEntry[],
+    ): void {
+      const normalized = normalizeAddfQueueEntries(nodeOrder);
       deps.withProject((project) => {
         const sheet = getSheet(project, sheetId);
         if (!sheet.hal) sheet.hal = {};
@@ -303,28 +310,37 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       parentSheet.labelAnchors = parentAnchorsNext;
 
       if (originalParentQueue) {
-        const childQueue = originalParentQueue.filter((id) =>
-          movedNodeIdSet.has(id),
-        );
-        const firstMovedIndex = originalParentQueue.findIndex((id) =>
-          movedNodeIdSet.has(id),
-        );
-        const parentQueue = originalParentQueue.filter(
-          (id) => !movedNodeIdSet.has(id),
-        );
+        const childQueue = originalParentQueue.filter((entry) => {
+          const nodeId = addfQueueEntryNodeId(entry);
+          return Boolean(nodeId && movedNodeIdSet.has(nodeId));
+        });
+        const firstMovedIndex = originalParentQueue.findIndex((entry) => {
+          const nodeId = addfQueueEntryNodeId(entry);
+          return Boolean(nodeId && movedNodeIdSet.has(nodeId));
+        });
+        const parentQueue = originalParentQueue.filter((entry) => {
+          const nodeId = addfQueueEntryNodeId(entry);
+          return !(nodeId && movedNodeIdSet.has(nodeId));
+        });
         if (childQueue.length > 0) {
           const insertAt =
             firstMovedIndex < 0
               ? parentQueue.length
               : originalParentQueue
                   .slice(0, firstMovedIndex)
-                  .filter((id) => !movedNodeIdSet.has(id)).length;
-          parentQueue.splice(insertAt, 0, subsheetNodeId);
+                  .filter((entry) => {
+                    const nodeId = addfQueueEntryNodeId(entry);
+                    return !(nodeId && movedNodeIdSet.has(nodeId));
+                  }).length;
+          parentQueue.splice(insertAt, 0, makeAddfQueueNodeEntry(subsheetNodeId));
           if (!parentSheet.hal) parentSheet.hal = {};
-          parentSheet.hal.addfQueue = parentQueue;
-          child.hal = { ...(child.hal ?? {}), addfQueue: childQueue };
+          parentSheet.hal.addfQueue = normalizeAddfQueueEntries(parentQueue);
+          child.hal = {
+            ...(child.hal ?? {}),
+            addfQueue: normalizeAddfQueueEntries(childQueue),
+          };
         } else if (parentSheet.hal?.addfQueue) {
-          parentSheet.hal.addfQueue = parentQueue;
+          parentSheet.hal.addfQueue = normalizeAddfQueueEntries(parentQueue);
           if (parentSheet.hal.addfQueue.length === 0)
             delete parentSheet.hal.addfQueue;
           if (parentSheet.hal && Object.keys(parentSheet.hal).length === 0) {

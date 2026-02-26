@@ -1,3 +1,9 @@
+import {
+  addfQueueEntryKey,
+  addfQueueEntryNodeId,
+  makeAddfQueueFunctionEntry,
+  makeAddfQueueNodeEntry,
+} from "./addfQueue";
 import { getNodePins, getSheet, invertDirection } from "./graph";
 import type {
   NoHALProject,
@@ -518,13 +524,33 @@ function buildRuntimeSections(
 
   const addfEnabled = addfConfig?.enabled ?? true;
   const emitPosition = addfConfig?.emitPosition ?? true;
-  const defaultThread = addfConfig?.defaultThread?.trim() || "servo-thread";
+  const defaultThread =
+    addfConfig?.defaultThread?.trim() ||
+    project.halThreads?.[0]?.name?.trim() ||
+    "servo-thread";
   const addfEntries: AddfEntry[] = [];
 
+  function defaultAddfTemplatesForComponent(
+    componentId: string,
+  ): string[] {
+    const component = project.library.components[componentId];
+    const functions = component?.functions ?? [];
+    if (functions.length === 0) return ["{instance}"];
+    return functions.map((fn) =>
+      fn.halSuffix ? `{instance}.${fn.halSuffix}` : "{instance}",
+    );
+  }
+
   if (addfEnabled) {
-    function orderedAddfNodesForSheet(
+    type OrderedAddfQueueItem = {
+      queueKey: string;
+      node: SheetNodeInstance;
+      functionKey?: string;
+    };
+
+    function orderedAddfQueueItemsForSheet(
       sheet: SheetDefinition,
-    ): SheetNodeInstance[] {
+    ): OrderedAddfQueueItem[] {
       const eligible = sheet.nodes.filter((node) => {
         if (node.kind === "sheet") return true;
         const component = project.library.components[node.componentId];
@@ -532,17 +558,77 @@ function buildRuntimeSections(
         return component.runtime?.kind === "rt";
       });
       const byId = new Map(eligible.map((node) => [node.id, node]));
-      const ordered: SheetNodeInstance[] = [];
+      const ordered: OrderedAddfQueueItem[] = [];
       const seen = new Set<string>();
-      for (const nodeId of sheet.hal?.addfQueue ?? []) {
+      const coveredByNodeEntry = new Set<string>();
+
+      const pushItem = (item: OrderedAddfQueueItem) => {
+        if (seen.has(item.queueKey)) return;
+        seen.add(item.queueKey);
+        ordered.push(item);
+      };
+
+      for (const entry of sheet.hal?.addfQueue ?? []) {
+        const queueKey = addfQueueEntryKey(entry);
+        const nodeId = addfQueueEntryNodeId(entry);
+        if (!queueKey || !nodeId) continue;
         const node = byId.get(nodeId);
-        if (!node || seen.has(nodeId)) continue;
-        ordered.push(node);
-        seen.add(nodeId);
+        if (!node) continue;
+
+        if (typeof entry !== "string" && entry.kind === "component-function") {
+          if (node.kind !== "component") continue;
+          const component = project.library.components[node.componentId];
+          const fn = component?.functions?.find(
+            (item) => item.key === entry.functionKey,
+          );
+          if (!fn) continue;
+          pushItem({ queueKey, node, functionKey: entry.functionKey });
+          continue;
+        }
+
+        if (node.kind === "component") {
+          const component = project.library.components[node.componentId];
+          if ((component?.functions?.length ?? 0) > 0) {
+            coveredByNodeEntry.add(node.id);
+          }
+        }
+        pushItem({
+          queueKey: addfQueueEntryKey(makeAddfQueueNodeEntry(node.id)) ?? queueKey,
+          node,
+        });
       }
+
       for (const node of eligible) {
-        if (seen.has(node.id)) continue;
-        ordered.push(node);
+        if (node.kind === "sheet") {
+          pushItem({
+            queueKey:
+              addfQueueEntryKey(makeAddfQueueNodeEntry(node.id)) ??
+              `node:${node.id}`,
+            node,
+          });
+          continue;
+        }
+        const component = project.library.components[node.componentId];
+        const functions = component?.functions ?? [];
+        if (coveredByNodeEntry.has(node.id)) continue;
+        if (functions.length === 0) {
+          pushItem({
+            queueKey:
+              addfQueueEntryKey(makeAddfQueueNodeEntry(node.id)) ??
+              `node:${node.id}`,
+            node,
+          });
+          continue;
+        }
+        for (const fn of functions) {
+          const queueEntry = makeAddfQueueFunctionEntry(node.id, fn.key);
+          pushItem({
+            queueKey:
+              addfQueueEntryKey(queueEntry) ?? `fn:${node.id}:${fn.key}`,
+            node,
+            functionKey: fn.key,
+          });
+        }
       }
       return ordered;
     }
@@ -561,7 +647,8 @@ function buildRuntimeSections(
       }
       const nextStack = [...stack, cycleKey];
       const sheet = getSheet(project, sheetId);
-      for (const node of orderedAddfNodesForSheet(sheet)) {
+      for (const queueItem of orderedAddfQueueItemsForSheet(sheet)) {
+        const node = queueItem.node;
         if (node.kind === "sheet") {
           collectAddfFromSheetInstance(
             node.sheetId,
@@ -582,14 +669,34 @@ function buildRuntimeSections(
         const rule = rules[componentName];
         if (rule?.addf?.enabled === false) continue;
         const thread = rule?.addf?.thread?.trim() || defaultThread;
-        const templates = (
-          rule?.addf?.functionTemplates ?? ["{instance}"]
-        ).filter((t) => t.trim().length > 0);
         const item = {
           componentName,
           instancePath: joinInstancePath([...pathParts, node.instanceName]),
           parentSheetPath: joinInstancePath(pathParts),
         };
+        if (queueItem.functionKey) {
+          const fn = component.functions?.find(
+            (candidate) => candidate.key === queueItem.functionKey,
+          );
+          if (!fn) {
+            ctx.warnings.push(
+              `Missing function '${queueItem.functionKey}' on component '${componentName}' for node '${node.instanceName}'`,
+            );
+            continue;
+          }
+          addfEntries.push({
+            functionName: fn.halSuffix
+              ? `${item.instancePath}.${fn.halSuffix}`
+              : item.instancePath,
+            thread,
+            parentSheetPath: item.parentSheetPath,
+          });
+          continue;
+        }
+        const templates = (
+          rule?.addf?.functionTemplates ??
+          defaultAddfTemplatesForComponent(node.componentId)
+        ).filter((t) => t.trim().length > 0);
         for (const template of templates) {
           addfEntries.push({
             functionName: replaceAddfTemplate(template, item),

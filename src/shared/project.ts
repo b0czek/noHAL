@@ -2,6 +2,7 @@ import { createId, slugify } from "./id";
 import { createBuiltinLibrary } from "./library";
 import type {
   ComponentDefinition,
+  HalThreadDefinition,
   NoHALProject,
   ProjectMachineConfig,
   SheetDefinition,
@@ -20,6 +21,46 @@ function createDefaultTopSheet(): SheetDefinition {
     directConnections: [],
     labelAnchors: [],
   };
+}
+
+export function createDefaultHalThreads(): HalThreadDefinition[] {
+  return [
+    {
+      id: createId("thread"),
+      name: "servo-thread",
+      periodNs: 1_000_000,
+    },
+  ];
+}
+
+function normalizeHalThreads(
+  value: unknown,
+): HalThreadDefinition[] {
+  const rawList = Array.isArray(value) ? value : [];
+  const out: HalThreadDefinition[] = [];
+  const usedNames = new Set<string>();
+
+  for (const raw of rawList) {
+    if (!raw || typeof raw !== "object") continue;
+    const candidate = raw as Partial<HalThreadDefinition>;
+    const name = (candidate.name ?? "").trim();
+    if (!name || usedNames.has(name)) continue;
+    const periodNs = Number.isFinite(candidate.periodNs)
+      ? Math.max(1, Math.round(candidate.periodNs as number))
+      : 1_000_000;
+    out.push({
+      id:
+        typeof candidate.id === "string" && candidate.id.trim()
+          ? candidate.id
+          : createId("thread"),
+      name,
+      periodNs,
+    });
+    usedNames.add(name);
+  }
+
+  if (out.length > 0) return out;
+  return createDefaultHalThreads();
 }
 
 export function createEmptyMachineConfig(): ProjectMachineConfig {
@@ -52,6 +93,7 @@ export function createEmptyProject(name: string): NoHALProject {
     library: {
       components: createBuiltinLibrary(),
     },
+    halThreads: createDefaultHalThreads(),
     machineConfig: createEmptyMachineConfig(),
     ui: {
       activeSheetId: top.id,
@@ -83,6 +125,7 @@ export function parseNoHALProject(content: string): NoHALProject {
       (sheet as SheetDefinition).comments = [];
     }
   }
+  project.halThreads = normalizeHalThreads(project.halThreads);
   return project;
 }
 

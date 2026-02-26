@@ -77,6 +77,20 @@ export interface LabelAnchor {
   endpoint: SheetEndpointRef;
 }
 
+export interface SheetAddfQueueNodeEntry {
+  kind: "node";
+  nodeId: string;
+}
+
+export interface SheetAddfQueueFunctionEntry {
+  kind: "component-function";
+  nodeId: string;
+  functionKey: string;
+}
+
+export type SheetAddfQueueEntry = SheetAddfQueueNodeEntry | SheetAddfQueueFunctionEntry;
+export type SheetAddfQueueStoredEntry = string | SheetAddfQueueEntry;
+
 export interface SheetDefinition {
   id: string;
   name: string;
@@ -88,6 +102,6 @@ export interface SheetDefinition {
   directConnections: DirectConnection[];
   labelAnchors: LabelAnchor[];
   hal?: {
-    addfQueue?: string[];
+    addfQueue?: SheetAddfQueueStoredEntry[];
   };
 }

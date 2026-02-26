@@ -7,17 +7,30 @@ import {
   Show,
 } from "solid-js";
 import { Portal } from "solid-js/web";
-import type { NoHALProject, SheetNodeInstance } from "../../shared/types";
+import {
+  addfQueueEntryKey,
+  addfQueueEntryNodeId,
+  makeAddfQueueFunctionEntry,
+  makeAddfQueueNodeEntry,
+} from "../../shared/addfQueue";
+import type {
+  NoHALProject,
+  SheetAddfQueueStoredEntry,
+  SheetNodeInstance,
+} from "../../shared/types";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 
 interface SheetQueueRow {
+  queueKey: string;
+  queueEntry: SheetAddfQueueStoredEntry;
   nodeId: string;
   instanceName: string;
-  kind: "component" | "subsheet";
+  kind: "component" | "function" | "subsheet";
   title: string;
   subtitle: string;
+  sortName: string;
 }
 
 function reorderByIds(
@@ -38,7 +51,12 @@ function reorderByIds(
 function buildSheetQueueRows(
   project: NoHALProject,
   sheetId: string | null,
-  labels: { missingSheet: string; missing: string },
+  labels: {
+    missingSheet: string;
+    missing: string;
+    defaultFunction: string;
+    unknownFloat: string;
+  },
 ): SheetQueueRow[] {
   if (!sheetId) return [];
   const sheet = project.sheets[sheetId];
@@ -50,40 +68,141 @@ function buildSheetQueueRows(
     return component?.runtime?.kind === "rt";
   });
   const byId = new Map(eligibleNodes.map((node) => [node.id, node]));
-  const ordered: SheetNodeInstance[] = [];
-  const seen = new Set<string>();
+  const rows: SheetQueueRow[] = [];
+  const seenKeys = new Set<string>();
+  const coveredByNodeEntry = new Set<string>();
 
-  for (const nodeId of sheet.hal?.addfQueue ?? []) {
-    const node = byId.get(nodeId);
-    if (!node || seen.has(nodeId)) continue;
-    ordered.push(node);
-    seen.add(nodeId);
-  }
-  for (const node of eligibleNodes) {
-    if (seen.has(node.id)) continue;
-    ordered.push(node);
-  }
+  const appendRow = (row: SheetQueueRow) => {
+    if (seenKeys.has(row.queueKey)) return;
+    seenKeys.add(row.queueKey);
+    rows.push(row);
+  };
 
-  return ordered.map((node) => {
+  const componentFunctionRows = (
+    node: Extract<SheetNodeInstance, { kind: "component" }>,
+  ): SheetQueueRow[] => {
+    const component = project.library.components[node.componentId];
+    const functions = component?.functions ?? [];
+    if (functions.length === 0) {
+      const queueEntry = makeAddfQueueNodeEntry(node.id);
+      const queueKey = addfQueueEntryKey(queueEntry) ?? `node:${node.id}`;
+      return [
+        {
+          queueKey,
+          queueEntry,
+          nodeId: node.id,
+          instanceName: node.instanceName,
+          kind: "component",
+          title: node.instanceName,
+          subtitle: component?.halComponentName ?? labels.missing,
+          sortName: node.instanceName,
+        },
+      ];
+    }
+    return functions.map((fn) => {
+      const queueEntry = makeAddfQueueFunctionEntry(node.id, fn.key);
+      const queueKey =
+        addfQueueEntryKey(queueEntry) ?? `fn:${node.id}:${fn.key}`;
+      const addfTarget = fn.halSuffix
+        ? `${node.instanceName}.${fn.halSuffix}`
+        : node.instanceName;
+      const fnLabel = fn.halSuffix || labels.defaultFunction;
+      const floatLabel = fn.floatMode === "unknown" ? labels.unknownFloat : fn.floatMode;
+      return {
+        queueKey,
+        queueEntry,
+        nodeId: node.id,
+        instanceName: node.instanceName,
+        kind: "function" as const,
+        title: addfTarget,
+        subtitle: `${component?.halComponentName ?? labels.missing} • ${fnLabel} • ${floatLabel}`,
+        sortName: `${node.instanceName}\u0000${fn.halSuffix || "\u0000"}`,
+      };
+    });
+  };
+
+  const nodeRow = (node: SheetNodeInstance): SheetQueueRow | null => {
     if (node.kind === "sheet") {
       const childSheet = project.sheets[node.sheetId];
+      const queueEntry = makeAddfQueueNodeEntry(node.id);
+      const queueKey = addfQueueEntryKey(queueEntry) ?? `node:${node.id}`;
       return {
+        queueKey,
+        queueEntry,
         nodeId: node.id,
         instanceName: node.instanceName,
         kind: "subsheet",
         title: node.instanceName,
         subtitle: childSheet?.name ?? labels.missingSheet,
+        sortName: node.instanceName,
       };
     }
     const component = project.library.components[node.componentId];
     return {
+      queueKey: addfQueueEntryKey(makeAddfQueueNodeEntry(node.id)) ?? `node:${node.id}`,
+      queueEntry: makeAddfQueueNodeEntry(node.id),
       nodeId: node.id,
       instanceName: node.instanceName,
       kind: "component",
       title: node.instanceName,
       subtitle: component?.halComponentName ?? labels.missing,
+      sortName: node.instanceName,
     };
-  });
+  };
+
+  for (const entry of sheet.hal?.addfQueue ?? []) {
+    const queueKey = addfQueueEntryKey(entry);
+    const nodeId = addfQueueEntryNodeId(entry);
+    if (!queueKey || !nodeId) continue;
+    const node = byId.get(nodeId);
+    if (!node) continue;
+
+    if (typeof entry !== "string" && entry.kind === "component-function") {
+      if (node.kind !== "component") continue;
+      const component = project.library.components[node.componentId];
+      const fn = component?.functions?.find((item) => item.key === entry.functionKey);
+      if (!fn) continue;
+      const addfTarget = fn.halSuffix
+        ? `${node.instanceName}.${fn.halSuffix}`
+        : node.instanceName;
+      const fnLabel = fn.halSuffix || labels.defaultFunction;
+      const floatLabel = fn.floatMode === "unknown" ? labels.unknownFloat : fn.floatMode;
+      appendRow({
+        queueKey,
+        queueEntry: entry,
+        nodeId,
+        instanceName: node.instanceName,
+        kind: "function",
+        title: addfTarget,
+        subtitle: `${component?.halComponentName ?? labels.missing} • ${fnLabel} • ${floatLabel}`,
+        sortName: `${node.instanceName}\u0000${fn.halSuffix || "\u0000"}`,
+      });
+      continue;
+    }
+
+    if (node.kind === "component") {
+      const component = project.library.components[node.componentId];
+      if ((component?.functions?.length ?? 0) > 0) coveredByNodeEntry.add(node.id);
+    }
+    const row = nodeRow(node);
+    if (row) {
+      row.queueEntry = typeof entry === "string" ? makeAddfQueueNodeEntry(nodeId) : entry;
+      row.queueKey = addfQueueEntryKey(row.queueEntry) ?? row.queueKey;
+      appendRow(row);
+    }
+  }
+
+  for (const node of eligibleNodes) {
+    if (node.kind === "sheet") {
+      const row = nodeRow(node);
+      if (row) appendRow(row);
+      continue;
+    }
+    if (coveredByNodeEntry.has(node.id)) continue;
+    for (const row of componentFunctionRows(node)) appendRow(row);
+  }
+
+  return rows;
 }
 
 export default function SheetSettingsDialog() {
@@ -104,13 +223,24 @@ export default function SheetSettingsDialog() {
     buildSheetQueueRows(state.project, editorUi.sheetSettingsSheetId(), {
       missingSheet: t("sheetSettings.missingSheet"),
       missing: t("sheetSettings.missing"),
+      defaultFunction: t("sheetSettings.defaultFunction"),
+      unknownFloat: t("common.unknown"),
     }),
   );
 
-  const commitNodeOrder = (nodeIds: string[]) => {
+  const commitQueueOrder = (entries: SheetAddfQueueStoredEntry[]) => {
     const sheetId = editorUi.sheetSettingsSheetId();
     if (!sheetId) return;
-    actions.setSheetAddfQueue(sheetId, nodeIds);
+    actions.setSheetAddfQueue(sheetId, entries);
+  };
+
+  const commitRowsByKeys = (keys: string[]) => {
+    const byKey = new Map(rows().map((row) => [row.queueKey, row.queueEntry]));
+    commitQueueOrder(
+      keys
+        .map((key) => byKey.get(key))
+        .filter((entry): entry is SheetAddfQueueStoredEntry => Boolean(entry)),
+    );
   };
 
   createEffect(() => {
@@ -170,9 +300,9 @@ export default function SheetSettingsDialog() {
                       class="btn subtle"
                       onClick={() => {
                         const sorted = [...rows()].sort((a, b) =>
-                          a.instanceName.localeCompare(b.instanceName),
+                          a.sortName.localeCompare(b.sortName),
                         );
-                        commitNodeOrder(sorted.map((row) => row.nodeId));
+                        commitQueueOrder(sorted.map((row) => row.queueEntry));
                       }}
                     >
                       {t("sheetSettings.resetAZ")}
@@ -187,15 +317,19 @@ export default function SheetSettingsDialog() {
                   <For each={rows()}>
                     {(row, index) => (
                       <div
-                        class={`component-row addf-queue-row ${draggingNodeId() === row.nodeId ? "is-dragging" : ""} ${dropTargetNodeId() === row.nodeId ? "is-drop-target" : ""}`}
+                        class="component-row addf-queue-row"
+                        classList={{
+                          "is-dragging": draggingNodeId() === row.queueKey,
+                          "is-drop-target": dropTargetNodeId() === row.queueKey,
+                        }}
                         role="presentation"
                         onPointerEnter={() => {
                           const dragged = draggingNodeId();
-                          if (!dragged || dragged === row.nodeId) return;
-                          setDropTargetNodeId(row.nodeId);
-                          const ids = rows().map((item) => item.nodeId);
-                          const next = reorderByIds(ids, dragged, row.nodeId);
-                          if (next !== ids) commitNodeOrder(next);
+                          if (!dragged || dragged === row.queueKey) return;
+                          setDropTargetNodeId(row.queueKey);
+                          const keys = rows().map((item) => item.queueKey);
+                          const next = reorderByIds(keys, dragged, row.queueKey);
+                          if (next !== keys) commitRowsByKeys(next);
                         }}
                         onPointerUp={() => {
                           if (!draggingNodeId()) return;
@@ -205,13 +339,13 @@ export default function SheetSettingsDialog() {
                       >
                         <button
                           type="button"
-                          class={`addf-drag-handle-btn ${draggingNodeId() === row.nodeId ? "is-active" : ""}`}
+                          class={`addf-drag-handle-btn ${draggingNodeId() === row.queueKey ? "is-active" : ""}`}
                           title={t("sheetSettings.dragToReorder")}
                           onPointerDown={(evt) => {
                             evt.preventDefault();
                             evt.stopPropagation();
-                            setDraggingNodeId(row.nodeId);
-                            setDropTargetNodeId(row.nodeId);
+                            setDraggingNodeId(row.queueKey);
+                            setDropTargetNodeId(row.queueKey);
                           }}
                         >
                           <span class="addf-drag-dot-grid" aria-hidden="true">
@@ -230,7 +364,9 @@ export default function SheetSettingsDialog() {
                             <span class="chip type">
                               {row.kind === "subsheet"
                                 ? t("sheetSettings.kindSheet")
-                                : t("sheetSettings.kindRt")}
+                                : row.kind === "function"
+                                  ? t("sheetSettings.kindFunction")
+                                  : t("sheetSettings.kindRt")}
                             </span>{" "}
                             {row.subtitle}
                           </div>
@@ -241,11 +377,11 @@ export default function SheetSettingsDialog() {
                             class="mini"
                             disabled={index() === 0}
                             onClick={() => {
-                              const ids = rows().map((item) => item.nodeId);
+                              const ids = rows().map((item) => item.queueKey);
                               const prev = rows()[index() - 1];
                               if (!prev) return;
-                              commitNodeOrder(
-                                reorderByIds(ids, row.nodeId, prev.nodeId),
+                              commitRowsByKeys(
+                                reorderByIds(ids, row.queueKey, prev.queueKey),
                               );
                             }}
                           >
@@ -256,11 +392,11 @@ export default function SheetSettingsDialog() {
                             class="mini"
                             disabled={index() === rows().length - 1}
                             onClick={() => {
-                              const ids = rows().map((item) => item.nodeId);
+                              const ids = rows().map((item) => item.queueKey);
                               const next = rows()[index() + 1];
                               if (!next) return;
-                              commitNodeOrder(
-                                reorderByIds(ids, row.nodeId, next.nodeId),
+                              commitRowsByKeys(
+                                reorderByIds(ids, row.queueKey, next.queueKey),
                               );
                             }}
                           >

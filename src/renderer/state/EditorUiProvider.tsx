@@ -16,6 +16,7 @@ function createEditorUiState() {
   >(null);
   const [isComponentStoreOpen, setIsComponentStoreOpen] = createSignal(false);
   const [isIniEditorOpen, setIsIniEditorOpen] = createSignal(false);
+  const [isThreadsDialogOpen, setIsThreadsDialogOpen] = createSignal(false);
   const [sheetSettingsSheetId, setSheetSettingsSheetId] = createSignal<
     string | null
   >(null);
@@ -78,6 +79,7 @@ function createEditorUiState() {
     componentEditorNodeId,
     isComponentStoreOpen,
     isIniEditorOpen,
+    isThreadsDialogOpen,
     sheetSettingsSheetId,
     labelClick,
     commentClick,
@@ -88,6 +90,8 @@ function createEditorUiState() {
     closeComponentStore: () => setIsComponentStoreOpen(false),
     openIniEditor: () => setIsIniEditorOpen(true),
     closeIniEditor: () => setIsIniEditorOpen(false),
+    openThreadsDialog: () => setIsThreadsDialogOpen(true),
+    closeThreadsDialog: () => setIsThreadsDialogOpen(false),
     openSheetSettings: (sheetId: string) => setSheetSettingsSheetId(sheetId),
     closeSheetSettings: () => setSheetSettingsSheetId(null),
   };

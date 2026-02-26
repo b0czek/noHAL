@@ -6,6 +6,7 @@ import Inspector from "../components/Inspector";
 import SheetSettingsDialog from "../components/SheetSettingsDialog";
 import Sidebar from "../components/Sidebar";
 import StatusBar from "../components/StatusBar";
+import ThreadsDialog from "../components/ThreadsDialog";
 import { useEditorShortcuts } from "../shortcuts/useEditorShortcuts";
 import { EditorUiProvider } from "../state/EditorUiProvider";
 import EditorTopbar from "./EditorTopbar";
@@ -40,6 +41,7 @@ function EditorScreenContent(props: EditorScreenProps) {
       <ComponentNodeDialog />
       <ComponentStoreDialog />
       <IniEditorDialog />
+      <ThreadsDialog />
       <SheetSettingsDialog />
     </div>
   );

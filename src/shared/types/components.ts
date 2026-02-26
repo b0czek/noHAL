@@ -22,7 +22,7 @@ export interface ComponentParamDefinition {
   defaultValue?: string;
 }
 
-export type ComponentFunctionFloatMode = "fp" | "nofp";
+export type ComponentFunctionFloatMode = "fp" | "nofp" | "unknown";
 
 export interface ComponentFunctionDefinition {
   key: string;

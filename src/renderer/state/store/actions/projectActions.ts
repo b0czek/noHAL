@@ -1,5 +1,7 @@
+import { createId } from "../../../../shared/id";
 import { createEmptyMachineConfig } from "../../../../shared/project";
 import type {
+  HalThreadDefinition,
   LinuxCncIniEntry,
   LinuxCncIniSection,
   NoHALProject,
@@ -28,6 +30,17 @@ function nextUniqueIniLabel(
   let index = 1;
   while (existing.includes(`${base}_${index}`)) index += 1;
   return `${base}_${index}`;
+}
+
+function nextUniqueThreadName(
+  base: string,
+  existing: ReadonlyArray<string>,
+): string {
+  const normalized = base.trim() || "thread";
+  if (!existing.includes(normalized)) return normalized;
+  let index = 1;
+  while (existing.includes(`${normalized}-${index}`)) index += 1;
+  return `${normalized}-${index}`;
 }
 
 function openedProjectPathStatus(
@@ -273,6 +286,84 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         if (entry) entry.value = value;
       });
       deps.setStatusT("store.status.updatedIniValue");
+    },
+
+    addHalThread(): void {
+      deps.withProject((project) => {
+        const threads = project.halThreads ?? (project.halThreads = []);
+        const nextName = nextUniqueThreadName(
+          "servo-thread",
+          threads.map((thread) => thread.name),
+        );
+        const next: HalThreadDefinition = {
+          id: createId("thread"),
+          name: nextName,
+          periodNs: 1_000_000,
+        };
+        threads.push(next);
+      });
+      deps.setStatusT("store.status.addedHalThread");
+    },
+
+    removeHalThread(threadId: string): void {
+      const currentThreads = deps.state.project.halThreads ?? [];
+      if (currentThreads.length <= 1) {
+        deps.setStatusT("store.status.cannotRemoveLastHalThread");
+        return;
+      }
+      const existing = currentThreads.find((thread) => thread.id === threadId);
+      if (!existing) return;
+
+      deps.withProject((project) => {
+        const threads = project.halThreads;
+        if (!threads) return;
+        const index = threads.findIndex((thread) => thread.id === threadId);
+        if (index < 0) return;
+        if (threads.length <= 1) return;
+        threads.splice(index, 1);
+      });
+      deps.setStatusT("store.status.removedHalThread", { name: existing.name });
+    },
+
+    updateHalThreadName(threadId: string, name: string): void {
+      const trimmed = name.trim();
+      const threads = deps.state.project.halThreads ?? [];
+      const existing = threads.find((thread) => thread.id === threadId);
+      if (!existing) return;
+      if (!trimmed || trimmed === existing.name) return;
+      const duplicate = threads.some(
+        (thread) => thread.id !== threadId && thread.name === trimmed,
+      );
+      if (duplicate) {
+        deps.setStatusT("store.status.duplicateHalThreadName", {
+          name: trimmed,
+        });
+        return;
+      }
+
+      deps.withProject((project) => {
+        const target = project.halThreads?.find((thread) => thread.id === threadId);
+        if (target) target.name = trimmed;
+      });
+      deps.setStatusT("store.status.updatedHalThreadName", { name: trimmed });
+    },
+
+    updateHalThreadPeriodNs(threadId: string, periodNs: number): void {
+      if (!Number.isFinite(periodNs)) return;
+      const normalized = Math.max(1, Math.round(periodNs));
+      const existing = (deps.state.project.halThreads ?? []).find(
+        (thread) => thread.id === threadId,
+      );
+      if (!existing) return;
+      if (existing.periodNs === normalized) return;
+
+      deps.withProject((project) => {
+        const target = project.halThreads?.find((thread) => thread.id === threadId);
+        if (target) target.periodNs = normalized;
+      });
+      deps.setStatusT("store.status.updatedHalThreadPeriod", {
+        name: existing.name,
+      });
     },
   };
 }

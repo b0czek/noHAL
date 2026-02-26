@@ -40,6 +40,7 @@ export const en = {
   "topbar.undo": "Undo",
   "topbar.redo": "Redo",
   "topbar.build": "Build",
+  "topbar.threads": "Threads",
   "topbar.iniEditor": "INI Editor",
   "topbar.componentStore": "Component Store",
   "topbar.addSubsheet": "+ Subsheet",
@@ -95,6 +96,19 @@ export const en = {
   "componentDialog.pinFilter.out": "out",
   "componentDialog.pinFilter.io": "io",
 
+  "threadsDialog.ariaLabel": "HAL Threads",
+  "threadsDialog.title": "HAL Threads",
+  "threadsDialog.subtitle":
+    "Manage thread names and periods used for addf scheduling/export defaults.",
+  "threadsDialog.threads": "Threads",
+  "threadsDialog.help":
+    "By default, projects start with one servo thread at 1 ms. Thread periods are stored in nanoseconds.",
+  "threadsDialog.addThread": "Add Thread",
+  "threadsDialog.removeThread": "Remove Thread",
+  "threadsDialog.name": "Name",
+  "threadsDialog.periodMs": "Period (ms)",
+  "threadsDialog.periodNs": "{ns} ns",
+
   "sheetSettings.ariaLabel": "Sheet Settings",
   "sheetSettings.title": "Sheet Settings",
   "sheetSettings.addfQueueTitle": "addf Queue (Sheet Scope)",
@@ -105,6 +119,8 @@ export const en = {
   "sheetSettings.dragToReorder": "Drag to reorder",
   "sheetSettings.kindSheet": "sheet",
   "sheetSettings.kindRt": "rt",
+  "sheetSettings.kindFunction": "fn",
+  "sheetSettings.defaultFunction": "default",
   "sheetSettings.empty": "No RT components or subsheets in this sheet.",
   "sheetSettings.missingSheet": "missing sheet",
   "sheetSettings.missing": "missing",
@@ -262,6 +278,14 @@ export const en = {
   "store.status.removedIniField": "Removed INI field",
   "store.status.updatedIniKey": "Updated INI key",
   "store.status.updatedIniValue": "Updated INI value",
+  "store.status.addedHalThread": "Added HAL thread",
+  "store.status.removedHalThread": "Removed HAL thread {name}",
+  "store.status.updatedHalThreadName": "Updated HAL thread name to {name}",
+  "store.status.updatedHalThreadPeriod": "Updated HAL thread period ({name})",
+  "store.status.cannotRemoveLastHalThread":
+    "At least one HAL thread must exist",
+  "store.status.duplicateHalThreadName":
+    "HAL thread name already exists: {name}",
   "store.status.noMachineConfigLoaded":
     "No imported machine configuration is loaded",
   "store.status.importedCompToStore":

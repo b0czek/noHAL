@@ -12,6 +12,12 @@ export interface ProjectLibrary {
   components: Record<string, ComponentDefinition>;
 }
 
+export interface HalThreadDefinition {
+  id: string;
+  name: string;
+  periodNs: number;
+}
+
 export interface HalExportComponentAddfRule {
   enabled?: boolean;
   thread?: string;
@@ -48,6 +54,7 @@ export interface NoHALProject {
   rootSheetId: string;
   sheets: Record<string, SheetDefinition>;
   library: ProjectLibrary;
+  halThreads?: HalThreadDefinition[];
   machineConfig?: ProjectMachineConfig;
   halExport?: HalExportConfig;
   ui: {

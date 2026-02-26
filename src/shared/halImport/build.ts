@@ -1,7 +1,13 @@
+import {
+  makeAddfQueueFunctionEntry,
+  makeAddfQueueNodeEntry,
+  normalizeAddfQueueEntries,
+} from "../addfQueue";
 import { createId, safeKey, slugify } from "../id";
 import { createEmptyProject } from "../project";
 import type {
   ComponentDefinition,
+  ComponentFunctionDefinition,
   ComponentPinDefinition,
   HalImportBuildOptions,
   HalImportBuildResult,
@@ -11,6 +17,7 @@ import type {
   HalImportPlacementHeuristic,
   HalValueType,
   PinDirection,
+  SheetAddfQueueStoredEntry,
 } from "../types";
 
 function stripExtension(fileName: string): string {
@@ -76,6 +83,40 @@ function chooseLocalComponentId(
   }
   used.add(id);
   return id;
+}
+
+function buildObservedFunctionsForImportedGroup(
+  group: HalImportComponentGroup,
+  draft: HalImportBuildOptions["draft"],
+): ComponentFunctionDefinition[] {
+  const instanceNames = new Set(group.instances.map((item) => item.instanceName));
+  const out: ComponentFunctionDefinition[] = [];
+  const usedKeys = new Set<string>();
+
+  for (const addf of draft.addfs) {
+    if (!addf.instanceName || !instanceNames.has(addf.instanceName)) continue;
+    const halSuffix = addf.functionSuffix ?? "";
+    if (out.some((item) => item.halSuffix === halSuffix)) continue;
+
+    let baseKey = safeKey(halSuffix || "default");
+    if (!baseKey) baseKey = "default";
+    let key = baseKey;
+    let idx = 2;
+    while (usedKeys.has(key)) {
+      key = `${baseKey}_${idx}`;
+      idx += 1;
+    }
+    usedKeys.add(key);
+
+    out.push({
+      key,
+      declaredName: halSuffix || "_",
+      halSuffix,
+      floatMode: "unknown",
+    });
+  }
+
+  return out;
 }
 
 export function buildProjectFromHalImport(
@@ -234,6 +275,7 @@ export function buildProjectFromHalImport(
       group.inferredHalComponentName,
       usedProjectComponentIds,
     );
+    const observedFunctions = buildObservedFunctionsForImportedGroup(group, draft);
     const generated: ComponentDefinition = {
       id: localId,
       name: group.inferredHalComponentName,
@@ -242,6 +284,7 @@ export function buildProjectFromHalImport(
       runtime: { kind: group.runtimeHint },
       pins,
       params,
+      ...(observedFunctions.length > 0 ? { functions: observedFunctions } : {}),
       docs: {
         description:
           "Generated from imported HAL file (project-local component)",
@@ -1341,27 +1384,53 @@ export function buildProjectFromHalImport(
     },
   );
 
-  const addfQueue: string[] = [];
-  const seenQueueNodes = new Set<string>();
+  const addfQueue: SheetAddfQueueStoredEntry[] = [];
+  const seenQueueItems = new Set<string>();
   const warnedCollapsedAddfInstances = new Set<string>();
   for (const addf of draft.addfs) {
     const addfInstanceName = addf.instanceName ?? addf.functionName;
     const nodeId = nodeIdByInstanceName.get(addfInstanceName);
     if (!nodeId) continue;
-    if (seenQueueNodes.has(nodeId)) {
-      if (!warnedCollapsedAddfInstances.has(addfInstanceName)) {
+    const component = componentByNodeId.get(nodeId);
+
+    let queueEntry = makeAddfQueueNodeEntry(nodeId);
+    if (addf.functionSuffix !== undefined) {
+      const fn = component?.functions?.find(
+        (item) => item.halSuffix === addf.functionSuffix,
+      );
+      if (fn) {
+        queueEntry = makeAddfQueueFunctionEntry(nodeId, fn.key);
+      } else if (!warnedCollapsedAddfInstances.has(addfInstanceName)) {
         warnedCollapsedAddfInstances.add(addfInstanceName);
         warnings.push(
-          `Multiple addf functions for instance '${addfInstanceName}' are not represented separately in NoHAL's sheet addf queue yet; keeping only the first imported entry`,
+          `Imported addf target '${addf.functionName}' could not be matched to component function metadata on '${addfInstanceName}'; queue entry kept at instance level`,
         );
       }
-      continue;
+    } else if (
+      addf.isDefaultFunction === false &&
+      !warnedCollapsedAddfInstances.has(addfInstanceName)
+    ) {
+      warnedCollapsedAddfInstances.add(addfInstanceName);
+      warnings.push(
+        `Imported addf target '${addf.functionName}' uses a non-default function but no function suffix metadata was parsed; queue entry kept at instance level`,
+      );
     }
-    seenQueueNodes.add(nodeId);
-    addfQueue.push(nodeId);
+
+    const key =
+      typeof queueEntry === "string"
+        ? queueEntry
+        : queueEntry.kind === "component-function"
+          ? `fn:${queueEntry.nodeId}:${queueEntry.functionKey}`
+          : `node:${queueEntry.nodeId}`;
+    if (seenQueueItems.has(key)) continue;
+    seenQueueItems.add(key);
+    addfQueue.push(queueEntry);
   }
   if (addfQueue.length > 0) {
-    rootSheet.hal = { ...(rootSheet.hal ?? {}), addfQueue };
+    rootSheet.hal = {
+      ...(rootSheet.hal ?? {}),
+      addfQueue: normalizeAddfQueueEntries(addfQueue),
+    };
   }
 
   return { project, warnings };
