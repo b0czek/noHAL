@@ -25,10 +25,10 @@ export interface NoHALApi {
     project: NoHALProject,
     projectPath?: string | null,
   ): Promise<{ projectPath: string } | null>;
-  exportHal(
+  buildProject(
     project: NoHALProject,
-    filePath?: string | null,
-  ): Promise<{ filePath: string; warnings: string[] } | null>;
+    projectPath: string,
+  ): Promise<{ buildDir: string; files: string[]; warnings: string[] }>;
   pickMachineIniFile(): Promise<MachineConfigImportSetupDraft | null>;
   pickMachineHalFile(): Promise<string | null>;
   buildMachineConfigurationImport(

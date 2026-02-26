@@ -1,7 +1,6 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { BrowserWindow, dialog, ipcMain } from "electron";
 import { parseCompComponentDefinition } from "../shared/compParser";
-import { exportProjectToHal } from "../shared/halExport";
 import { createEmptyProject } from "../shared/project";
 import type {
   MachineConfigHalFileSelection,
@@ -20,6 +19,7 @@ import {
   buildMachineConfigImportDraft,
   parseMachineConfigImportSetupDraft,
 } from "./machineConfigImport";
+import { buildProjectIntoDirectory } from "./projectBuild";
 import { readProjectPath, writeProjectDirectory } from "./projects";
 import { listRecentProjects, touchRecentProject } from "./recentProjects";
 import {
@@ -103,22 +103,9 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
-    "nohal:export-hal",
-    async (_evt, project: NoHALProject, filePath?: string | null) => {
-      let target = filePath ?? null;
-      if (!target) {
-        const res = await dialog.showSaveDialog({
-          title: "Export HAL",
-          defaultPath: `${project.name || "project"}.hal`,
-          filters: [{ name: "HAL File", extensions: ["hal"] }],
-        });
-        if (res.canceled || !res.filePath) return null;
-        target = res.filePath;
-      }
-      const hal = exportProjectToHal(project);
-      await writeFile(target, hal.text, "utf8");
-      return { filePath: target, warnings: hal.warnings };
-    },
+    "nohal:build-project",
+    async (_evt, project: NoHALProject, projectPath: string) =>
+      buildProjectIntoDirectory(project, projectPath),
   );
 
   ipcMain.handle("nohal:pick-machine-ini-file", async () => {

@@ -55,11 +55,12 @@ const api: NoHALApi = {
     ipcRenderer.invoke("nohal:save-project", project, projectPath) as Promise<{
       projectPath: string;
     } | null>,
-  exportHal: (project, filePath) =>
-    ipcRenderer.invoke("nohal:export-hal", project, filePath) as Promise<{
-      filePath: string;
+  buildProject: (project, projectPath) =>
+    ipcRenderer.invoke("nohal:build-project", project, projectPath) as Promise<{
+      buildDir: string;
+      files: string[];
       warnings: string[];
-    } | null>,
+    }>,
   pickMachineIniFile: () =>
     ipcRenderer.invoke(
       "nohal:pick-machine-ini-file",

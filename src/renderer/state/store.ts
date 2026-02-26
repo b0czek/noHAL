@@ -352,14 +352,29 @@ export function createEditorStore(
       return confirmProceedWithUnsavedChanges();
     },
 
-    async exportHal(): Promise<void> {
-      const result = await window.nohal.exportHal(
-        snapshotProjectForIpc(state.project),
-        null,
-      );
-      if (!result) return;
-      setState("exportWarnings", result.warnings);
-      setStatusT("store.status.exportedHal", { filePath: result.filePath });
+    async buildProject(): Promise<void> {
+      try {
+        if (!state.projectPath) {
+          const didSave = await performSaveProject();
+          if (!didSave) return;
+        }
+        if (!state.projectPath) {
+          throw new Error("Project folder is required before build");
+        }
+        const result = await window.nohal.buildProject(
+          snapshotProjectForIpc(state.project),
+          state.projectPath,
+        );
+        setState("exportWarnings", result.warnings);
+        setStatusT("store.status.builtProject", {
+          buildDir: result.buildDir,
+          count: result.files.length,
+        });
+      } catch (error) {
+        setStatusT("store.status.failedBuildProject", {
+          error: toErrorMessage(error),
+        });
+      }
     },
     ...nodeActions,
 

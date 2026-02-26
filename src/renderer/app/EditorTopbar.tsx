@@ -79,9 +79,9 @@ export default function EditorTopbar(props: EditorTopbarProps) {
         <button
           type="button"
           class="btn accent"
-          onClick={() => void actions.exportHal()}
+          onClick={() => void actions.buildProject()}
         >
-          {t("topbar.exportHal")}
+          {t("topbar.build")}
         </button>
       </div>
 
