@@ -41,8 +41,6 @@ export const en = {
   "topbar.redo": "Redo",
   "topbar.build": "Build",
   "topbar.projectSettings": "Project Settings",
-  "topbar.threads": "Threads",
-  "topbar.iniEditor": "INI Editor",
   "topbar.componentStore": "Component Store",
   "topbar.addSubsheet": "+ Subsheet",
   "topbar.addText": "+ Text",
@@ -115,8 +113,9 @@ export const en = {
 
   "projectSettings.ariaLabel": "Project Settings",
   "projectSettings.title": "Project Settings",
-  "projectSettings.tabs": "Tabs",
   "projectSettings.tabMotmod": "motmod",
+  "projectSettings.tabThreads": "HAL Threads",
+  "projectSettings.tabIniEditor": "INI Editor",
   "projectSettings.motmodTitle": "Motion Module (motmod)",
   "projectSettings.motmodHelp": "Configure common motmod loadrt parameters.",
   "projectSettings.motmod.numJoints": "num_joints",
@@ -250,11 +249,6 @@ export const en = {
   "iniEditor.noConfigHelp":
     "Create an empty INI here, or import a machine configuration from the New Project flow.",
   "iniEditor.createEmptyConfig": "Create Empty INI",
-  "iniEditor.summaryTitle": "Machine Configuration",
-  "iniEditor.sections": "Sections",
-  "iniEditor.halSources": "HAL sources",
-  "iniEditor.substitutionHint":
-    "HAL import preserves `[SECTION]KEY` tokens. Change INI values here so a future machine-config build/export can resolve them correctly.",
   "iniEditor.valuesTitle": "INI Values",
   "iniEditor.enterEditMode": "Edit",
   "iniEditor.exitEditMode": "Done",
@@ -333,6 +327,8 @@ export const en = {
     "Cannot remove required HAL thread {name}",
   "store.status.cannotRenameRequiredHalThread":
     "Cannot rename required HAL thread {name}",
+  "store.status.requiredHalThreadForcedFp":
+    "HAL thread {name} is required to run with fp mode",
   "store.status.duplicateHalThreadName":
     "HAL thread name already exists: {name}",
   "store.status.noMachineConfigLoaded":

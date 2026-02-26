@@ -410,6 +410,18 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         (thread) => thread.id === threadId,
       );
       if (!existing) return;
+      if (isRequiredHalThreadName(existing.name) && floatMode === "nofp") {
+        deps.withProject((project) => {
+          const target = project.halThreads?.find(
+            (thread) => thread.id === threadId,
+          );
+          if (target) target.floatMode = "fp";
+        });
+        deps.setStatusT("store.status.requiredHalThreadForcedFp", {
+          name: existing.name,
+        });
+        return;
+      }
       if ((existing.floatMode ?? "fp") === floatMode) return;
 
       deps.withProject((project) => {

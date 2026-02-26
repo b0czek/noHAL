@@ -68,7 +68,10 @@ function normalizeHalThreads(value: unknown): HalThreadDefinition[] {
           : createId("thread"),
       name,
       periodNs,
-      floatMode: candidate.floatMode === "nofp" ? "nofp" : "fp",
+      floatMode:
+        isRequiredHalThreadName(name) || candidate.floatMode !== "nofp"
+          ? "fp"
+          : "nofp",
     });
     usedNames.add(name);
   }
