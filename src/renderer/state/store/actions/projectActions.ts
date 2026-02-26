@@ -1,4 +1,9 @@
-import type { NoHALProject } from "../../../../shared/types";
+import { createEmptyMachineConfig } from "../../../../shared/project";
+import type {
+  LinuxCncIniEntry,
+  LinuxCncIniSection,
+  NoHALProject,
+} from "../../../../shared/types";
 import type { TranslationKey } from "../../../i18n";
 import { toErrorMessage } from "../helpers";
 import type { EditorStoreActionContext } from "./types";
@@ -14,6 +19,16 @@ type OpenedProjectResult = {
   project: NoHALProject;
   projectPath: string;
 };
+
+function nextUniqueIniLabel(
+  base: string,
+  existing: ReadonlyArray<string>,
+): string {
+  if (!existing.includes(base)) return base;
+  let index = 1;
+  while (existing.includes(`${base}_${index}`)) index += 1;
+  return `${base}_${index}`;
+}
 
 function openedProjectPathStatus(
   deps: EditorStoreActionContext,
@@ -107,6 +122,153 @@ export function createProjectActions(deps: EditorStoreActionContext) {
           ),
         "store.status.failedOpenProject",
       );
+    },
+
+    ensureMachineConfig(): void {
+      if (deps.state.project.machineConfig) return;
+      deps.withProject((project) => {
+        project.machineConfig = createEmptyMachineConfig();
+      });
+      deps.setStatusT("store.status.createdEmptyMachineConfig");
+    },
+
+    addMachineIniSection(): void {
+      deps.withProject((project) => {
+        const machineConfig =
+          project.machineConfig ?? (project.machineConfig = createEmptyMachineConfig());
+        const nextLine = Math.max(0, machineConfig.ini.lineCount) + 1;
+        const nextName = nextUniqueIniLabel(
+          "SECTION",
+          machineConfig.ini.sections.map((section) => section.name),
+        );
+        const section: LinuxCncIniSection = {
+          name: nextName,
+          entries: [],
+          line: nextLine,
+        };
+        machineConfig.ini.sections.push(section);
+        machineConfig.ini.lineCount = nextLine;
+      });
+      deps.setStatusT("store.status.addedIniSection");
+    },
+
+    removeMachineIniSection(sectionIndex: number): void {
+      const section = deps.state.project.machineConfig?.ini.sections[sectionIndex];
+      if (!section) {
+        deps.setStatusT("store.status.noMachineConfigLoaded");
+        return;
+      }
+      deps.withProject((project) => {
+        const sections = project.machineConfig?.ini.sections;
+        if (!sections || !sections[sectionIndex]) return;
+        sections.splice(sectionIndex, 1);
+      });
+      deps.setStatusT("store.status.removedIniSection");
+    },
+
+    updateMachineIniSectionName(sectionIndex: number, name: string): void {
+      const existing = deps.state.project.machineConfig?.ini.sections[sectionIndex];
+      if (!existing) {
+        deps.setStatusT("store.status.noMachineConfigLoaded");
+        return;
+      }
+      if (existing.name === name) return;
+      deps.withProject((project) => {
+        const section = project.machineConfig?.ini.sections[sectionIndex];
+        if (section) section.name = name;
+      });
+      deps.setStatusT("store.status.updatedIniSectionName");
+    },
+
+    addMachineIniField(sectionIndex: number): void {
+      const section = deps.state.project.machineConfig?.ini.sections[sectionIndex];
+      if (!section) {
+        deps.setStatusT("store.status.noMachineConfigLoaded");
+        return;
+      }
+      deps.withProject((project) => {
+        const machineConfig = project.machineConfig;
+        const targetSection = machineConfig?.ini.sections[sectionIndex];
+        if (!machineConfig || !targetSection) return;
+        const nextLine = Math.max(0, machineConfig.ini.lineCount) + 1;
+        const nextKey = nextUniqueIniLabel(
+          "KEY",
+          targetSection.entries.map((entry) => entry.key),
+        );
+        const entry: LinuxCncIniEntry = {
+          key: nextKey,
+          value: "",
+          line: nextLine,
+        };
+        targetSection.entries.push(entry);
+        machineConfig.ini.lineCount = nextLine;
+      });
+      deps.setStatusT("store.status.addedIniField");
+    },
+
+    removeMachineIniField(sectionIndex: number, entryIndex: number): void {
+      const entry =
+        deps.state.project.machineConfig?.ini.sections[sectionIndex]?.entries[
+          entryIndex
+        ];
+      if (!entry) {
+        deps.setStatusT("store.status.noMachineConfigLoaded");
+        return;
+      }
+      deps.withProject((project) => {
+        const entries = project.machineConfig?.ini.sections[sectionIndex]?.entries;
+        if (!entries || !entries[entryIndex]) return;
+        entries.splice(entryIndex, 1);
+      });
+      deps.setStatusT("store.status.removedIniField");
+    },
+
+    updateMachineIniKey(
+      sectionIndex: number,
+      entryIndex: number,
+      key: string,
+    ): void {
+      const existing =
+        deps.state.project.machineConfig?.ini.sections[sectionIndex]?.entries[
+          entryIndex
+        ];
+      if (!existing) {
+        deps.setStatusT("store.status.noMachineConfigLoaded");
+        return;
+      }
+      if (existing.key === key) return;
+      deps.withProject((project) => {
+        const entry =
+          project.machineConfig?.ini.sections[sectionIndex]?.entries[
+            entryIndex
+          ];
+        if (entry) entry.key = key;
+      });
+      deps.setStatusT("store.status.updatedIniKey");
+    },
+
+    updateMachineIniValue(
+      sectionIndex: number,
+      entryIndex: number,
+      value: string,
+    ): void {
+      const existing =
+        deps.state.project.machineConfig?.ini.sections[sectionIndex]?.entries[
+          entryIndex
+        ];
+      if (!existing) {
+        deps.setStatusT("store.status.noMachineConfigLoaded");
+        return;
+      }
+      if (existing.value === value) return;
+      deps.withProject((project) => {
+        const entry =
+          project.machineConfig?.ini.sections[sectionIndex]?.entries[
+            entryIndex
+          ];
+        if (entry) entry.value = value;
+      });
+      deps.setStatusT("store.status.updatedIniValue");
     },
   };
 }

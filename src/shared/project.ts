@@ -3,6 +3,7 @@ import { createBuiltinLibrary } from "./library";
 import type {
   ComponentDefinition,
   NoHALProject,
+  ProjectMachineConfig,
   SheetDefinition,
   SheetPort,
 } from "./types";
@@ -18,6 +19,19 @@ function createDefaultTopSheet(): SheetDefinition {
     comments: [],
     directConnections: [],
     labelAnchors: [],
+  };
+}
+
+export function createEmptyMachineConfig(): ProjectMachineConfig {
+  return {
+    source: "imported-linuxcnc-config",
+    ini: {
+      parser: "nohal-ini-v1",
+      lineCount: 0,
+      sections: [],
+      warnings: [],
+    },
+    halSources: [],
   };
 }
 
@@ -38,6 +52,7 @@ export function createEmptyProject(name: string): NoHALProject {
     library: {
       components: createBuiltinLibrary(),
     },
+    machineConfig: createEmptyMachineConfig(),
     ui: {
       activeSheetId: top.id,
     },

@@ -1049,11 +1049,24 @@ textarea {
 }
 
 .ini-editor-body {
-  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .ini-editor-sections-panel {
   min-width: 0;
+}
+
+.ini-editor-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ini-editor-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ini-editor-sections {
@@ -1073,8 +1086,29 @@ textarea {
 }
 
 .ini-editor-section-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
   color: #bee6dc;
   font-size: 12px;
+}
+
+.ini-editor-section-title input {
+  min-width: 0;
+}
+
+.ini-editor-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ini-editor-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ini-editor-rows {
@@ -1084,17 +1118,31 @@ textarea {
 
 .ini-editor-row {
   display: grid;
-  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
+  grid-template-columns: minmax(160px, 240px) minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+}
+
+.ini-editor-row-view {
+  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
 }
 
 .ini-editor-key {
   font-size: 12px;
   color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.ini-editor-value-static {
+  width: 100%;
+  min-width: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  padding: 6px 8px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
 }
 
 .ini-editor-path {
@@ -1122,7 +1170,31 @@ textarea {
   }
 
   .ini-editor-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+  }
+
+  .ini-editor-row-view {
     grid-template-columns: 1fr;
+  }
+
+  .ini-editor-row > :nth-child(1),
+  .ini-editor-row > :nth-child(2) {
+    grid-column: 1 / -1;
+  }
+
+  .ini-editor-row > :nth-child(3) {
+    justify-self: end;
+  }
+
+  .ini-editor-panel-header,
+  .ini-editor-section-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ini-editor-actions {
+    justify-content: flex-end;
   }
 }
 

@@ -194,13 +194,26 @@ export const en = {
     "Edit imported LinuxCNC INI values used by HAL `[SECTION]KEY` substitutions.",
   "iniEditor.noConfigTitle": "No machine configuration loaded",
   "iniEditor.noConfigHelp":
-    "Import a machine configuration from the New Project flow to edit INI values here.",
+    "Create an empty INI here, or import a machine configuration from the New Project flow.",
+  "iniEditor.createEmptyConfig": "Create Empty INI",
   "iniEditor.summaryTitle": "Machine Configuration",
   "iniEditor.sections": "Sections",
   "iniEditor.halSources": "HAL sources",
   "iniEditor.substitutionHint":
     "HAL import preserves `[SECTION]KEY` tokens. Change INI values here so a future machine-config build/export can resolve them correctly.",
   "iniEditor.valuesTitle": "INI Values",
+  "iniEditor.enterEditMode": "Edit",
+  "iniEditor.exitEditMode": "Done",
+  "iniEditor.addSection": "Add Section",
+  "iniEditor.addField": "Add Field",
+  "iniEditor.removeSection": "Remove Section",
+  "iniEditor.removeField": "Remove Field",
+  "iniEditor.confirmRemoveSection": "Remove INI section [{name}]?",
+  "iniEditor.confirmRemoveSectionWithFields":
+    "Remove INI section [{name}] and its {count} fields?",
+  "iniEditor.confirmRemoveField":
+    "Remove INI field [{sectionName}] {key}?",
+  "iniEditor.emptyDocument": "No INI sections yet. Add a section to begin.",
   "iniEditor.emptySection": "No key/value entries in this section.",
 
   "inspector.selection": "Selection",
@@ -236,6 +249,13 @@ export const en = {
   "store.status.savedProjectPath": "Saved project folder: {projectPath}",
   "store.status.failedSaveProject": "Failed to save project: {error}",
   "store.status.exportedHal": "Exported HAL: {filePath}",
+  "store.status.createdEmptyMachineConfig": "Created empty machine INI",
+  "store.status.addedIniSection": "Added INI section",
+  "store.status.removedIniSection": "Removed INI section",
+  "store.status.updatedIniSectionName": "Updated INI section name",
+  "store.status.addedIniField": "Added INI field",
+  "store.status.removedIniField": "Removed INI field",
+  "store.status.updatedIniKey": "Updated INI key",
   "store.status.updatedIniValue": "Updated INI value",
   "store.status.noMachineConfigLoaded":
     "No imported machine configuration is loaded",

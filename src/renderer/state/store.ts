@@ -361,30 +361,6 @@ export function createEditorStore(
       setState("exportWarnings", result.warnings);
       setStatusT("store.status.exportedHal", { filePath: result.filePath });
     },
-
-    updateMachineIniValue(
-      sectionIndex: number,
-      entryIndex: number,
-      value: string,
-    ): void {
-      const existing =
-        state.project.machineConfig?.ini.sections[sectionIndex]?.entries[
-          entryIndex
-        ];
-      if (!existing) {
-        setStatusT("store.status.noMachineConfigLoaded");
-        return;
-      }
-      if (existing.value === value) return;
-      withProject((project) => {
-        const entry =
-          project.machineConfig?.ini.sections[sectionIndex]?.entries[
-            entryIndex
-          ];
-        if (entry) entry.value = value;
-      });
-      setStatusT("store.status.updatedIniValue");
-    },
     ...nodeActions,
 
     ...wireActions,
