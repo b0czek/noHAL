@@ -645,7 +645,10 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
           hitStrokeWidth: WAYPOINT_HANDLE_HIT_STROKE_WIDTH,
           dragBoundFunc: (pos) => ctx.clampPos(pos),
         });
-        setCullBounds(handle, boundsFromPoints([p], WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12));
+        setCullBounds(
+          handle,
+          boundsFromPoints([p], WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12),
+        );
 
         handle.on("click tap", (evt) => {
           evt.cancelBubble = true;
@@ -680,7 +683,10 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
           handle.position(pos);
           setCullBounds(
             handle,
-            boundsFromPoints([pos], WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12),
+            boundsFromPoints(
+              [pos],
+              WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12,
+            ),
           );
           ctx.setSelectedConnectionId(conn.id);
           ctx.setSelectedWaypointIndex(i);
@@ -703,7 +709,10 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
           handle.position(pos);
           setCullBounds(
             handle,
-            boundsFromPoints([pos], WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12),
+            boundsFromPoints(
+              [pos],
+              WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12,
+            ),
           );
           ctx.setSelectedConnectionId(conn.id);
           ctx.setSelectedWaypointIndex(i);

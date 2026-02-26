@@ -390,7 +390,10 @@ export class KonvaSheetScene {
       const model = this.labelCullModels.get(id);
       if (!model) continue;
       group.visible(
-        this.rectIntersects(view, this.worldBoundsFromLocalRect(group.position(), model)),
+        this.rectIntersects(
+          view,
+          this.worldBoundsFromLocalRect(group.position(), model),
+        ),
       );
     }
 
@@ -398,7 +401,10 @@ export class KonvaSheetScene {
       const model = this.commentCullModels.get(id);
       if (!model) continue;
       group.visible(
-        this.rectIntersects(view, this.worldBoundsFromLocalRect(group.position(), model)),
+        this.rectIntersects(
+          view,
+          this.worldBoundsFromLocalRect(group.position(), model),
+        ),
       );
     }
 
@@ -406,7 +412,10 @@ export class KonvaSheetScene {
       const model = this.portCullModels.get(id);
       if (!model) continue;
       group.visible(
-        this.rectIntersects(view, this.worldBoundsFromLocalRect(group.position(), model)),
+        this.rectIntersects(
+          view,
+          this.worldBoundsFromLocalRect(group.position(), model),
+        ),
       );
     }
   }
@@ -713,10 +722,7 @@ export class KonvaSheetScene {
     this.uiLayer.batchDraw();
   }
 
-  private normalizedRect(
-    a: Pt,
-    b: Pt,
-  ): Rect {
+  private normalizedRect(a: Pt, b: Pt): Rect {
     const x1 = Math.min(a.x, b.x);
     const y1 = Math.min(a.y, b.y);
     const x2 = Math.max(a.x, b.x);
