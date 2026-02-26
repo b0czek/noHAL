@@ -10,6 +10,11 @@
   --danger: #ef6b5a;
   --shadow: 0 14px 48px rgba(0, 0, 0, 0.35);
   --radius: 14px;
+  --scrollbar-size: 11px;
+  --scrollbar-track: rgba(122, 230, 208, 0.08);
+  --scrollbar-thumb: rgba(122, 230, 208, 0.34);
+  --scrollbar-thumb-hover: rgba(122, 230, 208, 0.48);
+  --scrollbar-thumb-active: rgba(242, 185, 75, 0.52);
   font-family: "IBM Plex Sans", "Iosevka Aile", system-ui, sans-serif;
 }
 
@@ -27,6 +32,65 @@ body,
     radial-gradient(circle at 90% 8%, rgba(242, 185, 75, 0.08), transparent 30%),
     linear-gradient(180deg, #081216 0%, #050b0e 100%);
   color: var(--text);
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.03),
+      rgba(255, 255, 255, 0.01)
+    ),
+    var(--scrollbar-track);
+  border: 1px solid rgba(122, 230, 208, 0.12);
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 28px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  background: linear-gradient(
+    180deg,
+    rgba(122, 230, 208, 0.5),
+    rgba(122, 230, 208, 0.28)
+  );
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(122, 230, 208, 0.62),
+    var(--scrollbar-thumb-hover)
+  );
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(
+    180deg,
+    rgba(242, 185, 75, 0.68),
+    var(--scrollbar-thumb-active)
+  );
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 button,
