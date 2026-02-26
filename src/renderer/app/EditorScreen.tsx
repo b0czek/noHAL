@@ -1,13 +1,11 @@
 import Canvas from "../components/Canvas";
 import ComponentNodeDialog from "../components/ComponentNodeDialog";
 import ComponentStoreDialog from "../components/ComponentStoreDialog";
-import IniEditorDialog from "../components/IniEditorDialog";
 import Inspector from "../components/Inspector";
-import ProjectSettingsDialog from "../components/ProjectSettingsDialog";
 import SheetSettingsDialog from "../components/SheetSettingsDialog";
 import Sidebar from "../components/Sidebar";
 import StatusBar from "../components/StatusBar";
-import ThreadsDialog from "../components/ThreadsDialog";
+import ProjectSettingsDialog from "../features/projectSettings";
 import { useEditorShortcuts } from "../shortcuts/useEditorShortcuts";
 import { EditorUiProvider } from "../state/EditorUiProvider";
 import EditorTopbar from "./EditorTopbar";
@@ -41,9 +39,7 @@ function EditorScreenContent(props: EditorScreenProps) {
 
       <ComponentNodeDialog />
       <ComponentStoreDialog />
-      <IniEditorDialog />
       <ProjectSettingsDialog />
-      <ThreadsDialog />
       <SheetSettingsDialog />
     </div>
   );

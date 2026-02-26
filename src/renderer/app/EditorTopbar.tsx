@@ -93,12 +93,6 @@ export default function EditorTopbar(props: EditorTopbarProps) {
         >
           {t("topbar.projectSettings")}
         </button>
-        <button type="button" class="btn" onClick={editorUi.openThreadsDialog}>
-          {t("topbar.threads")}
-        </button>
-        <button type="button" class="btn" onClick={editorUi.openIniEditor}>
-          {t("topbar.iniEditor")}
-        </button>
         <button type="button" class="btn" onClick={editorUi.openComponentStore}>
           {t("topbar.componentStore")}
         </button>

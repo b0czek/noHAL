@@ -15,8 +15,6 @@ function createEditorUiState() {
     string | null
   >(null);
   const [isComponentStoreOpen, setIsComponentStoreOpen] = createSignal(false);
-  const [isIniEditorOpen, setIsIniEditorOpen] = createSignal(false);
-  const [isThreadsDialogOpen, setIsThreadsDialogOpen] = createSignal(false);
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = createSignal(false);
   const [sheetSettingsSheetId, setSheetSettingsSheetId] = createSignal<
     string | null
@@ -79,8 +77,6 @@ function createEditorUiState() {
     editingComponentNode,
     componentEditorNodeId,
     isComponentStoreOpen,
-    isIniEditorOpen,
-    isThreadsDialogOpen,
     isProjectSettingsOpen,
     sheetSettingsSheetId,
     labelClick,
@@ -90,10 +86,6 @@ function createEditorUiState() {
     closeComponentEditor: () => setComponentEditorNodeId(null),
     openComponentStore: () => setIsComponentStoreOpen(true),
     closeComponentStore: () => setIsComponentStoreOpen(false),
-    openIniEditor: () => setIsIniEditorOpen(true),
-    closeIniEditor: () => setIsIniEditorOpen(false),
-    openThreadsDialog: () => setIsThreadsDialogOpen(true),
-    closeThreadsDialog: () => setIsThreadsDialogOpen(false),
     openProjectSettings: () => setIsProjectSettingsOpen(true),
     closeProjectSettings: () => setIsProjectSettingsOpen(false),
     openSheetSettings: (sheetId: string) => setSheetSettingsSheetId(sheetId),
