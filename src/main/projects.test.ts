@@ -33,8 +33,28 @@ function createProjectWithTwoSheets(): NoHALProject {
   const project = createEmptyProject("Spec Test Project");
   const child = createSheet("Child", project.rootSheetId);
   const rootSheet = project.sheets[project.rootSheetId];
+  const and2ComponentId = "comp:test-and2";
   return {
     ...project,
+    library: {
+      components: {
+        ...project.library.components,
+        [and2ComponentId]: {
+          id: and2ComponentId,
+          name: "and2",
+          halComponentName: "and2",
+          source: "comp",
+          sourcePath: "tests/components/and2.comp",
+          runtime: { kind: "rt" },
+          pins: [
+            { key: "in0", name: "in0", direction: "in", type: "bit" },
+            { key: "in1", name: "in1", direction: "in", type: "bit" },
+            { key: "out", name: "out", direction: "out", type: "bit" },
+          ],
+          params: [],
+        },
+      },
+    },
     sheets: {
       ...project.sheets,
       [project.rootSheetId]: {
@@ -44,7 +64,7 @@ function createProjectWithTwoSheets(): NoHALProject {
           {
             id: "node_spec_and2",
             kind: "component",
-            componentId: "builtin:and2",
+            componentId: and2ComponentId,
             instanceName: "and2.0",
             position: { x: 10, y: 20 },
             paramValues: {},
@@ -80,7 +100,7 @@ describe("projects persistence (directory format)", () => {
     const library = JSON.parse(
       await readFile(path.join(savedPath, "library.nohal.json"), "utf8"),
     ) as { components?: Record<string, unknown> };
-    expect(Object.keys(library.components ?? {})).toEqual(["builtin:and2"]);
+    expect(Object.keys(library.components ?? {})).toEqual(["comp:test-and2"]);
 
     const sheetFiles = await readdir(path.join(savedPath, "sheets"));
     expect(sheetFiles).toHaveLength(Object.keys(project.sheets).length);

@@ -5,11 +5,38 @@ import { createEmptyProject } from "./project";
 function makeConnectedProject(signalName?: string) {
   const project = createEmptyProject("Signal Name Test");
   const sheet = project.sheets[project.rootSheetId];
+  project.library.components["comp:test-not"] = {
+    id: "comp:test-not",
+    name: "not",
+    halComponentName: "not",
+    source: "comp",
+    sourcePath: "tests/components/not.comp",
+    runtime: { kind: "rt" },
+    pins: [
+      { key: "in", name: "in", direction: "in", type: "bit" },
+      { key: "out", name: "out", direction: "out", type: "bit" },
+    ],
+    params: [],
+  };
+  project.library.components["comp:test-and2"] = {
+    id: "comp:test-and2",
+    name: "and2",
+    halComponentName: "and2",
+    source: "comp",
+    sourcePath: "tests/components/and2.comp",
+    runtime: { kind: "rt" },
+    pins: [
+      { key: "in0", name: "in0", direction: "in", type: "bit" },
+      { key: "in1", name: "in1", direction: "in", type: "bit" },
+      { key: "out", name: "out", direction: "out", type: "bit" },
+    ],
+    params: [],
+  };
   sheet.nodes.push(
     {
       id: "node_a",
       kind: "component",
-      componentId: "builtin:not",
+      componentId: "comp:test-not",
       instanceName: "src",
       position: { x: 0, y: 0 },
       paramValues: {},
@@ -17,7 +44,7 @@ function makeConnectedProject(signalName?: string) {
     {
       id: "node_b",
       kind: "component",
-      componentId: "builtin:and2",
+      componentId: "comp:test-and2",
       instanceName: "sink",
       position: { x: 180, y: 0 },
       paramValues: {},

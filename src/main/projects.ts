@@ -9,7 +9,6 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { slugify } from "../shared/id";
-import { createBuiltinLibrary } from "../shared/library";
 import { parseNoHALProject } from "../shared/project";
 import type {
   NoHALProject,
@@ -132,15 +131,6 @@ function createPersistedProjectLibrary(project: NoHALProject): ProjectLibrary {
   return { components };
 }
 
-function mergeBuiltinsIntoLibrary(library: ProjectLibrary): ProjectLibrary {
-  return {
-    components: {
-      ...createBuiltinLibrary(),
-      ...library.components,
-    },
-  };
-}
-
 function sheetFileNameForSheet(sheet: SheetDefinition): string {
   const fileId = sheet.id.replace(/^sheet_/, "");
   return `${slugify(sheet.name)}__${fileId}${SHEET_FILE_SUFFIX}`;
@@ -212,7 +202,7 @@ async function readProjectDirectory(
   const project = parseNoHALProject(
     JSON.stringify({
       ...dirManifest.project,
-      library: mergeBuiltinsIntoLibrary(parsedLibrary),
+      library: parsedLibrary,
       sheets,
     }),
   );

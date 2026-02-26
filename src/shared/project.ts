@@ -1,5 +1,4 @@
 import { createId, slugify } from "./id";
-import { createBuiltinLibrary } from "./library";
 import {
   createDefaultSheetThreadOutputs,
   normalizeSheetThreadOutputs,
@@ -156,7 +155,7 @@ export function createEmptyProject(name: string): NoHALProject {
       [top.id]: top,
     },
     library: {
-      components: createBuiltinLibrary(),
+      components: {},
     },
     halThreads: createDefaultHalThreads(),
     machineConfig: createEmptyMachineConfig(),
