@@ -1,3 +1,7 @@
+import type {
+  NOHAL_PROJECT_FORMAT,
+  NOHAL_PROJECT_VERSION,
+} from "../fileFormats";
 import type { ComponentDefinition } from "./components";
 import type { ProjectMachineConfig } from "./ini";
 import type { SheetDefinition } from "./sheet";
@@ -53,8 +57,8 @@ export interface ProjectMotmodConfig {
 }
 
 export interface NoHALProject {
-  format: "nohal-project";
-  version: 1;
+  format: typeof NOHAL_PROJECT_FORMAT;
+  version: typeof NOHAL_PROJECT_VERSION;
   name: string;
   target: {
     linuxcncVersion: "2.10";

@@ -3,6 +3,10 @@ import {
   addfQueueEntryNodeId,
   normalizeAddfQueueEntries,
 } from "../../../shared/addfQueue";
+import {
+  NOHAL_COMPONENT_STORE_FORMAT,
+  NOHAL_COMPONENT_STORE_VERSION,
+} from "../../../shared/fileFormats";
 import { endpointKey } from "../../../shared/graph";
 import { slugify } from "../../../shared/id";
 import type {
@@ -35,8 +39,8 @@ export function normalizeRotationDegrees(value: number): number {
 
 export function createEmptyComponentStore(): ComponentStore {
   return {
-    format: "nohal-component-store",
-    version: 2,
+    format: NOHAL_COMPONENT_STORE_FORMAT,
+    version: NOHAL_COMPONENT_STORE_VERSION,
     sources: {},
     components: {},
   };

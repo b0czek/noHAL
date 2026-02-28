@@ -8,6 +8,15 @@ import {
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
+import packageJson from "../../package.json";
+import {
+  NOHAL_PROJECT_DIR_FORMAT,
+  NOHAL_PROJECT_DIR_VERSION,
+  NOHAL_PROJECT_LIBRARY_FILE_FORMAT,
+  NOHAL_PROJECT_LIBRARY_FILE_VERSION,
+  NOHAL_PROJECT_SHEET_FILE_FORMAT,
+  NOHAL_PROJECT_SHEET_FILE_VERSION,
+} from "../shared/fileFormats";
 import { slugify } from "../shared/id";
 import { parseNoHALProject } from "../shared/project";
 import type {
@@ -17,11 +26,12 @@ import type {
 } from "../shared/types";
 
 const PROJECT_DIR_MANIFEST_FILENAME = "project.nohal.json";
-const PROJECT_DIR_FORMAT = "nohal-project-dir";
-const PROJECT_DIR_VERSION = 1;
+const CURRENT_PROJECT_DIR_VERSION = NOHAL_PROJECT_DIR_VERSION;
 const PROJECT_LIBRARY_FILENAME = "library.nohal.json";
 const SHEETS_DIRNAME = "sheets";
 const SHEET_FILE_SUFFIX = ".nohal-sheet.json";
+const NOHAL_APP_VERSION =
+  typeof packageJson.version === "string" ? packageJson.version : "0.0.0";
 
 type ProjectWithoutSheetsAndLibrary = Omit<NoHALProject, "sheets" | "library">;
 
@@ -31,11 +41,26 @@ interface ProjectSheetRef {
 }
 
 interface NoHALProjectDirManifest {
-  format: typeof PROJECT_DIR_FORMAT;
-  version: typeof PROJECT_DIR_VERSION;
+  format: typeof NOHAL_PROJECT_DIR_FORMAT;
+  version: typeof NOHAL_PROJECT_DIR_VERSION;
+  savedWith?: string;
   project: ProjectWithoutSheetsAndLibrary;
   libraryFile: typeof PROJECT_LIBRARY_FILENAME;
   sheets: ProjectSheetRef[];
+}
+
+interface NoHALProjectLibraryFile {
+  format: typeof NOHAL_PROJECT_LIBRARY_FILE_FORMAT;
+  version: typeof NOHAL_PROJECT_LIBRARY_FILE_VERSION;
+  savedWith?: string;
+  library: ProjectLibrary;
+}
+
+interface NoHALProjectSheetFile {
+  format: typeof NOHAL_PROJECT_SHEET_FILE_FORMAT;
+  version: typeof NOHAL_PROJECT_SHEET_FILE_VERSION;
+  savedWith?: string;
+  sheet: SheetDefinition;
 }
 
 function stringifyJson(value: unknown): string {
@@ -92,8 +117,10 @@ function isProjectDirManifest(
   value: unknown,
 ): value is NoHALProjectDirManifest {
   if (!isRecord(value)) return false;
-  if (value.format !== PROJECT_DIR_FORMAT) return false;
-  if (value.version !== PROJECT_DIR_VERSION) return false;
+  if (value.format !== NOHAL_PROJECT_DIR_FORMAT) return false;
+  if (value.version !== NOHAL_PROJECT_DIR_VERSION) return false;
+  if (!(value.savedWith === undefined || typeof value.savedWith === "string"))
+    return false;
   if (!isRecord(value.project)) return false;
   if (value.libraryFile !== PROJECT_LIBRARY_FILENAME) return false;
   if (!Array.isArray(value.sheets)) return false;
@@ -107,6 +134,44 @@ function isProjectDirManifest(
 
 function isProjectLibraryLike(value: unknown): value is ProjectLibrary {
   return isRecord(value) && isRecord(value.components);
+}
+
+function isProjectLibraryFile(
+  value: unknown,
+): value is NoHALProjectLibraryFile {
+  return (
+    isRecord(value) &&
+    value.format === NOHAL_PROJECT_LIBRARY_FILE_FORMAT &&
+    value.version === NOHAL_PROJECT_LIBRARY_FILE_VERSION &&
+    (value.savedWith === undefined || typeof value.savedWith === "string") &&
+    isProjectLibraryLike(value.library)
+  );
+}
+
+function parseProjectLibraryFile(
+  value: unknown,
+  libraryPath: string,
+): ProjectLibrary {
+  if (isProjectLibraryFile(value)) return value.library;
+  throw new Error(`Invalid project library: ${libraryPath}`);
+}
+
+function isProjectSheetFile(value: unknown): value is NoHALProjectSheetFile {
+  return (
+    isRecord(value) &&
+    value.format === NOHAL_PROJECT_SHEET_FILE_FORMAT &&
+    value.version === NOHAL_PROJECT_SHEET_FILE_VERSION &&
+    (value.savedWith === undefined || typeof value.savedWith === "string") &&
+    isSheetDefinitionLike(value.sheet)
+  );
+}
+
+function parseProjectSheetFile(
+  value: unknown,
+  sheetPath: string,
+): SheetDefinition {
+  if (isProjectSheetFile(value)) return value.sheet;
+  throw new Error(`Invalid sheet file: ${sheetPath}`);
 }
 
 function getUsedComponentIds(project: NoHALProject): Set<string> {
@@ -129,6 +194,26 @@ function createPersistedProjectLibrary(project: NoHALProject): ProjectLibrary {
     components[componentId] = component;
   }
   return { components };
+}
+
+function createProjectLibraryFile(
+  library: ProjectLibrary,
+): NoHALProjectLibraryFile {
+  return {
+    format: NOHAL_PROJECT_LIBRARY_FILE_FORMAT,
+    version: NOHAL_PROJECT_LIBRARY_FILE_VERSION,
+    savedWith: NOHAL_APP_VERSION,
+    library,
+  };
+}
+
+function createProjectSheetFile(sheet: SheetDefinition): NoHALProjectSheetFile {
+  return {
+    format: NOHAL_PROJECT_SHEET_FILE_FORMAT,
+    version: NOHAL_PROJECT_SHEET_FILE_VERSION,
+    savedWith: NOHAL_APP_VERSION,
+    sheet,
+  };
 }
 
 function sheetFileNameForSheet(sheet: SheetDefinition): string {
@@ -180,24 +265,22 @@ async function readProjectDirectory(
     const sheetPath = path.join(normalizedProjectDir, ...relativeParts);
     const content = await readFile(sheetPath, "utf8");
     const parsed = JSON.parse(content) as unknown;
-    if (!isSheetDefinitionLike(parsed)) {
-      throw new Error(`Invalid sheet file: ${sheetPath}`);
-    }
-    if (parsed.id !== sheetRef.id) {
+    const sheet = parseProjectSheetFile(parsed, sheetPath);
+    if (sheet.id !== sheetRef.id) {
       throw new Error(`Sheet id mismatch in ${sheetPath}`);
     }
     if (sheetRef.id in sheets) {
       throw new Error(`Duplicate sheet id in manifest: ${sheetRef.id}`);
     }
-    sheets[sheetRef.id] = parsed;
+    sheets[sheetRef.id] = sheet;
   }
 
   const libraryPath = path.join(normalizedProjectDir, dirManifest.libraryFile);
   const libraryContent = await readFile(libraryPath, "utf8");
-  const parsedLibrary = JSON.parse(libraryContent) as unknown;
-  if (!isProjectLibraryLike(parsedLibrary)) {
-    throw new Error(`Invalid project library: ${libraryPath}`);
-  }
+  const parsedLibrary = parseProjectLibraryFile(
+    JSON.parse(libraryContent) as unknown,
+    libraryPath,
+  );
 
   const project = parseNoHALProject(
     JSON.stringify({
@@ -219,8 +302,9 @@ function createProjectDirManifest(
     ...projectWithoutSheetsAndLibrary
   } = project;
   return {
-    format: PROJECT_DIR_FORMAT,
-    version: PROJECT_DIR_VERSION,
+    format: NOHAL_PROJECT_DIR_FORMAT,
+    version: CURRENT_PROJECT_DIR_VERSION,
+    savedWith: NOHAL_APP_VERSION,
     project: projectWithoutSheetsAndLibrary,
     libraryFile: PROJECT_LIBRARY_FILENAME,
     sheets: Object.keys(sheets)
@@ -282,9 +366,15 @@ export async function writeProjectDirectory(
       throw new Error(`Missing sheet in project: ${sheetRef.id}`);
     }
     const sheetFilePath = path.join(sheetsDir, path.basename(sheetRef.file));
-    await writeFileAtomic(sheetFilePath, stringifyJson(sheet));
+    await writeFileAtomic(
+      sheetFilePath,
+      stringifyJson(createProjectSheetFile(sheet)),
+    );
   }
-  await writeFileAtomic(libraryPath, stringifyJson(persistedLibrary));
+  await writeFileAtomic(
+    libraryPath,
+    stringifyJson(createProjectLibraryFile(persistedLibrary)),
+  );
   // Manifest is the commit point for the multi-file project save.
   await writeFileAtomic(manifestPath, stringifyJson(manifest));
 

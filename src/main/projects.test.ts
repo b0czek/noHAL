@@ -9,11 +9,22 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import packageJson from "../../package.json";
+import {
+  NOHAL_PROJECT_DIR_FORMAT,
+  NOHAL_PROJECT_DIR_VERSION,
+  NOHAL_PROJECT_LIBRARY_FILE_FORMAT,
+  NOHAL_PROJECT_LIBRARY_FILE_VERSION,
+  NOHAL_PROJECT_SHEET_FILE_FORMAT,
+  NOHAL_PROJECT_SHEET_FILE_VERSION,
+} from "../shared/fileFormats";
 import { createEmptyProject, createSheet } from "../shared/project";
 import type { NoHALProject } from "../shared/types";
 import { readProjectPath, writeProjectDirectory } from "./projects";
 
 const tempDirs: string[] = [];
+const NOHAL_APP_VERSION =
+  typeof packageJson.version === "string" ? packageJson.version : "0.0.0";
 
 async function makeTempDir(prefix = "nohal-projects-test-"): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), prefix));
@@ -93,14 +104,30 @@ describe("projects persistence (directory format)", () => {
 
     const manifest = JSON.parse(
       await readFile(path.join(savedPath, "project.nohal.json"), "utf8"),
-    ) as { project?: Record<string, unknown> };
+    ) as {
+      version?: number;
+      savedWith?: string;
+      project?: Record<string, unknown>;
+    };
+    expect(manifest.version).toBe(NOHAL_PROJECT_DIR_VERSION);
+    expect(manifest.savedWith).toBe(NOHAL_APP_VERSION);
     expect(manifest.project).toBeDefined();
     expect(manifest.project).not.toHaveProperty("library");
 
-    const library = JSON.parse(
+    const libraryFile = JSON.parse(
       await readFile(path.join(savedPath, "library.nohal.json"), "utf8"),
-    ) as { components?: Record<string, unknown> };
-    expect(Object.keys(library.components ?? {})).toEqual(["comp:test-and2"]);
+    ) as {
+      format?: string;
+      version?: number;
+      savedWith?: string;
+      library?: { components?: Record<string, unknown> };
+    };
+    expect(libraryFile.format).toBe(NOHAL_PROJECT_LIBRARY_FILE_FORMAT);
+    expect(libraryFile.version).toBe(NOHAL_PROJECT_LIBRARY_FILE_VERSION);
+    expect(libraryFile.savedWith).toBe(NOHAL_APP_VERSION);
+    expect(Object.keys(libraryFile.library?.components ?? {})).toEqual([
+      "comp:test-and2",
+    ]);
 
     const sheetFiles = await readdir(path.join(savedPath, "sheets"));
     expect(sheetFiles).toHaveLength(Object.keys(project.sheets).length);
@@ -115,6 +142,29 @@ describe("projects persistence (directory format)", () => {
     expect(
       sheetFiles.some((name) =>
         /^child__[a-z0-9]+\.nohal-sheet\.json$/.test(name),
+      ),
+    ).toBe(true);
+    const sheetFilePayloads = await Promise.all(
+      sheetFiles.map(async (name) => {
+        const text = await readFile(
+          path.join(savedPath, "sheets", name),
+          "utf8",
+        );
+        return JSON.parse(text) as {
+          format?: string;
+          version?: number;
+          savedWith?: string;
+          sheet?: { id?: string };
+        };
+      }),
+    );
+    expect(
+      sheetFilePayloads.every(
+        (payload) =>
+          payload.format === NOHAL_PROJECT_SHEET_FILE_FORMAT &&
+          payload.version === NOHAL_PROJECT_SHEET_FILE_VERSION &&
+          payload.savedWith === NOHAL_APP_VERSION &&
+          typeof payload.sheet?.id === "string",
       ),
     ).toBe(true);
 
@@ -132,6 +182,54 @@ describe("projects persistence (directory format)", () => {
 
     expect(loaded.projectPath).toBe(targetDir);
     expect(loaded.project).toEqual(project);
+  });
+
+  it("rejects project manifests with an unsupported version", async () => {
+    const project = createProjectWithTwoSheets();
+    const baseDir = await makeTempDir();
+    const targetDir = path.join(baseDir, "legacy-v1.nohal");
+    const sheetsDir = path.join(targetDir, "sheets");
+    await mkdir(sheetsDir, { recursive: true });
+
+    const { sheets, library, ...projectWithoutSheetsAndLibrary } = project;
+    const sheetRefs = Object.keys(sheets)
+      .sort()
+      .map((sheetId, index) => ({
+        id: sheetId,
+        file: `sheets/sheet-${index}.nohal-sheet.json`,
+      }));
+
+    await writeFile(
+      path.join(targetDir, "project.nohal.json"),
+      `${JSON.stringify(
+        {
+          format: NOHAL_PROJECT_DIR_FORMAT,
+          version: 0,
+          project: projectWithoutSheetsAndLibrary,
+          libraryFile: "library.nohal.json",
+          sheets: sheetRefs,
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(targetDir, "library.nohal.json"),
+      `${JSON.stringify(library, null, 2)}\n`,
+      "utf8",
+    );
+    for (const sheetRef of sheetRefs) {
+      await writeFile(
+        path.join(targetDir, sheetRef.file),
+        `${JSON.stringify(sheets[sheetRef.id], null, 2)}\n`,
+        "utf8",
+      );
+    }
+
+    await expect(readProjectPath(targetDir)).rejects.toThrowError(
+      /Invalid project manifest/,
+    );
   });
 
   it("round-trips when opening from the manifest file path", async () => {

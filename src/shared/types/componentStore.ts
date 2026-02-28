@@ -1,3 +1,7 @@
+import type {
+  NOHAL_COMPONENT_STORE_FORMAT,
+  NOHAL_COMPONENT_STORE_VERSION,
+} from "../fileFormats";
 import type { ImportedComponentDefinition } from "./components";
 
 export interface ComponentStoreSourceRef {
@@ -42,8 +46,8 @@ export interface ComponentStoreEntry {
 }
 
 export interface ComponentStore {
-  format: "nohal-component-store";
-  version: 2;
+  format: typeof NOHAL_COMPONENT_STORE_FORMAT;
+  version: typeof NOHAL_COMPONENT_STORE_VERSION;
   sources: Record<string, ComponentStoreDirSource | ComponentStoreFileSource>;
   components: Record<string, ComponentStoreEntry>;
 }

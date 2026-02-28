@@ -1,3 +1,4 @@
+import { NOHAL_PROJECT_FORMAT, NOHAL_PROJECT_VERSION } from "./fileFormats";
 import { createId, slugify } from "./id";
 import {
   createDefaultSheetThreadOutputs,
@@ -143,8 +144,8 @@ function normalizeMotmodConfig(value: unknown): ProjectMotmodConfig {
 export function createEmptyProject(name: string): NoHALProject {
   const top = createDefaultTopSheet();
   return {
-    format: "nohal-project",
-    version: 1,
+    format: NOHAL_PROJECT_FORMAT,
+    version: NOHAL_PROJECT_VERSION,
     name,
     target: {
       linuxcncVersion: "2.10",
@@ -170,9 +171,9 @@ function assertProjectShape(input: unknown): asserts input is NoHALProject {
   if (!input || typeof input !== "object")
     throw new Error("Project file is not an object");
   const project = input as Partial<NoHALProject>;
-  if (project.format !== "nohal-project")
+  if (project.format !== NOHAL_PROJECT_FORMAT)
     throw new Error("Unsupported project format");
-  if (project.version !== 1)
+  if (project.version !== NOHAL_PROJECT_VERSION)
     throw new Error(`Unsupported project version: ${String(project.version)}`);
   if (!project.sheets || typeof project.sheets !== "object")
     throw new Error("Project has no sheets");

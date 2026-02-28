@@ -1,5 +1,9 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  NOHAL_BUILD_MANIFEST_FORMAT,
+  NOHAL_BUILD_MANIFEST_VERSION,
+} from "../shared/fileFormats";
 import { exportProjectToHal } from "../shared/halExport";
 import { slugify } from "../shared/id";
 import type {
@@ -14,8 +18,8 @@ interface GeneratedBuildFile {
 }
 
 interface BuildManifest {
-  format: "nohal-build-manifest";
-  version: 1;
+  format: typeof NOHAL_BUILD_MANIFEST_FORMAT;
+  version: typeof NOHAL_BUILD_MANIFEST_VERSION;
   files: string[];
 }
 
@@ -242,8 +246,8 @@ function isBuildManifestLike(value: unknown): value is BuildManifest {
   if (!value || typeof value !== "object") return false;
   const manifest = value as Partial<BuildManifest>;
   return (
-    manifest.format === "nohal-build-manifest" &&
-    manifest.version === 1 &&
+    manifest.format === NOHAL_BUILD_MANIFEST_FORMAT &&
+    manifest.version === NOHAL_BUILD_MANIFEST_VERSION &&
     Array.isArray(manifest.files) &&
     manifest.files.every((file) => typeof file === "string")
   );
@@ -310,8 +314,8 @@ export async function buildProjectIntoDirectory(
   await writeFile(
     path.join(buildDir, BUILD_MANIFEST_FILENAME),
     stringifyJson({
-      format: "nohal-build-manifest",
-      version: 1,
+      format: NOHAL_BUILD_MANIFEST_FORMAT,
+      version: NOHAL_BUILD_MANIFEST_VERSION,
       files: generated.files.map((file) => file.relativePath),
     } satisfies BuildManifest),
     "utf8",

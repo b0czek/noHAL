@@ -3,6 +3,10 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { app, dialog } from "electron";
 import { parseCompComponentDefinition } from "../shared/compParser";
+import {
+  NOHAL_COMPONENT_STORE_FORMAT,
+  NOHAL_COMPONENT_STORE_VERSION,
+} from "../shared/fileFormats";
 import { slugify } from "../shared/id";
 import type {
   ComponentStore,
@@ -53,8 +57,8 @@ async function collectCompFilesRecursive(
 
 function createEmptyComponentStore(): ComponentStore {
   return {
-    format: "nohal-component-store",
-    version: 2,
+    format: NOHAL_COMPONENT_STORE_FORMAT,
+    version: NOHAL_COMPONENT_STORE_VERSION,
     sources: {},
     components: {},
   };
@@ -66,9 +70,9 @@ function assertComponentStoreShape(
   if (!input || typeof input !== "object")
     throw new Error("Component store file is not an object");
   const store = input as Partial<ComponentStore>;
-  if (store.format !== "nohal-component-store")
+  if (store.format !== NOHAL_COMPONENT_STORE_FORMAT)
     throw new Error("Unsupported component store format");
-  if (store.version !== 2)
+  if (store.version !== NOHAL_COMPONENT_STORE_VERSION)
     throw new Error(
       `Unsupported component store version: ${String(store.version)}`,
     );
