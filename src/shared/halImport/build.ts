@@ -52,6 +52,41 @@ function mergeDirections(values: Array<PinDirection>): PinDirection {
   return "io";
 }
 
+function observedNameCandidates(value: string): string[] {
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+  const segments = trimmed.split(".").filter(Boolean);
+  const out = new Set<string>([trimmed]);
+  for (let idx = 1; idx < segments.length; idx += 1) {
+    out.add(segments.slice(idx).join("."));
+  }
+  return [...out];
+}
+
+function findMatchingComponentPin(
+  component: ComponentDefinition | undefined,
+  observedName: string,
+): ComponentPinDefinition | undefined {
+  if (!component) return undefined;
+  for (const candidate of observedNameCandidates(observedName)) {
+    const pin = component.pins.find((item) => item.name === candidate);
+    if (pin) return pin;
+  }
+  return undefined;
+}
+
+function findMatchingComponentParam(
+  component: ComponentDefinition | undefined,
+  observedName: string,
+) {
+  if (!component) return undefined;
+  for (const candidate of observedNameCandidates(observedName)) {
+    const param = component.params.find((item) => item.name === candidate);
+    if (param) return param;
+  }
+  return undefined;
+}
+
 function uniqueKeyForNames(
   names: string[],
   fallbackPrefix: string,
@@ -191,7 +226,7 @@ export function buildProjectFromHalImport(
       const sel = selections.get(group.id);
       if (!sel || sel.mode !== "store") continue;
       const comp = storeComponentsById.get(sel.componentId);
-      const pin = comp?.pins.find((item) => item.name === endpoint.pinName);
+      const pin = findMatchingComponentPin(comp, endpoint.pinName);
       if (pin) knownTypes.push(pin.type);
     }
     if (knownTypes.length === 0) continue;
@@ -560,19 +595,15 @@ export function buildProjectFromHalImport(
       return;
     }
 
-    const paramNameToDef = new Map(
-      component.params.map((param) => [param.name, param]),
-    );
-    const pinNameToDef = new Map(component.pins.map((pin) => [pin.name, pin]));
     const paramValues: Record<string, string> = {};
     const pinInitialValues: Record<string, string> = {};
     for (const [name, value] of Object.entries(instance.paramValues)) {
-      const param = paramNameToDef.get(name);
+      const param = findMatchingComponentParam(component, name);
       if (param) {
         paramValues[param.key] = value;
         continue;
       }
-      const pin = pinNameToDef.get(name);
+      const pin = findMatchingComponentPin(component, name);
       if (pin) {
         pinInitialValues[pin.key] = value;
         continue;
@@ -636,7 +667,27 @@ export function buildProjectFromHalImport(
       const pinKey = pinKeyByInstanceAndPinName.get(
         `${endpoint.instanceName}::${endpoint.pinName}`,
       );
-      if (!pinKey) {
+      let resolvedPinKey = pinKey;
+      let resolvedDirection = pinDirectionByInstanceAndPinName.get(
+        `${endpoint.instanceName}::${endpoint.pinName}`,
+      );
+      if (!resolvedPinKey) {
+        const component = componentByNodeId.get(nodeId);
+        const matched = findMatchingComponentPin(component, endpoint.pinName);
+        if (matched) {
+          resolvedPinKey = matched.key;
+          resolvedDirection = matched.direction;
+          pinKeyByInstanceAndPinName.set(
+            `${endpoint.instanceName}::${endpoint.pinName}`,
+            matched.key,
+          );
+          pinDirectionByInstanceAndPinName.set(
+            `${endpoint.instanceName}::${endpoint.pinName}`,
+            matched.direction,
+          );
+        }
+      }
+      if (!resolvedPinKey) {
         warnings.push(
           `Line ${net.line}: component pin '${endpoint.pinName}' not found on '${endpoint.instanceName}'`,
         );
@@ -645,14 +696,14 @@ export function buildProjectFromHalImport(
       const pinRefKey = `${endpoint.instanceName}::${endpoint.pinName}`;
       if (
         !resolvedEndpoints.some(
-          (item) => item.nodeId === nodeId && item.pinKey === pinKey,
+          (item) => item.nodeId === nodeId && item.pinKey === resolvedPinKey,
         )
       ) {
         resolvedEndpoints.push({
           nodeId,
-          pinKey,
+          pinKey: resolvedPinKey,
           pinRefKey,
-          direction: pinDirectionByInstanceAndPinName.get(pinRefKey),
+          direction: resolvedDirection,
         });
       }
     }

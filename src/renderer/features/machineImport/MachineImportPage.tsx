@@ -4,6 +4,7 @@ import {
   HiOutlineTrash,
 } from "solid-icons/hi";
 import { createMemo, For, Show } from "solid-js";
+import { listStoreEntriesForLinuxCncVersion } from "../../../shared/componentStoreFilter";
 import type { HalImportPlacementHeuristic } from "../../../shared/types";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
@@ -21,7 +22,10 @@ export default function MachineImportPage(props: MachineImportPageProps) {
   const machineImport = () => props.machineImport;
   const flow = () => machineImport().machineImportFlow;
   const storeEntries = createMemo(() =>
-    Object.values(state.componentStore.components).sort((a, b) =>
+    listStoreEntriesForLinuxCncVersion(
+      state.componentStore,
+      machineImport().selectedLinuxCncVersion(),
+    ).sort((a, b) =>
       a.parsed.halComponentName.localeCompare(b.parsed.halComponentName),
     ),
   );

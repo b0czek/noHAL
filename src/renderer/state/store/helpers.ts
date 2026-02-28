@@ -4,6 +4,10 @@ import {
   normalizeAddfQueueEntries,
 } from "../../../shared/addfQueue";
 import {
+  isStoreEntryCompatibleWithLinuxCncVersion,
+  listStoreEntriesForLinuxCncVersion,
+} from "../../../shared/componentStoreFilter";
+import {
   NOHAL_COMPONENT_STORE_FORMAT,
   NOHAL_COMPONENT_STORE_VERSION,
 } from "../../../shared/fileFormats";
@@ -50,7 +54,10 @@ export function applyComponentStoreToProject(
   project: NoHALProject,
   componentStore: ComponentStore,
 ): void {
-  for (const entry of Object.values(componentStore.components)) {
+  for (const entry of listStoreEntriesForLinuxCncVersion(
+    componentStore,
+    project.target.linuxcncVersion,
+  )) {
     project.library.components[entry.componentId] = entry.parsed;
     reconcileComponentNodesForDefinition(
       project,
@@ -79,7 +86,17 @@ export function pruneMissingStoredComponentsFromProject(
     project.library.components,
   )) {
     if (component.source !== "comp") continue;
-    if (componentId in componentStore.components) continue;
+    const entry = componentStore.components[componentId];
+    if (
+      entry &&
+      isStoreEntryCompatibleWithLinuxCncVersion(
+        componentStore,
+        entry,
+        project.target.linuxcncVersion,
+      )
+    ) {
+      continue;
+    }
     if (projectUsesComponentDefinition(project, componentId)) continue;
     delete project.library.components[componentId];
   }
@@ -91,7 +108,9 @@ export function getComponentSourceDisplayPath(
 ): string {
   const source = componentStore.sources[sourceId];
   if (!source) return sourceId;
-  return source.kind === "comp-dir" ? source.dirPath : source.filePath;
+  if (source.kind === "comp-dir") return source.dirPath;
+  if (source.kind === "comp-file") return source.filePath;
+  return `LinuxCNC ${source.linuxcncVersion} built-ins (${source.refName})`;
 }
 
 export function reconcileComponentNodesForDefinition(

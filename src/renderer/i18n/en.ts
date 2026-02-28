@@ -33,6 +33,7 @@ export const en = {
   "landing.loadingRecentProjects": "Loading recent projects...",
   "landing.noRecentProjectsHint":
     "No recent projects yet. Create a blank project, import a machine configuration, or open an existing project.",
+  "landing.targetLinuxCncVersion": "Target LinuxCNC version",
   "landing.importedMachineStatus": "Imported machine configuration{suffix}",
 
   "topbar.goToLanding": "Go to landing page",
@@ -276,6 +277,7 @@ export const en = {
   "componentStore.componentWarnings": "{count} warnings",
   "componentStore.dirSource": "dir source",
   "componentStore.fileImport": "file import",
+  "componentStore.builtinSource": "versioned built-in store",
   "componentStore.noStoredComponents": "No stored components yet.",
   "componentStore.noMatchingComponents": "No matching stored components.",
 

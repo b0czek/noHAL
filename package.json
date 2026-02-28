@@ -11,6 +11,7 @@
     "preview": "electron-vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "generate:linuxcnc-stores": "pnpm exec ts-node --esm scripts/generate-linuxcnc-stores.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
@@ -29,8 +30,9 @@
     "@types/node": "^22.13.4",
     "electron": "^36.2.1",
     "electron-vite": "^3.1.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
-    "vitest": "^3.2.4",
-    "vite-plugin-solid": "^2.11.2"
+    "vite-plugin-solid": "^2.11.2",
+    "vitest": "^3.2.4"
   }
 }

@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { BrowserWindow, dialog, ipcMain } from "electron";
 import { parseCompComponentDefinition } from "../shared/compParser";
+import { normalizeLinuxCncVersion } from "../shared/linuxcncVersion";
 import { createEmptyProject } from "../shared/project";
 import type {
   MachineConfigHalFileSelection,
@@ -52,17 +53,22 @@ export function registerIpcHandlers(): void {
     return promptUnsavedChangesChoice(win);
   });
 
-  ipcMain.handle("nohal:new-project", async () => {
-    const project = createEmptyProject("NoHAL Project");
-    const res = await dialog.showSaveDialog({
-      title: "Create NoHAL Project Folder",
-      defaultPath: `${project.name || "project"}.nohal`,
-    });
-    if (res.canceled || !res.filePath) return null;
-    const projectPath = await writeProjectDirectory(project, res.filePath);
-    await touchRecentProject(projectPath, project.name);
-    return { project, projectPath };
-  });
+  ipcMain.handle(
+    "nohal:new-project",
+    async (_evt, linuxcncVersion?: string) => {
+      const project = createEmptyProject("NoHAL Project");
+      project.target.linuxcncVersion =
+        normalizeLinuxCncVersion(linuxcncVersion);
+      const res = await dialog.showSaveDialog({
+        title: "Create NoHAL Project Folder",
+        defaultPath: `${project.name || "project"}.nohal`,
+      });
+      if (res.canceled || !res.filePath) return null;
+      const projectPath = await writeProjectDirectory(project, res.filePath);
+      await touchRecentProject(projectPath, project.name);
+      return { project, projectPath };
+    },
+  );
 
   ipcMain.handle("nohal:get-recent-projects", async () => listRecentProjects());
 

@@ -3,6 +3,7 @@ import type {
   ComponentStore,
   ComponentStoreEntry,
   ImportedComponentDefinition,
+  LinuxCncVersion,
   MachineConfigImportDraft,
   MachineConfigImportSetupDraft,
   NoHALProject,
@@ -32,8 +33,8 @@ const api: NoHALApi = {
       ipcRenderer.off("nohal:request-save-before-close", handler);
     };
   },
-  newProject: () =>
-    ipcRenderer.invoke("nohal:new-project") as Promise<{
+  newProject: (linuxcncVersion?: LinuxCncVersion) =>
+    ipcRenderer.invoke("nohal:new-project", linuxcncVersion) as Promise<{
       project: NoHALProject;
       projectPath: string;
     } | null>,

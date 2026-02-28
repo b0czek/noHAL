@@ -124,26 +124,36 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       const node = sheet.nodes.find((n) => n.id === target.id);
       if (!node) return null;
       if (target.nodeKind === "component" && node.kind === "component") {
+        const canRefreshStoredComponent = (() => {
+          const entry = state.componentStore.components[node.componentId];
+          if (!entry) return false;
+          return entry.sourceRef.kind !== "linuxcnc-builtin";
+        })();
+        const componentItems = [
+          {
+            label: t("inspector.openComponentSettings"),
+            onSelect: () => editorUi.openComponentEditorForNode(node.id),
+          },
+          ...(canRefreshStoredComponent
+            ? [
+                {
+                  label: t("inspector.refreshComponentDefinition"),
+                  onSelect: () =>
+                    void actions.refreshComponentInStore(node.componentId),
+                },
+              ]
+            : []),
+          {
+            label: t("inspector.deleteSelection"),
+            onSelect: () => {
+              actions.select({ kind: "node", id: node.id });
+              actions.removeSelection();
+            },
+          },
+        ];
         return {
           title: t("canvasContext.component"),
-          items: [
-            {
-              label: t("inspector.openComponentSettings"),
-              onSelect: () => editorUi.openComponentEditorForNode(node.id),
-            },
-            {
-              label: t("inspector.refreshComponentDefinition"),
-              onSelect: () =>
-                void actions.refreshComponentInStore(node.componentId),
-            },
-            {
-              label: t("inspector.deleteSelection"),
-              onSelect: () => {
-                actions.select({ kind: "node", id: node.id });
-                actions.removeSelection();
-              },
-            },
-          ],
+          items: componentItems,
         };
       }
       return {

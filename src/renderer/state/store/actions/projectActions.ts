@@ -9,6 +9,7 @@ import type {
   HalValueType,
   LinuxCncIniEntry,
   LinuxCncIniSection,
+  LinuxCncVersion,
   NoHALProject,
 } from "../../../../shared/types";
 import type { TranslationKey } from "../../../i18n";
@@ -133,11 +134,11 @@ export function createProjectActions(deps: EditorStoreActionContext) {
   };
 
   return {
-    async newProject(): Promise<boolean> {
+    async newProject(linuxcncVersion?: LinuxCncVersion): Promise<boolean> {
       return runProjectTransition(
         deps,
         async () => {
-          const result = await window.nohal.newProject();
+          const result = await window.nohal.newProject(linuxcncVersion);
           if (!result) return null;
           return {
             project: result.project,

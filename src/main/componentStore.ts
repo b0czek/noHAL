@@ -8,6 +8,7 @@ import {
   NOHAL_COMPONENT_STORE_VERSION,
 } from "../shared/fileFormats";
 import { slugify } from "../shared/id";
+import { SUPPORTED_LINUXCNC_VERSIONS } from "../shared/linuxcncVersion";
 import type {
   ComponentStore,
   ComponentStoreDirSource,
@@ -15,6 +16,7 @@ import type {
   ComponentStoreFileSource,
   ImportedComponentDefinition,
 } from "../shared/types";
+import { LINUXCNC_VERSION_STORES } from "./linuxcncBuiltinStores";
 
 const COMPONENT_STORE_FILENAME = "component-store.json";
 
@@ -64,6 +66,68 @@ function createEmptyComponentStore(): ComponentStore {
   };
 }
 
+function createLinuxCncBuiltinSourceId(version: string): string {
+  return `linuxcnc-builtin:${version}`;
+}
+
+function applyLinuxCncBuiltinStores(store: ComponentStore): void {
+  const expectedSourceIds = new Set<string>();
+
+  for (const version of SUPPORTED_LINUXCNC_VERSIONS) {
+    const sourceId = createLinuxCncBuiltinSourceId(version);
+    expectedSourceIds.add(sourceId);
+    const builtin = LINUXCNC_VERSION_STORES[version];
+    const existing = store.sources[sourceId];
+
+    store.sources[sourceId] = {
+      id: sourceId,
+      kind: "linuxcnc-builtin",
+      linuxcncVersion: version,
+      revision: builtin.revision,
+      refName: builtin.refName,
+      repoPath: "embedded://linuxcnc-stores",
+      createdAt:
+        existing?.kind === "linuxcnc-builtin"
+          ? existing.createdAt
+          : builtin.generatedAt,
+      updatedAt: builtin.generatedAt,
+      lastScanAt: builtin.generatedAt,
+      lastError: undefined,
+    };
+
+    for (const [componentId, entry] of Object.entries(store.components)) {
+      if (entry.sourceRef.sourceId !== sourceId) continue;
+      delete store.components[componentId];
+    }
+
+    for (const parsed of builtin.components) {
+      upsertStoredComponentEntry(
+        store,
+        parsed,
+        {
+          kind: "linuxcnc-builtin",
+          sourceId,
+          filePath:
+            parsed.sourcePath ??
+            `linuxcnc:${version}:${parsed.halComponentName ?? parsed.id}`,
+        },
+        builtin.generatedAt,
+        parsed.id,
+      );
+    }
+  }
+
+  for (const [sourceId, source] of Object.entries(store.sources)) {
+    if (source.kind !== "linuxcnc-builtin") continue;
+    if (expectedSourceIds.has(sourceId)) continue;
+    delete store.sources[sourceId];
+    for (const [componentId, entry] of Object.entries(store.components)) {
+      if (entry.sourceRef.sourceId !== sourceId) continue;
+      delete store.components[componentId];
+    }
+  }
+}
+
 function assertComponentStoreShape(
   input: unknown,
 ): asserts input is ComponentStore {
@@ -94,10 +158,13 @@ export async function readComponentStoreFile(): Promise<ComponentStore> {
     const content = await readFile(filePath, "utf8");
     const parsed = JSON.parse(content) as unknown;
     assertComponentStoreShape(parsed);
+    applyLinuxCncBuiltinStores(parsed);
     return parsed;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return createEmptyComponentStore();
+      const empty = createEmptyComponentStore();
+      applyLinuxCncBuiltinStores(empty);
+      return empty;
     }
     throw error;
   }
@@ -105,7 +172,21 @@ export async function readComponentStoreFile(): Promise<ComponentStore> {
 
 async function writeComponentStoreFile(store: ComponentStore): Promise<void> {
   const filePath = await getComponentStoreFilePath();
-  await writeFile(filePath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
+  const persisted: ComponentStore = {
+    format: store.format,
+    version: store.version,
+    sources: {},
+    components: {},
+  };
+  for (const [sourceId, source] of Object.entries(store.sources)) {
+    if (source.kind === "linuxcnc-builtin") continue;
+    persisted.sources[sourceId] = source;
+  }
+  for (const [componentId, entry] of Object.entries(store.components)) {
+    if (entry.sourceRef.kind === "linuxcnc-builtin") continue;
+    persisted.components[componentId] = entry;
+  }
+  await writeFile(filePath, `${JSON.stringify(persisted, null, 2)}\n`, "utf8");
 }
 
 function createComponentDirSourceId(dirPath: string): string {
@@ -353,6 +434,11 @@ export async function refreshComponentSourceInStore(
   if (source.kind === "comp-dir") {
     return rescanComponentDirSourceInStore(sourceId);
   }
+  if (source.kind === "linuxcnc-builtin") {
+    throw new Error(
+      "Embedded LinuxCNC version stores are read-only. Regenerate them using pnpm generate:linuxcnc-stores.",
+    );
+  }
 
   const nowIso = new Date().toISOString();
   const errors: Array<{ filePath: string; error: string }> = [];
@@ -410,6 +496,11 @@ export async function deleteComponentSourceFromStore(
   const store = await readComponentStoreFile();
   const source = store.sources[sourceId];
   if (!source) throw new Error(`Component source not found: ${sourceId}`);
+  if (source.kind === "linuxcnc-builtin") {
+    throw new Error(
+      "Embedded LinuxCNC version stores cannot be deleted from the component store.",
+    );
+  }
 
   delete store.sources[sourceId];
   const removedComponentIds: string[] = [];

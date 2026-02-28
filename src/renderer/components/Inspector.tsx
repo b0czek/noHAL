@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js";
 import { getNodePins, getNodeTitle, getSheet } from "../../shared/graph";
 import type {
+  ComponentStore,
   HalValueType,
   LabelScope,
   NoHALProject,
@@ -84,6 +85,7 @@ export default function Inspector() {
           {(node) => (
             <NodeInspector
               project={state.project}
+              componentStore={state.componentStore}
               node={node()}
               onOpenComponentEditor={editorUi.openSelectedComponentEditor}
               onRename={(name) => actions.renameNode(node().id, name)}
@@ -338,6 +340,7 @@ function SelectMenu(props: {
 
 function NodeInspector(props: {
   project: NoHALProject;
+  componentStore: ComponentStore;
   node: SheetNodeInstance;
   onOpenComponentEditor: () => void;
   onRename: (name: string) => void;
@@ -350,6 +353,13 @@ function NodeInspector(props: {
     props.node.kind === "component"
       ? props.project.library.components[props.node.componentId]
       : undefined;
+  const canRefreshFromStore = () =>
+    props.node.kind === "component" &&
+    (() => {
+      const entry = props.componentStore.components[props.node.componentId];
+      if (!entry) return false;
+      return entry.sourceRef.kind !== "linuxcnc-builtin";
+    })();
   const componentParamCount = () => component()?.params.length ?? 0;
   const pinSetpValue = (pinKey: string) => {
     if (props.node.kind !== "component") return undefined;
@@ -382,7 +392,8 @@ function NodeInspector(props: {
         when={
           props.node.kind === "component" &&
           component()?.source === "comp" &&
-          component()
+          component() &&
+          canRefreshFromStore()
         }
       >
         <button

@@ -1,3 +1,4 @@
+import type { Accessor } from "solid-js";
 import { createStore, unwrap } from "solid-js/store";
 import {
   buildProjectFromHalImport as buildImportedProject,
@@ -6,6 +7,7 @@ import {
 import type {
   HalImportDraft,
   HalImportPlacementHeuristic,
+  LinuxCncVersion,
   MachineConfigHalFileSelection,
   MachineConfigImportDraft,
   MachineConfigImportSetupDraft,
@@ -171,11 +173,13 @@ function reduceMachineImportFlowState(
 interface UseMachineImportFlowArgs {
   setIsEditorOpen: (value: boolean) => void;
   refreshRecentProjects: () => Promise<void>;
+  selectedLinuxCncVersion: Accessor<LinuxCncVersion>;
 }
 
 export function useMachineImportFlow({
   setIsEditorOpen,
   refreshRecentProjects,
+  selectedLinuxCncVersion,
 }: UseMachineImportFlowArgs) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
@@ -258,7 +262,9 @@ export function useMachineImportFlow({
         halSelections,
       );
       const draft = machineImport.halImport;
-      const suggestions = suggestHalImportLinks(draft, state.componentStore);
+      const suggestions = suggestHalImportLinks(draft, state.componentStore, {
+        linuxcncVersion: selectedLinuxCncVersion(),
+      });
       const nextSelections: Record<string, string> = {};
       const nextReasons: Record<string, string> = {};
       for (const suggestion of suggestions) {
@@ -317,6 +323,7 @@ export function useMachineImportFlow({
         linkSelections,
         placementHeuristic: machineImportFlow.placementHeuristic,
       });
+      result.project.target.linuxcncVersion = selectedLinuxCncVersion();
       if (machineImportFlow.machineConfigImport) {
         result.project.machineConfig = structuredClone(
           unwrap(machineImportFlow.machineConfigImport.machineConfig),
@@ -392,6 +399,7 @@ export function useMachineImportFlow({
     });
 
   return {
+    selectedLinuxCncVersion,
     machineImportFlow,
     startMachineImportFlow,
     closeMachineImportFlow,

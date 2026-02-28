@@ -1,5 +1,9 @@
 import { HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
 import { For, Show } from "solid-js";
+import {
+  type LinuxCncVersion,
+  SUPPORTED_LINUXCNC_VERSIONS,
+} from "../../shared/linuxcncVersion";
 import type { RecentProjectEntry } from "../../shared/types";
 import type { LandingProjectFlowController } from "../app/useLandingProjectFlow";
 import { useI18n } from "../i18n";
@@ -7,6 +11,8 @@ import "./LandingPage.css";
 
 interface LandingPageProps {
   landing: LandingProjectFlowController;
+  selectedLinuxCncVersion: LinuxCncVersion;
+  onSelectedLinuxCncVersionChange: (value: LinuxCncVersion) => void;
   onImportMachineConfiguration: () => void;
 }
 
@@ -39,6 +45,23 @@ export default function LandingPage(props: LandingPageProps) {
           </div>
           <h1 class="landing-title">{t("landing.title")}</h1>
           <p class="landing-copy">{t("landing.copy")}</p>
+          <div class="landing-version-pick">
+            <span class="muted">{t("landing.targetLinuxCncVersion")}</span>
+            <select
+              value={props.selectedLinuxCncVersion}
+              onChange={(evt) =>
+                props.onSelectedLinuxCncVersionChange(
+                  evt.currentTarget.value as LinuxCncVersion,
+                )
+              }
+            >
+              <For each={SUPPORTED_LINUXCNC_VERSIONS}>
+                {(version) => (
+                  <option value={version}>{`LinuxCNC ${version}`}</option>
+                )}
+              </For>
+            </select>
+          </div>
           <div class="landing-actions">
             <button
               type="button"

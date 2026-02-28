@@ -1,3 +1,5 @@
+import { listStoreEntriesForLinuxCncVersion } from "../componentStoreFilter";
+import type { LinuxCncVersion } from "../linuxcncVersion";
 import type {
   ComponentStore,
   HalImportDraft,
@@ -14,8 +16,14 @@ function normalizeName(value: string): string {
 export function suggestHalImportLinks(
   draft: HalImportDraft,
   componentStore: ComponentStore,
+  options?: { linuxcncVersion?: LinuxCncVersion },
 ): HalImportLinkSuggestion[] {
-  const storeEntries = Object.values(componentStore.components);
+  const storeEntries = options?.linuxcncVersion
+    ? listStoreEntriesForLinuxCncVersion(
+        componentStore,
+        options.linuxcncVersion,
+      )
+    : Object.values(componentStore.components);
   return draft.componentGroups.map((group) => {
     const exact = storeEntries
       .filter(

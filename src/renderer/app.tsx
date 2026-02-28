@@ -1,4 +1,5 @@
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
+import type { LinuxCncVersion } from "../shared/linuxcncVersion";
 import EditorScreen from "./app/EditorScreen";
 import { useLandingProjectFlow } from "./app/useLandingProjectFlow";
 import { ContextMenuProvider } from "./components/ContextMenuProvider";
@@ -23,10 +24,16 @@ function AppContent() {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
   const [isEditorOpen, setIsEditorOpen] = createSignal(false);
-  const landing = useLandingProjectFlow({ setIsEditorOpen });
+  const [selectedLinuxCncVersion, setSelectedLinuxCncVersion] =
+    createSignal<LinuxCncVersion>("2.10");
+  const landing = useLandingProjectFlow({
+    setIsEditorOpen,
+    selectedLinuxCncVersion,
+  });
   const machineImport = useMachineImportFlow({
     setIsEditorOpen,
     refreshRecentProjects: landing.refreshRecentProjects,
+    selectedLinuxCncVersion,
   });
 
   const goToLanding = async () => {
@@ -71,6 +78,8 @@ function AppContent() {
             fallback={
               <LandingPage
                 landing={landing}
+                selectedLinuxCncVersion={selectedLinuxCncVersion()}
+                onSelectedLinuxCncVersionChange={setSelectedLinuxCncVersion}
                 onImportMachineConfiguration={() =>
                   void machineImport.startMachineImportFlow()
                 }

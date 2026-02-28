@@ -1,5 +1,10 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
+import {
+  listStoreEntriesForLinuxCncVersion,
+  listStoreSourcesForLinuxCncVersion,
+} from "../../shared/componentStoreFilter";
+import type { ComponentStore } from "../../shared/types";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
@@ -9,12 +14,17 @@ export default function ComponentStoreDialog() {
   const { state, actions } = useEditorStore();
   const editorUi = useEditorUi();
   const [query, setQuery] = createSignal("");
+  const versionScopedEntries = createMemo(() =>
+    listStoreEntriesForLinuxCncVersion(
+      state.componentStore,
+      state.project.target.linuxcncVersion,
+    ),
+  );
 
   const filteredEntries = createMemo(() => {
     const q = query().trim().toLowerCase();
-    const entries = Object.values(state.componentStore.components).sort(
-      (a, b) =>
-        a.parsed.halComponentName.localeCompare(b.parsed.halComponentName),
+    const entries = [...versionScopedEntries()].sort((a, b) =>
+      a.parsed.halComponentName.localeCompare(b.parsed.halComponentName),
     );
     if (!q) return entries;
     return entries.filter((entry) => {
@@ -24,10 +34,19 @@ export default function ComponentStoreDialog() {
     });
   });
 
+  const sourcePathForSort = (source: ComponentStore["sources"][string]) => {
+    if (source.kind === "comp-dir") return source.dirPath;
+    if (source.kind === "comp-file") return source.filePath;
+    return `${source.linuxcncVersion} ${source.refName}`;
+  };
+
   const componentSources = createMemo(() =>
-    Object.values(state.componentStore.sources).sort((a, b) => {
-      const aPath = a.kind === "comp-dir" ? a.dirPath : a.filePath;
-      const bPath = b.kind === "comp-dir" ? b.dirPath : b.filePath;
+    listStoreSourcesForLinuxCncVersion(
+      state.componentStore,
+      state.project.target.linuxcncVersion,
+    ).sort((a, b) => {
+      const aPath = sourcePathForSort(a);
+      const bPath = sourcePathForSort(b);
       return aPath.localeCompare(bPath);
     }),
   );
@@ -53,8 +72,7 @@ export default function ComponentStoreDialog() {
                 <div class="modal-title">{t("componentStore.title")}</div>
                 <div class="modal-sub">
                   {t("componentStore.summary", {
-                    components: Object.keys(state.componentStore.components)
-                      .length,
+                    components: versionScopedEntries().length,
                     sources: componentSources().length,
                   })}
                 </div>
@@ -94,13 +112,15 @@ export default function ComponentStoreDialog() {
                   <For each={componentSources()}>
                     {(source) => {
                       const sourceComponentCount = () =>
-                        Object.values(state.componentStore.components).filter(
+                        versionScopedEntries().filter(
                           (entry) => entry.sourceRef.sourceId === source.id,
                         ).length;
                       const sourcePath = () =>
                         source.kind === "comp-dir"
                           ? source.dirPath
-                          : source.filePath;
+                          : source.kind === "comp-file"
+                            ? source.filePath
+                            : `LinuxCNC ${source.linuxcncVersion} built-ins (${source.refName})`;
 
                       return (
                         <div
@@ -113,7 +133,11 @@ export default function ComponentStoreDialog() {
                             </div>
                             <div class="component-sub">
                               <span class="chip type">
-                                {source.kind === "comp-dir" ? "dir" : ".comp"}
+                                {source.kind === "comp-dir"
+                                  ? "dir"
+                                  : source.kind === "comp-file"
+                                    ? ".comp"
+                                    : "builtin"}
                               </span>
                               {t("componentStore.sourceComponentsCount", {
                                 count: sourceComponentCount(),
@@ -133,6 +157,7 @@ export default function ComponentStoreDialog() {
                               onClick={() =>
                                 void actions.refreshComponentSource(source.id)
                               }
+                              disabled={source.kind === "linuxcnc-builtin"}
                             >
                               {t("componentStore.refresh")}
                             </button>
@@ -142,6 +167,7 @@ export default function ComponentStoreDialog() {
                               onClick={() =>
                                 void actions.deleteComponentSource(source.id)
                               }
+                              disabled={source.kind === "linuxcnc-builtin"}
                             >
                               {t("componentStore.deleteSource")}
                             </button>
@@ -197,7 +223,9 @@ export default function ComponentStoreDialog() {
                           <div class="component-sub">
                             {entry.sourceRef.kind === "comp-dir"
                               ? t("componentStore.dirSource")
-                              : t("componentStore.fileImport")}
+                              : entry.sourceRef.kind === "comp-file"
+                                ? t("componentStore.fileImport")
+                                : t("componentStore.builtinSource")}
                           </div>
                           <div class="component-sub component-store-path mono">
                             {entry.sourceRef.filePath}
@@ -217,6 +245,9 @@ export default function ComponentStoreDialog() {
                                 entry.componentId,
                               )
                             }
+                            disabled={
+                              entry.sourceRef.kind === "linuxcnc-builtin"
+                            }
                           >
                             {t("componentStore.refresh")}
                           </button>
@@ -227,7 +258,7 @@ export default function ComponentStoreDialog() {
 
                   <Show when={filteredEntries().length === 0}>
                     <div class="muted component-store-empty">
-                      {Object.keys(state.componentStore.components).length === 0
+                      {versionScopedEntries().length === 0
                         ? t("componentStore.noStoredComponents")
                         : t("componentStore.noMatchingComponents")}
                     </div>

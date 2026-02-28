@@ -68,6 +68,17 @@
   max-width: 52ch;
 }
 
+.landing-version-pick {
+  margin-top: 14px;
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.landing-version-pick select {
+  min-width: 150px;
+}
+
 .landing-actions {
   display: flex;
   flex-wrap: wrap;

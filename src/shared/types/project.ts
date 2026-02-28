@@ -2,6 +2,7 @@ import type {
   NOHAL_PROJECT_FORMAT,
   NOHAL_PROJECT_VERSION,
 } from "../fileFormats";
+import type { LinuxCncVersion } from "../linuxcncVersion";
 import type { ComponentDefinition } from "./components";
 import type { ProjectMachineConfig } from "./ini";
 import type { SheetDefinition } from "./sheet";
@@ -61,7 +62,7 @@ export interface NoHALProject {
   version: typeof NOHAL_PROJECT_VERSION;
   name: string;
   target: {
-    linuxcncVersion: "2.10";
+    linuxcncVersion: LinuxCncVersion;
     platform: "linux";
   };
   rootSheetId: string;

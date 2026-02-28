@@ -1,13 +1,15 @@
-import { createSignal, onMount, type Setter } from "solid-js";
-import type { RecentProjectEntry } from "../../shared/types";
+import { type Accessor, createSignal, onMount, type Setter } from "solid-js";
+import type { LinuxCncVersion, RecentProjectEntry } from "../../shared/types";
 import { useEditorStore } from "../state/EditorStoreProvider";
 
 interface UseLandingProjectFlowArgs {
   setIsEditorOpen: Setter<boolean>;
+  selectedLinuxCncVersion: Accessor<LinuxCncVersion>;
 }
 
 export function useLandingProjectFlow({
   setIsEditorOpen,
+  selectedLinuxCncVersion,
 }: UseLandingProjectFlowArgs) {
   const { state, actions } = useEditorStore();
   const [recentProjects, setRecentProjects] = createSignal<
@@ -49,7 +51,7 @@ export function useLandingProjectFlow({
   };
 
   const createBlankProject = async () => {
-    await runLandingAction(() => actions.newProject());
+    await runLandingAction(() => actions.newProject(selectedLinuxCncVersion()));
   };
 
   const openProject = async () => {

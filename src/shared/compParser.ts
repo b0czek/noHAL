@@ -1,4 +1,4 @@
-import { safeKey, slugify } from "./id";
+import { safeKey, slugify } from "./id.ts";
 import type {
   ComponentDefinition,
   ComponentFunctionDefinition,
@@ -8,7 +8,7 @@ import type {
   ImportedComponentDefinition,
   ParamDirection,
   PinDirection,
-} from "./types";
+} from "./types/index.ts";
 
 type CompDocKind =
   | "component"

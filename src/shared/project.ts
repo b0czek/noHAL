@@ -1,5 +1,6 @@
 import { NOHAL_PROJECT_FORMAT, NOHAL_PROJECT_VERSION } from "./fileFormats";
 import { createId, slugify } from "./id";
+import { normalizeLinuxCncVersion } from "./linuxcncVersion";
 import {
   createDefaultSheetThreadOutputs,
   normalizeSheetThreadOutputs,
@@ -167,6 +168,15 @@ export function createEmptyProject(name: string): NoHALProject {
   };
 }
 
+function normalizeProjectTarget(value: unknown): NoHALProject["target"] {
+  const raw = value && typeof value === "object" ? value : {};
+  const candidate = raw as Partial<NoHALProject["target"]>;
+  return {
+    linuxcncVersion: normalizeLinuxCncVersion(candidate.linuxcncVersion),
+    platform: "linux",
+  };
+}
+
 function assertProjectShape(input: unknown): asserts input is NoHALProject {
   if (!input || typeof input !== "object")
     throw new Error("Project file is not an object");
@@ -186,6 +196,7 @@ export function parseNoHALProject(content: string): NoHALProject {
   const parsed = JSON.parse(content) as unknown;
   assertProjectShape(parsed);
   const project = parsed as NoHALProject;
+  project.target = normalizeProjectTarget(project.target);
   project.halThreads = normalizeHalThreads(project.halThreads);
   project.motmod = normalizeMotmodConfig(project.motmod);
   for (const sheet of Object.values(project.sheets)) {

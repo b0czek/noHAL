@@ -2,6 +2,7 @@ import type {
   ComponentStore,
   ComponentStoreEntry,
   ImportedComponentDefinition,
+  LinuxCncVersion,
   MachineConfigHalFileSelection,
   MachineConfigImportDraft,
   MachineConfigImportSetupDraft,
@@ -15,7 +16,9 @@ export interface NoHALApi {
   setWindowDirtyState(isDirty: boolean): void;
   promptUnsavedChanges(): Promise<UnsavedChangesChoice>;
   onRequestSaveBeforeClose(listener: () => Promise<boolean>): () => void;
-  newProject(): Promise<{ project: NoHALProject; projectPath: string } | null>;
+  newProject(
+    linuxcncVersion?: LinuxCncVersion,
+  ): Promise<{ project: NoHALProject; projectPath: string } | null>;
   getRecentProjects(): Promise<RecentProjectEntry[]>;
   openProject(): Promise<{ project: NoHALProject; projectPath: string } | null>;
   openProjectAt(

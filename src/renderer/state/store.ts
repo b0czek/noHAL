@@ -179,6 +179,7 @@ export function createEditorStore(
     projectPath: string | null,
     status: string,
   ): void => {
+    pruneMissingStoredComponentsFromProject(project, state.componentStore);
     applyComponentStoreToProject(project, state.componentStore);
     resetProjectDirtyTracking();
     clearHistory();
