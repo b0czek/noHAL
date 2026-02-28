@@ -9,6 +9,11 @@ It can create/open/save NoHAL projects, import many existing `.hal` files into a
 
 It is a real offline authoring tool but it is not a full LinuxCNC runtime-integrated IDE yet.
 
+## Docs
+
+- [docs/sheets.md](./docs/sheets.md) - sheet model, hierarchy, ports/labels, and export behavior
+- [docs/threads.md](./docs/threads.md) - thread model, addf queue, and HAL thread binding/export
+
 ## What Works Today
 
 - Electron desktop app with landing page and recent projects list
@@ -17,7 +22,7 @@ It is a real offline authoring tool but it is not a full LinuxCNC runtime-integr
 - Visual editor with:
   - hierarchical sheets (subsheet nodes)
   - sheet ports (`in` / `out` / `io`)
-  - local / hierarchical / global labels
+  - local / global labels
   - text comments
   - direct wiring with validation
   - wire waypoints/routing edits
