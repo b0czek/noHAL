@@ -334,12 +334,14 @@ export async function buildMachineConfigImportDraft(
   const postguiInstances = new Set<string>();
   const mainInstances = new Set<string>();
   for (const sourcePath of postguiResolvedPaths) {
-    for (const instanceName of parsedInstanceNamesByPath.get(sourcePath) ?? []) {
+    for (const instanceName of parsedInstanceNamesByPath.get(sourcePath) ??
+      []) {
       postguiInstances.add(instanceName);
     }
   }
   for (const sourcePath of mainResolvedPaths) {
-    for (const instanceName of parsedInstanceNamesByPath.get(sourcePath) ?? []) {
+    for (const instanceName of parsedInstanceNamesByPath.get(sourcePath) ??
+      []) {
       mainInstances.add(instanceName);
     }
   }

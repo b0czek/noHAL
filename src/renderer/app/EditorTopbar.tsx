@@ -165,16 +165,6 @@ export default function EditorTopbar(props: EditorTopbarProps) {
               type="button"
               class="toolbar-menu-item"
               onClick={(evt) => {
-                actions.addLabel("hierarchical");
-                closeToolbarMenu(evt.currentTarget);
-              }}
-            >
-              {t("topbar.hierLabel")}
-            </button>
-            <button
-              type="button"
-              class="toolbar-menu-item"
-              onClick={(evt) => {
                 actions.addLabel("global");
                 closeToolbarMenu(evt.currentTarget);
               }}

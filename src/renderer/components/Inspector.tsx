@@ -32,7 +32,6 @@ export default function Inspector() {
   const currentSheet = () => getSheet(state.project, state.activeSheetId);
   const labelScopeOptions: ReadonlyArray<SelectMenuOption> = [
     { value: "local", label: "local" },
-    { value: "hierarchical", label: "hierarchical" },
     { value: "global", label: "global" },
   ];
   const portDirectionOptions: ReadonlyArray<SelectMenuOption> = [

@@ -96,7 +96,6 @@ export const DIR_STROKE_DEFAULT = "rgba(255, 255, 255, 0.7)";
 
 // Theme palette: label fills
 export const LABEL_FILL_LOCAL = "rgba(122, 230, 208, 0.14)";
-export const LABEL_FILL_HIERARCHICAL = "rgba(242, 185, 75, 0.14)";
 export const LABEL_FILL_GLOBAL = "rgba(233, 107, 255, 0.14)";
 export const LABEL_FILL_DEFAULT = "rgba(255, 255, 255, 0.06)";
 

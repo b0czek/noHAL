@@ -330,9 +330,9 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
       isDefaultFunction: true,
       thread: "servo-thread",
     });
-    expect(groups.get("time")?.instances.map((item) => item.instanceName)).toEqual([
-      "time.0",
-    ]);
+    expect(
+      groups.get("time")?.instances.map((item) => item.instanceName),
+    ).toEqual(["time.0"]);
     expect(groups.get("time")?.pins).toEqual(
       expect.arrayContaining([
         { name: "start", observedDirections: ["in"] },

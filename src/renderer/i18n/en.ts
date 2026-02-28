@@ -51,7 +51,6 @@ export const en = {
   "topbar.outPortBit": "Out Port (bit)",
   "topbar.ioPortFloat": "IO Port (float)",
   "topbar.localLabel": "Local Label",
-  "topbar.hierLabel": "Hier Label",
   "topbar.globalLabel": "Global Label",
 
   "canvas.ariaWorkspace": "Canvas workspace",

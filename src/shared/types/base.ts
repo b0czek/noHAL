@@ -9,7 +9,7 @@ export type HalValueType =
 export type PinDirection = "in" | "out" | "io";
 export type ParamDirection = "r" | "rw";
 export type PortSide = "left" | "right" | "top" | "bottom";
-export type LabelScope = "local" | "global" | "hierarchical";
+export type LabelScope = "local" | "global";
 
 export interface XY {
   x: number;

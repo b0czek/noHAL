@@ -34,7 +34,7 @@ interface EndpointRecord {
 }
 
 interface Hint {
-  kind: "connection" | "global" | "hierarchical" | "local" | "boundary";
+  kind: "connection" | "global" | "local" | "boundary";
   name: string;
 }
 
@@ -285,7 +285,6 @@ function traverseSheetInstance(
 
   const labelsById = new Map(sheet.labels.map((label) => [label.id, label]));
   const localBuckets = new Map<string, string[]>();
-  const hierBuckets = new Map<string, string[]>();
 
   for (const anchor of sheet.labelAnchors) {
     const label = labelsById.get(anchor.labelId);
@@ -304,17 +303,6 @@ function traverseSheetInstance(
       continue;
     }
 
-    if (label.scope === "hierarchical") {
-      addHint(ctx, endpoint, {
-        kind: "hierarchical",
-        name: chooseBoundarySignalName(pathParts, label.name),
-      });
-      const list = hierBuckets.get(scopeKey);
-      if (list) list.push(endpoint);
-      else hierBuckets.set(scopeKey, [endpoint]);
-      continue;
-    }
-
     addHint(ctx, endpoint, {
       kind: "local",
       name: chooseBoundarySignalName(pathParts, label.name),
@@ -327,23 +315,6 @@ function traverseSheetInstance(
   for (const endpoints of localBuckets.values()) {
     for (let i = 1; i < endpoints.length; i += 1)
       ctx.union.union(endpoints[0], endpoints[i]);
-  }
-
-  for (const [labelName, endpoints] of hierBuckets.entries()) {
-    for (let i = 1; i < endpoints.length; i += 1)
-      ctx.union.union(endpoints[0], endpoints[i]);
-    const matchingPort = sheet.ports.find((port) => port.name === labelName);
-    if (matchingPort) {
-      const portEndpointId = localIds.get(`port:${matchingPort.id}`);
-      if (portEndpointId) {
-        for (const endpoint of endpoints)
-          ctx.union.union(portEndpointId, endpoint);
-      }
-    } else {
-      ctx.warnings.push(
-        `Hierarchical label '${labelName}' in sheet '${sheet.name}' has no matching sheet port`,
-      );
-    }
   }
 
   for (const node of sheet.nodes) {
@@ -386,7 +357,6 @@ function chooseNetName(hints: Hint[], fallbackIndex: number): string {
     unique.find((h) => h.kind === "connection") ??
     unique.find((h) => h.kind === "global") ??
     unique.find((h) => h.kind === "boundary") ??
-    unique.find((h) => h.kind === "hierarchical") ??
     unique.find((h) => h.kind === "local");
   return preferred?.name ?? `auto_net_${fallbackIndex}`;
 }

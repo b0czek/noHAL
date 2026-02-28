@@ -8,7 +8,6 @@ import {
   DIRECTION_PILL_FILL_OUT,
   LABEL_FILL_DEFAULT,
   LABEL_FILL_GLOBAL,
-  LABEL_FILL_HIERARCHICAL,
   LABEL_FILL_LOCAL,
   TYPE_FILL_BIT,
   TYPE_FILL_DEFAULT,
@@ -58,8 +57,6 @@ export function labelFill(scope: string): string {
   switch (scope) {
     case "local":
       return LABEL_FILL_LOCAL;
-    case "hierarchical":
-      return LABEL_FILL_HIERARCHICAL;
     case "global":
       return LABEL_FILL_GLOBAL;
     default:

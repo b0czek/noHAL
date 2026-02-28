@@ -91,12 +91,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const used = new Set(sheet.labels.map((l) => l.name));
-        const base =
-          scope === "global"
-            ? "global_sig"
-            : scope === "hierarchical"
-              ? "sheet_sig"
-              : "sig";
+        const base = scope === "global" ? "global_sig" : "sig";
         const name = nextName(base, used);
         sheet.labels.push({
           id: createId("label"),
@@ -248,10 +243,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       });
     },
 
-    updateNodeExportStage(
-      nodeId: string,
-      stage: "main" | "postgui",
-    ): void {
+    updateNodeExportStage(nodeId: string, stage: "main" | "postgui"): void {
       const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);

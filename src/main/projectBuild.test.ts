@@ -155,9 +155,14 @@ describe("project build output", () => {
       ]),
     );
 
-    const iniText = await readFile(path.join(projectDir, "build", "demo.ini"), "utf8");
+    const iniText = await readFile(
+      path.join(projectDir, "build", "demo.ini"),
+      "utf8",
+    );
     expect(iniText).toContain("HALFILE = postgui-build-test.hal");
-    expect(iniText).toContain("POSTGUI_HALFILE = postgui-build-test-postgui.hal");
+    expect(iniText).toContain(
+      "POSTGUI_HALFILE = postgui-build-test-postgui.hal",
+    );
     expect(iniText).not.toContain("POSTGUI_HALFILE = postgui.hal");
   });
 

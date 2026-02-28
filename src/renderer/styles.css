@@ -65,12 +65,12 @@ html {
   min-height: 28px;
   border-radius: 999px;
   border: 2px solid transparent;
-  background-clip: padding-box;
   background: linear-gradient(
     180deg,
     rgba(122, 230, 208, 0.5),
     rgba(122, 230, 208, 0.28)
   );
+  background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
@@ -1391,10 +1391,6 @@ textarea {
 
 .net-label.scope-local {
   background: rgba(122, 230, 208, 0.1);
-}
-
-.net-label.scope-hierarchical {
-  background: rgba(242, 185, 75, 0.12);
 }
 
 .net-label.scope-global {

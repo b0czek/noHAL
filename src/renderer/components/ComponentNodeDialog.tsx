@@ -111,7 +111,9 @@ export default function ComponentNodeDialog() {
                           <span class="mono">{comp().halComponentName}</span>
                         </div>
                         <div class="list-row">
-                          <span class="muted">{t("componentDialog.source")}</span>
+                          <span class="muted">
+                            {t("componentDialog.source")}
+                          </span>
                           <span>{comp().source}</span>
                         </div>
                         <div class="list-row">
