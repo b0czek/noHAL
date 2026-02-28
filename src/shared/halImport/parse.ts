@@ -118,6 +118,13 @@ function splitHalPath(
 
   const segments = rawPath.split(".");
   if (segments.length < 2) return null;
+  const implicitDefaultInstance = `${segments[0]}.0`;
+  if (knownInstances.has(implicitDefaultInstance)) {
+    return {
+      instanceName: implicitDefaultInstance,
+      fieldName: segments.slice(1).join("."),
+    };
+  }
   if (segments.length >= 3 && /^\d+$/.test(segments[1] ?? "")) {
     return {
       instanceName: `${segments[0]}.${segments[1]}`,
@@ -150,8 +157,21 @@ function splitAddfFunctionTarget(
     };
   }
 
+  const implicitDefaultInstance = `${rawTarget}.0`;
+  if (knownInstances.has(implicitDefaultInstance)) {
+    return { instanceName: implicitDefaultInstance };
+  }
+
   const segments = rawTarget.split(".");
   if (segments.length === 0 || !segments[0]) return null;
+  const implicitFromBase = `${segments[0]}.0`;
+  if (knownInstances.has(implicitFromBase)) {
+    const functionSuffix = segments.slice(1).join(".");
+    return {
+      instanceName: implicitFromBase,
+      ...(functionSuffix ? { functionSuffix } : {}),
+    };
+  }
   if (segments.length === 1) {
     return { instanceName: rawTarget };
   }
@@ -436,9 +456,10 @@ export function parseHalImportDraft(
           ensureInstanceRecord(instances, instanceName, componentName, "rt");
         }
       } else {
-        // Single unnamed instance typically uses the component name as instance prefix.
-        knownInstances.add(componentName);
-        ensureInstanceRecord(instances, componentName, componentName, "rt");
+        // Single loadrt instances are canonically represented as component.0.
+        const instanceName = `${componentName}.0`;
+        knownInstances.add(instanceName);
+        ensureInstanceRecord(instances, instanceName, componentName, "rt");
       }
       continue;
     }

@@ -282,7 +282,7 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
       {
         line: 2,
         functionName: "stepgen.make-pulses",
-        instanceName: "stepgen",
+        instanceName: "stepgen.0",
         functionSuffix: "make-pulses",
         isDefaultFunction: false,
         thread: "base-thread",
@@ -290,7 +290,7 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
       {
         line: 3,
         functionName: "stepgen.capture-position",
-        instanceName: "stepgen",
+        instanceName: "stepgen.0",
         functionSuffix: "capture-position",
         isDefaultFunction: false,
         thread: "servo-thread",
@@ -298,7 +298,7 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
       {
         line: 4,
         functionName: "stepgen.update-freq",
-        instanceName: "stepgen",
+        instanceName: "stepgen.0",
         functionSuffix: "update-freq",
         isDefaultFunction: false,
         thread: "servo-thread",
@@ -306,11 +306,39 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
       {
         line: 5,
         functionName: "stepgen",
-        instanceName: "stepgen",
+        instanceName: "stepgen.0",
         isDefaultFunction: true,
         thread: "servo-thread",
       },
     ]);
+  });
+
+  it("parses canonical .0 pin paths for bare loadrt components", () => {
+    const { draft, groups } = groupByComponentName(`
+      loadrt time
+      loadrt not
+      addf time.0 servo-thread
+      net cycle-timer time.0.start <= not.0.out
+      net cycle-seconds not.0.in <= time.0.seconds
+    `);
+
+    expect(draft.warnings).toEqual([]);
+    expect(draft.addfs).toContainEqual({
+      line: 3,
+      functionName: "time.0",
+      instanceName: "time.0",
+      isDefaultFunction: true,
+      thread: "servo-thread",
+    });
+    expect(groups.get("time")?.instances.map((item) => item.instanceName)).toEqual([
+      "time.0",
+    ]);
+    expect(groups.get("time")?.pins).toEqual(
+      expect.arrayContaining([
+        { name: "start", observedDirections: ["in"] },
+        { name: "seconds", observedDirections: ["out"] },
+      ]),
+    );
   });
 });
 
