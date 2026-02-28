@@ -19,6 +19,7 @@ import type {
 
 interface ExportResult {
   text: string;
+  postguiText?: string;
   warnings: string[];
 }
 
@@ -29,6 +30,7 @@ interface EndpointRecord {
   direction: PinDirection;
   halPinPath?: string;
   boundarySignalPath?: string;
+  exportStage?: "main" | "postgui";
 }
 
 interface Hint {
@@ -86,6 +88,7 @@ interface ExportContext {
     instancePath: string;
     parentSheetPath: string;
     runtimeKind: RuntimeKind;
+    exportStage: "main" | "postgui";
   }>;
   endpointSeq: number;
 }
@@ -192,6 +195,7 @@ function createLocalEndpointIdMap(
           type: pin.type,
           direction: pin.direction,
           halPinPath: `${instancePath}.${pin.name}`,
+          exportStage: node.exportStage === "postgui" ? "postgui" : "main",
         });
       } else {
         registerEndpoint(ctx, {
@@ -251,6 +255,7 @@ function traverseSheetInstance(
           instancePath: joinInstancePath([...pathParts, node.instanceName]),
           parentSheetPath: joinInstancePath(pathParts),
           runtimeKind: component.runtime?.kind ?? "unknown",
+          exportStage: node.exportStage === "postgui" ? "postgui" : "main",
         });
         for (const pin of component.pins) {
           if (pin.arrayLen !== undefined || pin.name.includes("#")) {
@@ -1078,7 +1083,8 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
   }
 
   const groups = ctx.union.groups();
-  const netLines: string[] = [];
+  const mainNetLines: string[] = [];
+  const postguiNetLines: string[] = [];
   let autoIndex = 1;
 
   for (const groupMembers of groups.values()) {
@@ -1118,10 +1124,16 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
     const pinPaths = sortedLeafs
       .map((r) => r.halPinPath)
       .filter((v): v is string => Boolean(v));
-    netLines.push(formatNetLine(netName, Array.from(new Set(pinPaths))));
+    const netLine = formatNetLine(netName, Array.from(new Set(pinPaths)));
+    if (sortedLeafs.some((r) => r.exportStage === "postgui")) {
+      postguiNetLines.push(netLine);
+    } else {
+      mainNetLines.push(netLine);
+    }
   }
 
-  const setpLines: string[] = [];
+  const mainSetpLines: string[] = [];
+  const postguiSetpLines: string[] = [];
   const seenSheets = new Set<string>();
 
   function emitParams(sheetId: string, pathParts: string[]): void {
@@ -1135,6 +1147,8 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
         const component = project.library.components[node.componentId];
         if (!component) continue;
         const instancePath = [...pathParts, node.instanceName].join(".");
+        const setpTargetLines =
+          node.exportStage === "postgui" ? postguiSetpLines : mainSetpLines;
         for (const [pinKey, value] of Object.entries(
           node.pinInitialValues ?? {},
         )) {
@@ -1146,7 +1160,7 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
             continue;
           }
           if (!value.trim()) continue;
-          setpLines.push(`setp ${instancePath}.${pinDef.name} ${value}`);
+          setpTargetLines.push(`setp ${instancePath}.${pinDef.name} ${value}`);
         }
         for (const [paramKey, value] of Object.entries(node.paramValues)) {
           const paramDef = component.params.find((p) => p.key === paramKey);
@@ -1157,7 +1171,9 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
             continue;
           }
           if (!value.trim()) continue;
-          setpLines.push(`setp ${instancePath}.${paramDef.name} ${value}`);
+          setpTargetLines.push(
+            `setp ${instancePath}.${paramDef.name} ${value}`,
+          );
         }
       } else {
         emitParams(node.sheetId, [...pathParts, node.instanceName]);
@@ -1184,6 +1200,9 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
   );
   lines.push(
     `# - addf is emitted per thread and expanded from per-sheet queues (sheet.hal.addfQueue), with subsheets acting as ordered blocks.`,
+  );
+  lines.push(
+    `# - nodes marked exportStage=postgui emit setp/net lines in a separate postgui output file.`,
   );
   lines.push("");
   lines.push(`# Runtime`);
@@ -1221,21 +1240,50 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
       lines.push("");
     }
   }
-  if (setpLines.length > 0) {
+  if (mainSetpLines.length > 0) {
     lines.push(`# Parameters`);
-    lines.push(...setpLines);
+    lines.push(...mainSetpLines);
     lines.push("");
   }
   lines.push(`# Signals`);
-  if (netLines.length === 0) {
+  if (mainNetLines.length === 0) {
     lines.push("# (no nets exported)");
   } else {
-    lines.push(...netLines);
+    lines.push(...mainNetLines);
   }
   lines.push("");
 
+  const hasPostguiOutput =
+    postguiSetpLines.length > 0 || postguiNetLines.length > 0;
+  let postguiText: string | undefined;
+  if (hasPostguiOutput) {
+    const postguiLines: string[] = [];
+    postguiLines.push(`# NoHAL POSTGUI HAL export`);
+    postguiLines.push(
+      `# Target LinuxCNC ${project.target.linuxcncVersion} (${project.target.platform})`,
+    );
+    postguiLines.push(`# Project: ${project.name}`);
+    postguiLines.push(`#`);
+    postguiLines.push(`# For use with [HAL]POSTGUI_HALFILE.`);
+    postguiLines.push("");
+    if (postguiSetpLines.length > 0) {
+      postguiLines.push(`# Parameters`);
+      postguiLines.push(...postguiSetpLines);
+      postguiLines.push("");
+    }
+    postguiLines.push(`# Signals`);
+    if (postguiNetLines.length === 0) {
+      postguiLines.push("# (no nets exported)");
+    } else {
+      postguiLines.push(...postguiNetLines);
+    }
+    postguiLines.push("");
+    postguiText = `${postguiLines.join("\n")}\n`;
+  }
+
   return {
     text: `${lines.join("\n")}\n`,
+    ...(postguiText ? { postguiText } : {}),
     warnings: Array.from(new Set(ctx.warnings)),
   };
 }

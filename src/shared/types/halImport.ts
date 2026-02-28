@@ -67,6 +67,7 @@ export interface HalImportDraft {
   nets: HalImportNet[];
   setps: HalImportSetp[];
   addfs: HalImportAddf[];
+  postguiOnlyInstances?: string[];
   motmod?: Partial<ProjectMotmodConfig>;
   warnings: string[];
 }

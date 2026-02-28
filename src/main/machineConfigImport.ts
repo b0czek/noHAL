@@ -203,6 +203,7 @@ export async function buildMachineConfigImportDraft(
   const resolverWarnings: string[] = [];
   const loadedHalPaths = new Set<string>();
   const halChunks: string[] = [];
+  const parsedInstanceNamesByPath = new Map<string, Set<string>>();
 
   for (const ref of refs) {
     if (ref.fileToken.startsWith("LIB:")) {
@@ -294,12 +295,60 @@ export async function buildMachineConfigImportDraft(
       halText = resolved.text;
       resolverWarnings.push(...resolved.warnings);
     }
+    const parsedSingleDraft = parseHalImportDraft(halText, selectedPath);
+    const parsedSingleInstances = new Set<string>();
+    for (const group of parsedSingleDraft.componentGroups) {
+      for (const instance of group.instances) {
+        if (instance.instanceName.trim()) {
+          parsedSingleInstances.add(instance.instanceName.trim());
+        }
+      }
+    }
+    parsedInstanceNamesByPath.set(selectedPath, parsedSingleInstances);
     halChunks.push(
       `# noHAL import source: ${selectedPath}\n${halText.trimEnd()}\n`,
     );
   }
 
   const halImportDraft = parseHalImportDraft(halChunks.join("\n"), iniPath);
+  const postguiResolvedPaths = new Set(
+    halSources
+      .filter(
+        (source) =>
+          source.status === "loaded" &&
+          source.kind === "POSTGUI_HALFILE" &&
+          source.resolvedPath,
+      )
+      .map((source) => source.resolvedPath as string),
+  );
+  const mainResolvedPaths = new Set(
+    halSources
+      .filter(
+        (source) =>
+          source.status === "loaded" &&
+          source.kind === "HALFILE" &&
+          source.resolvedPath,
+      )
+      .map((source) => source.resolvedPath as string),
+  );
+  const postguiInstances = new Set<string>();
+  const mainInstances = new Set<string>();
+  for (const sourcePath of postguiResolvedPaths) {
+    for (const instanceName of parsedInstanceNamesByPath.get(sourcePath) ?? []) {
+      postguiInstances.add(instanceName);
+    }
+  }
+  for (const sourcePath of mainResolvedPaths) {
+    for (const instanceName of parsedInstanceNamesByPath.get(sourcePath) ?? []) {
+      mainInstances.add(instanceName);
+    }
+  }
+  const postguiOnlyInstances = [...postguiInstances]
+    .filter((instanceName) => !mainInstances.has(instanceName))
+    .sort((a, b) => a.localeCompare(b));
+  if (postguiOnlyInstances.length > 0) {
+    halImportDraft.postguiOnlyInstances = postguiOnlyInstances;
+  }
   halImportDraft.warnings = [...resolverWarnings, ...halImportDraft.warnings];
 
   return {

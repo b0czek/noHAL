@@ -104,4 +104,21 @@ describe("exportProjectToHal connection signal names", () => {
     expect(text).toContain("loadrt manual_loader cfg=demo");
     expect(text).not.toContain("loadrt manual_loader names=");
   });
+
+  it("emits nets for postgui-marked component instances into postgui output", () => {
+    const project = makeConnectedProject("ui_sig");
+    const sheet = project.sheets[project.rootSheetId];
+    const sink = sheet.nodes.find((node) => node.id === "node_b");
+    if (!sink || sink.kind !== "component")
+      throw new Error("expected component node");
+    sink.exportStage = "postgui";
+
+    const { text, postguiText } = exportProjectToHal(project);
+
+    expect(text).toContain("loadrt not names=src");
+    expect(text).toContain("loadrt and2 names=sink");
+    expect(text).not.toContain("net ui_sig src.out sink.in0");
+    expect(postguiText).toBeDefined();
+    expect(postguiText).toContain("net ui_sig src.out sink.in0");
+  });
 });

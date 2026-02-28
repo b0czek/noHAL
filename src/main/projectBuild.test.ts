@@ -117,6 +117,50 @@ describe("project build output", () => {
     ).toBe(true);
   });
 
+  it("writes generated postgui HAL and POSTGUI_HALFILE when postgui stage nodes are present", async () => {
+    const project = withImportedIni(createEmptyProject("Postgui Build Test"));
+    const rootSheet = project.sheets[project.rootSheetId];
+    project.library.components["comp:test-and2"] = {
+      id: "comp:test-and2",
+      name: "and2",
+      halComponentName: "and2",
+      source: "comp",
+      runtime: { kind: "rt" },
+      pins: [
+        { key: "in0", name: "in0", direction: "in", type: "bit" },
+        { key: "in1", name: "in1", direction: "in", type: "bit" },
+        { key: "out", name: "out", direction: "out", type: "bit" },
+      ],
+      params: [],
+    };
+    rootSheet.nodes.push({
+      id: "node_pg",
+      kind: "component",
+      componentId: "comp:test-and2",
+      instanceName: "and2.0",
+      position: { x: 0, y: 0 },
+      paramValues: {},
+      pinInitialValues: { in0: "1" },
+      exportStage: "postgui",
+    });
+    const projectDir = path.join(await makeTempDir(), "postgui.nohal");
+
+    const result = await buildProjectIntoDirectory(project, projectDir);
+
+    expect(result.files).toEqual(
+      expect.arrayContaining([
+        path.join(projectDir, "build", "postgui-build-test.hal"),
+        path.join(projectDir, "build", "postgui-build-test-postgui.hal"),
+        path.join(projectDir, "build", "demo.ini"),
+      ]),
+    );
+
+    const iniText = await readFile(path.join(projectDir, "build", "demo.ini"), "utf8");
+    expect(iniText).toContain("HALFILE = postgui-build-test.hal");
+    expect(iniText).toContain("POSTGUI_HALFILE = postgui-build-test-postgui.hal");
+    expect(iniText).not.toContain("POSTGUI_HALFILE = postgui.hal");
+  });
+
   it("removes stale generated outputs from previous builds when output names change", async () => {
     const projectDir = path.join(await makeTempDir(), "rename.nohal");
     const firstProject = createEmptyProject("Machine Alpha");

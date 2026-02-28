@@ -102,26 +102,49 @@ export default function ComponentNodeDialog() {
                 </label>
                 <Show when={component()}>
                   {(comp) => (
-                    <div class="list compact">
-                      <div class="list-row">
-                        <span class="muted">
-                          {t("componentDialog.halComponent")}
-                        </span>
-                        <span class="mono">{comp().halComponentName}</span>
+                    <>
+                      <div class="list compact">
+                        <div class="list-row">
+                          <span class="muted">
+                            {t("componentDialog.halComponent")}
+                          </span>
+                          <span class="mono">{comp().halComponentName}</span>
+                        </div>
+                        <div class="list-row">
+                          <span class="muted">{t("componentDialog.source")}</span>
+                          <span>{comp().source}</span>
+                        </div>
+                        <div class="list-row">
+                          <span class="muted">
+                            {t("componentDialog.runtime")}
+                          </span>
+                          <span>
+                            {comp().runtime?.kind ?? t("common.unknown")}
+                          </span>
+                        </div>
                       </div>
-                      <div class="list-row">
-                        <span class="muted">{t("componentDialog.source")}</span>
-                        <span>{comp().source}</span>
-                      </div>
-                      <div class="list-row">
-                        <span class="muted">
-                          {t("componentDialog.runtime")}
-                        </span>
-                        <span>
-                          {comp().runtime?.kind ?? t("common.unknown")}
-                        </span>
-                      </div>
-                    </div>
+                      <label>
+                        {t("componentDialog.exportStage")}
+                        <select
+                          value={node()?.exportStage ?? "main"}
+                          onChange={(evt) => {
+                            const currentNode = node();
+                            if (!currentNode) return;
+                            actions.updateNodeExportStage(
+                              currentNode.id,
+                              evt.currentTarget.value as "main" | "postgui",
+                            );
+                          }}
+                        >
+                          <option value="main">
+                            {t("componentDialog.exportStageMain")}
+                          </option>
+                          <option value="postgui">
+                            {t("componentDialog.exportStagePostgui")}
+                          </option>
+                        </select>
+                      </label>
+                    </>
                   )}
                 </Show>
               </section>

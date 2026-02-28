@@ -248,6 +248,23 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       });
     },
 
+    updateNodeExportStage(
+      nodeId: string,
+      stage: "main" | "postgui",
+    ): void {
+      const activeSheetId = deps.state.activeSheetId;
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const node = sheet.nodes.find((n) => n.id === nodeId);
+        if (!node || node.kind !== "component") return;
+        if (stage === "postgui") {
+          node.exportStage = "postgui";
+        } else {
+          delete node.exportStage;
+        }
+      });
+    },
+
     updateLabel(
       labelId: string,
       patch: { name?: string; scope?: LabelScope; rotation?: number },

@@ -24,6 +24,7 @@ export interface ComponentNode {
   position: XY;
   paramValues: Record<string, string>;
   pinInitialValues?: Record<string, string>;
+  exportStage?: "main" | "postgui";
 }
 
 export interface SheetNode {

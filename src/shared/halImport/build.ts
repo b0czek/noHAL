@@ -325,6 +325,7 @@ export function buildProjectFromHalImport(
     .sort((a, b) =>
       a.instance.instanceName.localeCompare(b.instance.instanceName),
     );
+  const postguiOnlyInstanceNames = new Set(draft.postguiOnlyInstances ?? []);
 
   const IMPORT_LAYOUT = {
     maxColumns: 4,
@@ -590,6 +591,9 @@ export function buildProjectFromHalImport(
       position: { x: 0, y: 0 },
       paramValues,
       ...(Object.keys(pinInitialValues).length > 0 ? { pinInitialValues } : {}),
+      ...(postguiOnlyInstanceNames.has(instance.instanceName)
+        ? { exportStage: "postgui" as const }
+        : {}),
     });
     nodeRefById.set(nodeId, rootSheet.nodes[rootSheet.nodes.length - 1]);
     componentByNodeId.set(nodeId, component);

@@ -191,6 +191,13 @@ export function parseNoHALProject(content: string): NoHALProject {
     if (!Array.isArray((sheet as Partial<SheetDefinition>).comments)) {
       (sheet as SheetDefinition).comments = [];
     }
+    for (const node of sheet.nodes) {
+      if (node.kind !== "component") continue;
+      if (node.exportStage === "main" || node.exportStage === "postgui") {
+        continue;
+      }
+      delete node.exportStage;
+    }
     if (!sheet.hal) sheet.hal = {};
     sheet.hal.threadOutputs = normalizeSheetThreadOutputs(
       sheet.hal.threadOutputs,
