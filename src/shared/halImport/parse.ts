@@ -357,12 +357,31 @@ export function parseHalImportDraft(
 ): HalImportDraft {
   const normalized = normalizeLines(text);
   const warnings: string[] = [];
+  const loadCommandByComponentName = new Map<string, string>();
   const knownInstances = new Set<string>();
   const instances = new Map<string, MutableInstance>();
   const nets: HalImportNet[] = [];
   const setps: HalImportDraft["setps"] = [];
   const addfs: HalImportDraft["addfs"] = [];
   let motmodDraft: HalImportDraft["motmod"] | undefined;
+
+  const rememberLoadCommand = (
+    componentName: string,
+    loadCommand: string,
+    lineNo: number,
+  ): void => {
+    const normalizedCommand = loadCommand.trim();
+    if (!normalizedCommand) return;
+    const existing = loadCommandByComponentName.get(componentName);
+    if (!existing) {
+      loadCommandByComponentName.set(componentName, normalizedCommand);
+      return;
+    }
+    if (existing === normalizedCommand) return;
+    warnings.push(
+      `Line ${lineNo}: multiple load commands detected for '${componentName}'; keeping first`,
+    );
+  };
 
   for (const line of normalized) {
     const tokens = tokenizeHal(line.text);
@@ -376,6 +395,7 @@ export function parseHalImportDraft(
         warnings.push(`Line ${line.line}: loadrt missing component name`);
         continue;
       }
+      rememberLoadCommand(componentName, line.text, line.line);
       const args = parseKeyValueArgs(tokens.slice(2));
       if (componentName === "motmod") {
         const parseIntArg = (key: string): number | undefined => {
@@ -429,6 +449,8 @@ export function parseHalImportDraft(
         warnings.push(`Line ${line.line}: ${warning}`);
       }
       if (!parsed.programToken) continue;
+      const componentNameHint = basename(parsed.programToken);
+      rememberLoadCommand(componentNameHint, line.text, line.line);
 
       const named = inferLoadusrInstanceName(
         parsed.programToken,
@@ -453,7 +475,7 @@ export function parseHalImportDraft(
       ensureInstanceRecord(
         instances,
         instanceName,
-        basename(parsed.programToken),
+        componentNameHint,
         "userspace",
       );
       continue;
@@ -654,6 +676,9 @@ export function parseHalImportDraft(
       return {
         id: groupIdsByName.get(componentName) ?? componentName,
         inferredHalComponentName: componentName,
+        ...(loadCommandByComponentName.get(componentName)
+          ? { loadCommand: loadCommandByComponentName.get(componentName) }
+          : {}),
         runtimeHint,
         instances: instancesOut,
         pins: [...pinMap.values()].sort((a, b) => a.name.localeCompare(b.name)),

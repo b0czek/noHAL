@@ -230,6 +230,18 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
     ).toEqual(["winder"]);
   });
 
+  it("captures per-component load strings from loadrt/loadusr lines", () => {
+    const { groups } = groupByComponentName(`
+      loadrt and2 count=2
+      loadusr -W hal_manualtoolchange
+    `);
+
+    expect(groups.get("and2")?.loadCommand).toBe("loadrt and2 count=2");
+    expect(groups.get("hal_manualtoolchange")?.loadCommand).toBe(
+      "loadusr -W hal_manualtoolchange",
+    );
+  });
+
   it("uses `<=` / `<=>` arrows to infer direction hints for endpoints before the arrow token", () => {
     const { draft, groups } = groupByComponentName(`
       net home-x joint.0.home-sw-in <= parport.0.pin-11-in

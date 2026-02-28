@@ -3,12 +3,13 @@ import { Portal } from "solid-js/web";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 import { useEditorUi } from "../../state/EditorUiProvider";
+import CustomComponentsTab from "./CustomComponentsTab";
 import IniTab from "./IniTab";
 import MotmodTab from "./MotmodTab";
 import ThreadsTab from "./ThreadsTab";
 import "./projectSettings.css";
 
-type ProjectSettingsTab = "motmod" | "threads" | "ini";
+type ProjectSettingsTab = "motmod" | "threads" | "custom-components" | "ini";
 
 export default function ProjectSettingsDialog() {
   const { t } = useI18n();
@@ -65,6 +66,13 @@ export default function ProjectSettingsDialog() {
                   </button>
                   <button
                     type="button"
+                    class={`field-menu-item ${tab() === "custom-components" ? "is-active" : ""}`}
+                    onClick={() => setTab("custom-components")}
+                  >
+                    {t("projectSettings.tabCustomComponents")}
+                  </button>
+                  <button
+                    type="button"
                     class={`field-menu-item ${tab() === "ini" ? "is-active" : ""}`}
                     onClick={() => setTab("ini")}
                   >
@@ -79,6 +87,9 @@ export default function ProjectSettingsDialog() {
                 </Show>
                 <Show when={tab() === "threads"}>
                   <ThreadsTab />
+                </Show>
+                <Show when={tab() === "custom-components"}>
+                  <CustomComponentsTab />
                 </Show>
                 <Show when={tab() === "ini"}>
                   <IniTab />

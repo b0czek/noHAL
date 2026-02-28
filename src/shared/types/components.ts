@@ -37,6 +37,7 @@ export interface ComponentDefinition {
   name: string;
   halComponentName: string;
   source: "manual" | "comp";
+  loadCommand?: string;
   sourcePath?: string;
   docs?: {
     component?: string;
@@ -67,6 +68,7 @@ export interface ImportedComponentDefinition extends ComponentDefinition {
 export interface ManualComponentDefinitionInput {
   name: string;
   halComponentName?: string;
+  loadCommand?: string;
   pins: ComponentPinDefinition[];
   params?: ComponentParamDefinition[];
   functions?: ComponentFunctionDefinition[];

@@ -415,6 +415,7 @@ interface AddfEntry {
 }
 
 interface RuntimeSections {
+  customLoadLines: string[];
   loadrtLines: string[];
   loadusrLines: string[];
   addfLines: string[];
@@ -446,12 +447,34 @@ function buildRuntimeSections(
   const allInstances = [...ctx.componentInstances].sort((a, b) =>
     a.instancePath.localeCompare(b.instancePath),
   );
-  const rtInstances = allInstances.filter((item) => item.runtimeKind === "rt");
+  const customLoadByComponentName = new Map<string, string>();
+  for (const item of allInstances) {
+    const loadCommand =
+      project.library.components[item.componentId]?.loadCommand;
+    const normalized = loadCommand?.trim();
+    if (!normalized) continue;
+    const existing = customLoadByComponentName.get(item.componentName);
+    if (!existing) {
+      customLoadByComponentName.set(item.componentName, normalized);
+      continue;
+    }
+    if (existing !== normalized) {
+      ctx.warnings.push(
+        `Component '${item.componentName}' has conflicting custom load commands; keeping first`,
+      );
+    }
+  }
+
+  const hasCustomLoad = (item: RuntimeInstanceRecord) =>
+    customLoadByComponentName.has(item.componentName);
+  const rtInstances = allInstances.filter(
+    (item) => item.runtimeKind === "rt" && !hasCustomLoad(item),
+  );
   const userspaceInstances = allInstances.filter(
-    (item) => item.runtimeKind === "userspace",
+    (item) => item.runtimeKind === "userspace" && !hasCustomLoad(item),
   );
   const unknownRuntimeInstances = allInstances.filter(
-    (item) => item.runtimeKind === "unknown",
+    (item) => item.runtimeKind === "unknown" && !hasCustomLoad(item),
   );
 
   for (const item of unknownRuntimeInstances) {
@@ -483,6 +506,23 @@ function buildRuntimeSections(
     if (prioA !== prioB) return prioA - prioB;
     return nameA.localeCompare(nameB);
   });
+
+  const customLoadLines = [...customLoadByComponentName.entries()]
+    .sort(([nameA], [nameB]) => {
+      const explicitA = loadOrderIndex.get(nameA);
+      const explicitB = loadOrderIndex.get(nameB);
+      if (explicitA !== undefined || explicitB !== undefined) {
+        return (
+          (explicitA ?? Number.MAX_SAFE_INTEGER) -
+          (explicitB ?? Number.MAX_SAFE_INTEGER)
+        );
+      }
+      const prioA = rules[nameA]?.loadOrderPriority ?? 0;
+      const prioB = rules[nameB]?.loadOrderPriority ?? 0;
+      if (prioA !== prioB) return prioA - prioB;
+      return nameA.localeCompare(nameB);
+    })
+    .map(([, line]) => line);
 
   const loadrtLines: string[] = [];
   const projectHalThreads = (project.halThreads ?? []).filter(
@@ -1020,6 +1060,7 @@ function buildRuntimeSections(
   }
 
   return {
+    customLoadLines,
     loadrtLines,
     loadusrLines: [],
     addfLines,
@@ -1139,11 +1180,15 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
     `# - loadrt is generated for RT components using names=... grouping (override via project.halExport.componentRules).`,
   );
   lines.push(
+    `# - components with component.loadCommand emit that line verbatim and skip generated loadrt for that component.`,
+  );
+  lines.push(
     `# - addf is emitted per thread and expanded from per-sheet queues (sheet.hal.addfQueue), with subsheets acting as ordered blocks.`,
   );
   lines.push("");
   lines.push(`# Runtime`);
   if (
+    runtimeSections.customLoadLines.length === 0 &&
     runtimeSections.loadrtLines.length === 0 &&
     runtimeSections.addfLines.length === 0 &&
     runtimeSections.runtimeSummaryLines.length === 0
@@ -1151,6 +1196,11 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
     lines.push("# (no runtime component actions generated)");
     lines.push("");
   } else {
+    if (runtimeSections.customLoadLines.length > 0) {
+      lines.push(`# custom load`);
+      lines.push(...runtimeSections.customLoadLines);
+      lines.push("");
+    }
     if (runtimeSections.loadrtLines.length > 0) {
       lines.push(`# loadrt`);
       lines.push(...runtimeSections.loadrtLines);

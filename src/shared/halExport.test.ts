@@ -76,4 +76,32 @@ describe("exportProjectToHal connection signal names", () => {
 
     expect(text).toContain("net auto_net_1 src.out sink.in0");
   });
+
+  it("emits custom component load strings and skips generated loadrt for those components", () => {
+    const project = createEmptyProject("Custom Load Test");
+    const sheet = project.sheets[project.rootSheetId];
+    project.library.components["custom:manual-loader"] = {
+      id: "custom:manual-loader",
+      name: "manual-loader",
+      halComponentName: "manual_loader",
+      source: "manual",
+      runtime: { kind: "rt" },
+      loadCommand: "loadrt manual_loader cfg=demo",
+      pins: [{ key: "out", name: "out", direction: "out", type: "bit" }],
+      params: [],
+    };
+    sheet.nodes.push({
+      id: "node_custom",
+      kind: "component",
+      componentId: "custom:manual-loader",
+      instanceName: "manual_loader.0",
+      position: { x: 0, y: 0 },
+      paramValues: {},
+    });
+
+    const { text } = exportProjectToHal(project);
+
+    expect(text).toContain("loadrt manual_loader cfg=demo");
+    expect(text).not.toContain("loadrt manual_loader names=");
+  });
 });

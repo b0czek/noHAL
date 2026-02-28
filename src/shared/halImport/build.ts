@@ -294,6 +294,9 @@ export function buildProjectFromHalImport(
       name: group.inferredHalComponentName,
       halComponentName: group.inferredHalComponentName,
       source: "manual",
+      ...(group.loadCommand?.trim()
+        ? { loadCommand: group.loadCommand.trim() }
+        : {}),
       runtime: { kind: group.runtimeHint },
       pins,
       params,

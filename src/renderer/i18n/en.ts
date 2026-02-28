@@ -116,6 +116,7 @@ export const en = {
   "projectSettings.title": "Project Settings",
   "projectSettings.tabMotmod": "motmod",
   "projectSettings.tabThreads": "HAL Threads",
+  "projectSettings.tabCustomComponents": "Custom Components",
   "projectSettings.tabIniEditor": "INI Editor",
   "projectSettings.motmodTitle": "Motion Module (motmod)",
   "projectSettings.motmodHelp": "Configure common motmod loadrt parameters.",
@@ -128,6 +129,40 @@ export const en = {
   "projectSettings.motmod.threadsDerived": "Derived From Threads",
   "projectSettings.motmod.threadsDerivedHelp":
     "servo/base periods and base_thread_fp come from HAL Threads (servo-thread/base-thread).",
+  "customComponents.title": "Custom Components",
+  "customComponents.help":
+    "Non-.comp components (including HAL-import generated ones). If set, load string is emitted verbatim during HAL export for that component.",
+  "customComponents.addComponent": "Add Component",
+  "customComponents.catalogTitle": "Custom Components",
+  "customComponents.editorTitle": "Component Editor",
+  "customComponents.selectComponentHint":
+    "Select a component from the list to edit it.",
+  "customComponents.empty":
+    "No custom components yet. Import a HAL config or add components outside the .comp store.",
+  "customComponents.removeComponent": "Remove Component",
+  "customComponents.cannotRemoveInUse":
+    "Component is used by {count} placed instance(s). Remove instances first.",
+  "customComponents.componentName": "HAL Component Name",
+  "customComponents.stats":
+    "{pins} pins • {params} params • {instances} instances",
+  "customComponents.runtime": "Runtime",
+  "customComponents.runtimeRt": "rt",
+  "customComponents.runtimeUserspace": "userspace",
+  "customComponents.runtimeUnknown": "unknown",
+  "customComponents.loadString": "Load string",
+  "customComponents.loadStringPlaceholder":
+    "Example: loadusr -W hal_manualtoolchange",
+  "customComponents.pinsTitle": "Pins",
+  "customComponents.addPin": "Add Pin",
+  "customComponents.noPins": "No pins.",
+  "customComponents.paramsTitle": "Parameters",
+  "customComponents.addParam": "Add Param",
+  "customComponents.noParams": "No parameters.",
+  "customComponents.paramDirection": "Direction",
+  "customComponents.paramDirectionRead": "r",
+  "customComponents.paramDirectionReadWrite": "rw",
+  "customComponents.paramDefaultValue": "Default Value",
+  "customComponents.optionalValue": "(optional)",
 
   "sheetSettings.ariaLabel": "Sheet Settings",
   "sheetSettings.title": "Sheet Settings",
@@ -307,6 +342,31 @@ export const en = {
   "store.status.removedIniField": "Removed INI field",
   "store.status.updatedIniKey": "Updated INI key",
   "store.status.updatedIniValue": "Updated INI value",
+  "store.status.selectedComponentNotCustom":
+    "Selected component is not a custom component",
+  "store.status.addedCustomComponent": "Added custom component {componentName}",
+  "store.status.removedCustomComponent":
+    "Removed custom component {componentName}",
+  "store.status.cannotRemoveCustomComponentInUse":
+    "Cannot remove custom component {componentName}: {count} placed instance(s) still use it",
+  "store.status.updatedCustomComponent":
+    "Updated custom component {componentName}",
+  "store.status.updatedCustomComponentLoad":
+    "Updated custom component load string: {componentName}",
+  "store.status.addedCustomComponentPin":
+    "Added pin to custom component {componentName}",
+  "store.status.removedCustomComponentPin":
+    "Removed pin {pinName} from custom component {componentName}",
+  "store.status.updatedCustomComponentPin":
+    "Updated pin {pinName} on custom component {componentName}",
+  "store.status.updatedCustomComponentPinDirection":
+    "Updated custom component pin direction: {componentName}.{pinName} -> {direction}",
+  "store.status.addedCustomComponentParam":
+    "Added parameter to custom component {componentName}",
+  "store.status.removedCustomComponentParam":
+    "Removed parameter {paramName} from custom component {componentName}",
+  "store.status.updatedCustomComponentParam":
+    "Updated parameter {paramName} on custom component {componentName}",
   "store.status.addedSheetThreadOutput": "Added sheet thread output",
   "store.status.updatedSheetThreadOutputName":
     "Updated sheet thread output name",

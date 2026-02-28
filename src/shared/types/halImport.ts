@@ -21,6 +21,7 @@ export interface HalImportInstance {
 export interface HalImportComponentGroup {
   id: string;
   inferredHalComponentName: string;
+  loadCommand?: string;
   runtimeHint: "rt" | "userspace" | "unknown";
   instances: HalImportInstance[];
   pins: HalImportObservedPin[];
