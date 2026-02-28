@@ -243,52 +243,6 @@ export default function Inspector() {
         </Show>
       </section>
 
-      <section class="panel">
-        <div class="panel-title">{t("inspector.currentSheetNets")}</div>
-        <div class="sub-title">{t("inspector.directConnections")}</div>
-        <div class="list compact">
-          <For each={currentSheet().directConnections}>
-            {(conn) => (
-              <div
-                class={`list-row ${
-                  state.selection?.kind === "wire-connection" &&
-                  state.selection.id === conn.id
-                    ? "is-active"
-                    : ""
-                }`}
-              >
-                <button
-                  type="button"
-                  class="linkish"
-                  onClick={() => actions.removeDirectConnection(conn.id)}
-                >
-                  {t("common.remove")}
-                </button>
-                <span class="mono">{conn.signalName?.trim() || conn.id}</span>
-              </div>
-            )}
-          </For>
-        </div>
-
-        <div class="sub-title">{t("inspector.labelAnchors")}</div>
-        <div class="list compact">
-          <For each={currentSheet().labelAnchors}>
-            {(anchor) => (
-              <div class="list-row">
-                <button
-                  type="button"
-                  class="linkish"
-                  onClick={() => actions.removeLabelAnchor(anchor.id)}
-                >
-                  {t("common.remove")}
-                </button>
-                <span class="mono">{anchor.id}</span>
-              </div>
-            )}
-          </For>
-        </div>
-      </section>
-
       <Show when={state.exportWarnings.length > 0}>
         <section class="panel warn">
           <div class="panel-title">{t("inspector.warnings")}</div>
