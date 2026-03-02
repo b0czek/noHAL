@@ -215,12 +215,32 @@ export class KonvaSheetScene {
       this.panLastScreenPos = null;
       this.container.style.cursor = "";
     });
+    this.stage.on("click tap", (evt) => {
+      if (!this.isBackgroundTarget(evt.target)) return;
+      this.callbacks.onSelect(null);
+    });
     this.stage.on("wheel", (evt) => {
+      const wheelEvt = evt.evt;
+      evt.evt.preventDefault();
+
+      if (!(wheelEvt.ctrlKey || wheelEvt.metaKey)) {
+        const deltaScale =
+          wheelEvt.deltaMode === WheelEvent.DOM_DELTA_LINE
+            ? 16
+            : wheelEvt.deltaMode === WheelEvent.DOM_DELTA_PAGE
+              ? this.stage.height()
+              : 1;
+        this.camera.x -= wheelEvt.deltaX * deltaScale;
+        this.camera.y -= wheelEvt.deltaY * deltaScale;
+        this.applyCamera();
+        if (this.lastState?.pendingEndpoint) this.redrawWires();
+        return;
+      }
+
       const pointer = this.stage.getPointerPosition();
       if (!pointer) return;
-      evt.evt.preventDefault();
       const oldScale = this.camera.scale;
-      const zoomFactor = evt.evt.deltaY > 0 ? 1 / 1.08 : 1.08;
+      const zoomFactor = wheelEvt.deltaY > 0 ? 1 / 1.08 : 1.08;
       const nextScale = Math.max(0.35, Math.min(2.8, oldScale * zoomFactor));
       if (Math.abs(nextScale - oldScale) < 1e-6) return;
       const worldAtPointer = this.screenToWorld({ x: pointer.x, y: pointer.y });
@@ -1075,15 +1095,20 @@ export class KonvaSheetScene {
   private shouldStartPan(
     evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
   ): boolean {
-    const onBackground = this.isBackgroundTarget(evt.target);
-
     if (evt.evt instanceof MouseEvent) {
       if (evt.evt.button === 1) return true;
       if (this.spacePressed && evt.evt.button === 0) return true;
       return false;
     }
 
-    return this.spacePressed || onBackground;
+    return (
+      this.spacePressed ||
+      (this.isBackgroundTarget(evt.target) && this.isTwoFingerTouch(evt.evt))
+    );
+  }
+
+  private isTwoFingerTouch(evt: TouchEvent): boolean {
+    return evt.touches.length >= 2 || evt.targetTouches.length >= 2;
   }
 
   private isBackgroundTarget(target: Konva.Node): boolean {
