@@ -48,6 +48,46 @@ type CullBounds = {
   height: number;
 };
 
+export type EndpointSide = "left" | "right" | "top" | "bottom";
+
+export type SheetLookup = {
+  nodesById: Map<string, SheetDefinition["nodes"][number]>;
+  portsById: Map<string, SheetDefinition["ports"][number]>;
+  labelsById: Map<string, SheetDefinition["labels"][number]>;
+  nodePinSidesById: Map<string, Map<string, EndpointSide>>;
+};
+
+const sheetLookupCache = new WeakMap<SheetDefinition, SheetLookup>();
+
+export function getSheetLookup(
+  project: NoHALProject,
+  sheet: SheetDefinition,
+): SheetLookup {
+  const cached = sheetLookupCache.get(sheet);
+  if (cached) return cached;
+
+  const lookup: SheetLookup = {
+    nodesById: new Map(),
+    portsById: new Map(),
+    labelsById: new Map(),
+    nodePinSidesById: new Map(),
+  };
+
+  for (const node of sheet.nodes) {
+    lookup.nodesById.set(node.id, node);
+    const pinSides = new Map<string, EndpointSide>();
+    for (const pin of getNodePins(project, node)) {
+      pinSides.set(pin.key, pin.side);
+    }
+    lookup.nodePinSidesById.set(node.id, pinSides);
+  }
+  for (const port of sheet.ports) lookup.portsById.set(port.id, port);
+  for (const label of sheet.labels) lookup.labelsById.set(label.id, label);
+
+  sheetLookupCache.set(sheet, lookup);
+  return lookup;
+}
+
 export interface KonvaSheetSceneWiresContext {
   stage: Konva.Stage;
   wireLayer: Konva.Layer;
@@ -171,31 +211,29 @@ function sideNormal(side: "left" | "right" | "top" | "bottom"): Pt {
   return { x: 0, y: 1 };
 }
 
-function getEndpointNormal(
-  project: NoHALProject,
-  sheet: SheetDefinition,
+export function getEndpointNormal(
   endpoint: SheetEndpointRef,
+  lookup: SheetLookup,
 ): Pt | null {
   if (endpoint.kind === "sheet-port") {
-    const port = sheet.ports.find((p) => p.id === endpoint.portId);
+    const port = lookup.portsById.get(endpoint.portId);
     return port ? sideNormal(port.side) : null;
   }
 
-  const node = sheet.nodes.find((n) => n.id === endpoint.nodeId);
-  if (!node) return null;
-  const pin = getNodePins(project, node).find((p) => p.key === endpoint.pinKey);
-  if (!pin) return null;
-  return sideNormal(pin.side);
+  const pinSide = lookup.nodePinSidesById
+    .get(endpoint.nodeId)
+    ?.get(endpoint.pinKey);
+  if (!pinSide) return null;
+  return sideNormal(pinSide);
 }
 
-function buildDisplayWirePoints(args: {
-  project: NoHALProject;
-  sheet: SheetDefinition;
+export function buildDisplayWirePoints(args: {
+  lookup: SheetLookup;
   rawPoints: Pt[];
   startEndpoint: SheetEndpointRef;
   endEndpoint?: SheetEndpointRef | null;
 }): Pt[] {
-  const { project, sheet, rawPoints, startEndpoint, endEndpoint } = args;
+  const { lookup, rawPoints, startEndpoint, endEndpoint } = args;
   if (rawPoints.length < 2) return rawPoints;
 
   const out: Pt[] = [];
@@ -215,7 +253,7 @@ function buildDisplayWirePoints(args: {
   const end = rawPoints[rawPoints.length - 1];
 
   pushDistinct(start);
-  const startNormal = getEndpointNormal(project, sheet, startEndpoint);
+  const startNormal = getEndpointNormal(startEndpoint, lookup);
   if (startNormal) {
     pushDistinct({
       x: start.x + startNormal.x * stubLen,
@@ -228,7 +266,7 @@ function buildDisplayWirePoints(args: {
   }
 
   if (endEndpoint) {
-    const endNormal = getEndpointNormal(project, sheet, endEndpoint);
+    const endNormal = getEndpointNormal(endEndpoint, lookup);
     if (endNormal) {
       pushDistinct({
         x: end.x + endNormal.x * stubLen,
@@ -361,34 +399,34 @@ function drawWirePath(
 
 function getNodePosition(
   ctx: KonvaSheetSceneWiresContext,
-  sheet: SheetDefinition,
+  lookup: SheetLookup,
   nodeId: string,
 ): Pt | null {
   const live = ctx.getLiveNodePositions().get(nodeId);
   if (live) return live;
-  const node = sheet.nodes.find((n) => n.id === nodeId);
+  const node = lookup.nodesById.get(nodeId);
   return node ? node.position : null;
 }
 
 function getPortPosition(
   ctx: KonvaSheetSceneWiresContext,
-  sheet: SheetDefinition,
+  lookup: SheetLookup,
   portId: string,
 ): Pt | null {
   const live = ctx.getLivePortPositions().get(portId);
   if (live) return live;
-  const port = sheet.ports.find((p) => p.id === portId);
+  const port = lookup.portsById.get(portId);
   return port ? port.position : null;
 }
 
 function getLabelPosition(
   ctx: KonvaSheetSceneWiresContext,
-  sheet: SheetDefinition,
+  lookup: SheetLookup,
   labelId: string,
 ): Pt | null {
   const live = ctx.getLiveLabelPositions().get(labelId);
   if (live) return live;
-  const label = sheet.labels.find((l) => l.id === labelId);
+  const label = lookup.labelsById.get(labelId);
   return label ? label.position : null;
 }
 
@@ -442,12 +480,12 @@ function clamp(value: number, min: number, max: number): number {
 
 function getLabelAnchorPoint(
   ctx: KonvaSheetSceneWiresContext,
-  sheet: SheetDefinition,
+  lookup: SheetLookup,
   labelId: string,
   toward: Pt,
 ): Pt | null {
   const live = ctx.getLiveLabelPositions().get(labelId);
-  const label = sheet.labels.find((l) => l.id === labelId);
+  const label = lookup.labelsById.get(labelId);
   if (!label) return null;
   const labelForBounds =
     live && (live.x !== label.position.x || live.y !== label.position.y)
@@ -510,17 +548,17 @@ function getLabelAnchorPoint(
 
 function getEndpointPoint(
   ctx: KonvaSheetSceneWiresContext,
-  sheet: SheetDefinition,
+  lookup: SheetLookup,
   endpoint: SheetEndpointRef,
 ): Pt | null {
   if (endpoint.kind === "sheet-port") {
-    return getPortPosition(ctx, sheet, endpoint.portId);
+    return getPortPosition(ctx, lookup, endpoint.portId);
   }
 
   const layout = ctx.getNodeLayouts().get(endpoint.nodeId);
   const local = layout?.pinPositionsLocal[endpoint.pinKey];
   if (!layout || !local) return null;
-  const nodePos = getNodePosition(ctx, sheet, endpoint.nodeId);
+  const nodePos = getNodePosition(ctx, lookup, endpoint.nodeId);
   if (!nodePos) return null;
   return { x: nodePos.x + local.x, y: nodePos.y + local.y };
 }
@@ -537,6 +575,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
   if (!state) return;
 
   const { sheet, pendingEndpoint, pendingWirePoints } = state;
+  const lookup = getSheetLookup(state.project, sheet);
   const selectedConnectionId = ctx.getSelectedConnectionId();
   const selectedConn = selectedConnectionId
     ? sheet.directConnections.find((c) => c.id === selectedConnectionId)
@@ -558,11 +597,13 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
     }
   }
 
+  const activeSelectedConnectionId = ctx.getSelectedConnectionId();
+  const activeSelectedWaypointIndex = ctx.getSelectedWaypointIndex();
   ctx.wireWorld.destroyChildren();
 
   for (const conn of sheet.directConnections) {
-    const a = getEndpointPoint(ctx, sheet, conn.a);
-    const b = getEndpointPoint(ctx, sheet, conn.b);
+    const a = getEndpointPoint(ctx, lookup, conn.a);
+    const b = getEndpointPoint(ctx, lookup, conn.b);
     if (!a || !b) continue;
 
     const routePoints: Pt[] = [
@@ -571,13 +612,12 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
       b,
     ];
     const displayRoutePoints = buildDisplayWirePoints({
-      project: state.project,
-      sheet,
+      lookup,
       rawPoints: routePoints,
       startEndpoint: conn.a,
       endEndpoint: conn.b,
     });
-    const selected = ctx.getSelectedConnectionId() === conn.id;
+    const selected = activeSelectedConnectionId === conn.id;
     const wire = drawWirePath(ctx, displayRoutePoints, {
       stroke: selected ? WIRE_SELECTED_STROKE : WIRE_DEFAULT_STROKE,
       strokeWidth: selected
@@ -627,7 +667,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
     if (selected && (conn.waypoints?.length ?? 0) > 0 && wire) {
       const waypoints = conn.waypoints ?? [];
       for (let i = 0; i < waypoints.length; i += 1) {
-        const isSelectedWaypoint = ctx.getSelectedWaypointIndex() === i;
+        const isSelectedWaypoint = activeSelectedWaypointIndex === i;
         const waypointIndex = i + 1;
         const p = routePoints[waypointIndex];
         const handle = new Konva.Circle({
@@ -694,8 +734,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
           updateWirePathShape(
             wire,
             buildDisplayWirePoints({
-              project: state.project,
-              sheet,
+              lookup,
               rawPoints: routePoints,
               startEndpoint: conn.a,
               endEndpoint: conn.b,
@@ -720,8 +759,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
           updateWirePathShape(
             wire,
             buildDisplayWirePoints({
-              project: state.project,
-              sheet,
+              lookup,
               rawPoints: routePoints,
               startEndpoint: conn.a,
               endEndpoint: conn.b,
@@ -740,10 +778,10 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
   }
 
   for (const anchor of sheet.labelAnchors) {
-    const ep = getEndpointPoint(ctx, sheet, anchor.endpoint);
+    const ep = getEndpointPoint(ctx, lookup, anchor.endpoint);
     const labelPos = ep
-      ? getLabelAnchorPoint(ctx, sheet, anchor.labelId, ep)
-      : getLabelPosition(ctx, sheet, anchor.labelId);
+      ? getLabelAnchorPoint(ctx, lookup, anchor.labelId, ep)
+      : getLabelPosition(ctx, lookup, anchor.labelId);
     if (!ep || !labelPos) continue;
     ctx.wireWorld.add(
       (() => {
@@ -764,13 +802,12 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
   }
 
   if (pendingEndpoint) {
-    const a = getEndpointPoint(ctx, sheet, pendingEndpoint);
+    const a = getEndpointPoint(ctx, lookup, pendingEndpoint);
     const cursor = getCursorPos(ctx);
     if (a && cursor) {
       const pendingRawPoints = [a, ...pendingWirePoints, cursor];
       const pendingDisplayPoints = buildDisplayWirePoints({
-        project: state.project,
-        sheet,
+        lookup,
         rawPoints: pendingRawPoints,
         startEndpoint: pendingEndpoint,
         endEndpoint: null,

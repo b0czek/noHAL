@@ -77,6 +77,7 @@ export class KonvaSheetScene {
   private camera = { x: 0, y: 0, scale: 1 };
   private selectedConnectionId: string | null = null;
   private selectedWaypointIndex: number | null = null;
+  private wireRedrawFrameId: number | null = null;
   private isPanning = false;
   private panLastScreenPos: Pt | null = null;
   private isMarqueeSelecting = false;
@@ -255,6 +256,10 @@ export class KonvaSheetScene {
   destroy(): void {
     window.removeEventListener("keydown", this.onKeyDown, true);
     window.removeEventListener("keyup", this.onKeyUp);
+    if (this.wireRedrawFrameId !== null) {
+      window.cancelAnimationFrame(this.wireRedrawFrameId);
+      this.wireRedrawFrameId = null;
+    }
     this.stage.destroy();
   }
 
@@ -265,7 +270,7 @@ export class KonvaSheetScene {
     this.stage.size({ width: w, height: h });
     this.applyCamera();
     if (this.lastState) {
-      this.redrawWires();
+      this.redrawWires(true);
       this.mainLayer.batchDraw();
       this.uiLayer.batchDraw();
     }
@@ -1181,9 +1186,24 @@ export class KonvaSheetScene {
     return deleteWireSelectedWaypoint(this.wireContext());
   }
 
-  private redrawWires(): void {
-    redrawSceneWires(this.wireContext());
-    this.updateWireCullVisibility();
+  private redrawWires(immediate = false): void {
+    const draw = () => {
+      this.wireRedrawFrameId = null;
+      redrawSceneWires(this.wireContext());
+      this.updateWireCullVisibility();
+    };
+
+    if (immediate) {
+      if (this.wireRedrawFrameId !== null) {
+        window.cancelAnimationFrame(this.wireRedrawFrameId);
+        this.wireRedrawFrameId = null;
+      }
+      draw();
+      return;
+    }
+
+    if (this.wireRedrawFrameId !== null) return;
+    this.wireRedrawFrameId = window.requestAnimationFrame(draw);
   }
 
   render(state: SceneRenderState): void {
@@ -1220,7 +1240,7 @@ export class KonvaSheetScene {
     this.rebuildCullModels(state);
     this.sceneBounds = this.computeSceneBounds(state);
     this.applyCamera();
-    this.redrawWires();
+    this.redrawWires(true);
 
     renderPorts({
       sheet,

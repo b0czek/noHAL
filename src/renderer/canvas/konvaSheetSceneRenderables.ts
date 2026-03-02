@@ -873,7 +873,6 @@ export function renderComments(args: RenderCommentsArgs): void {
     mainWorld,
     callbacks,
     clampPos,
-    redrawWires,
     liveCommentPositions,
     commentGroups,
   } = args;
@@ -943,7 +942,6 @@ export function renderComments(args: RenderCommentsArgs): void {
         return;
       }
       liveCommentPositions.set(comment.id, pos);
-      redrawWires();
       callbacks.onMoveComment(comment.id, pos.x, pos.y);
     });
     group.on("dragmove", () => {
@@ -953,7 +951,6 @@ export function renderComments(args: RenderCommentsArgs): void {
         return;
       }
       liveCommentPositions.set(comment.id, pos);
-      redrawWires();
     });
 
     mainWorld.add(group);
