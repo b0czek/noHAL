@@ -38,6 +38,11 @@ export interface SceneCallbacks {
   onMoveLabel: (id: string, x: number, y: number) => void;
   onMoveComment: (id: string, x: number, y: number) => void;
   onMoveSheetPort: (id: string, x: number, y: number) => void;
+  onMoveSelectionGroup?: (updates: {
+    nodePositions: Array<{ id: string; x: number; y: number }>;
+    labelPositions: Array<{ id: string; x: number; y: number }>;
+    portPositions: Array<{ id: string; x: number; y: number }>;
+  }) => void;
   onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
   onBackgroundClick?: (point: XY) => void;
   onCameraChange?: (camera: { x: number; y: number; scale: number }) => void;

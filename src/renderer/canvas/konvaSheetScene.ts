@@ -1067,28 +1067,39 @@ export class KonvaSheetScene {
     this.onSelectionDragMove(target, pos);
     this.groupDragSession = null;
 
-    const commitEntries = (
+    const collectEntries = (
       entries: IterableIterator<[string, Pt]>,
-      onCommit: (id: string, x: number, y: number) => void,
-    ) => {
+    ): Array<{ id: string; x: number; y: number }> => {
+      const result: Array<{ id: string; x: number; y: number }> = [];
       for (const [id, start] of entries) {
         const next = this.clampPos({
           x: start.x + session.appliedDx,
           y: start.y + session.appliedDy,
         });
-        onCommit(id, next.x, next.y);
+        result.push({ id, x: next.x, y: next.y });
       }
+      return result;
     };
 
-    commitEntries(session.nodeStartPositions.entries(), (id, x, y) =>
-      this.callbacks.onMoveNode(id, x, y),
-    );
-    commitEntries(session.labelStartPositions.entries(), (id, x, y) =>
-      this.callbacks.onMoveLabel(id, x, y),
-    );
-    commitEntries(session.portStartPositions.entries(), (id, x, y) =>
-      this.callbacks.onMoveSheetPort(id, x, y),
-    );
+    const nodePositions = collectEntries(session.nodeStartPositions.entries());
+    const labelPositions = collectEntries(session.labelStartPositions.entries());
+    const portPositions = collectEntries(session.portStartPositions.entries());
+
+    if (this.callbacks.onMoveSelectionGroup) {
+      this.callbacks.onMoveSelectionGroup({
+        nodePositions,
+        labelPositions,
+        portPositions,
+      });
+      return true;
+    }
+
+    for (const entry of nodePositions)
+      this.callbacks.onMoveNode(entry.id, entry.x, entry.y);
+    for (const entry of labelPositions)
+      this.callbacks.onMoveLabel(entry.id, entry.x, entry.y);
+    for (const entry of portPositions)
+      this.callbacks.onMoveSheetPort(entry.id, entry.x, entry.y);
     return true;
   };
 

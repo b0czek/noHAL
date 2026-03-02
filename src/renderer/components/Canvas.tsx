@@ -58,6 +58,7 @@ export default function Canvas() {
       onMoveLabel: actions.moveLabel,
       onMoveComment: actions.moveComment,
       onMoveSheetPort: actions.moveSheetPort,
+      onMoveSelectionGroup: actions.moveSelectionGroup,
       onMoveConnectionWaypoints: actions.updateDirectConnectionWaypoints,
       onCameraChange: setCamera,
       onContextMenuRequest: canvasContextMenu.handleSceneContextMenuRequest,

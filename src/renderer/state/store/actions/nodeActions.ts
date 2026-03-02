@@ -182,6 +182,50 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       });
     },
 
+    moveSelectionGroup(updates: {
+      nodePositions: Array<{ id: string; x: number; y: number }>;
+      labelPositions: Array<{ id: string; x: number; y: number }>;
+      portPositions: Array<{ id: string; x: number; y: number }>;
+    }): void {
+      if (
+        updates.nodePositions.length === 0 &&
+        updates.labelPositions.length === 0 &&
+        updates.portPositions.length === 0
+      ) {
+        return;
+      }
+
+      const activeSheetId = deps.state.activeSheetId;
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const nodeUpdates = new Map(
+          updates.nodePositions.map((entry) => [entry.id, entry]),
+        );
+        const labelUpdates = new Map(
+          updates.labelPositions.map((entry) => [entry.id, entry]),
+        );
+        const portUpdates = new Map(
+          updates.portPositions.map((entry) => [entry.id, entry]),
+        );
+
+        for (const node of sheet.nodes) {
+          const next = nodeUpdates.get(node.id);
+          if (!next) continue;
+          node.position = { x: next.x, y: next.y };
+        }
+        for (const label of sheet.labels) {
+          const next = labelUpdates.get(label.id);
+          if (!next) continue;
+          label.position = { x: next.x, y: next.y };
+        }
+        for (const port of sheet.ports) {
+          const next = portUpdates.get(port.id);
+          if (!next) continue;
+          port.position = { x: next.x, y: next.y };
+        }
+      });
+    },
+
     renameNode(nodeId: string, instanceName: string): void {
       const activeSheetId = deps.state.activeSheetId;
       const trimmed = instanceName.trim();
