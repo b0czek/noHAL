@@ -1,4 +1,5 @@
 import { getSheet, resolveEndpointInSheet } from "../../../../shared/graph";
+import { isValidHalName } from "../../../../shared/halNames";
 import { createId } from "../../../../shared/id";
 import type { SheetEndpointRef, XY } from "../../../../shared/types";
 import { validateDirectConnection } from "../../../../shared/validation";
@@ -128,6 +129,10 @@ export function createWireActions(deps: EditorStoreActionContext) {
     ): void {
       const activeSheetId = deps.state.activeSheetId;
       const normalized = signalName.trim();
+      if (normalized.length > 0 && !isValidHalName(normalized)) {
+        deps.setState("status", `Invalid HAL signal name: ${normalized}`);
+        return;
+      }
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const conn = sheet.directConnections.find((c) => c.id === connectionId);

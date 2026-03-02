@@ -77,6 +77,96 @@ describe("exportProjectToHal connection signal names", () => {
     expect(text).toContain("net auto_net_1 src.out sink.in0");
   });
 
+  it("falls back to auto_net when an explicit signal name is invalid", () => {
+    const project = makeConnectedProject("bad signal name");
+
+    const { text, warnings } = exportProjectToHal(project);
+
+    expect(text).toContain("net auto_net_1 src.out sink.in0");
+    expect(warnings.some((w) => w.includes("Invalid HAL signal name"))).toBe(
+      true,
+    );
+  });
+
+  it("aborts exporting when a net mixes OUT and IO pins", () => {
+    const project = createEmptyProject("OutIo");
+    const sheet = project.sheets[project.rootSheetId];
+    project.library.components["comp:test-out"] = {
+      id: "comp:test-out",
+      name: "out",
+      halComponentName: "out",
+      source: "manual",
+      sourcePath: "tests/components/out.comp",
+      runtime: { kind: "rt" },
+      pins: [{ key: "out", name: "out", direction: "out", type: "bit" }],
+      params: [],
+    };
+    project.library.components["comp:test-io"] = {
+      id: "comp:test-io",
+      name: "io",
+      halComponentName: "io",
+      source: "manual",
+      sourcePath: "tests/components/io.comp",
+      runtime: { kind: "rt" },
+      pins: [{ key: "io", name: "io", direction: "io", type: "bit" }],
+      params: [],
+    };
+    sheet.nodes.push(
+      {
+        id: "node_out",
+        kind: "component",
+        componentId: "comp:test-out",
+        instanceName: "src",
+        position: { x: 0, y: 0 },
+        paramValues: {},
+      },
+      {
+        id: "node_io",
+        kind: "component",
+        componentId: "comp:test-io",
+        instanceName: "shared",
+        position: { x: 200, y: 0 },
+        paramValues: {},
+      },
+      {
+        id: "node_sink",
+        kind: "component",
+        componentId: "comp:test-not",
+        instanceName: "sink",
+        position: { x: 380, y: 0 },
+        paramValues: {},
+      },
+    );
+    project.library.components["comp:test-not"] = {
+      id: "comp:test-not",
+      name: "not",
+      halComponentName: "not",
+      source: "comp",
+      sourcePath: "tests/components/not.comp",
+      runtime: { kind: "rt" },
+      pins: [{ key: "in", name: "in", direction: "in", type: "bit" }],
+      params: [],
+    };
+    sheet.directConnections.push(
+      {
+        id: "conn_out_to_in",
+        a: { kind: "node-pin", nodeId: "node_out", pinKey: "out" },
+        b: { kind: "node-pin", nodeId: "node_sink", pinKey: "in" },
+      },
+      {
+        id: "conn_io_to_in",
+        a: { kind: "node-pin", nodeId: "node_io", pinKey: "io" },
+        b: { kind: "node-pin", nodeId: "node_sink", pinKey: "in" },
+      },
+    );
+
+    const { text, warnings } = exportProjectToHal(project);
+
+    expect(text).toBe("");
+    expect(warnings.some((w) => w.includes("mixes OUT and IO"))).toBe(true);
+    expect(warnings.some((w) => w.includes("Export aborted"))).toBe(true);
+  });
+
   it("emits custom component load strings and skips generated loadrt for those components", () => {
     const project = createEmptyProject("Custom Load Test");
     const sheet = project.sheets[project.rootSheetId];

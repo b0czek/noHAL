@@ -10,6 +10,7 @@ import {
   firstSheetThreadOutputId,
   getSheetThreadOutputs,
 } from "./sheetThreads";
+import { isValidHalName } from "./halNames";
 import type {
   NoHALProject,
   PinDirection,
@@ -81,6 +82,7 @@ interface ExportContext {
   endpoints: Map<string, EndpointRecord>;
   hintsByEndpointId: Map<string, Hint[]>;
   warnings: string[];
+  fatalErrors: string[];
   globalLabelMembers: Map<string, string[]>;
   componentInstances: Array<{
     componentName: string;
@@ -99,10 +101,16 @@ function createExportContext(): ExportContext {
     endpoints: new Map(),
     hintsByEndpointId: new Map(),
     warnings: [],
+    fatalErrors: [],
     globalLabelMembers: new Map(),
     componentInstances: [],
     endpointSeq: 0,
   };
+}
+
+function pushFatal(ctx: ExportContext, message: string): void {
+  ctx.fatalErrors.push(message);
+  ctx.warnings.push(message);
 }
 
 function endpointId(ctx: ExportContext, prefix: string): string {
@@ -244,6 +252,27 @@ function traverseSheetInstance(
   const nextStack = [...sheetStack, sheetId];
   const sheet = getSheet(project, sheetId);
   const localIds = createLocalEndpointIdMap(ctx, project, sheet, pathParts);
+  const duplicateNodeInstanceNames = new Set<string>();
+  const nodeInstanceNames = new Set<string>();
+  for (const node of sheet.nodes) {
+    if (!isValidHalName(node.instanceName)) {
+      pushFatal(
+        ctx,
+        `Node '${node.id}' has invalid HAL instance name '${node.instanceName}'`,
+      );
+    }
+    if (nodeInstanceNames.has(node.instanceName)) {
+      duplicateNodeInstanceNames.add(node.instanceName);
+    } else {
+      nodeInstanceNames.add(node.instanceName);
+    }
+  }
+  for (const name of duplicateNodeInstanceNames) {
+    pushFatal(
+      ctx,
+      `Duplicate instance name '${name}' in sheet '${sheet.name}' can produce ambiguous HAL paths`,
+    );
+  }
 
   for (const node of sheet.nodes) {
     if (node.kind === "component") {
@@ -419,9 +448,27 @@ function buildRuntimeSections(
   const loadOrderList = project.halExport?.loadOrder ?? [];
   const loadOrderIndex = new Map(loadOrderList.map((name, idx) => [name, idx]));
 
-  const allInstances = [...ctx.componentInstances].sort((a, b) =>
-    a.instancePath.localeCompare(b.instancePath),
-  );
+  const seenInstancePaths = new Set<string>();
+  const allInstances = [...ctx.componentInstances]
+    .sort((a, b) => a.instancePath.localeCompare(b.instancePath))
+    .filter((item) => {
+      if (!isValidHalName(item.instancePath)) {
+        pushFatal(
+          ctx,
+          `Skipping runtime export for invalid instance path '${item.instancePath}'`,
+        );
+        return false;
+      }
+      if (seenInstancePaths.has(item.instancePath)) {
+        pushFatal(
+          ctx,
+          `Skipping duplicate runtime instance path '${item.instancePath}'`,
+        );
+        return false;
+      }
+      seenInstancePaths.add(item.instancePath);
+      return true;
+    });
   const customLoadByComponentName = new Map<string, string>();
   for (const item of allInstances) {
     const loadCommand =
@@ -1070,13 +1117,35 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
     const hints = groupMembers.flatMap(
       (id) => ctx.hintsByEndpointId.get(id) ?? [],
     );
-    const netName = chooseNetName(hints, autoIndex++);
+    const fallbackNetName = `auto_net_${autoIndex}`;
+    const candidateNetName = chooseNetName(hints, autoIndex);
+    const netName = isValidHalName(candidateNetName)
+      ? candidateNetName
+      : fallbackNetName;
+    if (netName !== candidateNetName) {
+      ctx.warnings.push(
+        `Invalid HAL signal name '${candidateNetName}'; using fallback '${fallbackNetName}'`,
+      );
+    }
+    autoIndex += 1;
 
     const outputs = leafPins.filter((r) => r.direction === "out");
     if (outputs.length > 1) {
-      ctx.warnings.push(
+      pushFatal(
+        ctx,
         `Multiple output pins share one signal on net '${netName}': ${outputs.map((r) => r.halPinPath).join(", ")}`,
       );
+      continue;
+    }
+    const ios = leafPins.filter((r) => r.direction === "io");
+    if (outputs.length > 0 && ios.length > 0) {
+      pushFatal(
+        ctx,
+        `HAL signal '${netName}' mixes OUT and IO pins: ${[...outputs, ...ios]
+          .map((r) => r.halPinPath)
+          .join(", ")}`,
+      );
+      continue;
     }
 
     const types = new Set(records.map((r) => r.type));
@@ -1085,15 +1154,25 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
         .map(describeEndpointForWarning)
         .sort()
         .join(", ");
-      ctx.warnings.push(
+      pushFatal(
+        ctx,
         `Mixed signal types found during export on net '${netName}': ${Array.from(types).join(", ")}. Endpoints: ${endpointDetails}`,
       );
+      continue;
     }
 
     const sortedLeafs = sortPinsForHal(leafPins);
     const pinPaths = sortedLeafs
       .map((r) => r.halPinPath)
       .filter((v): v is string => Boolean(v));
+    const invalidPinPaths = pinPaths.filter((path) => !isValidHalName(path));
+    if (invalidPinPaths.length > 0) {
+      pushFatal(
+        ctx,
+        `Skipping net '${netName}' with invalid HAL pin paths: ${invalidPinPaths.join(", ")}`,
+      );
+      continue;
+    }
     const netLine = formatNetLine(netName, Array.from(new Set(pinPaths)));
     if (sortedLeafs.some((r) => r.exportStage === "postgui")) {
       postguiNetLines.push(netLine);
@@ -1117,6 +1196,13 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
         const component = project.library.components[node.componentId];
         if (!component) continue;
         const instancePath = [...pathParts, node.instanceName].join(".");
+        if (!isValidHalName(instancePath)) {
+          pushFatal(
+            ctx,
+            `Skipping setp export for invalid instance path '${instancePath}'`,
+          );
+          continue;
+        }
         const setpTargetLines =
           node.exportStage === "postgui" ? postguiSetpLines : mainSetpLines;
         for (const [pinKey, value] of Object.entries(
@@ -1153,6 +1239,15 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
 
   emitParams(project.rootSheetId, []);
   const runtimeSections = buildRuntimeSections(project, ctx);
+  if (ctx.fatalErrors.length > 0) {
+    ctx.warnings.push(
+      `Export aborted due to ${ctx.fatalErrors.length} validation error${ctx.fatalErrors.length === 1 ? "" : "s"}; no HAL output generated.`,
+    );
+    return {
+      text: "",
+      warnings: Array.from(new Set(ctx.warnings)),
+    };
+  }
 
   const lines: string[] = [];
   lines.push(`# NoHAL HAL export`);

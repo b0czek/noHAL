@@ -1,4 +1,5 @@
 import { getSheet } from "../../../../shared/graph";
+import { isValidHalName } from "../../../../shared/halNames";
 import { createId } from "../../../../shared/id";
 import { createSheetPortDraft } from "../../../../shared/project";
 import type {
@@ -183,10 +184,28 @@ export function createNodeActions(deps: EditorStoreActionContext) {
 
     renameNode(nodeId: string, instanceName: string): void {
       const activeSheetId = deps.state.activeSheetId;
+      const trimmed = instanceName.trim();
+      if (!trimmed) return;
+      if (!isValidHalName(trimmed)) {
+        deps.setState("status", `Invalid HAL instance name: ${trimmed}`);
+        return;
+      }
+      const currentSheet = getSheet(deps.state.project, activeSheetId);
+      const currentNode = currentSheet.nodes.find((n) => n.id === nodeId);
+      if (!currentNode || currentNode.instanceName === trimmed) return;
+      if (
+        currentSheet.nodes.some(
+          (n) => n.id !== nodeId && n.instanceName === trimmed,
+        )
+      ) {
+        deps.setState("status", `Instance name already exists: ${trimmed}`);
+        return;
+      }
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const node = sheet.nodes.find((n) => n.id === nodeId);
-        if (node) node.instanceName = instanceName.trim() || node.instanceName;
+        if (!node) return;
+        node.instanceName = trimmed;
       });
     },
 
@@ -262,11 +281,20 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       patch: { name?: string; scope?: LabelScope; rotation?: number },
     ): void {
       const activeSheetId = deps.state.activeSheetId;
+      const normalizedName =
+        patch.name !== undefined ? patch.name.trim() : undefined;
+      if (normalizedName !== undefined && normalizedName.length > 0) {
+        if (!isValidHalName(normalizedName)) {
+          deps.setState("status", `Invalid HAL signal name: ${normalizedName}`);
+          return;
+        }
+      }
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const label = sheet.labels.find((l) => l.id === labelId);
         if (!label) return;
-        if (patch.name !== undefined) label.name = patch.name;
+        if (normalizedName !== undefined && normalizedName.length > 0)
+          label.name = normalizedName;
         if (patch.scope !== undefined) label.scope = patch.scope;
         if (patch.rotation !== undefined) {
           label.rotation = normalizeRotationDegrees(patch.rotation);
@@ -300,11 +328,31 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       },
     ): void {
       const activeSheetId = deps.state.activeSheetId;
+      const normalizedName =
+        patch.name !== undefined ? patch.name.trim() : undefined;
+      if (normalizedName !== undefined && normalizedName.length > 0) {
+        if (!isValidHalName(normalizedName)) {
+          deps.setState("status", `Invalid HAL port name: ${normalizedName}`);
+          return;
+        }
+        const currentSheet = getSheet(deps.state.project, activeSheetId);
+        const duplicate = currentSheet.ports.some(
+          (p) => p.id !== portId && p.name === normalizedName,
+        );
+        if (duplicate) {
+          deps.setState(
+            "status",
+            `Sheet port name already exists: ${normalizedName}`,
+          );
+          return;
+        }
+      }
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const port = sheet.ports.find((p) => p.id === portId);
         if (!port) return;
-        if (patch.name !== undefined) port.name = patch.name;
+        if (normalizedName !== undefined && normalizedName.length > 0)
+          port.name = normalizedName;
         if (patch.direction !== undefined) {
           port.direction = patch.direction;
           port.side = forcedPortSideForDirection(patch.direction);
