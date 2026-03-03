@@ -1,6 +1,8 @@
 import { encoder } from "./linuxcncManualComponents/encoder";
 import { encoderRatio } from "./linuxcncManualComponents/encoder_ratio";
 import { pid } from "./linuxcncManualComponents/pid";
+import { simEncoder } from "./linuxcncManualComponents/sim_encoder";
+import { siggen } from "./linuxcncManualComponents/siggen";
 import type { LinuxCncVersion } from "./linuxcncVersion";
 import type { ImportedComponentDefinition } from "./types";
 
@@ -12,6 +14,8 @@ function manualLinuxCncComponents(
     encoder(version, refName),
     encoderRatio(version, refName),
     pid(version, refName),
+    simEncoder(version, refName),
+    siggen(version, refName),
   ];
 }
 
