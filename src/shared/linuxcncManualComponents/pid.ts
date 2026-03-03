@@ -164,7 +164,7 @@ function pidPins29Plus(): ImportedComponentDefinition["pins"] {
   return [...pidPins28()];
 }
 
-export function manualPidForVersion(
+export function pid(
   version: LinuxCncVersion,
   refName: string,
 ): ImportedComponentDefinition {
