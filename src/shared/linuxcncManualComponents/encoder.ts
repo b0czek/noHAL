@@ -1,7 +1,7 @@
 import type { LinuxCncVersion } from "../linuxcncVersion";
 import type { ImportedComponentDefinition } from "../types";
 
-function encoderPins(): ImportedComponentDefinition["pins"] {
+function encoderPins27(): ImportedComponentDefinition["pins"] {
   return [
     { key: "phase_a", name: "phase-A", direction: "in", type: "bit" },
     { key: "phase_b", name: "phase-B", direction: "in", type: "bit" },
@@ -56,12 +56,6 @@ function encoderPins(): ImportedComponentDefinition["pins"] {
     },
     { key: "velocity", name: "velocity", direction: "out", type: "float" },
     {
-      key: "velocity_rpm",
-      name: "velocity-rpm",
-      direction: "out",
-      type: "float",
-    },
-    {
       key: "position_scale",
       name: "position-scale",
       direction: "io",
@@ -74,6 +68,24 @@ function encoderPins(): ImportedComponentDefinition["pins"] {
       direction: "io",
       type: "bit",
     },
+  ];
+}
+
+function encoderPins28(): ImportedComponentDefinition["pins"] {
+  return [
+    ...encoderPins27(),
+    {
+      key: "velocity_rpm",
+      name: "velocity-rpm",
+      direction: "out",
+      type: "float",
+    },
+  ];
+}
+
+function encoderPins29Plus(): ImportedComponentDefinition["pins"] {
+  return [
+    ...encoderPins28(),
     {
       key: "missing_teeth",
       name: "missing-teeth",
@@ -86,6 +98,7 @@ function encoderPins(): ImportedComponentDefinition["pins"] {
 function makeEncoderBase(
   version: LinuxCncVersion,
   refName: string,
+  pins: ImportedComponentDefinition["pins"],
 ): ImportedComponentDefinition {
   return {
     id: `linuxcnc:${version}:manual:encoder`,
@@ -101,7 +114,7 @@ function makeEncoderBase(
       notes:
         "Exports two functions for all channels: update-counters (nofp) and capture-position (fp).",
     },
-    pins: encoderPins(),
+    pins,
     params: [],
     functions: [
       {
@@ -142,8 +155,9 @@ export function encoder(
   version: LinuxCncVersion,
   refName: string,
 ): ImportedComponentDefinition {
-  if (version === "2.7") return makeEncoderBase("2.7", refName);
-  if (version === "2.8") return makeEncoderBase("2.8", refName);
-  if (version === "2.9") return makeEncoderBase("2.9", refName);
-  return makeEncoderBase("2.10", refName);
+  if (version === "2.7") return makeEncoderBase("2.7", refName, encoderPins27());
+  if (version === "2.8") return makeEncoderBase("2.8", refName, encoderPins28());
+  if (version === "2.9")
+    return makeEncoderBase("2.9", refName, encoderPins29Plus());
+  return makeEncoderBase("2.10", refName, encoderPins29Plus());
 }

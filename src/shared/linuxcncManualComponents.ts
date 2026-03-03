@@ -1,4 +1,5 @@
 import { encoder } from "./linuxcncManualComponents/encoder";
+import { encoderRatio } from "./linuxcncManualComponents/encoder_ratio";
 import { pid } from "./linuxcncManualComponents/pid";
 import type { LinuxCncVersion } from "./linuxcncVersion";
 import type { ImportedComponentDefinition } from "./types";
@@ -7,7 +8,11 @@ function manualLinuxCncComponents(
   version: LinuxCncVersion,
   refName: string,
 ): ImportedComponentDefinition[] {
-  return [encoder(version, refName), pid(version, refName)];
+  return [
+    encoder(version, refName),
+    encoderRatio(version, refName),
+    pid(version, refName),
+  ];
 }
 
 export function mergeManualLinuxCncComponents(
