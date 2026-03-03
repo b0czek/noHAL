@@ -448,9 +448,16 @@ export function parseHalImportDraft(
         }
         continue;
       }
-      const count = Number.parseInt(args.count ?? "", 10);
-      if (Number.isFinite(count) && count > 0) {
-        for (let i = 0; i < count; i += 1) {
+      const countArg = Number.parseInt(args.count ?? "", 10);
+      const numChanArg = Number.parseInt(args.num_chan ?? "", 10);
+      const countLike =
+        Number.isFinite(countArg) && countArg > 0
+          ? countArg
+          : Number.isFinite(numChanArg) && numChanArg > 0
+            ? numChanArg
+            : undefined;
+      if (countLike !== undefined) {
+        for (let i = 0; i < countLike; i += 1) {
           const instanceName = `${componentName}.${i}`;
           knownInstances.add(instanceName);
           ensureInstanceRecord(instances, instanceName, componentName, "rt");

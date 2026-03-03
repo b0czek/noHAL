@@ -88,7 +88,11 @@ export function validateDirectConnection(
   for (const key of visited) {
     const endpoint = endpointByKey.get(key);
     if (!endpoint) continue;
-    const direction = resolveEndpointInSheet(project, sheetId, endpoint).direction;
+    const direction = resolveEndpointInSheet(
+      project,
+      sheetId,
+      endpoint,
+    ).direction;
     if (direction === "out") outCount += 1;
     else if (direction === "io") ioCount += 1;
   }

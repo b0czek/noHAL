@@ -1087,7 +1087,9 @@ export class KonvaSheetScene {
     };
 
     const nodePositions = collectEntries(session.nodeStartPositions.entries());
-    const labelPositions = collectEntries(session.labelStartPositions.entries());
+    const labelPositions = collectEntries(
+      session.labelStartPositions.entries(),
+    );
     const portPositions = collectEntries(session.portStartPositions.entries());
 
     if (this.callbacks.onMoveSelectionGroup) {

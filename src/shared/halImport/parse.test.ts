@@ -43,6 +43,35 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
     ).toEqual(["aa", "ab"]);
   });
 
+  it("parses loadrt num_chan=... for non-.comp modules like pid", () => {
+    const draft = parseHal(`
+      loadrt pid num_chan=3
+      addf pid.2.do-pid-calcs servo-thread
+    `);
+    const groups = new Map(
+      draft.componentGroups.map((group) => [
+        group.inferredHalComponentName,
+        group,
+      ]),
+    );
+
+    expect(groups.get("pid")).toMatchObject({
+      inferredHalComponentName: "pid",
+      runtimeHint: "rt",
+    });
+    expect(
+      groups.get("pid")?.instances.map((instance) => instance.instanceName),
+    ).toEqual(["pid.0", "pid.1", "pid.2"]);
+    expect(draft.addfs).toContainEqual({
+      line: 2,
+      functionName: "pid.2.do-pid-calcs",
+      instanceName: "pid.2",
+      functionSuffix: "do-pid-calcs",
+      isDefaultFunction: false,
+      thread: "servo-thread",
+    });
+  });
+
   it("parses documented net forms with optional arrows and repeated signal names while inferring endpoint directions", () => {
     const { draft, groups } = groupByComponentName(`
       loadrt stepgen count=1

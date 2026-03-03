@@ -30,7 +30,6 @@ export interface HalExportComponentAddfRule {
 }
 
 export interface HalExportComponentRule {
-  loadCombine?: "names" | "separate";
   loadOrderPriority?: number;
   loadrtArgs?: string[];
   addf?: HalExportComponentAddfRule;

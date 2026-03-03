@@ -53,6 +53,9 @@ export interface ComponentDefinition {
   functions?: ComponentFunctionDefinition[];
   runtime?: {
     kind: "rt" | "userspace" | "unknown";
+    loadrt?: {
+      strategy?: "names_or_count" | "names_or_num_chan";
+    };
     options?: Record<string, string | number | boolean>;
   };
 }

@@ -1,3 +1,4 @@
+import { mergeManualLinuxCncComponents } from "../shared/linuxcncManualComponents";
 import type { LinuxCncVersion } from "../shared/linuxcncVersion";
 import type { ImportedComponentDefinition } from "../shared/types";
 import store27 from "./linuxcncStores/2.7/store.json";
@@ -17,8 +18,36 @@ export const LINUXCNC_VERSION_STORES: Record<
   LinuxCncVersion,
   LinuxCncVersionStoreData
 > = {
-  "2.7": store27 as unknown as LinuxCncVersionStoreData,
-  "2.8": store28 as unknown as LinuxCncVersionStoreData,
-  "2.9": store29 as unknown as LinuxCncVersionStoreData,
-  "2.10": store210 as unknown as LinuxCncVersionStoreData,
+  "2.7": {
+    ...(store27 as unknown as LinuxCncVersionStoreData),
+    components: mergeManualLinuxCncComponents(
+      "2.7",
+      (store27 as unknown as LinuxCncVersionStoreData).refName,
+      (store27 as unknown as LinuxCncVersionStoreData).components,
+    ),
+  },
+  "2.8": {
+    ...(store28 as unknown as LinuxCncVersionStoreData),
+    components: mergeManualLinuxCncComponents(
+      "2.8",
+      (store28 as unknown as LinuxCncVersionStoreData).refName,
+      (store28 as unknown as LinuxCncVersionStoreData).components,
+    ),
+  },
+  "2.9": {
+    ...(store29 as unknown as LinuxCncVersionStoreData),
+    components: mergeManualLinuxCncComponents(
+      "2.9",
+      (store29 as unknown as LinuxCncVersionStoreData).refName,
+      (store29 as unknown as LinuxCncVersionStoreData).components,
+    ),
+  },
+  "2.10": {
+    ...(store210 as unknown as LinuxCncVersionStoreData),
+    components: mergeManualLinuxCncComponents(
+      "2.10",
+      (store210 as unknown as LinuxCncVersionStoreData).refName,
+      (store210 as unknown as LinuxCncVersionStoreData).components,
+    ),
+  },
 };

@@ -6,11 +6,12 @@ import {
   makeAddfQueueSubsheetOutputEntry,
 } from "./addfQueue";
 import { getNodePins, getSheet, invertDirection } from "./graph";
+import { interpolateLoadrt } from "./halExportLoadrt";
+import { isValidHalName } from "./halNames";
 import {
   firstSheetThreadOutputId,
   getSheetThreadOutputs,
 } from "./sheetThreads";
-import { isValidHalName } from "./halNames";
 import type {
   NoHALProject,
   PinDirection,
@@ -637,7 +638,6 @@ function buildRuntimeSections(
 
   for (const [componentName, items] of sortedRtGroups) {
     const rule = rules[componentName];
-    const combine = rule?.loadCombine ?? "names";
     const extraArgs = (rule?.loadrtArgs ?? [])
       .map((arg) => `${arg}`.trim())
       .filter(Boolean);
@@ -654,15 +654,20 @@ function buildRuntimeSections(
     const sortedNames = items
       .map((item) => item.instancePath)
       .sort((a, b) => a.localeCompare(b));
-    if (combine === "separate") {
-      for (const instanceName of sortedNames) {
-        const args = [`names=${instanceName}`, ...extraArgs];
-        loadrtLines.push(`loadrt ${componentName} ${args.join(" ")}`.trim());
-      }
-      continue;
+    const component =
+      items.length > 0
+        ? project.library.components[items[0]?.componentId]
+        : undefined;
+    const loadrtResult = interpolateLoadrt({
+      componentName,
+      instancePaths: sortedNames,
+      extraArgs,
+      runtime: component?.runtime,
+    });
+    loadrtLines.push(...loadrtResult.lines);
+    if (loadrtResult.warnings?.length) {
+      ctx.warnings.push(...loadrtResult.warnings);
     }
-    const args = [`names=${sortedNames.join(",")}`, ...extraArgs];
-    loadrtLines.push(`loadrt ${componentName} ${args.join(" ")}`.trim());
   }
 
   const runtimeSummaryLines: string[] = [];
@@ -1257,9 +1262,6 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
   lines.push(`# Project: ${project.name}`);
   lines.push(`#`);
   lines.push(`# Notes:`);
-  lines.push(
-    `# - loadrt is generated for RT components using names=... grouping (override via project.halExport.componentRules).`,
-  );
   lines.push(
     `# - components with component.loadCommand emit that line verbatim and skip generated loadrt for that component.`,
   );

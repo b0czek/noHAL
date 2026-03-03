@@ -4,6 +4,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { parseCompComponentDefinition } from "../src/shared/compParser.ts";
+import { mergeManualLinuxCncComponents } from "../src/shared/linuxcncManualComponents.ts";
 import type { ImportedComponentDefinition } from "../src/shared/types/index.ts";
 
 const SUPPORTED_VERSIONS = ["2.7", "2.8", "2.9", "2.10"] as const;
@@ -198,7 +199,11 @@ function buildVersionStore(
       refName,
       revision,
       generatedAt: nowIso,
-      components: dedupeByName(compComponents),
+      components: mergeManualLinuxCncComponents(
+        version,
+        refName,
+        dedupeByName(compComponents),
+      ),
     },
     stats: {
       compFiles: compFiles.length,
