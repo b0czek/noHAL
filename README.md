@@ -93,20 +93,18 @@ Reference grammar used during implementation:
 
 ## Project Layout
 
-- `src/main/` Electron main process, project IO, component store, IPC handlers
-- `src/preload/` renderer API bridge (`window.nohal`)
-- `src/renderer/` SolidJS UI, Konva canvas/editor, dialogs, state
-- `src/shared/` project types/schema, HAL import/export, `.comp` parser, validation
+- `apps/desktop/` Electron desktop application package
+- `apps/desktop/src/main/` Electron main process, project IO, component store, IPC handlers
+- `apps/desktop/src/preload/` renderer API bridge (`window.nohal`)
+- `apps/desktop/src/renderer/` SolidJS UI, Konva canvas/editor, dialogs, state
+- `packages/core/src/` shared project types/schema, HAL import/export, `.comp` parser, validation
 
 ## Development
 
 ```bash
-cd noHAL
 pnpm install
 pnpm dev
 ```
-
-Alternative (works too): `npm install && npm run dev`
 
 Useful scripts:
 

@@ -7,7 +7,16 @@ settings:
 importers:
 
   .:
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.4.4
+        version: 2.4.4
+
+  apps/desktop:
     dependencies:
+      '@nohal/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       konva:
         specifier: ^9.3.18
         version: 9.3.22
@@ -18,9 +27,6 @@ importers:
         specifier: ^1.9.4
         version: 1.9.11
     devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.4.4
-        version: 2.4.4
       '@types/node':
         specifier: ^22.13.4
         version: 22.19.11
@@ -39,6 +45,18 @@ importers:
       vite-plugin-solid:
         specifier: ^2.11.2
         version: 2.11.10(solid-js@1.9.11)(vite@6.4.1(@types/node@22.19.11))
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@22.19.11)
+
+  packages/core:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.4
+        version: 22.19.11
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/node@22.19.11)

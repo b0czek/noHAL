@@ -1,38 +1,21 @@
 {
-  "name": "nohal",
-  "version": "0.1.0",
-  "description": "Visual HAL IDE for LinuxCNC",
+  "name": "nohal-workspace",
   "private": true,
-  "type": "module",
-  "main": "out/main/index.js",
+  "version": "0.1.0",
+  "description": "NoHAL monorepo",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
-    "preview": "electron-vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "generate:linuxcnc-stores": "pnpm exec ts-node --esm scripts/generate-linuxcnc-stores.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "dev": "pnpm --filter @nohal/desktop dev",
+    "build": "pnpm --filter @nohal/desktop build",
+    "preview": "pnpm --filter @nohal/desktop preview",
+    "test": "pnpm -r test",
+    "test:watch": "pnpm --filter @nohal/desktop test:watch",
+    "generate:linuxcnc-stores": "pnpm --filter @nohal/desktop generate:linuxcnc-stores",
+    "typecheck": "pnpm -r typecheck",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
-    "version:patch": "pnpm version patch --no-git-tag-version",
-    "version:minor": "pnpm version minor --no-git-tag-version",
-    "version:major": "pnpm version major --no-git-tag-version"
-  },
-  "dependencies": {
-    "konva": "^9.3.18",
-    "solid-icons": "^1.2.0",
-    "solid-js": "^1.9.4"
+    "format": "biome format --write ."
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.4",
-    "@types/node": "^22.13.4",
-    "electron": "^36.2.1",
-    "electron-vite": "^3.1.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.3",
-    "vite-plugin-solid": "^2.11.2",
-    "vitest": "^3.2.4"
+    "@biomejs/biome": "^2.4.4"
   }
 }
