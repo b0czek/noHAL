@@ -59,12 +59,16 @@ export function registerIpcHandlers(): void {
       const project = createEmptyProject("NoHAL Project");
       project.target.linuxcncVersion =
         normalizeLinuxCncVersion(linuxcncVersion);
-      const res = await dialog.showSaveDialog({
-        title: "Create NoHAL Project Folder",
+      const res = await dialog.showOpenDialog({
+        title: "Select New NoHAL Project Folder",
         defaultPath: `${project.name || "project"}.nohal`,
+        properties: ["openDirectory", "createDirectory"],
       });
-      if (res.canceled || !res.filePath) return null;
-      const projectPath = await writeProjectDirectory(project, res.filePath);
+      if (res.canceled || res.filePaths.length === 0) return null;
+      const projectPath = await writeProjectDirectory(
+        project,
+        res.filePaths[0],
+      );
       await touchRecentProject(projectPath, project.name);
       return { project, projectPath };
     },
@@ -94,12 +98,13 @@ export function registerIpcHandlers(): void {
     async (_evt, project: NoHALProject, projectPath?: string | null) => {
       let target = projectPath ?? null;
       if (!target) {
-        const res = await dialog.showSaveDialog({
-          title: "Save NoHAL Project Folder",
+        const res = await dialog.showOpenDialog({
+          title: "Select NoHAL Project Folder",
           defaultPath: `${project.name || "project"}.nohal`,
+          properties: ["openDirectory", "createDirectory"],
         });
-        if (res.canceled || !res.filePath) return null;
-        target = res.filePath;
+        if (res.canceled || res.filePaths.length === 0) return null;
+        target = res.filePaths[0];
       }
 
       const savedProjectPath = await writeProjectDirectory(project, target);
