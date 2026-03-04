@@ -52,7 +52,6 @@ export function registerIpcHandlers(): void {
         normalizeLinuxCncVersion(linuxcncVersion);
       const res = await dialog.showOpenDialog({
         title: "Select New NoHAL Project Folder",
-        defaultPath: `${project.name || "project"}.nohal`,
         properties: ["openDirectory", "createDirectory"],
       });
       if (res.canceled || res.filePaths.length === 0) return null;
@@ -91,7 +90,6 @@ export function registerIpcHandlers(): void {
       if (!target) {
         const res = await dialog.showOpenDialog({
           title: "Select NoHAL Project Folder",
-          defaultPath: `${project.name || "project"}.nohal`,
           properties: ["openDirectory", "createDirectory"],
         });
         if (res.canceled || res.filePaths.length === 0) return null;
