@@ -1,13 +1,4 @@
-import {
-  lstat,
-  mkdir,
-  readdir,
-  readFile,
-  rename,
-  unlink,
-  writeFile,
-} from "node:fs/promises";
-import path from "node:path";
+import corePackageJson from "../package.json";
 import {
   NOHAL_PROJECT_DIR_FORMAT,
   NOHAL_PROJECT_DIR_VERSION,
@@ -15,23 +6,40 @@ import {
   NOHAL_PROJECT_LIBRARY_FILE_VERSION,
   NOHAL_PROJECT_SHEET_FILE_FORMAT,
   NOHAL_PROJECT_SHEET_FILE_VERSION,
-} from "@nohal/core/src/fileFormats";
-import { slugify } from "@nohal/core/src/id";
-import { parseNoHALProject } from "@nohal/core/src/project";
+} from "./fileFormats";
+import { slugify } from "./id";
+import { parseNoHALProject } from "./project";
 import type {
+  CoreIo,
   NoHALProject,
   ProjectLibrary,
   SheetDefinition,
-} from "@nohal/core/src/types";
-import packageJson from "../../package.json";
+} from "./types";
 
 const PROJECT_DIR_MANIFEST_FILENAME = "project.nohal.json";
 const CURRENT_PROJECT_DIR_VERSION = NOHAL_PROJECT_DIR_VERSION;
 const PROJECT_LIBRARY_FILENAME = "library.nohal.json";
 const SHEETS_DIRNAME = "sheets";
 const SHEET_FILE_SUFFIX = ".nohal-sheet.json";
-const NOHAL_APP_VERSION =
-  typeof packageJson.version === "string" ? packageJson.version : "0.0.0";
+const NOHAL_CORE_VERSION =
+  typeof corePackageJson.version === "string"
+    ? corePackageJson.version
+    : "0.0.0";
+
+export interface ProjectPersistenceOptions {
+  savedWith?: string;
+}
+
+export interface ProjectDirectoryApi {
+  readProjectPath(
+    projectPath: string,
+  ): Promise<{ project: NoHALProject; projectPath: string }>;
+  writeProjectDirectory(
+    project: NoHALProject,
+    targetPath: string,
+    options?: ProjectPersistenceOptions,
+  ): Promise<string>;
+}
 
 type ProjectWithoutSheetsAndLibrary = Omit<NoHALProject, "sheets" | "library">;
 
@@ -71,20 +79,22 @@ let atomicWriteCounter = 0;
 
 function atomicTempPathFor(filePath: string): string {
   atomicWriteCounter += 1;
-  return `${filePath}.tmp-${process.pid}-${Date.now()}-${atomicWriteCounter}`;
+  const randomSuffix = Math.random().toString(36).slice(2, 10);
+  return `${filePath}.tmp-${Date.now()}-${atomicWriteCounter}-${randomSuffix}`;
 }
 
 async function writeFileAtomic(
+  io: CoreIo,
   filePath: string,
   content: string,
 ): Promise<void> {
   const tempPath = atomicTempPathFor(filePath);
   try {
-    await writeFile(tempPath, content, "utf8");
-    await rename(tempPath, filePath);
+    await io.fs.writeTextFile(tempPath, content);
+    await io.fs.renamePath(tempPath, filePath);
   } catch (error) {
     try {
-      await unlink(tempPath);
+      await io.fs.removeFile(tempPath);
     } catch {
       // Best-effort cleanup only; original error should be preserved.
     }
@@ -198,20 +208,24 @@ function createPersistedProjectLibrary(project: NoHALProject): ProjectLibrary {
 
 function createProjectLibraryFile(
   library: ProjectLibrary,
+  options?: ProjectPersistenceOptions,
 ): NoHALProjectLibraryFile {
   return {
     format: NOHAL_PROJECT_LIBRARY_FILE_FORMAT,
     version: NOHAL_PROJECT_LIBRARY_FILE_VERSION,
-    savedWith: NOHAL_APP_VERSION,
+    savedWith: options?.savedWith,
     library,
   };
 }
 
-function createProjectSheetFile(sheet: SheetDefinition): NoHALProjectSheetFile {
+function createProjectSheetFile(
+  sheet: SheetDefinition,
+  options?: ProjectPersistenceOptions,
+): NoHALProjectSheetFile {
   return {
     format: NOHAL_PROJECT_SHEET_FILE_FORMAT,
     version: NOHAL_PROJECT_SHEET_FILE_VERSION,
-    savedWith: NOHAL_APP_VERSION,
+    savedWith: options?.savedWith,
     sheet,
   };
 }
@@ -221,18 +235,23 @@ function sheetFileNameForSheet(sheet: SheetDefinition): string {
   return `${slugify(sheet.name)}__${fileId}${SHEET_FILE_SUFFIX}`;
 }
 
-function normalizeProjectDirectoryTarget(targetPath: string): string {
-  const resolved = path.resolve(targetPath);
-  const baseName = path.basename(resolved);
-  if (baseName === PROJECT_DIR_MANIFEST_FILENAME) return path.dirname(resolved);
+function normalizeProjectDirectoryTarget(
+  io: CoreIo,
+  targetPath: string,
+): string {
+  const resolved = io.path.resolve(targetPath);
+  const baseName = io.path.basename(resolved);
+  if (baseName === PROJECT_DIR_MANIFEST_FILENAME)
+    return io.path.dirname(resolved);
   return resolved;
 }
 
 async function readProjectDirectoryManifest(
+  io: CoreIo,
   projectDir: string,
 ): Promise<NoHALProjectDirManifest> {
-  const manifestPath = path.join(projectDir, PROJECT_DIR_MANIFEST_FILENAME);
-  const content = await readFile(manifestPath, "utf8");
+  const manifestPath = io.path.join(projectDir, PROJECT_DIR_MANIFEST_FILENAME);
+  const content = await io.fs.readTextFile(manifestPath);
   const parsed = JSON.parse(content) as unknown;
   if (!isProjectDirManifest(parsed)) {
     throw new Error(`Invalid project manifest: ${manifestPath}`);
@@ -241,12 +260,13 @@ async function readProjectDirectoryManifest(
 }
 
 async function readProjectDirectory(
+  io: CoreIo,
   projectDir: string,
   manifest?: NoHALProjectDirManifest,
 ): Promise<{ project: NoHALProject; projectPath: string }> {
-  const normalizedProjectDir = path.resolve(projectDir);
+  const normalizedProjectDir = io.path.resolve(projectDir);
   const dirManifest =
-    manifest ?? (await readProjectDirectoryManifest(normalizedProjectDir));
+    manifest ?? (await readProjectDirectoryManifest(io, normalizedProjectDir));
 
   const sheets: Record<string, SheetDefinition> = {};
 
@@ -262,8 +282,8 @@ async function readProjectDirectory(
     ) {
       throw new Error(`Invalid sheet file path: ${sheetRef.file}`);
     }
-    const sheetPath = path.join(normalizedProjectDir, ...relativeParts);
-    const content = await readFile(sheetPath, "utf8");
+    const sheetPath = io.path.join(normalizedProjectDir, ...relativeParts);
+    const content = await io.fs.readTextFile(sheetPath);
     const parsed = JSON.parse(content) as unknown;
     const sheet = parseProjectSheetFile(parsed, sheetPath);
     if (sheet.id !== sheetRef.id) {
@@ -275,8 +295,11 @@ async function readProjectDirectory(
     sheets[sheetRef.id] = sheet;
   }
 
-  const libraryPath = path.join(normalizedProjectDir, dirManifest.libraryFile);
-  const libraryContent = await readFile(libraryPath, "utf8");
+  const libraryPath = io.path.join(
+    normalizedProjectDir,
+    dirManifest.libraryFile,
+  );
+  const libraryContent = await io.fs.readTextFile(libraryPath);
   const parsedLibrary = parseProjectLibraryFile(
     JSON.parse(libraryContent) as unknown,
     libraryPath,
@@ -295,6 +318,7 @@ async function readProjectDirectory(
 
 function createProjectDirManifest(
   project: NoHALProject,
+  options?: ProjectPersistenceOptions,
 ): NoHALProjectDirManifest {
   const {
     sheets,
@@ -304,7 +328,7 @@ function createProjectDirManifest(
   return {
     format: NOHAL_PROJECT_DIR_FORMAT,
     version: CURRENT_PROJECT_DIR_VERSION,
-    savedWith: NOHAL_APP_VERSION,
+    savedWith: options?.savedWith,
     project: projectWithoutSheetsAndLibrary,
     libraryFile: PROJECT_LIBRARY_FILENAME,
     sheets: Object.keys(sheets)
@@ -322,71 +346,102 @@ function createProjectDirManifest(
   };
 }
 
-export async function readProjectPath(
-  projectPath: string,
-): Promise<{ project: NoHALProject; projectPath: string }> {
-  const normalizedProjectPath = path.resolve(projectPath);
-  const stat = await lstat(normalizedProjectPath);
+export const readProjectPath =
+  (io: CoreIo) =>
+  async (
+    projectPath: string,
+  ): Promise<{ project: NoHALProject; projectPath: string }> => {
+    const normalizedProjectPath = io.path.resolve(projectPath);
+    const stat = await io.fs.lstat(normalizedProjectPath);
 
-  if (stat.isDirectory()) {
-    return readProjectDirectory(normalizedProjectPath);
-  }
-
-  if (path.basename(normalizedProjectPath) !== PROJECT_DIR_MANIFEST_FILENAME) {
-    throw new Error(
-      `Expected a NoHAL project directory or ${PROJECT_DIR_MANIFEST_FILENAME}`,
-    );
-  }
-
-  const content = await readFile(normalizedProjectPath, "utf8");
-  const parsed = JSON.parse(content) as unknown;
-  if (!isProjectDirManifest(parsed)) {
-    throw new Error(`Invalid project manifest: ${normalizedProjectPath}`);
-  }
-  return readProjectDirectory(path.dirname(normalizedProjectPath), parsed);
-}
-
-export async function writeProjectDirectory(
-  project: NoHALProject,
-  targetPath: string,
-): Promise<string> {
-  const projectDir = normalizeProjectDirectoryTarget(targetPath);
-  const sheetsDir = path.join(projectDir, SHEETS_DIRNAME);
-  const manifestPath = path.join(projectDir, PROJECT_DIR_MANIFEST_FILENAME);
-  const libraryPath = path.join(projectDir, PROJECT_LIBRARY_FILENAME);
-  const manifest = createProjectDirManifest(project);
-  const persistedLibrary = createPersistedProjectLibrary(project);
-
-  await mkdir(projectDir, { recursive: true });
-  await mkdir(sheetsDir, { recursive: true });
-
-  for (const sheetRef of manifest.sheets) {
-    const sheet = project.sheets[sheetRef.id];
-    if (!sheet) {
-      throw new Error(`Missing sheet in project: ${sheetRef.id}`);
+    if (stat.isDirectory()) {
+      return readProjectDirectory(io, normalizedProjectPath);
     }
-    const sheetFilePath = path.join(sheetsDir, path.basename(sheetRef.file));
-    await writeFileAtomic(
-      sheetFilePath,
-      stringifyJson(createProjectSheetFile(sheet)),
-    );
-  }
-  await writeFileAtomic(
-    libraryPath,
-    stringifyJson(createProjectLibraryFile(persistedLibrary)),
-  );
-  // Manifest is the commit point for the multi-file project save.
-  await writeFileAtomic(manifestPath, stringifyJson(manifest));
 
-  const expectedSheetFiles = new Set(
-    manifest.sheets.map((sheetRef) => path.basename(sheetRef.file)),
-  );
-  const existingEntries = await readdir(sheetsDir, { withFileTypes: true });
-  for (const entry of existingEntries) {
-    if (!entry.isFile()) continue;
-    if (!entry.name.endsWith(SHEET_FILE_SUFFIX)) continue;
-    if (expectedSheetFiles.has(entry.name)) continue;
-    await unlink(path.join(sheetsDir, entry.name));
-  }
-  return projectDir;
+    if (
+      io.path.basename(normalizedProjectPath) !== PROJECT_DIR_MANIFEST_FILENAME
+    ) {
+      throw new Error(
+        `Expected a NoHAL project directory or ${PROJECT_DIR_MANIFEST_FILENAME}`,
+      );
+    }
+
+    const content = await io.fs.readTextFile(normalizedProjectPath);
+    const parsed = JSON.parse(content) as unknown;
+    if (!isProjectDirManifest(parsed)) {
+      throw new Error(`Invalid project manifest: ${normalizedProjectPath}`);
+    }
+    return readProjectDirectory(
+      io,
+      io.path.dirname(normalizedProjectPath),
+      parsed,
+    );
+  };
+
+export const writeProjectDirectory =
+  (io: CoreIo) =>
+  async (
+    project: NoHALProject,
+    targetPath: string,
+    options?: ProjectPersistenceOptions,
+  ): Promise<string> => {
+    const persistenceOptions: ProjectPersistenceOptions = {
+      savedWith: options?.savedWith ?? NOHAL_CORE_VERSION,
+    };
+    const projectDir = normalizeProjectDirectoryTarget(io, targetPath);
+    const sheetsDir = io.path.join(projectDir, SHEETS_DIRNAME);
+    const manifestPath = io.path.join(
+      projectDir,
+      PROJECT_DIR_MANIFEST_FILENAME,
+    );
+    const libraryPath = io.path.join(projectDir, PROJECT_LIBRARY_FILENAME);
+    const manifest = createProjectDirManifest(project, persistenceOptions);
+    const persistedLibrary = createPersistedProjectLibrary(project);
+
+    await io.fs.makeDir(projectDir, { recursive: true });
+    await io.fs.makeDir(sheetsDir, { recursive: true });
+
+    for (const sheetRef of manifest.sheets) {
+      const sheet = project.sheets[sheetRef.id];
+      if (!sheet) {
+        throw new Error(`Missing sheet in project: ${sheetRef.id}`);
+      }
+      const sheetFilePath = io.path.join(
+        sheetsDir,
+        io.path.basename(sheetRef.file),
+      );
+      await writeFileAtomic(
+        io,
+        sheetFilePath,
+        stringifyJson(createProjectSheetFile(sheet, persistenceOptions)),
+      );
+    }
+    await writeFileAtomic(
+      io,
+      libraryPath,
+      stringifyJson(
+        createProjectLibraryFile(persistedLibrary, persistenceOptions),
+      ),
+    );
+    // Manifest is the commit point for the multi-file project save.
+    await writeFileAtomic(io, manifestPath, stringifyJson(manifest));
+
+    const expectedSheetFiles = new Set(
+      manifest.sheets.map((sheetRef) => io.path.basename(sheetRef.file)),
+    );
+    const existingEntries = await io.fs.readDir(sheetsDir);
+    for (const entry of existingEntries) {
+      if (!entry.isFile()) continue;
+      if (!entry.name.endsWith(SHEET_FILE_SUFFIX)) continue;
+      if (expectedSheetFiles.has(entry.name)) continue;
+      await io.fs.removeFile(io.path.join(sheetsDir, entry.name));
+    }
+    return projectDir;
+  };
+
+export function createProjectDirectoryApi(io: CoreIo): ProjectDirectoryApi {
+  return {
+    readProjectPath: readProjectPath(io),
+    writeProjectDirectory: writeProjectDirectory(io),
+  };
 }

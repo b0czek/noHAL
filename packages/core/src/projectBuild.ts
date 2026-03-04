@@ -1,16 +1,15 @@
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
 import {
   NOHAL_BUILD_MANIFEST_FORMAT,
   NOHAL_BUILD_MANIFEST_VERSION,
-} from "@nohal/core/src/fileFormats";
-import { exportProjectToHal } from "@nohal/core/src/halExport";
-import { slugify } from "@nohal/core/src/id";
+} from "./fileFormats";
+import { exportProjectToHal } from "./halExport";
+import { slugify } from "./id";
 import type {
+  CoreIo,
   LinuxCncIniDocument,
   LinuxCncIniEntry,
   NoHALProject,
-} from "@nohal/core/src/types";
+} from "./types";
 
 interface GeneratedBuildFile {
   relativePath: string;
@@ -29,6 +28,13 @@ export interface ProjectBuildResult {
   warnings: string[];
 }
 
+export interface ProjectBuildApi {
+  buildProjectIntoDirectory(
+    project: NoHALProject,
+    projectDir: string,
+  ): Promise<ProjectBuildResult>;
+}
+
 const BUILD_MANIFEST_FILENAME = ".nohal-build-manifest.json";
 
 function normalizeBuildWarnings(warnings: string[]): string[] {
@@ -45,14 +51,16 @@ function formatIniEntry(entry: LinuxCncIniEntry): string {
   return `${entry.key} = ${entry.value}`;
 }
 
-function buildIniFileName(project: NoHALProject): string {
-  const fallback = `${slugify(project.name)}.ini`;
-  const sourceFileName = project.machineConfig?.ini.sourceFileName?.trim();
-  if (!sourceFileName) return fallback;
-  const base = path.basename(sourceFileName).trim();
-  if (!base || base === "." || base === "..") return fallback;
-  return base.toLowerCase().endsWith(".ini") ? base : `${base}.ini`;
-}
+const buildIniFileName =
+  (io: CoreIo) =>
+  (project: NoHALProject): string => {
+    const fallback = `${slugify(project.name)}.ini`;
+    const sourceFileName = project.machineConfig?.ini.sourceFileName?.trim();
+    if (!sourceFileName) return fallback;
+    const base = io.path.basename(sourceFileName).trim();
+    if (!base || base === "." || base === "..") return fallback;
+    return base.toLowerCase().endsWith(".ini") ? base : `${base}.ini`;
+  };
 
 function buildHalFileName(project: NoHALProject): string {
   return `${slugify(project.name)}.hal`;
@@ -172,63 +180,67 @@ function buildIniTextWithGeneratedHal(
   return `${lines.join("\n")}\n`;
 }
 
-function createGeneratedBuildFiles(project: NoHALProject): {
-  files: GeneratedBuildFile[];
-  warnings: string[];
-} {
-  const warnings: string[] = [];
-  const files: GeneratedBuildFile[] = [];
-  const mainHalFileName = buildHalFileName(project);
-  const postguiHalFileName = buildPostguiHalFileName(project);
+const createGeneratedBuildFiles =
+  (io: CoreIo) =>
+  (
+    project: NoHALProject,
+  ): {
+    files: GeneratedBuildFile[];
+    warnings: string[];
+  } => {
+    const warnings: string[] = [];
+    const files: GeneratedBuildFile[] = [];
+    const mainHalFileName = buildHalFileName(project);
+    const postguiHalFileName = buildPostguiHalFileName(project);
 
-  const hal = exportProjectToHal(project);
-  warnings.push(...hal.warnings);
-  files.push({
-    relativePath: mainHalFileName,
-    content: hal.text,
-  });
-  if (hal.postguiText) {
+    const hal = exportProjectToHal(project);
+    warnings.push(...hal.warnings);
     files.push({
-      relativePath: postguiHalFileName,
-      content: hal.postguiText,
+      relativePath: mainHalFileName,
+      content: hal.text,
     });
-  }
+    if (hal.postguiText) {
+      files.push({
+        relativePath: postguiHalFileName,
+        content: hal.postguiText,
+      });
+    }
 
-  const machineConfig = project.machineConfig;
-  const ini = machineConfig?.ini;
-  if (!ini || ini.sections.length === 0) {
-    warnings.push(
-      hal.postguiText
-        ? "Build output contains generated HAL and postgui HAL only (no imported machine INI is available in this project)."
-        : "Build output contains generated HAL only (no imported machine INI is available in this project).",
+    const machineConfig = project.machineConfig;
+    const ini = machineConfig?.ini;
+    if (!ini || ini.sections.length === 0) {
+      warnings.push(
+        hal.postguiText
+          ? "Build output contains generated HAL and postgui HAL only (no imported machine INI is available in this project)."
+          : "Build output contains generated HAL only (no imported machine INI is available in this project).",
+      );
+      return { files, warnings: normalizeBuildWarnings(warnings) };
+    }
+
+    const unsupportedSources = machineConfig.halSources.filter(
+      (source) =>
+        source.status === "missing" ||
+        source.status === "skipped-lib" ||
+        source.status === "skipped-non-hal",
     );
+    if (unsupportedSources.length > 0) {
+      warnings.push(
+        `Imported machine config had ${unsupportedSources.length} HAL source reference${unsupportedSources.length === 1 ? "" : "s"} that are not reproduced as separate build outputs.`,
+      );
+    }
+
+    files.push({
+      relativePath: buildIniFileName(io)(project),
+      content: buildIniTextWithGeneratedHal(
+        ini,
+        mainHalFileName,
+        hal.postguiText ? postguiHalFileName : null,
+        warnings,
+      ),
+    });
+
     return { files, warnings: normalizeBuildWarnings(warnings) };
-  }
-
-  const unsupportedSources = machineConfig.halSources.filter(
-    (source) =>
-      source.status === "missing" ||
-      source.status === "skipped-lib" ||
-      source.status === "skipped-non-hal",
-  );
-  if (unsupportedSources.length > 0) {
-    warnings.push(
-      `Imported machine config had ${unsupportedSources.length} HAL source reference${unsupportedSources.length === 1 ? "" : "s"} that are not reproduced as separate build outputs.`,
-    );
-  }
-
-  files.push({
-    relativePath: buildIniFileName(project),
-    content: buildIniTextWithGeneratedHal(
-      ini,
-      mainHalFileName,
-      hal.postguiText ? postguiHalFileName : null,
-      warnings,
-    ),
-  });
-
-  return { files, warnings: normalizeBuildWarnings(warnings) };
-}
+  };
 
 function assertSafeRelativeBuildPath(relativePath: string): void {
   const normalized = relativePath.replace(/\\/g, "/");
@@ -253,77 +265,86 @@ function isBuildManifestLike(value: unknown): value is BuildManifest {
   );
 }
 
-async function readBuildManifest(
-  buildDir: string,
-): Promise<BuildManifest | null> {
-  const manifestPath = path.join(buildDir, BUILD_MANIFEST_FILENAME);
-  try {
-    const text = await readFile(manifestPath, "utf8");
-    const parsed = JSON.parse(text) as unknown;
-    return isBuildManifestLike(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-async function removeStaleGeneratedFiles(
-  buildDir: string,
-  nextRelativePaths: Set<string>,
-): Promise<void> {
-  const previousManifest = await readBuildManifest(buildDir);
-  if (!previousManifest) return;
-
-  for (const relativePath of previousManifest.files) {
+const readBuildManifest =
+  (io: CoreIo) =>
+  async (buildDir: string): Promise<BuildManifest | null> => {
+    const manifestPath = io.path.join(buildDir, BUILD_MANIFEST_FILENAME);
     try {
-      assertSafeRelativeBuildPath(relativePath);
+      const text = await io.fs.readTextFile(manifestPath);
+      const parsed = JSON.parse(text) as unknown;
+      return isBuildManifestLike(parsed) ? parsed : null;
     } catch {
-      continue;
+      return null;
     }
-    if (nextRelativePaths.has(relativePath)) continue;
-    try {
-      await unlink(path.join(buildDir, relativePath));
-    } catch {
-      // Best-effort cleanup; build should still succeed.
+  };
+
+const removeStaleGeneratedFiles =
+  (io: CoreIo) =>
+  async (buildDir: string, nextRelativePaths: Set<string>): Promise<void> => {
+    const previousManifest = await readBuildManifest(io)(buildDir);
+    if (!previousManifest) return;
+
+    for (const relativePath of previousManifest.files) {
+      try {
+        assertSafeRelativeBuildPath(relativePath);
+      } catch {
+        continue;
+      }
+      if (nextRelativePaths.has(relativePath)) continue;
+      try {
+        await io.fs.removeFile(io.path.join(buildDir, relativePath));
+      } catch {
+        // Best-effort cleanup; build should still succeed.
+      }
     }
-  }
-}
+  };
 
-export async function buildProjectIntoDirectory(
-  project: NoHALProject,
-  projectDir: string,
-): Promise<ProjectBuildResult> {
-  const buildDir = path.join(path.resolve(projectDir), "build");
-  await mkdir(buildDir, { recursive: true });
+export const buildProjectIntoDirectory = (io: CoreIo) => {
+  const createGeneratedBuildFilesWithIo = createGeneratedBuildFiles(io);
+  const removeStaleGeneratedFilesWithIo = removeStaleGeneratedFiles(io);
 
-  const generated = createGeneratedBuildFiles(project);
-  const writtenFiles: string[] = [];
-  const nextRelativePaths = new Set(
-    generated.files.map((file) => file.relativePath),
-  );
+  return async (
+    project: NoHALProject,
+    projectDir: string,
+  ): Promise<ProjectBuildResult> => {
+    const buildDir = io.path.join(io.path.resolve(projectDir), "build");
+    await io.fs.makeDir(buildDir, { recursive: true });
 
-  await removeStaleGeneratedFiles(buildDir, nextRelativePaths);
+    const generated = createGeneratedBuildFilesWithIo(project);
+    const writtenFiles: string[] = [];
+    const nextRelativePaths = new Set(
+      generated.files.map((file) => file.relativePath),
+    );
 
-  for (const file of generated.files) {
-    assertSafeRelativeBuildPath(file.relativePath);
-    const outputPath = path.join(buildDir, file.relativePath);
-    await mkdir(path.dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, file.content, "utf8");
-    writtenFiles.push(outputPath);
-  }
+    await removeStaleGeneratedFilesWithIo(buildDir, nextRelativePaths);
 
-  await writeFile(
-    path.join(buildDir, BUILD_MANIFEST_FILENAME),
-    stringifyJson({
-      format: NOHAL_BUILD_MANIFEST_FORMAT,
-      version: NOHAL_BUILD_MANIFEST_VERSION,
-      files: generated.files.map((file) => file.relativePath),
-    } satisfies BuildManifest),
-    "utf8",
-  );
+    for (const file of generated.files) {
+      assertSafeRelativeBuildPath(file.relativePath);
+      const outputPath = io.path.join(buildDir, file.relativePath);
+      await io.fs.makeDir(io.path.dirname(outputPath), { recursive: true });
+      await io.fs.writeTextFile(outputPath, file.content);
+      writtenFiles.push(outputPath);
+    }
 
+    await io.fs.writeTextFile(
+      io.path.join(buildDir, BUILD_MANIFEST_FILENAME),
+      stringifyJson({
+        format: NOHAL_BUILD_MANIFEST_FORMAT,
+        version: NOHAL_BUILD_MANIFEST_VERSION,
+        files: generated.files.map((file) => file.relativePath),
+      } satisfies BuildManifest),
+    );
+
+    return {
+      buildDir,
+      files: writtenFiles,
+      warnings: generated.warnings,
+    };
+  };
+};
+
+export function createProjectBuildApi(io: CoreIo): ProjectBuildApi {
   return {
-    buildDir,
-    files: writtenFiles,
-    warnings: generated.warnings,
+    buildProjectIntoDirectory: buildProjectIntoDirectory(io),
   };
 }

@@ -2,6 +2,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { parseCompComponentDefinition } from "../../../packages/core/src/compParser.ts";
 import { mergeManualLinuxCncComponents } from "../../../packages/core/src/linuxcncManualComponents.ts";
@@ -9,6 +10,8 @@ import type { ImportedComponentDefinition } from "../../../packages/core/src/typ
 
 const SUPPORTED_VERSIONS = ["2.7", "2.8", "2.9", "2.10"] as const;
 const REPO_ARG_PREFIX = "--repo=";
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const WORKSPACE_ROOT = path.resolve(SCRIPT_DIR, "../../..");
 
 type SupportedVersion = (typeof SUPPORTED_VERSIONS)[number];
 
@@ -43,7 +46,7 @@ function runGit(repoPath: string, args: string[]): string {
 function findRepoPath(): string {
   const arg = process.argv.find((item) => item.startsWith(REPO_ARG_PREFIX));
   if (arg) return path.resolve(arg.slice(REPO_ARG_PREFIX.length));
-  return path.resolve(process.cwd(), "..", "linuxcnc");
+  return path.resolve(WORKSPACE_ROOT, "..", "linuxcnc");
 }
 
 function listTags(repoPath: string, pattern: string): string[] {
@@ -214,7 +217,10 @@ function buildVersionStore(
 
 function main(): void {
   const repoPath = findRepoPath();
-  const outputDir = path.resolve(process.cwd(), "src/main/linuxcncStores");
+  const outputDir = path.resolve(
+    WORKSPACE_ROOT,
+    "packages/core/src/linuxcncStores",
+  );
   mkdirSync(outputDir, { recursive: true });
 
   for (const version of SUPPORTED_VERSIONS) {

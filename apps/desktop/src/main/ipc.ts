@@ -7,21 +7,12 @@ import type {
   NoHALProject,
 } from "@nohal/core/src/types";
 import { BrowserWindow, dialog, ipcMain } from "electron";
+import { componentStore } from "./componentStore";
 import {
-  addComponentDirSourceToStore,
-  deleteComponentSourceFromStore,
-  readComponentStoreFile,
-  refreshComponentSourceInStore,
-  refreshStoredCompEntry,
-  saveParsedCompFileToStore,
-  scanCompDirectory,
-} from "./componentStore";
-import {
-  buildMachineConfigImportDraft,
-  parseMachineConfigImportSetupDraft,
-} from "./machineConfigImport";
-import { buildProjectIntoDirectory } from "./projectBuild";
-import { readProjectPath, writeProjectDirectory } from "./projects";
+  machineConfigImport,
+  projectBuild,
+  projectDirectory,
+} from "./coreWrappers";
 import { listRecentProjects, touchRecentProject } from "./recentProjects";
 import {
   promptUnsavedChangesChoice,
@@ -65,7 +56,7 @@ export function registerIpcHandlers(): void {
         properties: ["openDirectory", "createDirectory"],
       });
       if (res.canceled || res.filePaths.length === 0) return null;
-      const projectPath = await writeProjectDirectory(
+      const projectPath = await projectDirectory.writeProjectDirectory(
         project,
         res.filePaths[0],
       );
@@ -82,13 +73,13 @@ export function registerIpcHandlers(): void {
       properties: ["openDirectory"],
     });
     if (res.canceled || res.filePaths.length === 0) return null;
-    const result = await readProjectPath(res.filePaths[0]);
+    const result = await projectDirectory.readProjectPath(res.filePaths[0]);
     await touchRecentProject(result.projectPath, result.project.name);
     return result;
   });
 
   ipcMain.handle("nohal:open-project-at", async (_evt, projectPath: string) => {
-    const result = await readProjectPath(projectPath);
+    const result = await projectDirectory.readProjectPath(projectPath);
     await touchRecentProject(result.projectPath, result.project.name);
     return result;
   });
@@ -107,7 +98,10 @@ export function registerIpcHandlers(): void {
         target = res.filePaths[0];
       }
 
-      const savedProjectPath = await writeProjectDirectory(project, target);
+      const savedProjectPath = await projectDirectory.writeProjectDirectory(
+        project,
+        target,
+      );
       await touchRecentProject(savedProjectPath, project.name);
       return { projectPath: savedProjectPath };
     },
@@ -116,7 +110,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     "nohal:build-project",
     async (_evt, project: NoHALProject, projectPath: string) =>
-      buildProjectIntoDirectory(project, projectPath),
+      projectBuild.buildProjectIntoDirectory(project, projectPath),
   );
 
   ipcMain.handle("nohal:pick-machine-ini-file", async () => {
@@ -126,7 +120,9 @@ export function registerIpcHandlers(): void {
       filters: [{ name: "INI File", extensions: ["ini"] }],
     });
     if (res.canceled || res.filePaths.length === 0) return null;
-    return parseMachineConfigImportSetupDraft(res.filePaths[0]);
+    return machineConfigImport.parseMachineConfigImportSetupDraft(
+      res.filePaths[0],
+    );
   });
 
   ipcMain.handle("nohal:pick-machine-hal-file", async () => {
@@ -142,11 +138,11 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     "nohal:build-machine-configuration-import",
     async (_evt, iniPath: string, halFiles: MachineConfigHalFileSelection[]) =>
-      buildMachineConfigImportDraft(iniPath, halFiles),
+      machineConfigImport.buildMachineConfigImportDraft(iniPath, halFiles),
   );
 
   ipcMain.handle("nohal:load-component-store", async () =>
-    readComponentStoreFile(),
+    componentStore.readComponentStoreFile(),
   );
 
   ipcMain.handle("nohal:import-comp-file", async () => {
@@ -169,7 +165,7 @@ export function registerIpcHandlers(): void {
       filters: [{ name: "HAL Component", extensions: ["comp"] }],
     });
     if (res.canceled || res.filePaths.length === 0) return null;
-    return saveParsedCompFileToStore(res.filePaths[0]);
+    return componentStore.saveParsedCompFileToStore(res.filePaths[0]);
   });
 
   ipcMain.handle(
@@ -186,26 +182,29 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle("nohal:scan-comp-dir", async (_evt, dirPath: string) =>
-    scanCompDirectory(dirPath),
+    componentStore.scanCompDirectory(dirPath),
   );
 
   ipcMain.handle("nohal:add-comp-dir-source-to-store", async () =>
-    addComponentDirSourceToStore(),
+    componentStore.addComponentDirSourceToStore(),
   );
 
   ipcMain.handle(
     "nohal:refresh-component-source-in-store",
-    async (_evt, sourceId: string) => refreshComponentSourceInStore(sourceId),
+    async (_evt, sourceId: string) =>
+      componentStore.refreshComponentSourceInStore(sourceId),
   );
 
   ipcMain.handle(
     "nohal:delete-component-source-from-store",
-    async (_evt, sourceId: string) => deleteComponentSourceFromStore(sourceId),
+    async (_evt, sourceId: string) =>
+      componentStore.deleteComponentSourceFromStore(sourceId),
   );
 
   ipcMain.handle(
     "nohal:refresh-component-in-store",
-    async (_evt, componentId: string) => refreshStoredCompEntry(componentId),
+    async (_evt, componentId: string) =>
+      componentStore.refreshStoredCompEntry(componentId),
   );
 
   ipcMain.handle("nohal:read-text-file", async (_evt, filePath: string) =>

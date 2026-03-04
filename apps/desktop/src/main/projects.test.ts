@@ -8,6 +8,7 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import corePackageJson from "@nohal/core/package.json";
 import {
   NOHAL_PROJECT_DIR_FORMAT,
   NOHAL_PROJECT_DIR_VERSION,
@@ -19,12 +20,13 @@ import {
 import { createEmptyProject, createSheet } from "@nohal/core/src/project";
 import type { NoHALProject } from "@nohal/core/src/types";
 import { afterEach, describe, expect, it } from "vitest";
-import packageJson from "../../package.json";
-import { readProjectPath, writeProjectDirectory } from "./projects";
+import { projectDirectory } from "./coreWrappers";
 
 const tempDirs: string[] = [];
 const NOHAL_APP_VERSION =
-  typeof packageJson.version === "string" ? packageJson.version : "0.0.0";
+  typeof corePackageJson.version === "string"
+    ? corePackageJson.version
+    : "0.0.0";
 
 async function makeTempDir(prefix = "nohal-projects-test-"): Promise<string> {
   const dir = await mkdtemp(path.join(os.tmpdir(), prefix));
@@ -93,7 +95,10 @@ describe("projects persistence (directory format)", () => {
     const baseDir = await makeTempDir();
     const targetDir = path.join(baseDir, "machine.nohal");
 
-    const savedPath = await writeProjectDirectory(project, targetDir);
+    const savedPath = await projectDirectory.writeProjectDirectory(
+      project,
+      targetDir,
+    );
 
     expect(savedPath).toBe(targetDir);
 
@@ -177,8 +182,8 @@ describe("projects persistence (directory format)", () => {
     const baseDir = await makeTempDir();
     const targetDir = path.join(baseDir, "roundtrip.nohal");
 
-    await writeProjectDirectory(project, targetDir);
-    const loaded = await readProjectPath(targetDir);
+    await projectDirectory.writeProjectDirectory(project, targetDir);
+    const loaded = await projectDirectory.readProjectPath(targetDir);
 
     expect(loaded.projectPath).toBe(targetDir);
     expect(loaded.project).toEqual(project);
@@ -227,9 +232,9 @@ describe("projects persistence (directory format)", () => {
       );
     }
 
-    await expect(readProjectPath(targetDir)).rejects.toThrowError(
-      /Invalid project manifest/,
-    );
+    await expect(
+      projectDirectory.readProjectPath(targetDir),
+    ).rejects.toThrowError(/Invalid project manifest/);
   });
 
   it("round-trips when opening from the manifest file path", async () => {
@@ -237,8 +242,8 @@ describe("projects persistence (directory format)", () => {
     const baseDir = await makeTempDir();
     const targetDir = path.join(baseDir, "manifest-open.nohal");
 
-    await writeProjectDirectory(project, targetDir);
-    const loaded = await readProjectPath(
+    await projectDirectory.writeProjectDirectory(project, targetDir);
+    const loaded = await projectDirectory.readProjectPath(
       path.join(targetDir, "project.nohal.json"),
     );
 
@@ -251,7 +256,7 @@ describe("projects persistence (directory format)", () => {
     const baseDir = await makeTempDir();
     const targetDir = path.join(baseDir, "prune.nohal");
 
-    await writeProjectDirectory(project, targetDir);
+    await projectDirectory.writeProjectDirectory(project, targetDir);
 
     const [childSheetId] = Object.keys(project.sheets).filter(
       (sheetId) => sheetId !== project.rootSheetId,
@@ -265,7 +270,7 @@ describe("projects persistence (directory format)", () => {
       ),
     };
 
-    await writeProjectDirectory(nextProject, targetDir);
+    await projectDirectory.writeProjectDirectory(nextProject, targetDir);
 
     const sheetFiles = await readdir(path.join(targetDir, "sheets"));
     expect(sheetFiles).toHaveLength(1);
@@ -283,8 +288,8 @@ describe("projects persistence (directory format)", () => {
       "utf8",
     );
 
-    await expect(readProjectPath(manifestPath)).rejects.toThrowError(
-      /Invalid project manifest/,
-    );
+    await expect(
+      projectDirectory.readProjectPath(manifestPath),
+    ).rejects.toThrowError(/Invalid project manifest/);
   });
 });

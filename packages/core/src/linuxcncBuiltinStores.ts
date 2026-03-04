@@ -1,10 +1,10 @@
-import { mergeManualLinuxCncComponents } from "@nohal/core/src/linuxcncManualComponents";
-import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
-import type { ImportedComponentDefinition } from "@nohal/core/src/types";
+import { mergeManualLinuxCncComponents } from "./linuxcncManualComponents";
 import store27 from "./linuxcncStores/2.7/store.json";
 import store28 from "./linuxcncStores/2.8/store.json";
 import store29 from "./linuxcncStores/2.9/store.json";
 import store210 from "./linuxcncStores/2.10/store.json";
+import type { LinuxCncVersion } from "./linuxcncVersion";
+import type { ImportedComponentDefinition } from "./types";
 
 interface LinuxCncVersionStoreData {
   version: LinuxCncVersion;
