@@ -1,5 +1,6 @@
 import Canvas from "../components/Canvas";
 import ComponentNodeDialog from "../components/ComponentNodeDialog";
+import ComponentSearchDialog from "../components/ComponentSearchDialog";
 import ComponentStoreDialog from "../components/ComponentStoreDialog";
 import Inspector from "../components/Inspector";
 import SheetSettingsDialog from "../components/SheetSettingsDialog";
@@ -38,6 +39,7 @@ function EditorScreenContent(props: EditorScreenProps) {
       <StatusBar />
 
       <ComponentNodeDialog />
+      <ComponentSearchDialog />
       <ComponentStoreDialog />
       <ProjectSettingsDialog />
       <SheetSettingsDialog />

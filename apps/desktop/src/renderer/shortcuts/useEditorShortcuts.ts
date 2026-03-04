@@ -20,6 +20,11 @@ export function useEditorShortcuts(): void {
   onMount(() => {
     const onKeyDown = (evt: KeyboardEvent) => {
       if (evt.key === "Escape") {
+        if (editorUi.isComponentSearchOpen()) {
+          evt.preventDefault();
+          editorUi.closeComponentSearch();
+          return;
+        }
         if (editorUi.componentEditorNodeId() !== null) {
           evt.preventDefault();
           editorUi.closeComponentEditor();
@@ -46,8 +51,22 @@ export function useEditorShortcuts(): void {
       const primaryModifier = evt.ctrlKey || evt.metaKey;
       if (!primaryModifier || evt.altKey) return;
 
+      const isFindInSheet = key === "f" && !evt.shiftKey;
+      const isFindInProject = key === "f" && evt.shiftKey;
       const isUndo = key === "z" && !evt.shiftKey;
       const isRedo = key === "y" || (key === "z" && evt.shiftKey);
+
+      if (isFindInSheet) {
+        evt.preventDefault();
+        editorUi.openComponentSearch("sheet");
+        return;
+      }
+
+      if (isFindInProject) {
+        evt.preventDefault();
+        editorUi.openComponentSearch("project");
+        return;
+      }
 
       if (isUndo) {
         if (!actions.undo()) return;

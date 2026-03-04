@@ -285,6 +285,23 @@ export class KonvaSheetScene {
     return this.clampPos(this.screenToWorld(screen));
   }
 
+  focusNode(nodeId: string): boolean {
+    const node = this.nodeGroups.get(nodeId);
+    const layout = this.nodeLayouts.get(nodeId);
+    if (!node || !layout) return false;
+
+    const position = node.position();
+    const center = {
+      x: position.x + layout.width / 2,
+      y: position.y + layout.height / 2,
+    };
+    this.camera.x = this.stage.width() / 2 - center.x * this.camera.scale;
+    this.camera.y = this.stage.height() / 2 - center.y * this.camera.scale;
+    this.applyCamera();
+    if (this.lastState?.pendingEndpoint) this.redrawWires();
+    return true;
+  }
+
   private clampPos(pos: { x: number; y: number }): { x: number; y: number } {
     const minX = -SCENE_POSITION_PADDING;
     const minY = -SCENE_POSITION_PADDING;

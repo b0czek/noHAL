@@ -74,6 +74,16 @@ export const en = {
   "canvasComponentMenu.itemTitle": "{name} ({pins} pins)",
   "canvasComponentMenu.itemMeta": "{source} • {pins} pins",
 
+  "componentSearch.ariaLabel": "Component Search",
+  "componentSearch.title": "Find Component",
+  "componentSearch.subtitle": "Scope: {scope}",
+  "componentSearch.scope.sheet": "Current sheet",
+  "componentSearch.scope.project": "Whole project",
+  "componentSearch.placeholder": "Search component instances in {scope}...",
+  "componentSearch.resultsCount": "{count} match(es)",
+  "componentSearch.sheetMeta": "Sheet: {sheet}",
+  "componentSearch.noResults": "No matching components.",
+
   "componentDialog.ariaLabel": "Component Settings",
   "componentDialog.title": "Component Settings",
   "componentDialog.instance": "Instance",

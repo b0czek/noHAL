@@ -9,6 +9,14 @@ import {
 } from "solid-js";
 import { useEditorStore } from "./EditorStoreProvider";
 
+export type ComponentSearchScope = "sheet" | "project";
+
+type NodeFocusRequest = {
+  requestId: number;
+  sheetId: string;
+  nodeId: string;
+};
+
 function createEditorUiState() {
   const { state, actions } = useEditorStore();
   const [componentEditorNodeId, setComponentEditorNodeId] = createSignal<
@@ -19,6 +27,11 @@ function createEditorUiState() {
   const [sheetSettingsSheetId, setSheetSettingsSheetId] = createSignal<
     string | null
   >(null);
+  const [componentSearchScope, setComponentSearchScope] =
+    createSignal<ComponentSearchScope | null>(null);
+  const [nodeFocusRequest, setNodeFocusRequest] =
+    createSignal<NodeFocusRequest | null>(null);
+  let nextNodeFocusRequestId = 1;
 
   const currentSheet = createMemo(() =>
     getSheet(state.project, state.activeSheetId),
@@ -90,6 +103,22 @@ function createEditorUiState() {
     closeProjectSettings: () => setIsProjectSettingsOpen(false),
     openSheetSettings: (sheetId: string) => setSheetSettingsSheetId(sheetId),
     closeSheetSettings: () => setSheetSettingsSheetId(null),
+    componentSearchScope,
+    isComponentSearchOpen: () => componentSearchScope() !== null,
+    openComponentSearch: (scope: ComponentSearchScope) =>
+      setComponentSearchScope(scope),
+    closeComponentSearch: () => setComponentSearchScope(null),
+    nodeFocusRequest,
+    requestNodeFocus: (sheetId: string, nodeId: string) =>
+      setNodeFocusRequest({
+        requestId: nextNodeFocusRequestId++,
+        sheetId,
+        nodeId,
+      }),
+    consumeNodeFocusRequest: (requestId: number) =>
+      setNodeFocusRequest((current) =>
+        current?.requestId === requestId ? null : current,
+      ),
   };
 }
 
