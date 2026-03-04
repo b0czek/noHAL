@@ -1,5 +1,5 @@
-import type { LinuxCncVersion } from "../linuxcncVersion";
-import type { ImportedComponentDefinition } from "../types";
+import type { LinuxCncVersion } from "../../../linuxcncVersion";
+import type { ImportedComponentDefinition } from "../../../types";
 
 function simEncoderPins(): ImportedComponentDefinition["pins"] {
   return [

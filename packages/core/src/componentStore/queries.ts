@@ -1,5 +1,5 @@
-import type { LinuxCncVersion } from "./linuxcncVersion";
-import type { ComponentStore, ComponentStoreEntry } from "./types";
+import type { LinuxCncVersion } from "../linuxcncVersion";
+import type { ComponentStore, ComponentStoreEntry } from "../types";
 
 export function isStoreEntryCompatibleWithLinuxCncVersion(
   componentStore: ComponentStore,

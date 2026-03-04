@@ -1,4 +1,4 @@
-import { listStoreEntriesForLinuxCncVersion } from "../componentStoreFilter";
+import { listStoreEntriesForLinuxCncVersion } from "../componentStore";
 import type { LinuxCncVersion } from "../linuxcncVersion";
 import type {
   ComponentStore,

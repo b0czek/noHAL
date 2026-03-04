@@ -3,13 +3,10 @@ import {
   normalizeAddfQueueEntries,
 } from "@nohal/core/src/addfQueue";
 import {
+  createEmptyComponentStore,
   isStoreEntryCompatibleWithLinuxCncVersion,
   listStoreEntriesForLinuxCncVersion,
-} from "@nohal/core/src/componentStoreFilter";
-import {
-  NOHAL_COMPONENT_STORE_FORMAT,
-  NOHAL_COMPONENT_STORE_VERSION,
-} from "@nohal/core/src/fileFormats";
+} from "@nohal/core/src/componentStore";
 import { endpointKey } from "@nohal/core/src/graph";
 import { slugify } from "@nohal/core/src/id";
 import type {
@@ -22,6 +19,8 @@ import type {
   XY,
 } from "@nohal/core/src/types";
 import { unwrap } from "solid-js/store";
+
+export { createEmptyComponentStore };
 
 export function cloneProject(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
@@ -39,15 +38,6 @@ export function normalizeRotationDegrees(value: number): number {
   if (!Number.isFinite(value)) return 0;
   const normalized = value % 360;
   return Object.is(normalized, -0) ? 0 : normalized;
-}
-
-export function createEmptyComponentStore(): ComponentStore {
-  return {
-    format: NOHAL_COMPONENT_STORE_FORMAT,
-    version: NOHAL_COMPONENT_STORE_VERSION,
-    sources: {},
-    components: {},
-  };
 }
 
 export function applyComponentStoreToProject(

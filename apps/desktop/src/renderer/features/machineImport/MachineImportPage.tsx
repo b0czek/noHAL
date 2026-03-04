@@ -1,4 +1,4 @@
-import { listStoreEntriesForLinuxCncVersion } from "@nohal/core/src/componentStoreFilter";
+import { listStoreEntriesForLinuxCncVersion } from "@nohal/core/src/componentStore";
 import type { HalImportPlacementHeuristic } from "@nohal/core/src/types";
 import {
   HiOutlineFolderOpen,

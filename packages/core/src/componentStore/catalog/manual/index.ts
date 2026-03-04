@@ -1,10 +1,10 @@
-import { encoder } from "./linuxcncManualComponents/encoder";
-import { encoderRatio } from "./linuxcncManualComponents/encoder_ratio";
-import { pid } from "./linuxcncManualComponents/pid";
-import { siggen } from "./linuxcncManualComponents/siggen";
-import { simEncoder } from "./linuxcncManualComponents/sim_encoder";
-import type { LinuxCncVersion } from "./linuxcncVersion";
-import type { ImportedComponentDefinition } from "./types";
+import { encoder } from "./encoder";
+import { encoderRatio } from "./encoder_ratio";
+import { pid } from "./pid";
+import { siggen } from "./siggen";
+import { simEncoder } from "./sim_encoder";
+import type { LinuxCncVersion } from "../../../linuxcncVersion";
+import type { ImportedComponentDefinition } from "../../../types";
 
 function manualLinuxCncComponents(
   version: LinuxCncVersion,

@@ -11,7 +11,7 @@
     "preview": "electron-vite preview",
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
-    "generate:linuxcnc-stores": "pnpm exec ts-node --esm scripts/generate-linuxcnc-stores.ts",
+    "generate:linuxcnc-stores": "pnpm --filter @nohal/core generate:linuxcnc-stores",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
@@ -24,7 +24,6 @@
     "@types/node": "^22.13.4",
     "electron": "^36.2.1",
     "electron-vite": "^3.1.0",
-    "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
     "vite-plugin-solid": "^2.11.2",
     "vitest": "^3.2.4"

@@ -4,9 +4,9 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseCompComponentDefinition } from "../../../packages/core/src/compParser.ts";
-import { mergeManualLinuxCncComponents } from "../../../packages/core/src/linuxcncManualComponents.ts";
-import type { ImportedComponentDefinition } from "../../../packages/core/src/types/index.ts";
+import { parseCompComponentDefinition } from "../src/compParser.ts";
+import { mergeManualLinuxCncComponents } from "../src/componentStore/catalog/manual/index.ts";
+import type { ImportedComponentDefinition } from "../src/types/index.ts";
 
 const SUPPORTED_VERSIONS = ["2.7", "2.8", "2.9", "2.10"] as const;
 const REPO_ARG_PREFIX = "--repo=";
@@ -219,7 +219,7 @@ function main(): void {
   const repoPath = findRepoPath();
   const outputDir = path.resolve(
     WORKSPACE_ROOT,
-    "packages/core/src/linuxcncStores",
+    "packages/core/src/componentStore/catalog/generated",
   );
   mkdirSync(outputDir, { recursive: true });
 

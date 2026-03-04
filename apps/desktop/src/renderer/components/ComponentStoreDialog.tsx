@@ -1,7 +1,7 @@
 import {
   listStoreEntriesForLinuxCncVersion,
   listStoreSourcesForLinuxCncVersion,
-} from "@nohal/core/src/componentStoreFilter";
+} from "@nohal/core/src/componentStore";
 import type { ComponentStore } from "@nohal/core/src/types";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
