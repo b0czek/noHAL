@@ -16,7 +16,10 @@ function siggenPins27(): ImportedComponentDefinition["pins"] {
 }
 
 function siggenPins28Plus(): ImportedComponentDefinition["pins"] {
-  return [...siggenPins27(), { key: "reset", name: "reset", direction: "in", type: "bit" }];
+  return [
+    ...siggenPins27(),
+    { key: "reset", name: "reset", direction: "in", type: "bit" },
+  ];
 }
 
 function makeSiggenBase(

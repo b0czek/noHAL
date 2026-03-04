@@ -155,8 +155,10 @@ export function encoder(
   version: LinuxCncVersion,
   refName: string,
 ): ImportedComponentDefinition {
-  if (version === "2.7") return makeEncoderBase("2.7", refName, encoderPins27());
-  if (version === "2.8") return makeEncoderBase("2.8", refName, encoderPins28());
+  if (version === "2.7")
+    return makeEncoderBase("2.7", refName, encoderPins27());
+  if (version === "2.8")
+    return makeEncoderBase("2.8", refName, encoderPins28());
   if (version === "2.9")
     return makeEncoderBase("2.9", refName, encoderPins29Plus());
   return makeEncoderBase("2.10", refName, encoderPins29Plus());

@@ -1,4 +1,5 @@
 import { slugify } from "../id";
+import { interpolateLoadrtImport } from "../loadrt";
 import type {
   HalImportComponentGroup,
   HalImportDraft,
@@ -417,54 +418,21 @@ export function parseHalImportDraft(
       }
       rememberLoadCommand(componentName, line.text, line.line);
       const args = parseKeyValueArgs(tokens.slice(2));
-      if (componentName === "motmod") {
-        const parseIntArg = (key: string): number | undefined => {
-          const value = Number.parseInt(args[key] ?? "", 10);
-          return Number.isFinite(value) ? value : undefined;
-        };
-        const numJoints = parseIntArg("num_joints");
-        const numDio = parseIntArg("num_dio");
-        const numAio = parseIntArg("num_aio");
-        const numSpindles = parseIntArg("num_spindles");
-        const numMiscError = parseIntArg("num_misc_error");
-        const trajPeriodNs = parseIntArg("traj_period_nsec");
-        motmodDraft = {
-          ...(motmodDraft ?? {}),
-          ...(numJoints !== undefined ? { numJoints } : {}),
-          ...(numDio !== undefined ? { numDio } : {}),
-          ...(numAio !== undefined ? { numAio } : {}),
-          ...(numSpindles !== undefined ? { numSpindles } : {}),
-          ...(numMiscError !== undefined ? { numMiscError } : {}),
-          ...(trajPeriodNs !== undefined ? { trajPeriodNs } : {}),
-        };
-      }
-      const namesArg = args.names?.trim();
-      if (namesArg) {
-        for (const rawName of namesArg.split(",")) {
-          const instanceName = rawName.trim();
-          if (!instanceName) continue;
-          knownInstances.add(instanceName);
-          ensureInstanceRecord(instances, instanceName, componentName, "rt");
+      const loadrtImport = interpolateLoadrtImport({ componentName, args });
+      for (const event of loadrtImport.events ?? []) {
+        if (event.topic === "project.motmod" && event.payload) {
+          motmodDraft = {
+            ...(motmodDraft ?? {}),
+            ...(event.payload as HalImportDraft["motmod"]),
+          };
         }
-        continue;
       }
-      const countArg = Number.parseInt(args.count ?? "", 10);
-      const numChanArg = Number.parseInt(args.num_chan ?? "", 10);
-      const countLike =
-        Number.isFinite(countArg) && countArg > 0
-          ? countArg
-          : Number.isFinite(numChanArg) && numChanArg > 0
-            ? numChanArg
-            : undefined;
-      if (countLike !== undefined) {
-        for (let i = 0; i < countLike; i += 1) {
-          const instanceName = `${componentName}.${i}`;
-          knownInstances.add(instanceName);
-          ensureInstanceRecord(instances, instanceName, componentName, "rt");
+      if (loadrtImport.warnings?.length) {
+        for (const warning of loadrtImport.warnings) {
+          warnings.push(`Line ${line.line}: ${warning}`);
         }
-      } else {
-        // Single loadrt instances are canonically represented as component.0.
-        const instanceName = `${componentName}.0`;
+      }
+      for (const instanceName of loadrtImport.instancePaths) {
         knownInstances.add(instanceName);
         ensureInstanceRecord(instances, instanceName, componentName, "rt");
       }
