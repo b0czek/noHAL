@@ -144,6 +144,8 @@ function normalizeMotmodConfig(value: unknown): ProjectMotmodConfig {
 
 export function createEmptyProject(name: string): NoHALProject {
   const top = createDefaultTopSheet();
+  const halThreads = createDefaultHalThreads();
+
   return {
     format: NOHAL_PROJECT_FORMAT,
     version: NOHAL_PROJECT_VERSION,
@@ -159,7 +161,7 @@ export function createEmptyProject(name: string): NoHALProject {
     library: {
       components: {},
     },
-    halThreads: createDefaultHalThreads(),
+    halThreads,
     machineConfig: createEmptyMachineConfig(),
     motmod: createDefaultMotmodConfig(),
     ui: {
