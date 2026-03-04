@@ -2,6 +2,7 @@ import {
   addfQueueEntryNodeId,
   normalizeAddfQueueEntries,
 } from "@nohal/core/src/addfQueue";
+import { resolveComponentPinsForInstance } from "@nohal/core/src/componentInstance";
 import {
   createEmptyComponentStore,
   isStoreEntryCompatibleWithLinuxCncVersion,
@@ -109,7 +110,14 @@ export function reconcileComponentNodesForDefinition(
   component: ComponentDefinition,
 ): void {
   const validParamKeys = new Set(component.params.map((param) => param.key));
-  const validPinKeys = new Set(component.pins.map((pin) => pin.key));
+  const validInstanceConfigKeys = new Set(
+    (component.runtime?.instanceConfig?.fields ?? []).map((field) => field.key),
+  );
+  const defaultInstanceConfigValues = Object.fromEntries(
+    (component.runtime?.instanceConfig?.fields ?? [])
+      .filter((field) => field.defaultValue !== undefined)
+      .map((field) => [field.key, `${field.defaultValue ?? ""}`]),
+  );
   const defaultParams = Object.fromEntries(
     component.params
       .filter((param) => param.defaultValue !== undefined)
@@ -129,6 +137,26 @@ export function reconcileComponentNodesForDefinition(
       }
       node.paramValues = nextValues;
 
+      const nextInstanceConfigValues: Record<string, string> = {};
+      for (const [key, value] of Object.entries(node.instanceConfigValues ?? {})) {
+        if (validInstanceConfigKeys.has(key)) nextInstanceConfigValues[key] = value;
+      }
+      for (const [key, value] of Object.entries(defaultInstanceConfigValues)) {
+        if (!(key in nextInstanceConfigValues))
+          nextInstanceConfigValues[key] = value;
+      }
+      if (Object.keys(nextInstanceConfigValues).length > 0) {
+        node.instanceConfigValues = nextInstanceConfigValues;
+      } else {
+        delete node.instanceConfigValues;
+      }
+
+      const validPinKeys = new Set(
+        resolveComponentPinsForInstance(
+          component,
+          node.instanceConfigValues,
+        ).map((pin) => pin.key),
+      );
       const currentPinInitialValues = node.pinInitialValues ?? {};
       const nextPinInitialValues: Record<string, string> = {};
       for (const [key, value] of Object.entries(currentPinInitialValues)) {
@@ -211,6 +239,38 @@ export function ensureInstanceName(
 ): string {
   const used = new Set(sheet.nodes.map((n) => n.instanceName));
   return nextName(slugify(preferred).replace(/-/g, "_"), used);
+}
+
+export function componentUsesLockedCanonicalInstanceNames(
+  component: ComponentDefinition | undefined,
+): boolean {
+  if (!component) return false;
+  const naming = component.runtime?.instanceNaming;
+  return (
+    naming?.strategy === "canonical_indexed" && naming.lockToCanonical === true
+  );
+}
+
+export function nextComponentInstanceName(
+  sheet: SheetDefinition,
+  component: ComponentDefinition,
+): string | undefined {
+  if (!componentUsesLockedCanonicalInstanceNames(component)) {
+    return ensureInstanceName(sheet, component.halComponentName);
+  }
+
+  const used = new Set(sheet.nodes.map((n) => n.instanceName));
+  const base = component.halComponentName;
+  const maxConfigured = component.runtime?.instanceNaming?.maxInstances;
+  const maxInstances =
+    Number.isFinite(maxConfigured) && (maxConfigured ?? 0) > 0
+      ? Math.max(1, Math.trunc(maxConfigured ?? 1))
+      : 10_000;
+  for (let index = 0; index < maxInstances; index += 1) {
+    const candidate = `${base}.${index}`;
+    if (!used.has(candidate)) return candidate;
+  }
+  return undefined;
 }
 
 export function sheetContainsSheet(

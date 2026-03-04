@@ -1,3 +1,4 @@
+import { resolveComponentPinsForInstance } from "../componentInstance";
 import { getSheet } from "../graph";
 import { isValidHalName } from "../halNames";
 import type { NoHALProject } from "../types";
@@ -37,10 +38,14 @@ export function collectParamLines(
         }
         const setpTargetLines =
           node.exportStage === "postgui" ? postguiSetpLines : mainSetpLines;
+        const resolvedPins = resolveComponentPinsForInstance(
+          component,
+          node.instanceConfigValues,
+        );
         for (const [pinKey, value] of Object.entries(
           node.pinInitialValues ?? {},
         )) {
-          const pinDef = component.pins.find((p) => p.key === pinKey);
+          const pinDef = resolvedPins.find((p) => p.key === pinKey);
           if (!pinDef) {
             ctx.warnings.push(
               `Unknown pin '${pinKey}' on node '${node.instanceName}'`,

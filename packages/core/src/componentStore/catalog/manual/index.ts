@@ -1,3 +1,4 @@
+import { debounce } from "./debounce";
 import { encoder } from "./encoder";
 import { encoderRatio } from "./encoder_ratio";
 import { pid } from "./pid";
@@ -11,6 +12,7 @@ function manualLinuxCncComponents(
   refName: string,
 ): ImportedComponentDefinition[] {
   return [
+    debounce(version, refName),
     encoder(version, refName),
     encoderRatio(version, refName),
     pid(version, refName),

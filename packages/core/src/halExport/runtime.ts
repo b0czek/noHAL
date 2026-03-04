@@ -29,6 +29,16 @@ interface AddfEntry {
   parentSheetPath: string;
 }
 
+function isCanonicalIndexedInstanceNames(
+  componentName: string,
+  sortedNames: string[],
+): boolean {
+  for (const [index, instanceName] of sortedNames.entries()) {
+    if (instanceName !== `${componentName}.${index}`) return false;
+  }
+  return true;
+}
+
 export interface RuntimeSections {
   customLoadLines: string[];
   loadrtLines: string[];
@@ -233,9 +243,38 @@ export function buildRuntimeSections(
       items.length > 0
         ? project.library.components[items[0]?.componentId]
         : undefined;
+    const namingPolicy = component?.runtime?.instanceNaming;
+    if (namingPolicy?.maxInstances && items.length > namingPolicy.maxInstances) {
+      pushFatal(
+        ctx,
+        `Component '${componentName}' supports at most ${namingPolicy.maxInstances} instances, but ${items.length} are present`,
+      );
+      continue;
+    }
+    if (
+      namingPolicy?.strategy === "canonical_indexed" &&
+      !isCanonicalIndexedInstanceNames(componentName, sortedNames)
+    ) {
+      const message =
+        `Component '${componentName}' requires canonical instance names '${componentName}.N' for loadrt export`;
+      if (namingPolicy.lockToCanonical) {
+        pushFatal(ctx, message);
+        continue;
+      }
+      ctx.warnings.push(message);
+    }
+    const instanceConfigByPath: Record<string, Record<string, string>> = {};
+    for (const item of items) {
+      if (!item.instanceConfigValues) continue;
+      if (Object.keys(item.instanceConfigValues).length === 0) continue;
+      instanceConfigByPath[item.instancePath] = { ...item.instanceConfigValues };
+    }
     const loadrtResult = interpolateLoadrt({
       componentName,
       instancePaths: sortedNames,
+      ...(Object.keys(instanceConfigByPath).length > 0
+        ? { instanceConfigByPath }
+        : {}),
       extraArgs,
       runtime: component?.runtime,
     });

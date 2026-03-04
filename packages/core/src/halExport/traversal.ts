@@ -1,3 +1,4 @@
+import { resolveComponentPinsForInstance } from "../componentInstance";
 import { getNodePins, getSheet, invertDirection } from "../graph";
 import { isValidHalName } from "../halNames";
 import type { NoHALProject, SheetDefinition } from "../types";
@@ -134,11 +135,17 @@ export function traverseSheetInstance(
           componentName: component.halComponentName,
           componentId: node.componentId,
           instancePath: joinInstancePath([...pathParts, node.instanceName]),
+          ...(node.instanceConfigValues
+            ? { instanceConfigValues: { ...node.instanceConfigValues } }
+            : {}),
           parentSheetPath: joinInstancePath(pathParts),
           runtimeKind: component.runtime?.kind ?? "unknown",
           exportStage: node.exportStage === "postgui" ? "postgui" : "main",
         });
-        for (const pin of component.pins) {
+        for (const pin of resolveComponentPinsForInstance(
+          component,
+          node.instanceConfigValues,
+        )) {
           if (pin.arrayLen !== undefined || pin.name.includes("#")) {
             ctx.warnings.push(
               `Array pin export is not expanded yet (${component.halComponentName}.${pin.name}) on ${node.instanceName}`,

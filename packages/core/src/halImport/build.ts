@@ -4,6 +4,7 @@ import {
   makeAddfQueueNodeEntry,
   normalizeAddfQueueEntries,
 } from "../addfQueue";
+import { resolveComponentPinsForInstance } from "../componentInstance";
 import { createId, safeKey, slugify } from "../id";
 import { createDefaultMotmodConfig, createEmptyProject } from "../project";
 import { getSheetThreadOutputs } from "../sheetThreads";
@@ -66,10 +67,15 @@ function observedNameCandidates(value: string): string[] {
 function findMatchingComponentPin(
   component: ComponentDefinition | undefined,
   observedName: string,
+  instanceConfigValues?: Record<string, string>,
 ): ComponentPinDefinition | undefined {
   if (!component) return undefined;
+  const resolvedPins = resolveComponentPinsForInstance(
+    component,
+    instanceConfigValues,
+  );
   for (const candidate of observedNameCandidates(observedName)) {
-    const pin = component.pins.find((item) => item.name === candidate);
+    const pin = resolvedPins.find((item) => item.name === candidate);
     if (pin) return pin;
   }
   return undefined;
@@ -195,9 +201,14 @@ export function buildProjectFromHalImport(
     draft.componentGroups.map((group) => [group.id, group]),
   );
   const groupByInstance = new Map<string, HalImportComponentGroup>();
+  const instanceByName = new Map<
+    string,
+    HalImportComponentGroup["instances"][number]
+  >();
   for (const group of draft.componentGroups) {
     for (const instance of group.instances) {
       groupByInstance.set(instance.instanceName, group);
+      instanceByName.set(instance.instanceName, instance);
     }
   }
 
@@ -226,7 +237,11 @@ export function buildProjectFromHalImport(
       const sel = selections.get(group.id);
       if (!sel || sel.mode !== "store") continue;
       const comp = storeComponentsById.get(sel.componentId);
-      const pin = findMatchingComponentPin(comp, endpoint.pinName);
+      const pin = findMatchingComponentPin(
+        comp,
+        endpoint.pinName,
+        instanceByName.get(endpoint.instanceName)?.instanceConfigValues,
+      );
       if (pin) knownTypes.push(pin.type);
     }
     if (knownTypes.length === 0) continue;
@@ -352,6 +367,11 @@ export function buildProjectFromHalImport(
   const nodeRefById = new Map<string, (typeof rootSheet.nodes)[number]>();
   const componentByNodeId = new Map<string, ComponentDefinition>();
   const nodeInstanceNameById = new Map<string, string>();
+  const nodeInstanceConfigById = new Map<
+    string,
+    Record<string, string> | undefined
+  >();
+  const resolvedPinsByNodeId = new Map<string, ComponentPinDefinition[]>();
 
   const allInstances = draft.componentGroups
     .flatMap((group) =>
@@ -415,14 +435,14 @@ export function buildProjectFromHalImport(
     estimateMonoTextWidth(name, 12) +
     10;
 
-  const computeEstimatedBodySize = (component: ComponentDefinition) => {
-    const leftNames = component.pins
+  const computeEstimatedBodySize = (pins: ComponentPinDefinition[]) => {
+    const leftNames = pins
       .filter((pin) => pin.direction === "in")
       .map((pin) => pin.name);
-    const rightNames = component.pins
+    const rightNames = pins
       .filter((pin) => pin.direction === "out")
       .map((pin) => pin.name);
-    const bottomNames = component.pins
+    const bottomNames = pins
       .filter((pin) => pin.direction === "io")
       .map((pin) => pin.name);
 
@@ -603,7 +623,11 @@ export function buildProjectFromHalImport(
         paramValues[param.key] = value;
         continue;
       }
-      const pin = findMatchingComponentPin(component, name);
+      const pin = findMatchingComponentPin(
+        component,
+        name,
+        instance.instanceConfigValues,
+      );
       if (pin) {
         pinInitialValues[pin.key] = value;
         continue;
@@ -621,6 +645,10 @@ export function buildProjectFromHalImport(
       instanceName: instance.instanceName,
       position: { x: 0, y: 0 },
       paramValues,
+      ...(instance.instanceConfigValues &&
+        Object.keys(instance.instanceConfigValues).length > 0
+        ? { instanceConfigValues: { ...instance.instanceConfigValues } }
+        : {}),
       ...(Object.keys(pinInitialValues).length > 0 ? { pinInitialValues } : {}),
       ...(postguiOnlyInstanceNames.has(instance.instanceName)
         ? { exportStage: "postgui" as const }
@@ -630,8 +658,14 @@ export function buildProjectFromHalImport(
     componentByNodeId.set(nodeId, component);
     nodeInstanceNameById.set(nodeId, instance.instanceName);
     nodeIdByInstanceName.set(instance.instanceName, nodeId);
+    nodeInstanceConfigById.set(nodeId, instance.instanceConfigValues);
 
-    for (const pin of component.pins) {
+    const resolvedPins = resolveComponentPinsForInstance(
+      component,
+      instance.instanceConfigValues,
+    );
+    resolvedPinsByNodeId.set(nodeId, resolvedPins);
+    for (const pin of resolvedPins) {
       const pinRefKey = `${instance.instanceName}::${pin.name}`;
       pinKeyByInstanceAndPinName.set(pinRefKey, pin.key);
       pinDirectionByInstanceAndPinName.set(pinRefKey, pin.direction);
@@ -673,7 +707,11 @@ export function buildProjectFromHalImport(
       );
       if (!resolvedPinKey) {
         const component = componentByNodeId.get(nodeId);
-        const matched = findMatchingComponentPin(component, endpoint.pinName);
+        const matched = findMatchingComponentPin(
+          component,
+          endpoint.pinName,
+          nodeInstanceConfigById.get(nodeId),
+        );
         if (matched) {
           resolvedPinKey = matched.key;
           resolvedDirection = matched.direction;
@@ -1006,12 +1044,12 @@ export function buildProjectFromHalImport(
   const nodeIdsInOrder = alphabeticalNodeIds;
 
   for (const nodeId of nodeIdsInOrder) {
-    const component = componentByNodeId.get(nodeId);
-    if (!component) continue;
+    const pins = resolvedPinsByNodeId.get(nodeId);
+    if (!pins) continue;
     let leftIdx = 0;
     let rightIdx = 0;
     let bottomIdx = 0;
-    for (const pin of component.pins) {
+    for (const pin of pins) {
       const key = `${nodeId}::${pin.key}`;
       if (pin.direction === "in") {
         pinSideIndexByNodePin.set(key, leftIdx);
@@ -1092,21 +1130,19 @@ export function buildProjectFromHalImport(
   }
 
   for (const nodeId of nodeIdsInOrder) {
-    const component = componentByNodeId.get(nodeId);
-    if (!component) continue;
+    const pins = resolvedPinsByNodeId.get(nodeId);
+    if (!pins) continue;
     const demand = labelDemandByNodeId.get(nodeId) ?? {
       left: [],
       right: [],
       bottom: [],
     };
-    const { bodyWidth, bodyHeight } = computeEstimatedBodySize(component);
+    const { bodyWidth, bodyHeight } = computeEstimatedBodySize(pins);
     const leftLabelWidths = demand.left.map(estimateImportedLabelWidth);
     const rightLabelWidths = demand.right.map(estimateImportedLabelWidth);
     const bottomPlannedLabels =
       plannedLabelsByNodeSide.get(`${nodeId}:bottom`) ?? [];
-    const bottomPinCount = component.pins.filter(
-      (pin) => pin.direction === "io",
-    ).length;
+    const bottomPinCount = pins.filter((pin) => pin.direction === "io").length;
 
     const leftLaneWidth =
       leftLabelWidths.length > 0

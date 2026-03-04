@@ -1,3 +1,4 @@
+import { resolveComponentPinsForInstance } from "./componentInstance";
 import type {
   ComponentNode,
   NoHALProject,
@@ -46,7 +47,10 @@ export function getComponentNodePins(
   const component = project.library.components[node.componentId];
   if (!component)
     throw new Error(`Component definition missing: ${node.componentId}`);
-  return component.pins.map((pin) => ({
+  return resolveComponentPinsForInstance(
+    component,
+    node.instanceConfigValues,
+  ).map((pin) => ({
     key: pin.key,
     name: pin.name,
     direction: pin.direction,

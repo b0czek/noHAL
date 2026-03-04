@@ -1,7 +1,9 @@
 import { getNodePins, getNodeTitle } from "@nohal/core/src/graph";
+import type { ComponentInstanceConfigFieldDefinition } from "@nohal/core/src/types";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useI18n } from "../i18n";
+import { componentUsesLockedCanonicalInstanceNames } from "../state/store/helpers";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 
@@ -27,6 +29,12 @@ export default function ComponentNodeDialog() {
   });
   const componentParams = createMemo(() => component()?.params ?? []);
   const componentFunctions = createMemo(() => component()?.functions ?? []);
+  const instanceConfigFields = createMemo(
+    () => component()?.runtime?.instanceConfig?.fields ?? [],
+  );
+  const instanceNameLocked = createMemo(() =>
+    componentUsesLockedCanonicalInstanceNames(component()),
+  );
   const pinFilterModes = ["all", "in", "out", "io"] as const;
   const [pinFilter, setPinFilter] =
     createSignal<(typeof pinFilterModes)[number]>("all");
@@ -51,6 +59,27 @@ export default function ComponentNodeDialog() {
     if (!instanceName)
       return halSuffix ? `{instance}.${halSuffix}` : "{instance}";
     return halSuffix ? `${instanceName}.${halSuffix}` : instanceName;
+  };
+  const defaultInstanceConfigValue = (
+    field: ComponentInstanceConfigFieldDefinition,
+  ): string =>
+    field.defaultValue === undefined ? "" : `${field.defaultValue ?? ""}`;
+  const instanceConfigValue = (
+    field: ComponentInstanceConfigFieldDefinition,
+  ): string =>
+    node()?.instanceConfigValues?.[field.key] ?? defaultInstanceConfigValue(field);
+  const instanceConfigInputType = (
+    field: ComponentInstanceConfigFieldDefinition,
+  ) => {
+    if (field.type === "integer" || field.type === "number") return "number";
+    return "text";
+  };
+  const instanceConfigInputStep = (
+    field: ComponentInstanceConfigFieldDefinition,
+  ) => {
+    if (field.type === "integer") return "1";
+    if (field.type === "number") return "any";
+    return undefined;
   };
 
   return (
@@ -90,6 +119,7 @@ export default function ComponentNodeDialog() {
                   {t("componentDialog.instanceName")}
                   <input
                     value={node()?.instanceName ?? ""}
+                    disabled={instanceNameLocked()}
                     onInput={(evt) => {
                       const currentNode = node();
                       if (!currentNode) return;
@@ -100,6 +130,11 @@ export default function ComponentNodeDialog() {
                     }}
                   />
                 </label>
+                <Show when={instanceNameLocked()}>
+                  <div class="muted">
+                    {t("componentDialog.instanceNameLocked")}
+                  </div>
+                </Show>
                 <Show when={component()}>
                   {(comp) => (
                     <>
@@ -176,6 +211,74 @@ export default function ComponentNodeDialog() {
                             {addfTargetForFunction(fn.halSuffix)}
                           </span>
                         </div>
+                      )}
+                    </For>
+                  </div>
+                </Show>
+              </section>
+
+              <section class="panel">
+                <div class="panel-title">
+                  {t("componentDialog.instanceConfig")}
+                </div>
+                <Show
+                  when={instanceConfigFields().length > 0}
+                  fallback={
+                    <div class="muted">
+                      {t("componentDialog.noInstanceConfig")}
+                    </div>
+                  }
+                >
+                  <div class="inspector-group">
+                    <For each={instanceConfigFields()}>
+                      {(field) => (
+                        <label title={field.doc ?? ""}>
+                          <span class="mono">{field.key}</span>
+                          <Show
+                            when={field.type === "boolean"}
+                            fallback={
+                              <input
+                                type={instanceConfigInputType(field)}
+                                step={instanceConfigInputStep(field)}
+                                min={
+                                  field.min !== undefined
+                                    ? `${field.min}`
+                                    : undefined
+                                }
+                                max={
+                                  field.max !== undefined
+                                    ? `${field.max}`
+                                    : undefined
+                                }
+                                value={instanceConfigValue(field)}
+                                onInput={(evt) => {
+                                  const currentNode = node();
+                                  if (!currentNode) return;
+                                  actions.updateNodeInstanceConfigValue(
+                                    currentNode.id,
+                                    field.key,
+                                    evt.currentTarget.value,
+                                  );
+                                }}
+                                placeholder={defaultInstanceConfigValue(field)}
+                              />
+                            }
+                          >
+                            <input
+                              type="checkbox"
+                              checked={instanceConfigValue(field) === "true"}
+                              onChange={(evt) => {
+                                const currentNode = node();
+                                if (!currentNode) return;
+                                actions.updateNodeInstanceConfigValue(
+                                  currentNode.id,
+                                  field.key,
+                                  evt.currentTarget.checked ? "true" : "false",
+                                );
+                              }}
+                            />
+                          </Show>
+                        </label>
                       )}
                     </For>
                   </div>

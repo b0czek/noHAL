@@ -2,6 +2,7 @@ import { getSheet } from "@nohal/core/src/graph";
 import { isValidHalName } from "@nohal/core/src/halNames";
 import { createId } from "@nohal/core/src/id";
 import { createSheetPortDraft } from "@nohal/core/src/project";
+import { resolveComponentPinsForInstance } from "@nohal/core/src/componentInstance";
 import type {
   ComponentNode,
   HalValueType,
@@ -9,14 +10,15 @@ import type {
   SheetComment,
 } from "@nohal/core/src/types";
 import {
+  componentUsesLockedCanonicalInstanceNames,
   defaultCommentPosition,
   defaultLabelPosition,
   defaultNodePosition,
   defaultPortPosition,
-  ensureInstanceName,
   forcedPortSideForDirection,
   nextName,
   normalizeRotationDegrees,
+  nextComponentInstanceName,
   reconcileComponentNodesForDefinition,
   toErrorMessage,
 } from "../helpers";
@@ -65,9 +67,17 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       const comp = deps.state.project.library.components[componentId];
       if (!comp) return;
       const activeSheetId = deps.state.activeSheetId;
+      const currentSheet = getSheet(deps.state.project, activeSheetId);
+      const instanceName = nextComponentInstanceName(currentSheet, comp);
+      if (!instanceName) {
+        deps.setState(
+          "status",
+          `No available canonical instance names left for component '${comp.halComponentName}'`,
+        );
+        return;
+      }
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
-        const instanceName = ensureInstanceName(sheet, comp.halComponentName);
         const node: ComponentNode = {
           id: createId("node"),
           kind: "component",
@@ -79,7 +89,18 @@ export function createNodeActions(deps: EditorStoreActionContext) {
               .filter((p) => p.defaultValue !== undefined)
               .map((p) => [p.key, p.defaultValue ?? ""]),
           ),
+          instanceConfigValues: Object.fromEntries(
+            (comp.runtime?.instanceConfig?.fields ?? [])
+              .filter((field) => field.defaultValue !== undefined)
+              .map((field) => [field.key, `${field.defaultValue ?? ""}`]),
+          ),
         };
+        if (
+          node.instanceConfigValues &&
+          Object.keys(node.instanceConfigValues).length === 0
+        ) {
+          delete node.instanceConfigValues;
+        }
         sheet.nodes.push(node);
       });
       deps.setStatusT("store.status.placedComponent", {
@@ -237,6 +258,17 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       const currentSheet = getSheet(deps.state.project, activeSheetId);
       const currentNode = currentSheet.nodes.find((n) => n.id === nodeId);
       if (!currentNode || currentNode.instanceName === trimmed) return;
+      if (currentNode.kind === "component") {
+        const component =
+          deps.state.project.library.components[currentNode.componentId];
+        if (componentUsesLockedCanonicalInstanceNames(component)) {
+          deps.setState(
+            "status",
+            `Instance name is fixed for component '${component?.halComponentName ?? currentNode.componentId}'`,
+          );
+          return;
+        }
+      }
       if (
         currentSheet.nodes.some(
           (n) => n.id !== nodeId && n.instanceName === trimmed,
@@ -284,6 +316,63 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         const node = sheet.nodes.find((n) => n.id === nodeId);
         if (node && node.kind === "component") {
           node.paramValues[paramKey] = value;
+        }
+      });
+    },
+
+    updateNodeInstanceConfigValue(
+      nodeId: string,
+      configKey: string,
+      value: string,
+    ): void {
+      const activeSheetId = deps.state.activeSheetId;
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const node = sheet.nodes.find((n) => n.id === nodeId);
+        if (!node || node.kind !== "component") return;
+
+        const component = project.library.components[node.componentId];
+        if (!component) return;
+        const field = component.runtime?.instanceConfig?.fields.find(
+          (item) => item.key === configKey,
+        );
+        if (!field) return;
+
+        const nextValues = { ...(node.instanceConfigValues ?? {}) };
+        const normalizedValue = value.trim();
+        const defaultValue =
+          field.defaultValue === undefined ? undefined : `${field.defaultValue}`;
+        if (
+          !normalizedValue ||
+          (defaultValue !== undefined && normalizedValue === defaultValue)
+        ) {
+          delete nextValues[configKey];
+        } else {
+          nextValues[configKey] = normalizedValue;
+        }
+
+        if (Object.keys(nextValues).length > 0) {
+          node.instanceConfigValues = nextValues;
+        } else {
+          delete node.instanceConfigValues;
+        }
+
+        const resolvedPins = resolveComponentPinsForInstance(
+          component,
+          node.instanceConfigValues,
+        );
+        const validPinKeys = new Set(resolvedPins.map((pin) => pin.key));
+        const currentPinInitialValues = node.pinInitialValues ?? {};
+        const nextPinInitialValues: Record<string, string> = {};
+        for (const [key, pinValue] of Object.entries(currentPinInitialValues)) {
+          if (!validPinKeys.has(key)) continue;
+          if (!pinValue.trim()) continue;
+          nextPinInitialValues[key] = pinValue;
+        }
+        if (Object.keys(nextPinInitialValues).length > 0) {
+          node.pinInitialValues = nextPinInitialValues;
+        } else {
+          delete node.pinInitialValues;
         }
       });
     },

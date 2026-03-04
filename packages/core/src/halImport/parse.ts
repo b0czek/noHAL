@@ -31,6 +31,7 @@ interface MutableInstance {
   pinNames: Set<string>;
   pins: Map<string, MutableObservedPin>;
   params: Map<string, MutableObservedParam>;
+  instanceConfigValues: Record<string, string>;
   paramValues: Record<string, string>;
 }
 
@@ -286,6 +287,7 @@ function ensureInstanceRecord(
   instanceName: string,
   componentNameHint?: string,
   runtimeHint?: "rt" | "userspace" | "unknown",
+  instanceConfigValues?: Record<string, string>,
 ): MutableInstance {
   let record = instances.get(instanceName);
   if (!record) {
@@ -296,6 +298,7 @@ function ensureInstanceRecord(
       pinNames: new Set(),
       pins: new Map(),
       params: new Map(),
+      instanceConfigValues: {},
       paramValues: {},
     };
     instances.set(instanceName, record);
@@ -307,6 +310,12 @@ function ensureInstanceRecord(
     if (runtimeHint === "rt" || record.runtimeHint === "unknown") {
       record.runtimeHint = runtimeHint;
     }
+  }
+  if (instanceConfigValues) {
+    record.instanceConfigValues = {
+      ...record.instanceConfigValues,
+      ...instanceConfigValues,
+    };
   }
   return record;
 }
@@ -434,7 +443,13 @@ export function parseHalImportDraft(
       }
       for (const instanceName of loadrtImport.instancePaths) {
         knownInstances.add(instanceName);
-        ensureInstanceRecord(instances, instanceName, componentName, "rt");
+        ensureInstanceRecord(
+          instances,
+          instanceName,
+          componentName,
+          "rt",
+          loadrtImport.instanceConfigByPath?.[instanceName],
+        );
       }
       continue;
     }
@@ -665,6 +680,9 @@ export function parseHalImportDraft(
             componentGroupId:
               groupIdsByName.get(componentName) ?? componentName,
             pinNames: [...item.pinNames].sort((a, b) => a.localeCompare(b)),
+            ...(Object.keys(item.instanceConfigValues).length > 0
+              ? { instanceConfigValues: { ...item.instanceConfigValues } }
+              : {}),
             paramValues: { ...item.paramValues },
           };
         });

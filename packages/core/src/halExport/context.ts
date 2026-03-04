@@ -70,6 +70,7 @@ export interface ExportContext {
     componentName: string;
     componentId: string;
     instancePath: string;
+    instanceConfigValues?: Record<string, string>;
     parentSheetPath: string;
     runtimeKind: RuntimeKind;
     exportStage: "main" | "postgui";

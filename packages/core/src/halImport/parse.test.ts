@@ -72,6 +72,40 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
     });
   });
 
+  it("parses loadrt cfg=... for debounce-style grouped channels", () => {
+    const { groups } = groupByComponentName(`
+      loadrt debounce cfg=2,4
+      addf debounce.0 servo-thread
+      addf debounce.1 servo-thread
+      net filtered-a hm2.0.gpio.000.in => debounce.0.0.in
+      net filtered-b debounce.0.0.out => motion.enable
+      net filtered-c hm2.0.gpio.001.in => debounce.1.3.in
+      net filtered-d debounce.1.3.out => motion.probe-input
+      setp debounce.1.delay 12
+    `);
+
+    expect(groups.get("debounce")).toMatchObject({
+      inferredHalComponentName: "debounce",
+      runtimeHint: "rt",
+    });
+    expect(groups.get("debounce")?.instances).toEqual([
+      {
+        instanceName: "debounce.0",
+        componentGroupId: "halcmp:debounce",
+        pinNames: ["0.in", "0.out"],
+        instanceConfigValues: { channels: "2" },
+        paramValues: {},
+      },
+      {
+        instanceName: "debounce.1",
+        componentGroupId: "halcmp:debounce",
+        pinNames: ["3.in", "3.out"],
+        instanceConfigValues: { channels: "4" },
+        paramValues: { delay: "12" },
+      },
+    ]);
+  });
+
   it("parses documented net forms with optional arrows and repeated signal names while inferring endpoint directions", () => {
     const { draft, groups } = groupByComponentName(`
       loadrt stepgen count=1

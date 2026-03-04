@@ -15,6 +15,7 @@ export interface HalImportInstance {
   instanceName: string;
   componentGroupId: string;
   pinNames: string[];
+  instanceConfigValues?: Record<string, string>;
   paramValues: Record<string, string>;
 }
 

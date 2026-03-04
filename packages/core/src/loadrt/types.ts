@@ -1,17 +1,16 @@
 import type {
   ComponentDefinition,
+  ComponentLoadrtStrategyId,
   HalThreadDefinition,
   ProjectMotmodConfig,
 } from "../types";
 
-export type LoadrtStrategyId =
-  | "names_or_count"
-  | "names_or_num_chan"
-  | "motmod";
+export type LoadrtStrategyId = ComponentLoadrtStrategyId | "motmod";
 
 export interface LoadrtContext {
   componentName: string;
   instancePaths: string[];
+  instanceConfigByPath?: Record<string, Record<string, string>>;
   extraArgs: string[];
   runtime?: ComponentDefinition["runtime"];
   project?: {
@@ -32,6 +31,7 @@ export interface LoadrtImportContext {
 
 export interface LoadrtImportResult {
   instancePaths: string[];
+  instanceConfigByPath?: Record<string, Record<string, string>>;
   warnings?: string[];
   events?: LoadrtImportEvent[];
 }

@@ -32,6 +32,46 @@ export interface ComponentFunctionDefinition {
   doc?: string;
 }
 
+export type ComponentLoadrtStrategyId =
+  | "names_or_count"
+  | "names_or_num_chan"
+  | "cfg";
+
+export interface ComponentInstanceNamingDefinition {
+  strategy: "free" | "canonical_indexed";
+  lockToCanonical?: boolean;
+  maxInstances?: number;
+}
+
+export interface ComponentInstanceConfigFieldDefinition {
+  key: string;
+  type: "string" | "integer" | "number" | "boolean";
+  doc?: string;
+  defaultValue?: string | number | boolean;
+  min?: number;
+  max?: number;
+}
+
+export interface ComponentInstanceIndexedPinTemplate {
+  keyTemplate: string;
+  nameTemplate: string;
+  direction: PinDirection;
+  type: HalValueType;
+  doc?: string;
+}
+
+export interface ComponentInstancePinExpansionRule {
+  kind: "indexed_by_count";
+  countConfigKey: string;
+  indexStart?: number;
+  templates: ComponentInstanceIndexedPinTemplate[];
+}
+
+export interface ComponentInstanceConfigDefinition {
+  fields: ComponentInstanceConfigFieldDefinition[];
+  pinExpansionRules?: ComponentInstancePinExpansionRule[];
+}
+
 export interface ComponentDefinition {
   id: string;
   name: string;
@@ -54,8 +94,10 @@ export interface ComponentDefinition {
   runtime?: {
     kind: "rt" | "userspace" | "unknown";
     loadrt?: {
-      strategy?: "names_or_count" | "names_or_num_chan";
+      strategy?: ComponentLoadrtStrategyId;
     };
+    instanceNaming?: ComponentInstanceNamingDefinition;
+    instanceConfig?: ComponentInstanceConfigDefinition;
     options?: Record<string, string | number | boolean>;
   };
 }

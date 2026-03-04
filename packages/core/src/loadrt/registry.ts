@@ -1,3 +1,4 @@
+import { cfgLoadrtStrategy } from "./cfgStrategy";
 import { motmodLoadrtStrategy } from "./motmodStrategy";
 import { namesOrCountLoadrtStrategy } from "./namesOrCountStrategy";
 import { namesOrNumChanLoadrtStrategy } from "./namesOrNumChanStrategy";
@@ -11,6 +12,7 @@ import type {
 } from "./types";
 
 const loadrtStrategyRegistry: Record<LoadrtStrategyId, LoadrtStrategy> = {
+  cfg: cfgLoadrtStrategy,
   motmod: motmodLoadrtStrategy,
   names_or_count: namesOrCountLoadrtStrategy,
   names_or_num_chan: namesOrNumChanLoadrtStrategy,
@@ -40,6 +42,8 @@ export function routeLoadrtImportStrategyId(
   context: LoadrtImportContext,
 ): LoadrtStrategyId {
   if (context.componentName === "motmod") return "motmod";
+  const hasCfg = context.args.cfg !== undefined;
+  if (hasCfg || context.componentName === "debounce") return "cfg";
   const hasNumChan = context.args.num_chan !== undefined;
   const hasCount = context.args.count !== undefined;
   if (hasNumChan && !hasCount) return "names_or_num_chan";
@@ -59,6 +63,9 @@ export function interpolateLoadrtImport(
   return {
     strategyId,
     instancePaths: result.instancePaths,
+    ...(result.instanceConfigByPath
+      ? { instanceConfigByPath: result.instanceConfigByPath }
+      : {}),
     ...(result.warnings?.length ? { warnings: result.warnings } : {}),
     ...(result.events?.length ? { events: result.events } : {}),
   };

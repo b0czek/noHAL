@@ -23,6 +23,7 @@ export interface ComponentNode {
   instanceName: string;
   position: XY;
   paramValues: Record<string, string>;
+  instanceConfigValues?: Record<string, string>;
   pinInitialValues?: Record<string, string>;
   exportStage?: "main" | "postgui";
 }

@@ -78,6 +78,8 @@ export const en = {
   "componentDialog.title": "Component Settings",
   "componentDialog.instance": "Instance",
   "componentDialog.instanceName": "Instance Name",
+  "componentDialog.instanceNameLocked":
+    "Instance name is fixed by component runtime naming rules.",
   "componentDialog.halComponent": "HAL Component",
   "componentDialog.source": "Source",
   "componentDialog.runtime": "Runtime",
@@ -90,6 +92,9 @@ export const en = {
   "componentDialog.functionAddf": "addf",
   "componentDialog.parameters": "Parameters",
   "componentDialog.noParameters": "No parameters.",
+  "componentDialog.instanceConfig": "Instance Configuration",
+  "componentDialog.noInstanceConfig":
+    "No per-instance configuration fields.",
   "componentDialog.pinInitialValues": "Pin Initial Values (setp)",
   "componentDialog.noPins": "No pins.",
   "componentDialog.optionalPlaceholder": "(optional)",
