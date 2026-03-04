@@ -886,6 +886,25 @@ textarea {
   padding: 6px 8px;
 }
 
+select {
+  color-scheme: dark;
+}
+
+select option,
+select optgroup {
+  background: #0c1c24;
+  color: var(--text);
+}
+
+select option:checked {
+  background: #1d4c43;
+  color: #eef9f5;
+}
+
+select option:disabled {
+  color: var(--muted);
+}
+
 textarea {
   resize: vertical;
   min-height: 80px;
