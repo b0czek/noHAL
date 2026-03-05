@@ -127,6 +127,23 @@ export class KonvaSheetScene {
 
     this.onKeyDown = (evt) => {
       if (evt.code === "Space") this.spacePressed = true;
+      const primaryModifier = evt.ctrlKey || evt.metaKey;
+      if (
+        primaryModifier &&
+        !evt.altKey &&
+        !this.isEditableTarget(evt.target) &&
+        this.isContainerVisible()
+      ) {
+        const isZoomIn = this.isZoomInShortcut(evt);
+        const isZoomOut = this.isZoomOutShortcut(evt);
+        if (isZoomIn || isZoomOut) {
+          this.zoomByFactor(isZoomIn ? 1.08 : 1 / 1.08);
+          evt.preventDefault();
+          evt.stopPropagation();
+          evt.stopImmediatePropagation();
+          return;
+        }
+      }
       if (
         (evt.key === "Delete" || evt.key === "Backspace") &&
         !this.isEditableTarget(evt.target)
@@ -240,16 +257,7 @@ export class KonvaSheetScene {
 
       const pointer = this.stage.getPointerPosition();
       if (!pointer) return;
-      const oldScale = this.camera.scale;
-      const zoomFactor = wheelEvt.deltaY > 0 ? 1 / 1.08 : 1.08;
-      const nextScale = Math.max(0.35, Math.min(2.8, oldScale * zoomFactor));
-      if (Math.abs(nextScale - oldScale) < 1e-6) return;
-      const worldAtPointer = this.screenToWorld({ x: pointer.x, y: pointer.y });
-      this.camera.scale = nextScale;
-      this.camera.x = pointer.x - worldAtPointer.x * nextScale;
-      this.camera.y = pointer.y - worldAtPointer.y * nextScale;
-      this.applyCamera();
-      if (this.lastState?.pendingEndpoint) this.redrawWires();
+      this.zoomByFactor(wheelEvt.deltaY > 0 ? 1 / 1.08 : 1.08, pointer);
     });
   }
 
@@ -329,6 +337,47 @@ export class KonvaSheetScene {
     this.camera.y = Math.round(
       (stageH - worldH) / 2 - this.sceneBounds.minY * this.camera.scale,
     );
+  }
+
+  private isContainerVisible(): boolean {
+    if (!this.container.isConnected) return false;
+    const rect = this.container.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  private isZoomInShortcut(evt: KeyboardEvent): boolean {
+    return (
+      evt.key === "=" ||
+      evt.key === "+" ||
+      evt.code === "Equal" ||
+      evt.code === "NumpadAdd"
+    );
+  }
+
+  private isZoomOutShortcut(evt: KeyboardEvent): boolean {
+    return (
+      evt.key === "-" ||
+      evt.key === "_" ||
+      evt.code === "Minus" ||
+      evt.code === "NumpadSubtract"
+    );
+  }
+
+  private zoomByFactor(zoomFactor: number, pointer?: Pt): void {
+    const zoomAnchor = pointer ?? this.stage.getPointerPosition();
+    const anchor = zoomAnchor ?? {
+      x: this.stage.width() / 2,
+      y: this.stage.height() / 2,
+    };
+    const oldScale = this.camera.scale;
+    const nextScale = Math.max(0.35, Math.min(2.8, oldScale * zoomFactor));
+    if (Math.abs(nextScale - oldScale) < 1e-6) return;
+    const worldAtPointer = this.screenToWorld({ x: anchor.x, y: anchor.y });
+    this.camera.scale = nextScale;
+    this.camera.x = anchor.x - worldAtPointer.x * nextScale;
+    this.camera.y = anchor.y - worldAtPointer.y * nextScale;
+    this.applyCamera();
+    if (this.lastState?.pendingEndpoint) this.redrawWires();
   }
 
   private clampCamera(): void {

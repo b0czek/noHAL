@@ -7,6 +7,7 @@ import LandingPage from "./components/LandingPage";
 import MachineImportPage from "./features/machineImport/MachineImportPage";
 import { useMachineImportFlow } from "./features/machineImport/useMachineImportFlow";
 import { useI18n } from "./i18n";
+import { useGlobalShortcuts } from "./shortcuts/useGlobalShortcuts";
 import {
   EditorStoreProvider,
   useEditorStore,
@@ -23,6 +24,7 @@ export default function App() {
 function AppContent() {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
+  useGlobalShortcuts();
   const [isEditorOpen, setIsEditorOpen] = createSignal(false);
   const [selectedLinuxCncVersion, setSelectedLinuxCncVersion] =
     createSignal<LinuxCncVersion>("2.10");
