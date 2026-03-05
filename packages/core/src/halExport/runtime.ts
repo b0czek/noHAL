@@ -244,7 +244,10 @@ export function buildRuntimeSections(
         ? project.library.components[items[0]?.componentId]
         : undefined;
     const namingPolicy = component?.runtime?.instanceNaming;
-    if (namingPolicy?.maxInstances && items.length > namingPolicy.maxInstances) {
+    if (
+      namingPolicy?.maxInstances &&
+      items.length > namingPolicy.maxInstances
+    ) {
       pushFatal(
         ctx,
         `Component '${componentName}' supports at most ${namingPolicy.maxInstances} instances, but ${items.length} are present`,
@@ -255,8 +258,7 @@ export function buildRuntimeSections(
       namingPolicy?.strategy === "canonical_indexed" &&
       !isCanonicalIndexedInstanceNames(componentName, sortedNames)
     ) {
-      const message =
-        `Component '${componentName}' requires canonical instance names '${componentName}.N' for loadrt export`;
+      const message = `Component '${componentName}' requires canonical instance names '${componentName}.N' for loadrt export`;
       if (namingPolicy.lockToCanonical) {
         pushFatal(ctx, message);
         continue;
@@ -267,7 +269,9 @@ export function buildRuntimeSections(
     for (const item of items) {
       if (!item.instanceConfigValues) continue;
       if (Object.keys(item.instanceConfigValues).length === 0) continue;
-      instanceConfigByPath[item.instancePath] = { ...item.instanceConfigValues };
+      instanceConfigByPath[item.instancePath] = {
+        ...item.instanceConfigValues,
+      };
     }
     const loadrtResult = interpolateLoadrt({
       componentName,

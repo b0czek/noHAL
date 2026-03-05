@@ -97,14 +97,16 @@ async function rescanComponentDirSourceInStore(
 }
 
 export const readComponentStoreFile =
-  (io: CoreIo) =>
-  async (storeFilePath: string) => {
+  (io: CoreIo) => async (storeFilePath: string) => {
     return readComponentStoreFileFromDisk(io)(storeFilePath);
   };
 
 export const saveParsedCompFileToStore =
   (io: CoreIo) =>
-  async (storeFilePath: string, filePath: string): Promise<ComponentStoreEntry> => {
+  async (
+    storeFilePath: string,
+    filePath: string,
+  ): Promise<ComponentStoreEntry> => {
     const readStore = readComponentStoreFileFromDisk(io);
     const writeStore = writeComponentStoreFileToDisk(io);
     const normalizedStoreFilePath = io.path.resolve(storeFilePath);
@@ -204,7 +206,11 @@ export const addComponentDirSourceToStore =
       nowIso,
     );
     await writeStore(normalizedStoreFilePath, store);
-    return rescanComponentDirSourceInStore(io, normalizedStoreFilePath, source.id);
+    return rescanComponentDirSourceInStore(
+      io,
+      normalizedStoreFilePath,
+      source.id,
+    );
   };
 
 export const refreshComponentSourceInStore =
@@ -221,7 +227,11 @@ export const refreshComponentSourceInStore =
     if (!source) throw new Error(`Component source not found: ${sourceId}`);
 
     if (source.kind === "comp-dir") {
-      return rescanComponentDirSourceInStore(io, normalizedStoreFilePath, sourceId);
+      return rescanComponentDirSourceInStore(
+        io,
+        normalizedStoreFilePath,
+        sourceId,
+      );
     }
     if (source.kind === "linuxcnc-builtin") {
       throw new Error(
@@ -319,7 +329,11 @@ export const scanCompDirectory =
     const normalizedDirPath = io.path.resolve(dirPath);
     const imported: ImportedComponentDefinition[] = [];
     const errors: Array<{ filePath: string; error: string }> = [];
-    const files = await collectCompFilesRecursive(io, normalizedDirPath, errors);
+    const files = await collectCompFilesRecursive(
+      io,
+      normalizedDirPath,
+      errors,
+    );
 
     for (const filePath of files) {
       try {

@@ -646,7 +646,7 @@ export function buildProjectFromHalImport(
       position: { x: 0, y: 0 },
       paramValues,
       ...(instance.instanceConfigValues &&
-        Object.keys(instance.instanceConfigValues).length > 0
+      Object.keys(instance.instanceConfigValues).length > 0
         ? { instanceConfigValues: { ...instance.instanceConfigValues } }
         : {}),
       ...(Object.keys(pinInitialValues).length > 0 ? { pinInitialValues } : {}),

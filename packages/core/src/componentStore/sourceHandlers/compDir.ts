@@ -5,7 +5,10 @@ import type {
   CoreIo,
 } from "../../types";
 
-export function createComponentDirSourceId(io: CoreIo, dirPath: string): string {
+export function createComponentDirSourceId(
+  io: CoreIo,
+  dirPath: string,
+): string {
   return `compdir:${slugify(io.path.resolve(dirPath))}`;
 }
 

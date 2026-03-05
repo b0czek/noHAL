@@ -61,7 +61,8 @@ export default function ComponentSearchDialog() {
     if (scope === "project") {
       collected.sort(
         (a, b) =>
-          a.sheetName.localeCompare(b.sheetName) || a.title.localeCompare(b.title),
+          a.sheetName.localeCompare(b.sheetName) ||
+          a.title.localeCompare(b.title),
       );
     } else {
       collected.sort((a, b) => a.title.localeCompare(b.title));
@@ -178,9 +179,15 @@ export default function ComponentSearchDialog() {
         return (
           <Portal>
             <div
-              class={scope === "project" ? "modal-backdrop" : "component-search-sheet-overlay"}
+              class={
+                scope === "project"
+                  ? "modal-backdrop"
+                  : "component-search-sheet-overlay"
+              }
               role="presentation"
-              onPointerDown={scope === "project" ? editorUi.closeComponentSearch : undefined}
+              onPointerDown={
+                scope === "project" ? editorUi.closeComponentSearch : undefined
+              }
             >
               <Show
                 when={scope === "project"}
@@ -268,7 +275,9 @@ export default function ComponentSearchDialog() {
                 >
                   <div class="modal-header">
                     <div>
-                      <div class="modal-title">{t("componentSearch.title")}</div>
+                      <div class="modal-title">
+                        {t("componentSearch.title")}
+                      </div>
                       <div class="modal-sub">
                         {t("componentSearch.subtitle", { scope: scopeLabel })}
                       </div>
@@ -337,7 +346,9 @@ export default function ComponentSearchDialog() {
                             type="button"
                             class={`component-search-item ${index() === activeIndex() ? "is-active" : ""}`}
                             onMouseEnter={() => setActiveIndex(index())}
-                            onClick={() => selectResult(result, { close: true })}
+                            onClick={() =>
+                              selectResult(result, { close: true })
+                            }
                           >
                             <div class="component-search-item-title mono">
                               {result.title}

@@ -67,7 +67,8 @@ export default function ComponentNodeDialog() {
   const instanceConfigValue = (
     field: ComponentInstanceConfigFieldDefinition,
   ): string =>
-    node()?.instanceConfigValues?.[field.key] ?? defaultInstanceConfigValue(field);
+    node()?.instanceConfigValues?.[field.key] ??
+    defaultInstanceConfigValue(field);
   const instanceConfigInputType = (
     field: ComponentInstanceConfigFieldDefinition,
   ) => {

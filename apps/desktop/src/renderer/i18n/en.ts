@@ -103,8 +103,7 @@ export const en = {
   "componentDialog.parameters": "Parameters",
   "componentDialog.noParameters": "No parameters.",
   "componentDialog.instanceConfig": "Instance Configuration",
-  "componentDialog.noInstanceConfig":
-    "No per-instance configuration fields.",
+  "componentDialog.noInstanceConfig": "No per-instance configuration fields.",
   "componentDialog.pinInitialValues": "Pin Initial Values (setp)",
   "componentDialog.noPins": "No pins.",
   "componentDialog.optionalPlaceholder": "(optional)",

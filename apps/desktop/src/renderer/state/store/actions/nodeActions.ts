@@ -341,7 +341,9 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         const nextValues = { ...(node.instanceConfigValues ?? {}) };
         const normalizedValue = value.trim();
         const defaultValue =
-          field.defaultValue === undefined ? undefined : `${field.defaultValue}`;
+          field.defaultValue === undefined
+            ? undefined
+            : `${field.defaultValue}`;
         if (
           !normalizedValue ||
           (defaultValue !== undefined && normalizedValue === defaultValue)

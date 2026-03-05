@@ -138,8 +138,11 @@ export function reconcileComponentNodesForDefinition(
       node.paramValues = nextValues;
 
       const nextInstanceConfigValues: Record<string, string> = {};
-      for (const [key, value] of Object.entries(node.instanceConfigValues ?? {})) {
-        if (validInstanceConfigKeys.has(key)) nextInstanceConfigValues[key] = value;
+      for (const [key, value] of Object.entries(
+        node.instanceConfigValues ?? {},
+      )) {
+        if (validInstanceConfigKeys.has(key))
+          nextInstanceConfigValues[key] = value;
       }
       for (const [key, value] of Object.entries(defaultInstanceConfigValues)) {
         if (!(key in nextInstanceConfigValues))

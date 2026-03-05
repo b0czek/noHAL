@@ -16,10 +16,7 @@ interface NormalizedCfgRule {
 
 const DEFAULT_CFG_INSTANCE_CONFIG_KEY = "channels";
 
-function parsePositiveInt(
-  raw: string | undefined,
-  fallback: number,
-): number {
+function parsePositiveInt(raw: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(raw ?? "", 10);
   if (!Number.isFinite(parsed) || parsed < 1) return fallback;
   return parsed;
@@ -163,7 +160,9 @@ function exportCfg(context: LoadrtContext): LoadrtResult {
     );
   }
   return {
-    lines: [`loadrt ${context.componentName} ${[cfgArg, ...filteredExtraArgs].join(" ")}`.trim()],
+    lines: [
+      `loadrt ${context.componentName} ${[cfgArg, ...filteredExtraArgs].join(" ")}`.trim(),
+    ],
     ...(warnings.length > 0 ? { warnings } : {}),
   };
 }
