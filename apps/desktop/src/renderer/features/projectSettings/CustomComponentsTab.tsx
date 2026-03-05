@@ -27,7 +27,11 @@ export default function CustomComponentsTab() {
 
   const customComponents = createMemo(() =>
     Object.values(state.project.library.components)
-      .filter((component) => component.source !== "comp")
+      .filter(
+        (component) =>
+          component.source !== "comp" &&
+          !state.componentStore.components[component.id],
+      )
       .sort((a, b) => a.halComponentName.localeCompare(b.halComponentName)),
   );
 
@@ -37,7 +41,13 @@ export default function CustomComponentsTab() {
       for (const node of sheet.nodes) {
         if (node.kind !== "component") continue;
         const component = state.project.library.components[node.componentId];
-        if (!component || component.source === "comp") continue;
+        if (
+          !component ||
+          component.source === "comp" ||
+          state.componentStore.components[component.id]
+        ) {
+          continue;
+        }
         counts[node.componentId] = (counts[node.componentId] ?? 0) + 1;
       }
     }
