@@ -1,9 +1,10 @@
 import { resolveComponentPinsForInstance } from "../componentInstance";
+import { resolveNodeExportStage } from "../componentSystem";
 import { getSheet } from "../graph";
 import { isValidHalName } from "../halNames";
 import type { NoHALProject } from "../types";
-import { pushFatal } from "./context";
 import type { ExportContext } from "./context";
+import { pushFatal } from "./context";
 
 export interface ParamLines {
   mainSetpLines: string[];
@@ -36,8 +37,9 @@ export function collectParamLines(
           );
           continue;
         }
+        const exportStage = resolveNodeExportStage(component, node.exportStage);
         const setpTargetLines =
-          node.exportStage === "postgui" ? postguiSetpLines : mainSetpLines;
+          exportStage === "postgui" ? postguiSetpLines : mainSetpLines;
         const resolvedPins = resolveComponentPinsForInstance(
           component,
           node.instanceConfigValues,

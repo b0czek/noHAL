@@ -96,6 +96,8 @@ export const en = {
   "componentDialog.exportStage": "Export Stage",
   "componentDialog.exportStageMain": "Main HALFILE",
   "componentDialog.exportStagePostgui": "POSTGUI_HALFILE",
+  "componentDialog.exportStageLockedPostgui":
+    "Export stage is fixed by component definition.",
   "componentDialog.functions": "Realtime Functions (addf)",
   "componentDialog.noFunctions": "No function metadata.",
   "componentDialog.functionDefault": "_ (default)",

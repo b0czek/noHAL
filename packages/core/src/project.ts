@@ -1,5 +1,7 @@
+import { fixedExportStageForComponent } from "./componentSystem";
 import { NOHAL_PROJECT_FORMAT, NOHAL_PROJECT_VERSION } from "./fileFormats";
 import { createId, slugify } from "./id";
+import { reconcileIniManagedNodes } from "./ini";
 import { normalizeLinuxCncVersion } from "./linuxcncVersion";
 import { reconcileMotmodManagedNodes } from "./motmod";
 import {
@@ -115,6 +117,21 @@ export function createDefaultMotmodConfig(): ProjectMotmodConfig {
   };
 }
 
+export function reconcileProject(project: NoHALProject): NoHALProject {
+  reconcileMotmodManagedNodes(project);
+  reconcileIniManagedNodes(project);
+  for (const sheet of Object.values(project.sheets)) {
+    for (const node of sheet.nodes) {
+      if (node.kind !== "component") continue;
+      const component = project.library.components[node.componentId];
+      const fixedExportStage = fixedExportStageForComponent(component);
+      if (!fixedExportStage) continue;
+      node.exportStage = fixedExportStage;
+    }
+  }
+  return project;
+}
+
 function normalizeMotmodConfig(value: unknown): ProjectMotmodConfig {
   const raw = value && typeof value === "object" ? value : {};
   const candidate = raw as Partial<ProjectMotmodConfig>;
@@ -177,7 +194,7 @@ export function createEmptyProject(name: string): NoHALProject {
     },
   };
 
-  return reconcileMotmodManagedNodes(project);
+  return reconcileProject(project);
 }
 
 function normalizeProjectTarget(value: unknown): NoHALProject["target"] {
@@ -236,11 +253,11 @@ export function parseNoHALProject(content: string): NoHALProject {
     const inferred = halThreadIdByName.get(output.name);
     if (inferred) output.halThreadId = inferred;
   }
-  return reconcileMotmodManagedNodes(project);
+  return reconcileProject(project);
 }
 
 export function stringifyNoHALProject(project: NoHALProject): string {
-  reconcileMotmodManagedNodes(project);
+  reconcileProject(project);
   return `${JSON.stringify(project, null, 2)}\n`;
 }
 

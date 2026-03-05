@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import {
-  createMotmodSystemComponentDefinition,
-  planMotmodReconcile,
-  reconcileMotmodManagedNodes,
-} from ".";
 import { getNodePins } from "../graph";
 import {
   createEmptyProject,
   parseNoHALProject,
   stringifyNoHALProject,
 } from "../project";
+import {
+  createMotmodSystemComponentDefinition,
+  planMotmodReconcile,
+  reconcileMotmodManagedNodes,
+} from ".";
 
 function managedInstanceNames(project: ReturnType<typeof createEmptyProject>) {
   const root = project.sheets[project.rootSheetId];
@@ -61,7 +61,9 @@ describe("motmod-managed obligatory components", () => {
 
     expect(before).toEqual(afterPlan);
     expect(plan.inSync).toBe(false);
-    expect(plan.addNodes).toEqual([{ family: "joint", instanceName: "joint.2" }]);
+    expect(plan.addNodes).toEqual([
+      { family: "joint", instanceName: "joint.2" },
+    ]);
 
     reconcileMotmodManagedNodes(project);
     expect(managedInstanceNames(project)).toContain("joint.2");
@@ -71,9 +73,14 @@ describe("motmod-managed obligatory components", () => {
     const project = createEmptyProject("motmod defaults");
 
     expect(managedInstanceNames(project)).toEqual(
-      [...expectedAxisInstances(), "joint.0", "joint.1", "joint.2", "motion", "spindle.0"].sort(
-        (a, b) => a.localeCompare(b),
-      ),
+      [
+        ...expectedAxisInstances(),
+        "joint.0",
+        "joint.1",
+        "joint.2",
+        "motion",
+        "spindle.0",
+      ].sort((a, b) => a.localeCompare(b)),
     );
   });
 
@@ -88,6 +95,9 @@ describe("motmod-managed obligatory components", () => {
       placeable: false,
       searchable: false,
       showInCustomComponents: false,
+    });
+    expect(motionComponent?.constraints).toEqual({
+      fixedInstanceName: "motion",
     });
   });
 
@@ -119,8 +129,7 @@ describe("motmod-managed obligatory components", () => {
         "motion",
         "spindle.0",
         "spindle.1",
-      ].sort((a, b) => a.localeCompare(b),
-      ),
+      ].sort((a, b) => a.localeCompare(b)),
     );
 
     project.motmod = {
@@ -138,9 +147,13 @@ describe("motmod-managed obligatory components", () => {
     reconcileMotmodManagedNodes(project);
 
     expect(managedInstanceNames(project)).toEqual(
-      [...expectedAxisInstances(), "joint.0", "joint.1", "motion", "spindle.0"].sort(
-        (a, b) => a.localeCompare(b),
-      ),
+      [
+        ...expectedAxisInstances(),
+        "joint.0",
+        "joint.1",
+        "motion",
+        "spindle.0",
+      ].sort((a, b) => a.localeCompare(b)),
     );
   });
 
@@ -251,15 +264,19 @@ describe("motmod-managed obligatory components", () => {
 
   it("refreshes motmod component definitions when LinuxCNC version changes", () => {
     const project = createEmptyProject("motmod version refresh");
-    const motionBefore = project.library.components["system:motmod:motion"]?.pins
-      .map((pin) => pin.name) ?? [];
+    const motionBefore =
+      project.library.components["system:motmod:motion"]?.pins.map(
+        (pin) => pin.name,
+      ) ?? [];
     expect(motionBefore).toContain("jog-stop");
 
     project.target.linuxcncVersion = "2.8";
     reconcileMotmodManagedNodes(project);
 
-    const motionAfter = project.library.components["system:motmod:motion"]?.pins
-      .map((pin) => pin.name) ?? [];
+    const motionAfter =
+      project.library.components["system:motmod:motion"]?.pins.map(
+        (pin) => pin.name,
+      ) ?? [];
     expect(motionAfter).toContain("homing-inhibit");
     expect(motionAfter).not.toContain("jog-stop");
   });
@@ -290,7 +307,9 @@ describe("motmod-managed obligatory components", () => {
       halComponentName: "joint",
       source: "manual",
       runtime: { kind: "unknown" },
-      pins: [{ key: "home_sw_in", name: "home-sw-in", direction: "in", type: "bit" }],
+      pins: [
+        { key: "home_sw_in", name: "home-sw-in", direction: "in", type: "bit" },
+      ],
       params: [],
     };
 
@@ -306,7 +325,8 @@ describe("motmod-managed obligatory components", () => {
     reconcileMotmodManagedNodes(project);
 
     const adopted = root.nodes.find(
-      (node) => node.kind === "component" && node.id === "node_existing_joint_0",
+      (node) =>
+        node.kind === "component" && node.id === "node_existing_joint_0",
     );
     expect(adopted).toBeDefined();
     if (!adopted || adopted.kind !== "component") return;
@@ -337,7 +357,9 @@ describe("motmod-managed obligatory components", () => {
       halComponentName: "joint",
       source: "manual",
       runtime: { kind: "unknown" },
-      pins: [{ key: "home_sw_in", name: "home-sw-in", direction: "in", type: "bit" }],
+      pins: [
+        { key: "home_sw_in", name: "home-sw-in", direction: "in", type: "bit" },
+      ],
       params: [],
     };
     managedJoint.componentId = "halimport:joint";

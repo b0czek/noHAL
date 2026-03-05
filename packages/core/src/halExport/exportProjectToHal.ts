@@ -1,6 +1,7 @@
+import { reconcileProject } from "../project";
 import type { NoHALProject } from "../types";
-import { createExportContext } from "./context";
 import type { ExportResult } from "./context";
+import { createExportContext } from "./context";
 import { collectNetLines } from "./nets";
 import { collectParamLines } from "./params";
 import { renderHalOutput } from "./render";
@@ -8,6 +9,7 @@ import { buildRuntimeSections } from "./runtime";
 import { traverseSheetInstance } from "./traversal";
 
 export function exportProjectToHal(project: NoHALProject): ExportResult {
+  reconcileProject(project);
   const ctx = createExportContext();
   traverseSheetInstance(ctx, project, project.rootSheetId, [], []);
 

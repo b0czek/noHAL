@@ -1,12 +1,10 @@
 import { createId, safeKey } from "@nohal/core/src/id";
-import {
-  planMotmodReconcile,
-  reconcileMotmodManagedNodes,
-} from "@nohal/core/src/motmod";
+import { planMotmodReconcile } from "@nohal/core/src/motmod";
 import {
   createDefaultMotmodConfig,
   createEmptyMachineConfig,
   isRequiredHalThreadName,
+  reconcileProject,
 } from "@nohal/core/src/project";
 import type {
   HalThreadDefinition,
@@ -990,7 +988,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         return;
       }
       deps.withProject((project) => {
-        reconcileMotmodManagedNodes(project);
+        reconcileProject(project);
       });
       deps.setStatusT("store.status.syncedMotmodProjection", {
         added: plan.addNodes.length,

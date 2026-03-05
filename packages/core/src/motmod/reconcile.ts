@@ -1,3 +1,13 @@
+import {
+  createMotmodSystemComponentDefinition,
+  defaultPositionForMotmodFamily,
+  MOTMOD_MANAGED_FAMILIES,
+  MOTMOD_SYSTEM_COMPONENT_IDS,
+  type MotmodManagedFamily,
+  managedInstanceConfigValuesForFamily,
+  requiredMotmodInstancesByFamily,
+} from "../componentStore/catalog/system/motmod";
+import { isManagedBySystemManager } from "../componentSystem";
 import { createId } from "../id";
 import type {
   ComponentDefinition,
@@ -5,16 +15,6 @@ import type {
   NoHALProject,
   ProjectMotmodConfig,
 } from "../types";
-import {
-  createMotmodSystemComponentDefinition,
-  defaultPositionForMotmodFamily,
-  managedInstanceConfigValuesForFamily,
-  MOTMOD_MANAGED_FAMILIES,
-  MOTMOD_SYSTEM_COMPONENT_IDS,
-  requiredMotmodInstancesByFamily,
-  type MotmodManagedFamily,
-} from "../componentStore/catalog/system/motmod";
-import { isManagedBySystemManager } from "../componentSystem";
 
 const MOTMOD_MANAGED_FAMILY_SET = new Set<MotmodManagedFamily>(
   MOTMOD_MANAGED_FAMILIES,
@@ -83,7 +83,12 @@ function normalizeMotmodConfig(
   value: Partial<ProjectMotmodConfig> | undefined,
 ): ProjectMotmodConfig {
   return {
-    numJoints: clampInt(value?.numJoints, DEFAULT_MOTMOD_CONFIG.numJoints, 1, 64),
+    numJoints: clampInt(
+      value?.numJoints,
+      DEFAULT_MOTMOD_CONFIG.numJoints,
+      1,
+      64,
+    ),
     numDio: clampInt(value?.numDio, DEFAULT_MOTMOD_CONFIG.numDio, 0, 256),
     numAio: clampInt(value?.numAio, DEFAULT_MOTMOD_CONFIG.numAio, 0, 256),
     numSpindles: clampInt(
@@ -127,9 +132,13 @@ function familyFromNode(
   node: ComponentNode,
 ): MotmodManagedFamily | null {
   const component = project.library.components[node.componentId];
-  const managedFamily =
-    isManagedBySystemManager(component, "motmod") ? component.system?.family : undefined;
-  if (managedFamily && MOTMOD_MANAGED_FAMILY_SET.has(managedFamily as MotmodManagedFamily)) {
+  const managedFamily = isManagedBySystemManager(component, "motmod")
+    ? component.system?.family
+    : undefined;
+  if (
+    managedFamily &&
+    MOTMOD_MANAGED_FAMILY_SET.has(managedFamily as MotmodManagedFamily)
+  ) {
     return managedFamily as MotmodManagedFamily;
   }
   const halName = component?.halComponentName;
@@ -226,7 +235,10 @@ function isSameSystemComponentDefinition(
   if (!existing) return false;
   if (existing.halComponentName !== expected.halComponentName) return false;
   if (existing.source !== expected.source) return false;
-  if ((existing.runtime?.kind ?? "unknown") !== (expected.runtime?.kind ?? "unknown")) {
+  if (
+    (existing.runtime?.kind ?? "unknown") !==
+    (expected.runtime?.kind ?? "unknown")
+  ) {
     return false;
   }
   if (
@@ -235,10 +247,24 @@ function isSameSystemComponentDefinition(
   ) {
     return false;
   }
+  if (
+    existing.system?.manager !== expected.system?.manager ||
+    existing.system?.family !== expected.system?.family
+  ) {
+    return false;
+  }
+  if (
+    JSON.stringify(existing.constraints ?? null) !==
+    JSON.stringify(expected.constraints ?? null)
+  ) {
+    return false;
+  }
   return samePinSchema(existing.pins, expected.pins);
 }
 
-function pruneUnusedImportedMotmodFamilyComponents(project: NoHALProject): void {
+function pruneUnusedImportedMotmodFamilyComponents(
+  project: NoHALProject,
+): void {
   const referencedComponentIds = new Set<string>();
   for (const sheet of Object.values(project.sheets)) {
     for (const node of sheet.nodes) {
@@ -262,7 +288,9 @@ function pruneUnusedImportedMotmodFamilyComponents(project: NoHALProject): void 
   }
 }
 
-export function planMotmodReconcile(project: NoHALProject): MotmodReconcilePlan {
+export function planMotmodReconcile(
+  project: NoHALProject,
+): MotmodReconcilePlan {
   const rootSheet = project.sheets[project.rootSheetId];
   const normalizedMotmod = normalizeMotmodConfig(project.motmod);
   const plan: MotmodReconcilePlan = {
@@ -387,7 +415,9 @@ export function planMotmodReconcile(project: NoHALProject): MotmodReconcilePlan 
   return plan;
 }
 
-export function reconcileMotmodManagedNodes(project: NoHALProject): NoHALProject {
+export function reconcileMotmodManagedNodes(
+  project: NoHALProject,
+): NoHALProject {
   const rootSheet = project.sheets[project.rootSheetId];
   const plan = planMotmodReconcile(project);
   project.motmod = plan.normalizedMotmod;

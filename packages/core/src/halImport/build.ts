@@ -8,8 +8,11 @@ import { resolveAddfFunctionTarget } from "../componentFunctions";
 import { resolveComponentPinsForInstance } from "../componentInstance";
 import { createId, safeKey, slugify } from "../id";
 import { normalizeLinuxCncVersion } from "../linuxcncVersion";
-import { reconcileMotmodManagedNodes } from "../motmod";
-import { createDefaultMotmodConfig, createEmptyProject } from "../project";
+import {
+  createDefaultMotmodConfig,
+  createEmptyProject,
+  reconcileProject,
+} from "../project";
 import { getSheetThreadOutputs } from "../sheetThreads";
 import type {
   ComponentDefinition,
@@ -1641,5 +1644,6 @@ export function buildProjectFromHalImport(
     };
   }
 
-  return { project: reconcileMotmodManagedNodes(project), warnings };
+  reconcileProject(project);
+  return { project, warnings };
 }

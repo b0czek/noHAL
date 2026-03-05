@@ -4,17 +4,14 @@ import type {
   ComponentPinDefinition,
   ProjectMotmodConfig,
 } from "../../../types";
+import { axisPinsForVersion, requiredAxisInstances } from "./axis";
+import { jointPinsForVersion } from "./joint";
 import {
-  axisPinsForVersion,
-  requiredAxisInstances,
-} from "./axis";
-import {
+  motionFunctions,
   motionInstanceConfigDefinition,
   motionInstanceConfigValues,
-  motionFunctions,
   motionPinsForVersion,
 } from "./motion";
-import { jointPinsForVersion } from "./joint";
 import { spindlePinsForVersion } from "./spindle";
 
 export const MOTMOD_SYSTEM_COMPONENT_IDS = {
@@ -78,6 +75,13 @@ export function createMotmodSystemComponentDefinition(
       searchable: false,
       showInCustomComponents: false,
     },
+    ...(family === "motion"
+      ? {
+          constraints: {
+            fixedInstanceName: "motion",
+          },
+        }
+      : {}),
     runtime,
     pins: systemPinsByFamily(family, linuxcncVersion),
     params: [],
@@ -105,7 +109,10 @@ export function requiredMotmodInstancesByFamily(
     motion: ["motion"],
     axis: requiredAxisInstances(linuxcncVersion, motmod.numJoints),
     joint: Array.from({ length: motmod.numJoints }, (_, i) => `joint.${i}`),
-    spindle: Array.from({ length: motmod.numSpindles }, (_, i) => `spindle.${i}`),
+    spindle: Array.from(
+      { length: motmod.numSpindles },
+      (_, i) => `spindle.${i}`,
+    ),
   };
 }
 

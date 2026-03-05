@@ -44,6 +44,11 @@ export interface ComponentSystemMetadata {
   family?: string;
 }
 
+export interface ComponentConstraintPolicy {
+  fixedInstanceName?: string;
+  fixedExportStage?: "main" | "postgui";
+}
+
 export type ComponentLoadrtStrategyId =
   | "names_or_count"
   | "names_or_num_chan"
@@ -114,6 +119,7 @@ export interface ComponentDefinition {
   };
   visibility?: ComponentVisibilityPolicy;
   system?: ComponentSystemMetadata;
+  constraints?: ComponentConstraintPolicy;
 }
 
 export interface ImportedComponentDefinition extends ComponentDefinition {

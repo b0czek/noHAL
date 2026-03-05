@@ -1,9 +1,13 @@
+import { resolveComponentPinsForInstance } from "@nohal/core/src/componentInstance";
+import {
+  fixedExportStageForComponent,
+  fixedInstanceNameForComponent,
+} from "@nohal/core/src/componentSystem";
+import { isComponentPlaceable } from "@nohal/core/src/componentVisibility";
 import { getSheet } from "@nohal/core/src/graph";
 import { isValidHalName } from "@nohal/core/src/halNames";
 import { createId } from "@nohal/core/src/id";
 import { createSheetPortDraft } from "@nohal/core/src/project";
-import { resolveComponentPinsForInstance } from "@nohal/core/src/componentInstance";
-import { isComponentPlaceable } from "@nohal/core/src/componentVisibility";
 import type {
   ComponentNode,
   HalValueType,
@@ -17,9 +21,9 @@ import {
   defaultNodePosition,
   defaultPortPosition,
   forcedPortSideForDirection,
+  nextComponentInstanceName,
   nextName,
   normalizeRotationDegrees,
-  nextComponentInstanceName,
   reconcileComponentNodesForDefinition,
   toErrorMessage,
 } from "../helpers";
@@ -268,6 +272,13 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       if (currentNode.kind === "component") {
         const component =
           deps.state.project.library.components[currentNode.componentId];
+        if (fixedInstanceNameForComponent(component)) {
+          deps.setState(
+            "status",
+            `Instance name is fixed for component '${component?.halComponentName ?? currentNode.componentId}'`,
+          );
+          return;
+        }
         if (componentUsesLockedCanonicalInstanceNames(component)) {
           deps.setState(
             "status",
@@ -410,7 +421,11 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         const sheet = getSheet(project, activeSheetId);
         const node = sheet.nodes.find((n) => n.id === nodeId);
         if (!node || node.kind !== "component") return;
-        if (stage === "postgui") {
+        const component = project.library.components[node.componentId];
+        const fixedExportStage = fixedExportStageForComponent(component);
+        if (fixedExportStage) {
+          node.exportStage = fixedExportStage;
+        } else if (stage === "postgui") {
           node.exportStage = "postgui";
         } else {
           delete node.exportStage;
