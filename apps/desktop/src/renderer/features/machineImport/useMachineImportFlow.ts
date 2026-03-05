@@ -321,9 +321,9 @@ export function useMachineImportFlow({
         draft,
         componentStore: state.componentStore,
         linkSelections,
+        linuxcncVersion: selectedLinuxCncVersion(),
         placementHeuristic: machineImportFlow.placementHeuristic,
       });
-      result.project.target.linuxcncVersion = selectedLinuxCncVersion();
       if (machineImportFlow.machineConfigImport) {
         result.project.machineConfig = structuredClone(
           unwrap(machineImportFlow.machineConfigImport.machineConfig),

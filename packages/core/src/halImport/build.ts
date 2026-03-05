@@ -4,8 +4,11 @@ import {
   makeAddfQueueNodeEntry,
   normalizeAddfQueueEntries,
 } from "../addfQueue";
+import { resolveAddfFunctionTarget } from "../componentFunctions";
 import { resolveComponentPinsForInstance } from "../componentInstance";
 import { createId, safeKey, slugify } from "../id";
+import { normalizeLinuxCncVersion } from "../linuxcncVersion";
+import { reconcileMotmodManagedNodes } from "../motmod";
 import { createDefaultMotmodConfig, createEmptyProject } from "../project";
 import { getSheetThreadOutputs } from "../sheetThreads";
 import type {
@@ -181,6 +184,11 @@ export function buildProjectFromHalImport(
       : "Imported HAL");
   const project = createEmptyProject(fileBase || "Imported HAL");
   project.name = fileBase || "Imported HAL";
+  if (options.linuxcncVersion) {
+    project.target.linuxcncVersion = normalizeLinuxCncVersion(
+      options.linuxcncVersion,
+    );
+  }
   if (draft.motmod) {
     project.motmod = {
       ...createDefaultMotmodConfig(),
@@ -1548,38 +1556,78 @@ export function buildProjectFromHalImport(
       output.halThreadId = halThreadId;
   }
   const defaultRootThreadOutputId = rootSheet.hal.threadOutputs[0]?.id;
+  const resolveGlobalFunctionTarget = (
+    functionName: string,
+  ): { nodeId: string; functionKey: string } | null => {
+    const target = functionName.trim();
+    if (!target) return null;
+    const matches: Array<{ nodeId: string; functionKey: string }> = [];
+    for (const [nodeId, component] of componentByNodeId.entries()) {
+      const instanceName = nodeInstanceNameById.get(nodeId);
+      if (!instanceName) continue;
+      for (const fn of component.functions ?? []) {
+        if (resolveAddfFunctionTarget(instanceName, fn) !== target) continue;
+        matches.push({ nodeId, functionKey: fn.key });
+      }
+    }
+    if (matches.length === 1) return matches[0] ?? null;
+    if (matches.length > 1) {
+      warnings.push(
+        `Imported addf target '${functionName}' matches multiple component functions; skipping explicit queue mapping`,
+      );
+    }
+    return null;
+  };
   for (const addf of draft.addfs) {
-    const addfInstanceName = addf.instanceName ?? addf.functionName;
-    const nodeId = nodeIdByInstanceName.get(addfInstanceName);
-    if (!nodeId) continue;
-    const component = componentByNodeId.get(nodeId);
-
     const threadOutputId =
       (addf.thread?.trim() &&
         rootThreadOutputIdByName.get(addf.thread.trim())) ||
       defaultRootThreadOutputId;
-    let queueEntry = makeAddfQueueNodeEntry(nodeId, threadOutputId);
-    if (addf.functionSuffix !== undefined) {
-      const fn = component?.functions?.find(
-        (item) => item.halSuffix === addf.functionSuffix,
-      );
-      if (fn) {
-        queueEntry = makeAddfQueueFunctionEntry(nodeId, fn.key, threadOutputId);
-      } else if (!warnedCollapsedAddfInstances.has(addfInstanceName)) {
-        warnedCollapsedAddfInstances.add(addfInstanceName);
-        warnings.push(
-          `Imported addf target '${addf.functionName}' could not be matched to component function metadata on '${addfInstanceName}'; queue entry kept at instance level`,
+    let queueEntry: SheetAddfQueueStoredEntry | null = null;
+    if (!addf.instanceName && addf.functionName.trim()) {
+      const match = resolveGlobalFunctionTarget(addf.functionName);
+      if (match) {
+        queueEntry = makeAddfQueueFunctionEntry(
+          match.nodeId,
+          match.functionKey,
+          threadOutputId,
         );
       }
-    } else if (
-      addf.isDefaultFunction === false &&
-      !warnedCollapsedAddfInstances.has(addfInstanceName)
-    ) {
-      warnedCollapsedAddfInstances.add(addfInstanceName);
-      warnings.push(
-        `Imported addf target '${addf.functionName}' uses a non-default function but no function suffix metadata was parsed; queue entry kept at instance level`,
-      );
     }
+    if (!queueEntry) {
+      const addfInstanceName = addf.instanceName ?? addf.functionName;
+      const nodeId = nodeIdByInstanceName.get(addfInstanceName);
+      if (!nodeId) continue;
+      const component = componentByNodeId.get(nodeId);
+
+      queueEntry = makeAddfQueueNodeEntry(nodeId, threadOutputId);
+      if (addf.functionSuffix !== undefined) {
+        const fn = component?.functions?.find(
+          (item) => item.halSuffix === addf.functionSuffix,
+        );
+        if (fn) {
+          queueEntry = makeAddfQueueFunctionEntry(
+            nodeId,
+            fn.key,
+            threadOutputId,
+          );
+        } else if (!warnedCollapsedAddfInstances.has(addfInstanceName)) {
+          warnedCollapsedAddfInstances.add(addfInstanceName);
+          warnings.push(
+            `Imported addf target '${addf.functionName}' could not be matched to component function metadata on '${addfInstanceName}'; queue entry kept at instance level`,
+          );
+        }
+      } else if (
+        addf.isDefaultFunction === false &&
+        !warnedCollapsedAddfInstances.has(addfInstanceName)
+      ) {
+        warnedCollapsedAddfInstances.add(addfInstanceName);
+        warnings.push(
+          `Imported addf target '${addf.functionName}' uses a non-default function but no function suffix metadata was parsed; queue entry kept at instance level`,
+        );
+      }
+    }
+    if (!queueEntry) continue;
 
     const key = addfQueueEntryKey(queueEntry) ?? addf.functionName;
     if (seenQueueItems.has(key)) continue;
@@ -1593,5 +1641,5 @@ export function buildProjectFromHalImport(
     };
   }
 
-  return { project, warnings };
+  return { project: reconcileMotmodManagedNodes(project), warnings };
 }

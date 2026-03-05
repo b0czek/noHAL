@@ -1,4 +1,5 @@
 import { resolveComponentPinsForInstance } from "../componentInstance";
+import { isSystemComponent } from "../componentSystem";
 import { getNodePins, getSheet, invertDirection } from "../graph";
 import { isValidHalName } from "../halNames";
 import type { NoHALProject, SheetDefinition } from "../types";
@@ -131,17 +132,19 @@ export function traverseSheetInstance(
     if (node.kind === "component") {
       const component = project.library.components[node.componentId];
       if (component) {
-        ctx.componentInstances.push({
-          componentName: component.halComponentName,
-          componentId: node.componentId,
-          instancePath: joinInstancePath([...pathParts, node.instanceName]),
-          ...(node.instanceConfigValues
-            ? { instanceConfigValues: { ...node.instanceConfigValues } }
-            : {}),
-          parentSheetPath: joinInstancePath(pathParts),
-          runtimeKind: component.runtime?.kind ?? "unknown",
-          exportStage: node.exportStage === "postgui" ? "postgui" : "main",
-        });
+        if (!isSystemComponent(component)) {
+          ctx.componentInstances.push({
+            componentName: component.halComponentName,
+            componentId: node.componentId,
+            instancePath: joinInstancePath([...pathParts, node.instanceName]),
+            ...(node.instanceConfigValues
+              ? { instanceConfigValues: { ...node.instanceConfigValues } }
+              : {}),
+            parentSheetPath: joinInstancePath(pathParts),
+            runtimeKind: component.runtime?.kind ?? "unknown",
+            exportStage: node.exportStage === "postgui" ? "postgui" : "main",
+          });
+        }
         for (const pin of resolveComponentPinsForInstance(
           component,
           node.instanceConfigValues,

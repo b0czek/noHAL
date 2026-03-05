@@ -28,8 +28,12 @@ function resolveCountConfigValue(
   return count;
 }
 
+// Supports plain and zero-padded index placeholders used by pin templates.
 function replaceIndexTemplate(template: string, index: number): string {
-  return template.replaceAll("{index}", `${index}`);
+  return template
+    .replaceAll("{index3}", `${index}`.padStart(3, "0"))
+    .replaceAll("{index2}", `${index}`.padStart(2, "0"))
+    .replaceAll("{index}", `${index}`);
 }
 
 export function resolveComponentPinsForInstance(

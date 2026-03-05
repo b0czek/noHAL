@@ -1,3 +1,4 @@
+import { isSystemComponent } from "@nohal/core/src/componentSystem";
 import { getSheet } from "@nohal/core/src/graph";
 import type { XY } from "@nohal/core/src/types";
 import {
@@ -18,6 +19,16 @@ export function createSelectionActions(
   deps: EditorStoreActionContext,
   links: SelectionActionLinks,
 ) {
+  const isSystemManagedProtectedNode = (
+    project: EditorStoreActionContext["state"]["project"],
+    node: { kind: string; componentId?: string },
+  ): boolean =>
+    node.kind === "component" &&
+    !!(
+      node.componentId &&
+      isSystemComponent(project.library.components[node.componentId])
+    );
+
   return {
     select(sel: EditorSelection): void {
       deps.setState("selection", sel);
@@ -46,6 +57,10 @@ export function createSelectionActions(
           deps.state.activeSheetId,
         );
         const node = currentSheet.nodes.find((n) => n.id === sel.id);
+        if (node && isSystemManagedProtectedNode(deps.state.project, node)) {
+          deps.setStatusT("store.status.cannotDeleteSystemManagedComponent");
+          return;
+        }
         if (node?.kind === "sheet") {
           links.deleteSheetDefinition(node.sheetId);
           return;
@@ -64,6 +79,16 @@ export function createSelectionActions(
           deps.state.activeSheetId,
         );
         const selectedNodeIds = new Set(sel.nodeIds);
+        const protectedNodeIds = new Set(
+          currentSheet.nodes
+            .filter(
+              (node) =>
+                selectedNodeIds.has(node.id) &&
+                isSystemManagedProtectedNode(deps.state.project, node),
+            )
+            .map((node) => node.id),
+        );
+        for (const nodeId of protectedNodeIds) selectedNodeIds.delete(nodeId);
         const selectedLabelIds = new Set(sel.labelIds);
         const selectedPortIds = new Set(sel.portIds);
 
@@ -120,7 +145,13 @@ export function createSelectionActions(
         deps.setState("project", next);
         deps.markProjectChanged();
         deps.clearSelectionAndPendingUi();
-        deps.setStatusT("store.status.removedSelection");
+        if (protectedNodeIds.size > 0) {
+          deps.setStatusT("store.status.removedSelectionSkippedSystemManaged", {
+            count: protectedNodeIds.size,
+          });
+        } else {
+          deps.setStatusT("store.status.removedSelection");
+        }
         return;
       }
 
@@ -128,6 +159,8 @@ export function createSelectionActions(
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         if (sel.kind === "node") {
+          const node = sheet.nodes.find((n) => n.id === sel.id);
+          if (node && isSystemManagedProtectedNode(project, node)) return;
           const removedNodeIds = new Set([sel.id]);
           sheet.nodes = sheet.nodes.filter((n) => n.id !== sel.id);
           pruneSheetNodeReferences(sheet, removedNodeIds);
@@ -154,6 +187,15 @@ export function createSelectionActions(
         }
       });
       deps.clearSelectionAndPendingUi();
+      if (sel.kind === "node") {
+        const node = getSheet(deps.state.project, activeSheetId).nodes.find(
+          (n) => n.id === sel.id,
+        );
+        if (node && isSystemManagedProtectedNode(deps.state.project, node)) {
+          deps.setStatusT("store.status.cannotDeleteSystemManagedComponent");
+          return;
+        }
+      }
       deps.setStatusT("store.status.removedSelection");
     },
   };

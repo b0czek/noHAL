@@ -3,6 +3,7 @@ import { isValidHalName } from "@nohal/core/src/halNames";
 import { createId } from "@nohal/core/src/id";
 import { createSheetPortDraft } from "@nohal/core/src/project";
 import { resolveComponentPinsForInstance } from "@nohal/core/src/componentInstance";
+import { isComponentPlaceable } from "@nohal/core/src/componentVisibility";
 import type {
   ComponentNode,
   HalValueType,
@@ -66,6 +67,12 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     ): void {
       const comp = deps.state.project.library.components[componentId];
       if (!comp) return;
+      if (!isComponentPlaceable(comp)) {
+        deps.setStatusT("store.status.componentPlacementDisabled", {
+          componentName: comp.halComponentName,
+        });
+        return;
+      }
       const activeSheetId = deps.state.activeSheetId;
       const currentSheet = getSheet(deps.state.project, activeSheetId);
       const instanceName = nextComponentInstanceName(currentSheet, comp);

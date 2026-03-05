@@ -5,6 +5,7 @@ import {
   makeAddfQueueNodeEntry,
   makeAddfQueueSubsheetOutputEntry,
 } from "@nohal/core/src/addfQueue";
+import { resolveAddfFunctionTarget } from "@nohal/core/src/componentFunctions";
 import {
   firstSheetThreadOutputId,
   getSheetThreadOutputs,
@@ -77,6 +78,7 @@ function buildSheetQueueRows(
   const rows: SheetQueueRow[] = [];
   const seenKeys = new Set<string>();
   const coveredByNodeEntry = new Set<string>();
+  const coveredFunctionKeysByNodeId = new Map<string, Set<string>>();
 
   const appendRow = (row: SheetQueueRow) => {
     if (seenKeys.has(row.queueKey)) return;
@@ -107,7 +109,9 @@ function buildSheetQueueRows(
         },
       ];
     }
-    return functions.map((fn) => {
+    return functions.flatMap((fn) => {
+      const covered = coveredFunctionKeysByNodeId.get(node.id);
+      if (covered?.has(fn.key)) return [];
       const queueEntry = makeAddfQueueFunctionEntry(
         node.id,
         fn.key,
@@ -115,9 +119,7 @@ function buildSheetQueueRows(
       );
       const queueKey =
         addfQueueEntryKey(queueEntry) ?? `fn:${node.id}:${fn.key}`;
-      const addfTarget = fn.halSuffix
-        ? `${node.instanceName}.${fn.halSuffix}`
-        : node.instanceName;
+      const addfTarget = resolveAddfFunctionTarget(node.instanceName, fn);
       const fnLabel = fn.halSuffix || labels.defaultFunction;
       const floatLabel =
         fn.floatMode === "unknown" ? labels.unknownFloat : fn.floatMode;
@@ -229,9 +231,10 @@ function buildSheetQueueRows(
         (item) => item.key === entry.functionKey,
       );
       if (!fn) continue;
-      const addfTarget = fn.halSuffix
-        ? `${node.instanceName}.${fn.halSuffix}`
-        : node.instanceName;
+      const covered = coveredFunctionKeysByNodeId.get(node.id);
+      if (covered) covered.add(fn.key);
+      else coveredFunctionKeysByNodeId.set(node.id, new Set([fn.key]));
+      const addfTarget = resolveAddfFunctionTarget(node.instanceName, fn);
       const fnLabel = fn.halSuffix || labels.defaultFunction;
       const floatLabel =
         fn.floatMode === "unknown" ? labels.unknownFloat : fn.floatMode;

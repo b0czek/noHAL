@@ -1,6 +1,7 @@
 import { NOHAL_PROJECT_FORMAT, NOHAL_PROJECT_VERSION } from "./fileFormats";
 import { createId, slugify } from "./id";
 import { normalizeLinuxCncVersion } from "./linuxcncVersion";
+import { reconcileMotmodManagedNodes } from "./motmod";
 import {
   createDefaultSheetThreadOutputs,
   normalizeSheetThreadOutputs,
@@ -153,7 +154,7 @@ export function createEmptyProject(name: string): NoHALProject {
     defaultTopOutput.halThreadId = requiredHalThreadId;
   }
 
-  return {
+  const project: NoHALProject = {
     format: NOHAL_PROJECT_FORMAT,
     version: NOHAL_PROJECT_VERSION,
     name,
@@ -175,6 +176,8 @@ export function createEmptyProject(name: string): NoHALProject {
       activeSheetId: top.id,
     },
   };
+
+  return reconcileMotmodManagedNodes(project);
 }
 
 function normalizeProjectTarget(value: unknown): NoHALProject["target"] {
@@ -233,10 +236,11 @@ export function parseNoHALProject(content: string): NoHALProject {
     const inferred = halThreadIdByName.get(output.name);
     if (inferred) output.halThreadId = inferred;
   }
-  return project;
+  return reconcileMotmodManagedNodes(project);
 }
 
 export function stringifyNoHALProject(project: NoHALProject): string {
+  reconcileMotmodManagedNodes(project);
   return `${JSON.stringify(project, null, 2)}\n`;
 }
 
