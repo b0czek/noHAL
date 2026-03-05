@@ -1,0 +1,200 @@
+import type { GeneratedCatalogComponentHistory } from "../../generatedTypes.ts";
+
+const history: GeneratedCatalogComponentHistory = {
+  halComponentName: "raster",
+  variants: [
+    {
+      fromVersion: "2.7",
+      component: null,
+    },
+    {
+      fromVersion: "2.10",
+      component: {
+        id: "comp:raster:raster",
+        name: "raster",
+        halComponentName: "raster",
+        source: "comp",
+        sourcePath: "src/hal/components/raster.comp",
+        docs: {
+          component:
+            "Outputs laser power based upon pre programmed rastering data",
+          description:
+            "\nThe raster component converts a single raster program line to laser output.\nThe position pin is slaved to the axis that the raster line maps too.\nThe raster program must be programmed for each raster line that is to be executed.\nThe port must be programmed prior to a raster line being executed.\n\nA python component RasterProgrammer (`lib/python/RasterProgrammer.py`) is\nprovided to ease programming of the raster component.\nAn example `configs/sim/axis/laser` shows how these pieces could be integrated\nfor a functional laser engraver config.\n\nA program line format is as follows:\n\n  {program_offset};{bits_per_pixel};{pixels_per_unit};{number_of_ pixels};{pixel_data ....}\n\n* *program_offset*: a float. It indicates the start position of the raster line\n  relative to the current axis position. A negative *program_offset* indicates\n  that the raster sweeps from positive to negative. A zero or positive\n  program_offset* indicates that the raster sweeps from negative to positive\n  direction.\n* *bits_per_pixel*: an integer. It indicates the precision of a pixel value and\n  consequently the number of bytes consumed per pixel value. A bits per pixel\n  of 4 takes 1 character (0-F) and scales out from from 0.0 to 1.0 (0 being 0\n  and E being 1.0). F corresponds to off or -1.0. A bits per pixel of 8 takes 2\n  characters per pixel, 12 takes 3 characters per pixel etc...\n* *pixels_per_unit*: a float that represents the size of a pixel in machine\n  units. 1 would correspond to 1 pixel per machine unit, 100 would correspond\n  to 100 pixels per machine unit.\n\n* *number_of_pixels*: an integer that indicates the length of the raster line\n  in pixels. The length of the rasterline in machine units would be\n  number_of_pixels / pixels_per_unit\n               \n* *pixel_data*: a series of hexadeicmal digits ([0-9][a-f][A-F]) the represents\n  the pixel data. *bits_per_pixel* determines the resolution of a pixel and how\n  many hexadecimal digits per pixel.  pixel data characters have no delimiter\n  between each pixel. +\n  4 bpp is one character per pixel +\n  8 bpp is 2 characters per pixel +\n  12 bpp is 3 +\n  etc...\n\n",
+          license: "GPL",
+        },
+        pins: [
+          {
+            key: "position",
+            name: "position",
+            type: "float",
+            doc: "input coordinate for raster",
+            direction: "in",
+          },
+          {
+            key: "reset",
+            name: "reset",
+            type: "bit",
+            doc: "resets the component",
+            direction: "in",
+          },
+          {
+            key: "program",
+            name: "program",
+            type: "port",
+            doc: "pixel data used by the raster",
+            direction: "in",
+          },
+          {
+            key: "run",
+            name: "run",
+            type: "bit",
+            doc: "starts the raster",
+            direction: "in",
+          },
+          {
+            key: "enabled",
+            name: "enabled",
+            type: "bit",
+            doc: "When a valid raster program is running.",
+            defaultValue: "0",
+            direction: "out",
+          },
+          {
+            key: "output",
+            name: "output",
+            type: "float",
+            doc: "current output level command",
+            defaultValue: "-1",
+            direction: "out",
+          },
+          {
+            key: "fault",
+            name: "fault",
+            type: "bit",
+            doc: "If error has occurred",
+            defaultValue: "0",
+            direction: "out",
+          },
+          {
+            key: "fault_code",
+            name: "fault-code",
+            type: "s32",
+            doc: "Code of fault",
+            defaultValue: "0",
+            direction: "out",
+          },
+          {
+            key: "state",
+            name: "state",
+            type: "s32",
+            doc: "current state",
+            defaultValue: "0",
+            direction: "out",
+          },
+          {
+            key: "program_position",
+            name: "program-position",
+            type: "float",
+            doc: "base position of program at run start",
+            defaultValue: "0.0",
+            direction: "out",
+          },
+          {
+            key: "program_offset",
+            name: "program-offset",
+            type: "float",
+            doc: "offset to start of pixel data",
+            defaultValue: "0.0",
+            direction: "out",
+          },
+          {
+            key: "bpp",
+            name: "bpp",
+            type: "s32",
+            doc: "bits per pixel.",
+            defaultValue: "0",
+            direction: "out",
+          },
+          {
+            key: "ppu",
+            name: "ppu",
+            type: "float",
+            doc: "pixels per unit",
+            defaultValue: "0.0",
+            direction: "out",
+          },
+          {
+            key: "count",
+            name: "count",
+            type: "s32",
+            doc: "pixel count",
+            defaultValue: "0",
+            direction: "out",
+          },
+          {
+            key: "bitmap_position",
+            name: "bitmap-position",
+            type: "float",
+            doc: "calculated position in bitmap",
+            defaultValue: "0.0",
+            direction: "out",
+          },
+          {
+            key: "current_pixel_value",
+            name: "current-pixel-value",
+            type: "float",
+            doc: "current loaded pixel value",
+            defaultValue: "-1.0",
+            direction: "out",
+          },
+          {
+            key: "previous_pixel_value",
+            name: "previous-pixel-value",
+            type: "float",
+            doc: "previously loaded pixel value",
+            defaultValue: "-1.0",
+            direction: "out",
+          },
+          {
+            key: "current_pixel_index",
+            name: "current-pixel-index",
+            type: "s32",
+            doc: "currently loaded pixel index",
+            defaultValue: "-1",
+            direction: "out",
+          },
+          {
+            key: "fraction",
+            name: "fraction",
+            type: "float",
+            defaultValue: "0.0",
+            direction: "out",
+          },
+        ],
+        params: [],
+        functions: [
+          {
+            key: "default",
+            declaredName: "_",
+            halSuffix: "",
+            floatMode: "fp",
+          },
+        ],
+        runtime: {
+          kind: "rt",
+          options: {
+            period: false,
+          },
+        },
+        parseMeta: {
+          parser: "nohal-comp-v1",
+          warnings: [],
+          rawHeader:
+            'component raster "Outputs laser power based upon pre programmed rastering data";\npin in float position "input coordinate for raster";\npin in bit   reset    "resets the component";\npin in port  program     "pixel data used by the raster";\npin in bit   run      "starts the raster";\n\npin out bit enabled = 0      "When a valid raster program is running.";\npin out float output = -1    "current output level command";\npin out bit fault = 0        "If error has occurred";\npin out signed fault_code = 0 "Code of fault";\npin out signed state = 0    "current state";\npin out float program_position = 0.0 "base position of program at run start";\npin out float program_offset = 0.0  "offset to start of pixel data";\npin out signed bpp = 0         "bits per pixel.";\npin out float ppu = 0.0            "pixels per unit";\npin out signed count = 0       "pixel count";\npin out float bitmap_position = 0.0 "calculated position in bitmap";\npin out float current_pixel_value = -1.0 "current loaded pixel value";\npin out float previous_pixel_value = -1.0 "previously loaded pixel value";\npin out signed current_pixel_index = -1 "currently loaded pixel index";\npin out float fraction = 0.0;\n\ndescription """\nThe raster component converts a single raster program line to laser output.\nThe position pin is slaved to the axis that the raster line maps too.\nThe raster program must be programmed for each raster line that is to be executed.\nThe port must be programmed prior to a raster line being executed.\n\nA python component RasterProgrammer (`lib/python/RasterProgrammer.py`) is\nprovided to ease programming of the raster component.\nAn example `configs/sim/axis/laser` shows how these pieces could be integrated\nfor a functional laser engraver config.\n\nA program line format is as follows:\n\n  {program_offset};{bits_per_pixel};{pixels_per_unit};{number_of_ pixels};{pixel_data ....}\n\n* *program_offset*: a float. It indicates the start position of the raster line\n  relative to the current axis position. A negative *program_offset* indicates\n  that the raster sweeps from positive to negative. A zero or positive\n  program_offset* indicates that the raster sweeps from negative to positive\n  direction.\n* *bits_per_pixel*: an integer. It indicates the precision of a pixel value and\n  consequently the number of bytes consumed per pixel value. A bits per pixel\n  of 4 takes 1 character (0-F) and scales out from from 0.0 to 1.0 (0 being 0\n  and E being 1.0). F corresponds to off or -1.0. A bits per pixel of 8 takes 2\n  characters per pixel, 12 takes 3 characters per pixel etc...\n* *pixels_per_unit*: a float that represents the size of a pixel in machine\n  units. 1 would correspond to 1 pixel per machine unit, 100 would correspond\n  to 100 pixels per machine unit.\n\n* *number_of_pixels*: an integer that indicates the length of the raster line\n  in pixels. The length of the rasterline in machine units would be\n  number_of_pixels / pixels_per_unit\n               \n* *pixel_data*: a series of hexadeicmal digits ([0-9][a-f][A-F]) the represents\n  the pixel data. *bits_per_pixel* determines the resolution of a pixel and how\n  many hexadecimal digits per pixel.  pixel data characters have no delimiter\n  between each pixel. +\n  4 bpp is one character per pixel +\n  8 bpp is 2 characters per pixel +\n  12 bpp is 3 +\n  etc...\n\n""";\n\noption period no;\nfunction _;\nlicense "GPL";\n\ninclude <rtapi_math.h>;\ninclude "hal/components/raster.h";\n\n',
+        },
+      },
+    },
+  ],
+};
+
+export default history;

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json",
-    "generate:linuxcnc-stores": "pnpm exec ts-node --esm scripts/generate-linuxcnc-stores.ts",
+    "generate:linuxcnc-stores": "node --loader ts-node/esm scripts/generate-linuxcnc-stores.ts && pnpm exec biome check --write src/componentStore/catalog/generated",
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"

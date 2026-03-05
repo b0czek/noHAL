@@ -1,0 +1,451 @@
+import type { GeneratedCatalogComponentHistory } from "../../generatedTypes.ts";
+
+const history: GeneratedCatalogComponentHistory = {
+  halComponentName: "match8",
+  variants: [
+    {
+      fromVersion: "2.7",
+      component: {
+        id: "comp:match8:match8",
+        name: "match8",
+        halComponentName: "match8",
+        source: "comp",
+        sourcePath: "src/hal/components/match8.comp",
+        docs: {
+          component: "8-bit binary match detector",
+          license: "GPL",
+        },
+        pins: [
+          {
+            key: "in",
+            name: "in",
+            type: "bit",
+            doc: "cascade input - if false, output is false regardless of other inputs",
+            defaultValue: "TRUE",
+            direction: "in",
+          },
+          {
+            key: "a0",
+            name: "a0",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a1",
+            name: "a1",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a2",
+            name: "a2",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a3",
+            name: "a3",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a4",
+            name: "a4",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a5",
+            name: "a5",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a6",
+            name: "a6",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a7",
+            name: "a7",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b0",
+            name: "b0",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b1",
+            name: "b1",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b2",
+            name: "b2",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b3",
+            name: "b3",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b4",
+            name: "b4",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b5",
+            name: "b5",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b6",
+            name: "b6",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b7",
+            name: "b7",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "out",
+            name: "out",
+            type: "bit",
+            doc: "true only if in is true and a[m] matches b[m] for m = 0 thru 7",
+            direction: "out",
+          },
+        ],
+        params: [],
+        functions: [
+          {
+            key: "default",
+            declaredName: "_",
+            halSuffix: "",
+            floatMode: "nofp",
+          },
+        ],
+        runtime: {
+          kind: "rt",
+          options: {},
+        },
+        parseMeta: {
+          parser: "nohal-comp-v1",
+          warnings: [],
+          rawHeader:
+            'component match8 "8-bit binary match detector";\npin in bit in = TRUE "cascade input - if false, output is false regardless of other inputs";\npin in bit a0;\npin in bit a1;\npin in bit a2;\npin in bit a3;\npin in bit a4;\npin in bit a5;\npin in bit a6;\npin in bit a7;\npin in bit b0;\npin in bit b1;\npin in bit b2;\npin in bit b3;\npin in bit b4;\npin in bit b5;\npin in bit b6;\npin in bit b7;\npin out bit out "true only if in is true and a[m] matches b[m] for m = 0 thru 7";\nfunction _ nofp;\nlicense "GPL";\n',
+        },
+      },
+    },
+    {
+      fromVersion: "2.9",
+      component: {
+        id: "comp:match8:match8",
+        name: "match8",
+        halComponentName: "match8",
+        source: "comp",
+        sourcePath: "src/hal/components/match8.comp",
+        docs: {
+          component: "8-bit binary match detector",
+          license: "GPL",
+          author: "John Kasunich",
+        },
+        pins: [
+          {
+            key: "in",
+            name: "in",
+            type: "bit",
+            doc: "cascade input - if false, output is false regardless of other inputs",
+            defaultValue: "TRUE",
+            direction: "in",
+          },
+          {
+            key: "a0",
+            name: "a0",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a1",
+            name: "a1",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a2",
+            name: "a2",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a3",
+            name: "a3",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a4",
+            name: "a4",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a5",
+            name: "a5",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a6",
+            name: "a6",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a7",
+            name: "a7",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b0",
+            name: "b0",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b1",
+            name: "b1",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b2",
+            name: "b2",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b3",
+            name: "b3",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b4",
+            name: "b4",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b5",
+            name: "b5",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b6",
+            name: "b6",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b7",
+            name: "b7",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "out",
+            name: "out",
+            type: "bit",
+            doc: "true only if in is true and a[m] matches b[m] for m = 0 thru 7",
+            direction: "out",
+          },
+        ],
+        params: [],
+        functions: [
+          {
+            key: "default",
+            declaredName: "_",
+            halSuffix: "",
+            floatMode: "nofp",
+          },
+        ],
+        runtime: {
+          kind: "rt",
+          options: {},
+        },
+        parseMeta: {
+          parser: "nohal-comp-v1",
+          warnings: [],
+          rawHeader:
+            'component match8 "8-bit binary match detector";\npin in bit in = TRUE "cascade input - if false, output is false regardless of other inputs";\npin in bit a0;\npin in bit a1;\npin in bit a2;\npin in bit a3;\npin in bit a4;\npin in bit a5;\npin in bit a6;\npin in bit a7;\npin in bit b0;\npin in bit b1;\npin in bit b2;\npin in bit b3;\npin in bit b4;\npin in bit b5;\npin in bit b6;\npin in bit b7;\npin out bit out "true only if in is true and a[m] matches b[m] for m = 0 thru 7";\nfunction _ nofp;\nlicense "GPL";\nauthor "John Kasunich";\n',
+        },
+      },
+    },
+    {
+      fromVersion: "2.10",
+      component: {
+        id: "comp:match8:match8",
+        name: "match8",
+        halComponentName: "match8",
+        source: "comp",
+        sourcePath: "src/hal/components/match8.comp",
+        docs: {
+          component: "8-bit binary match detector",
+          license: "GPL",
+          author: "John Kasunich",
+        },
+        pins: [
+          {
+            key: "in",
+            name: "in",
+            type: "bit",
+            doc: "cascade input - if false, output is false regardless of other inputs",
+            defaultValue: "TRUE",
+            direction: "in",
+          },
+          {
+            key: "a0",
+            name: "a0",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a1",
+            name: "a1",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a2",
+            name: "a2",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a3",
+            name: "a3",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a4",
+            name: "a4",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a5",
+            name: "a5",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a6",
+            name: "a6",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "a7",
+            name: "a7",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b0",
+            name: "b0",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b1",
+            name: "b1",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b2",
+            name: "b2",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b3",
+            name: "b3",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b4",
+            name: "b4",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b5",
+            name: "b5",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b6",
+            name: "b6",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "b7",
+            name: "b7",
+            type: "bit",
+            direction: "in",
+          },
+          {
+            key: "out",
+            name: "out",
+            type: "bit",
+            doc: "true only if in is true and a[m] matches b[m] for m = 0 thru 7",
+            direction: "out",
+          },
+        ],
+        params: [],
+        functions: [
+          {
+            key: "default",
+            declaredName: "_",
+            halSuffix: "",
+            floatMode: "nofp",
+          },
+        ],
+        runtime: {
+          kind: "rt",
+          options: {
+            period: false,
+          },
+        },
+        parseMeta: {
+          parser: "nohal-comp-v1",
+          warnings: [],
+          rawHeader:
+            'component match8 "8-bit binary match detector";\npin in bit in = TRUE "cascade input - if false, output is false regardless of other inputs";\npin in bit a0;\npin in bit a1;\npin in bit a2;\npin in bit a3;\npin in bit a4;\npin in bit a5;\npin in bit a6;\npin in bit a7;\npin in bit b0;\npin in bit b1;\npin in bit b2;\npin in bit b3;\npin in bit b4;\npin in bit b5;\npin in bit b6;\npin in bit b7;\npin out bit out "true only if in is true and a[m] matches b[m] for m = 0 thru 7";\noption period no;\nfunction _ nofp;\nlicense "GPL";\nauthor "John Kasunich";\n',
+        },
+      },
+    },
+  ],
+};
+
+export default history;
