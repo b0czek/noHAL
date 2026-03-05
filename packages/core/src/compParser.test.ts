@@ -256,3 +256,51 @@ describe("parseCompComponentDefinition (malformed input handling)", () => {
     );
   });
 });
+
+describe("parseCompComponentDefinition (regressions)", () => {
+  it("parses triple-quoted docs adjacent to the pin name", () => {
+    const parsed = parseComp(`
+      component demo;
+      pin in bit use_graycode"""\
+Line one
+Line two
+""";
+      ;;
+    `);
+
+    expect(parsed.pins[0]).toMatchObject({
+      name: "use-graycode",
+      direction: "in",
+      type: "bit",
+      doc: "Line one\nLine two\n",
+    });
+  });
+
+  it("decodes C-style quoted strings with line splicing", () => {
+    const parsed = parseComp(`
+      component demo;
+      pin in bit enable "First line \\
+second line";
+      ;;
+    `);
+
+    expect(parsed.pins[0].doc).toBe("First line second line");
+  });
+
+  it("parses spaced inline array expressions with immediate docs", () => {
+    const parsed = parseComp(`
+      component demo;
+      pin out float offset-current-#[9 : personality]"Joint offset current value";
+      ;;
+    `);
+
+    expect(parsed.pins[0]).toMatchObject({
+      name: "offset-current-#",
+      direction: "out",
+      type: "float",
+      arrayLen: 9,
+      arrayExpr: "personality",
+      doc: "Joint offset current value",
+    });
+  });
+});

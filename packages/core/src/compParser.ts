@@ -171,18 +171,20 @@ function collectStatements(header: string): string[] {
 function tokenizeStatement(raw: string): TokenizedStatement {
   const tokens: string[] = [];
   let i = 0;
+
+  const startsString = (pos: number): boolean =>
+    raw.startsWith('r"""', pos) ||
+    raw.startsWith('R"""', pos) ||
+    raw.startsWith('"""', pos) ||
+    raw[pos] === '"';
+
   while (i < raw.length) {
     const ch = raw[i];
     if (/\s/.test(ch)) {
       i += 1;
       continue;
     }
-    if (
-      raw.startsWith('r"""', i) ||
-      raw.startsWith('R"""', i) ||
-      raw.startsWith('"""', i) ||
-      ch === '"'
-    ) {
+    if (startsString(i)) {
       const token = scanString(raw, i);
       tokens.push(token.token);
       i = token.end;
@@ -213,11 +215,152 @@ function tokenizeStatement(raw: string): TokenizedStatement {
       continue;
     }
     let j = i;
-    while (j < raw.length && !/\s/.test(raw[j]) && raw[j] !== "=") j += 1;
+    let bracketDepth = 0;
+    while (j < raw.length) {
+      if (startsString(j)) {
+        if (j > i && bracketDepth === 0) break;
+        const s = scanString(raw, j);
+        j = s.end;
+        continue;
+      }
+      const cj = raw[j];
+      if (cj === "[") {
+        bracketDepth += 1;
+        j += 1;
+        continue;
+      }
+      if (cj === "]") {
+        if (bracketDepth > 0) bracketDepth -= 1;
+        j += 1;
+        continue;
+      }
+      if (bracketDepth === 0 && (/\s/.test(cj) || cj === "=")) break;
+      j += 1;
+    }
     tokens.push(raw.slice(i, j));
     i = j;
   }
   return { raw, tokens };
+}
+
+function decodeCompDoubleQuotedString(token: string): string {
+  let out = "";
+  let i = 1;
+  const last = token.length - 1;
+
+  while (i < last) {
+    const ch = token[i];
+    if (ch !== "\\") {
+      out += ch;
+      i += 1;
+      continue;
+    }
+
+    if (i + 1 >= last) {
+      out += "\\";
+      i += 1;
+      continue;
+    }
+
+    const next = token[i + 1];
+    if (next === "\n") {
+      i += 2;
+      continue;
+    }
+    if (next === "\r") {
+      if (i + 2 < last && token[i + 2] === "\n") i += 3;
+      else i += 2;
+      continue;
+    }
+
+    if (next === "x") {
+      let j = i + 2;
+      while (j < last && /[0-9a-fA-F]/.test(token[j])) j += 1;
+      if (j > i + 2) {
+        const value = Number.parseInt(token.slice(i + 2, j), 16);
+        out += String.fromCodePoint(value);
+        i = j;
+        continue;
+      }
+      out += "x";
+      i += 2;
+      continue;
+    }
+
+    if (/[0-7]/.test(next)) {
+      let j = i + 1;
+      let count = 0;
+      while (j < last && /[0-7]/.test(token[j]) && count < 3) {
+        j += 1;
+        count += 1;
+      }
+      const value = Number.parseInt(token.slice(i + 1, j), 8);
+      out += String.fromCharCode(value);
+      i = j;
+      continue;
+    }
+
+    if (
+      next === "u" &&
+      i + 6 <= last &&
+      /^[0-9a-fA-F]{4}$/.test(token.slice(i + 2, i + 6))
+    ) {
+      const value = Number.parseInt(token.slice(i + 2, i + 6), 16);
+      out += String.fromCodePoint(value);
+      i += 6;
+      continue;
+    }
+
+    if (
+      next === "U" &&
+      i + 10 <= last &&
+      /^[0-9a-fA-F]{8}$/.test(token.slice(i + 2, i + 10))
+    ) {
+      const value = Number.parseInt(token.slice(i + 2, i + 10), 16);
+      out += String.fromCodePoint(value);
+      i += 10;
+      continue;
+    }
+
+    switch (next) {
+      case "n":
+        out += "\n";
+        break;
+      case "r":
+        out += "\r";
+        break;
+      case "t":
+        out += "\t";
+        break;
+      case "b":
+        out += "\b";
+        break;
+      case "f":
+        out += "\f";
+        break;
+      case "v":
+        out += "\v";
+        break;
+      case "a":
+        out += "\u0007";
+        break;
+      case "\\":
+        out += "\\";
+        break;
+      case '"':
+        out += '"';
+        break;
+      case "'":
+        out += "'";
+        break;
+      default:
+        out += `\\${next}`;
+        break;
+    }
+    i += 2;
+  }
+
+  return out;
 }
 
 function decodeCompString(token: string): string {
@@ -231,7 +374,7 @@ function decodeCompString(token: string): string {
     return token.slice(3, -3);
   }
   if (token.startsWith('"') && token.endsWith('"')) {
-    return JSON.parse(token);
+    return decodeCompDoubleQuotedString(token);
   }
   return token;
 }
