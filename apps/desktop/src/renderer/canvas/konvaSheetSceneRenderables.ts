@@ -1,3 +1,4 @@
+import { isSystemComponent } from "@nohal/core/src/componentSystem";
 import { endpointKey, getNodePins, getNodeTitle } from "@nohal/core/src/graph";
 import type {
   NoHALProject,
@@ -36,6 +37,9 @@ import {
   SHEET_NODE_BORDER,
   SHEET_NODE_FILL,
   SIDE_ROW_H,
+  SYSTEM_NODE_BORDER,
+  SYSTEM_NODE_FILL,
+  SYSTEM_NODE_HEADER_FILL,
   TEXT_MUTED,
   TEXT_PRIMARY,
   TEXT_SOFT,
@@ -155,6 +159,38 @@ function getNodePinSetpValue(
   if (typeof raw !== "string") return null;
   const value = raw.trim();
   return value.length > 0 ? value : null;
+}
+
+function componentNodeTint(
+  project: NoHALProject,
+  node: SheetNodeInstance,
+): {
+  bodyFill: string;
+  idleBorder: string;
+  headerFill: string;
+} {
+  if (node.kind === "sheet") {
+    return {
+      bodyFill: SHEET_NODE_FILL,
+      idleBorder: SHEET_NODE_BORDER,
+      headerFill: HEADER_FILL,
+    };
+  }
+
+  const component = project.library.components[node.componentId];
+  if (isSystemComponent(component)) {
+    return {
+      bodyFill: SYSTEM_NODE_FILL,
+      idleBorder: SYSTEM_NODE_BORDER,
+      headerFill: SYSTEM_NODE_HEADER_FILL,
+    };
+  }
+
+  return {
+    bodyFill: NODE_FILL,
+    idleBorder: NEUTRAL_BORDER,
+    headerFill: HEADER_FILL,
+  };
 }
 
 export function renderPorts(args: RenderPortsArgs): void {
@@ -303,6 +339,7 @@ export function renderNodes(args: RenderNodesArgs): void {
     const layout = nodeLayouts.get(node.id);
     if (!layout) continue;
     const selected = selectedNodeIds.has(node.id);
+    const tint = componentNodeTint(project, node);
     const nodeGroup = new Konva.Group({
       x: node.position.x,
       y: node.position.y,
@@ -318,12 +355,8 @@ export function renderNodes(args: RenderNodesArgs): void {
         width: layout.width,
         height: layout.height,
         cornerRadius: 14,
-        fill: node.kind === "sheet" ? SHEET_NODE_FILL : NODE_FILL,
-        stroke: selected
-          ? PENDING_BORDER
-          : node.kind === "sheet"
-            ? SHEET_NODE_BORDER
-            : NEUTRAL_BORDER,
+        fill: tint.bodyFill,
+        stroke: selected ? PENDING_BORDER : tint.idleBorder,
         strokeWidth: selected ? 2 : 1,
       }),
     );
@@ -334,7 +367,7 @@ export function renderNodes(args: RenderNodesArgs): void {
       width: layout.width,
       height: HEADER_H,
       cornerRadius: [14, 14, 0, 0],
-      fill: HEADER_FILL,
+      fill: tint.headerFill,
     });
     nodeGroup.add(header);
     nodeGroup.add(
