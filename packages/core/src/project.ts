@@ -2,6 +2,7 @@ import { fixedExportStageForComponent } from "./componentSystem";
 import { NOHAL_PROJECT_FORMAT, NOHAL_PROJECT_VERSION } from "./fileFormats";
 import { createId, slugify } from "./id";
 import { reconcileIniManagedNodes } from "./ini";
+import { reconcileIocontrolManagedNodes } from "./iocontrol";
 import { normalizeLinuxCncVersion } from "./linuxcncVersion";
 import { reconcileMotmodManagedNodes } from "./motmod";
 import {
@@ -120,6 +121,7 @@ export function createDefaultMotmodConfig(): ProjectMotmodConfig {
 export function reconcileProject(project: NoHALProject): NoHALProject {
   reconcileMotmodManagedNodes(project);
   reconcileIniManagedNodes(project);
+  reconcileIocontrolManagedNodes(project);
   for (const sheet of Object.values(project.sheets)) {
     for (const node of sheet.nodes) {
       if (node.kind !== "component") continue;

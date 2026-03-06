@@ -1,5 +1,6 @@
 export * from "./axis";
 export * from "./ini";
+export * from "./iocontrol";
 export * from "./joint";
 export * from "./motion";
 export * from "./motmod";

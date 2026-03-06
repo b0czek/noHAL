@@ -133,4 +133,60 @@ describe("buildProjectFromHalImport", () => {
     expect(result.project.library.components["halimport:motion"]).toBeUndefined();
     expect(result.project.library.components["halimport:axis"]).toBeUndefined();
   });
+
+  it("rebinds imported iocontrol.0 to the managed singleton definition", () => {
+    const result = buildProjectFromHalImport({
+      draft: {
+        parser: "nohal-hal-v1",
+        lineCount: 0,
+        componentGroups: [
+          {
+            id: "group_iocontrol",
+            inferredHalComponentName: "iocontrol",
+            runtimeHint: "userspace",
+            instances: [
+              {
+                instanceName: "iocontrol.0",
+                componentGroupId: "group_iocontrol",
+                pinNames: ["tool-change", "emc-enable-in"],
+                paramValues: {},
+              },
+            ],
+            pins: [
+              {
+                name: "tool-change",
+                observedDirections: ["out"],
+              },
+              {
+                name: "emc-enable-in",
+                observedDirections: ["in"],
+              },
+            ],
+            params: [],
+          },
+        ],
+        nets: [],
+        setps: [],
+        addfs: [],
+        warnings: [],
+      },
+      componentStore: createEmptyComponentStore(),
+      linkSelections: {},
+      linuxcncVersion: "2.10",
+    });
+
+    const root = result.project.sheets[result.project.rootSheetId];
+    const iocontrolNode = root.nodes.find(
+      (node) =>
+        node.kind === "component" &&
+        node.instanceName === "iocontrol.0" &&
+        result.project.library.components[node.componentId]?.system?.manager ===
+          "iocontrol",
+    );
+
+    expect(iocontrolNode).toBeDefined();
+    if (!iocontrolNode || iocontrolNode.kind !== "component") return;
+    expect(iocontrolNode.componentId).toBe("system:iocontrol:iocontrol");
+    expect(result.project.library.components["halimport:iocontrol"]).toBeUndefined();
+  });
 });
