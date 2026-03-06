@@ -1,6 +1,6 @@
 import { isValidHalName } from "../halNames";
-import { pushFatal } from "./context";
 import type { EndpointRecord, ExportContext } from "./context";
+import { pushFatal } from "./context";
 import {
   chooseNetName,
   describeEndpointForWarning,

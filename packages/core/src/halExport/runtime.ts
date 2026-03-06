@@ -404,7 +404,11 @@ export function buildRuntimeSections(
           if (!fn) continue;
           const covered = coveredFunctionKeysByNodeId.get(node.id);
           if (covered) covered.add(entry.functionKey);
-          else coveredFunctionKeysByNodeId.set(node.id, new Set([entry.functionKey]));
+          else
+            coveredFunctionKeysByNodeId.set(
+              node.id,
+              new Set([entry.functionKey]),
+            );
           pushItem({
             queueKey,
             node,
@@ -635,7 +639,10 @@ export function buildRuntimeSections(
         );
         if (!customTemplates && (component.functions?.length ?? 0) > 0) {
           for (const fn of component.functions ?? []) {
-            const functionName = resolveAddfFunctionTarget(item.instancePath, fn);
+            const functionName = resolveAddfFunctionTarget(
+              item.instancePath,
+              fn,
+            );
             addfEntries.push({
               functionName,
               thread,

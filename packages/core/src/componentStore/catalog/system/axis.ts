@@ -183,7 +183,10 @@ export function requiredAxisInstances(
   numJoints: number,
 ): string[] {
   if (linuxcncVersion === "2.7") {
-    return Array.from({ length: Math.max(1, numJoints) }, (_, i) => `axis.${i}`);
+    return Array.from(
+      { length: Math.max(1, numJoints) },
+      (_, i) => `axis.${i}`,
+    );
   }
   return AXIS_LETTERS.map((letter) => `axis.${letter}`);
 }

@@ -1,6 +1,6 @@
+import { describe, expect, it } from "vitest";
 import { createEmptyComponentStore } from "../componentStore";
 import { getNodePins } from "../graph";
-import { describe, expect, it } from "vitest";
 import { buildProjectFromHalImport } from "./build";
 
 describe("buildProjectFromHalImport", () => {
@@ -26,14 +26,19 @@ describe("buildProjectFromHalImport", () => {
       .filter(
         (node) =>
           node.kind === "component" &&
-          result.project.library.components[node.componentId]?.system?.manager ===
-            "motmod",
+          result.project.library.components[node.componentId]?.system
+            ?.manager === "motmod",
       )
       .map((node) => node.instanceName)
       .sort((a, b) => a.localeCompare(b));
 
     expect(result.project.target.linuxcncVersion).toBe("2.7");
-    expect(managedInstanceNames).toEqual(["axis.0", "axis.1", "axis.2", "motion"]);
+    expect(managedInstanceNames).toEqual([
+      "axis.0",
+      "axis.1",
+      "axis.2",
+      "motion",
+    ]);
   });
 
   it("rebinds imported motmod-family nodes to system definitions with full pin schemas", () => {
@@ -124,13 +129,15 @@ describe("buildProjectFromHalImport", () => {
     const motionPins = getNodePins(result.project, motionNode).map(
       (pin) => pin.name,
     );
-    expect(motionPins.filter((name) => name.startsWith("digital-in-")).length).toBe(
-      64,
-    );
+    expect(
+      motionPins.filter((name) => name.startsWith("digital-in-")).length,
+    ).toBe(64);
     expect(
       motionPins.filter((name) => name.startsWith("digital-out-")).length,
     ).toBe(64);
-    expect(result.project.library.components["halimport:motion"]).toBeUndefined();
+    expect(
+      result.project.library.components["halimport:motion"],
+    ).toBeUndefined();
     expect(result.project.library.components["halimport:axis"]).toBeUndefined();
   });
 
@@ -187,6 +194,8 @@ describe("buildProjectFromHalImport", () => {
     expect(iocontrolNode).toBeDefined();
     if (!iocontrolNode || iocontrolNode.kind !== "component") return;
     expect(iocontrolNode.componentId).toBe("system:iocontrol:iocontrol");
-    expect(result.project.library.components["halimport:iocontrol"]).toBeUndefined();
+    expect(
+      result.project.library.components["halimport:iocontrol"],
+    ).toBeUndefined();
   });
 });

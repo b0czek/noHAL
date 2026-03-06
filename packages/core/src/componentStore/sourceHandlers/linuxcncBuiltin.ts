@@ -1,6 +1,6 @@
-import { LINUXCNC_VERSION_CATALOG } from "../catalog";
 import { SUPPORTED_LINUXCNC_VERSIONS } from "../../linuxcncVersion";
 import type { ComponentStore, LinuxCncVersion } from "../../types";
+import { LINUXCNC_VERSION_CATALOG } from "../catalog";
 import { upsertStoredComponentEntry } from "./shared";
 
 function createLinuxCncBuiltinSourceId(version: LinuxCncVersion): string {

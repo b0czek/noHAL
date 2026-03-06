@@ -1,9 +1,9 @@
-import { getSheet } from "@nohal/core/src/graph";
+import { isSystemComponent } from "@nohal/core/src/componentSystem";
 import {
   isComponentPlaceable,
   isComponentSearchable,
 } from "@nohal/core/src/componentVisibility";
-import { isSystemComponent } from "@nohal/core/src/componentSystem";
+import { getSheet } from "@nohal/core/src/graph";
 import { createMemo } from "solid-js";
 import type { KonvaSheetScene } from "../canvas/konvaSheetScene";
 import type {

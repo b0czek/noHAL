@@ -1,5 +1,5 @@
-import { createDefaultMotmodConfig } from "@nohal/core/src/project";
 import { planMotmodReconcile } from "@nohal/core/src/motmod";
+import { createDefaultMotmodConfig } from "@nohal/core/src/project";
 import { Show } from "solid-js";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
@@ -136,9 +136,7 @@ export default function MotmodTab() {
           <div class="threads-field-label">
             {t("projectSettings.motmod.syncStatusLabel")}
           </div>
-          <div
-            class={`mono ${reconcilePlan().inSync ? "muted" : ""}`}
-          >
+          <div class={`mono ${reconcilePlan().inSync ? "muted" : ""}`}>
             {reconcilePlan().inSync
               ? t("projectSettings.motmod.syncStatusInSync")
               : t("projectSettings.motmod.syncStatusOutOfSync")}
