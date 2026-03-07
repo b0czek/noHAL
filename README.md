@@ -1,114 +1,42 @@
 # NoHAL
 
-Visual LinuxCNC HAL editor/import-export application built with Electron, TypeScript, SolidJS, and Konva.
+NoHAL is an editor for LinuxCNC machine configuration.
 
-## Current Status
+It is aimed at people who currently build and maintain LinuxCNC setups by hand in `.hal`, `.ini`, and `.comp`-driven workflows and want a more visual, structured way to do the same work.
 
-NoHAL is an offline desktop editor for building and editing LinuxCNC HAL networks visually.
-It can create/open/save NoHAL projects, import many existing `.hal` files into an editable graph, manage a local component store from `.comp` files, and export HAL text back out.
+The editor is inspired by Blender's node editor for graph editing and KiCad's sheet-based hierarchy for organizing larger designs.
 
-It is a real offline authoring tool but it is not a full LinuxCNC runtime-integrated IDE yet.
+## What You Can Do Today
 
-## Docs
+- Build and edit HAL networks visually instead of managing every connection as raw text
+- Import existing `.hal` files into an editable graph
+- Work with LinuxCNC configuration concepts such as threads, `addf` ordering, and motmod-managed nodes in a structured way
+- Reuse components from `.comp` files through a local Component Store
+- Generate HAL output from the edited project
+- Organize larger configurations with sheets, ports, labels, comments, and direct wiring
 
-- [docs/sheets.md](./docs/sheets.md) - sheet model, hierarchy, ports/labels, and export behavior
-- [docs/threads.md](./docs/threads.md) - thread model, addf queue, and HAL thread binding/export
+## Current Scope
 
-## What Works Today
+The goal is to make LinuxCNC machine configuration easier to understand, safer to change, and less dependent on manually editing large text files.
 
-- Electron desktop app with landing page and recent projects list
-- Create blank projects or create a project from imported `.hal`
-- Open/save projects as a project directory (not a single JSON file)
-- Visual editor with:
-  - hierarchical sheets (subsheet nodes)
-  - sheet ports (`in` / `out` / `io`)
-  - local / global labels
-  - text comments
-  - direct wiring with validation
-  - wire waypoints/routing edits
-  - inspector + component settings dialogs
-  - sheet `addf` queue editing
-  - undo/redo (`Ctrl/Cmd+Z`, `Ctrl/Cmd+Y`, `Cmd+Shift+Z`)
-- Component Store:
-  - import a single `.comp` file
-  - add/scan a directory of `.comp` files (recursive)
-  - refresh sources/components
-  - link HAL import component groups to stored components
-- `.comp` parsing (pragmatic, header/declaration section before `;;`) for:
-  - component name, pins, params
-  - docs metadata (`description`, `author`, `license`, etc.)
-  - options/metadata
-- `.hal` import (pragmatic parser) for:
-  - `loadrt` (including `count=` / `names=`)
-  - `loadusr` instance-name inference for common flag forms (`-W`, `-Wn`, `-n`, `-c`)
-  - `addf`
-  - `setp`
-  - `net` (with common arrow forms)
-  - import warnings surfaced in the project creation flow
-  - component-link review (store match vs project-local generated component)
-  - placement heuristic choices (`related-groups` / `alphabetical`)
-- `.hal` export for:
-  - `loadrt` (RT components grouped with `names=...`)
-  - `addf` (expanded from per-sheet queues; subsheets act as ordered blocks)
-  - `setp` (params + pin initial values)
-  - `net`
-  - runtime summary comments for userspace/unknown components
-  - optional export tuning via `project.halExport` (`loadOrder`, per-component rules, addf config)
+The project is not yet fully integrated and polished enough to cover 100% of the LinuxCNC configuration workflow end to end.
 
-## Project Format (Current)
+Future opportunity:
 
-Projects are saved as a directory with a manifest plus per-sheet files:
-
-```text
-my-project.nohal/
-  project.nohal.json
-  library.nohal.json
-  sheets/
-    top__abc123.nohal-sheet.json
-    axis-logic__def456.nohal-sheet.json
-```
-
-Notes:
-
-- `project.nohal.json` stores manifest/project metadata and sheet file references
-- `library.nohal.json` stores project-local/used component definitions
-- built-in components are merged in on load
-
-## Known Limitations
-
-- No LinuxCNC runtime introspection/control (offline editor only)
-- `loadusr` export is not generated yet (export writes summary comments instead)
-- HAL import is pragmatic, not full `halcmd`/LinuxCNC semantics
-- Imported HAL currently builds a single top-level visual sheet (no hierarchy reconstruction)
-- Array pin expansion (`foo##`-style) is not expanded during export
-- Built-in component library is intentionally small; real workflows benefit from populating the Component Store
-
-## `.comp` Parser Scope
-
-The `.comp` parser intentionally extracts useful metadata from the declaration section before `;;` and does not try to fully reproduce `halcompile` behavior/codegen.
-
-Reference grammar used during implementation:
-
-- `linuxcnc/src/hal/utils/halcompile.g`
-
-## Project Layout
-
-- `apps/desktop/` Electron desktop application package
-- `apps/desktop/src/main/` Electron main process, project IO, component store, IPC handlers
-- `apps/desktop/src/preload/` renderer API bridge (`window.nohal`)
-- `apps/desktop/src/renderer/` SolidJS UI, Konva canvas/editor, dialogs, state
-- `packages/core/src/` shared project types/schema, HAL import/export, `.comp` parser, validation
+- Live runtime visibility of the network, so the editor can show what the machine is doing while it is running
+- Subroutine management as part of the machine configuration workflow
+- Integrated Mesa Configuration Tool support, so Mesa pins do not have to be defined manually
+- An integrated editor for writing `.comp` components
 
 ## Development
+
+Requires Node.js 22 and pnpm.
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Useful scripts:
+## Docs
 
-- `pnpm test`
-- `pnpm typecheck`
-- `pnpm lint`
-- `pnpm build`
+Documentation is available in the [`docs/`](./docs/) directory.
