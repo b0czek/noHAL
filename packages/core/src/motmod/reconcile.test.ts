@@ -84,6 +84,23 @@ describe("motmod-managed obligatory components", () => {
     );
   });
 
+  it("reuses persisted motmod nodes when system component definitions are rebuilt on load", () => {
+    const project = createEmptyProject("motmod persisted system nodes");
+    const persisted = {
+      ...project,
+      library: { components: {} },
+    };
+
+    const reparsed = parseNoHALProject(JSON.stringify(persisted));
+    const managedNames = managedInstanceNames(reparsed);
+
+    expect(managedNames).toEqual(managedInstanceNames(project));
+    expect(new Set(managedNames).size).toBe(managedNames.length);
+    expect(reparsed.sheets[reparsed.rootSheetId]?.nodes).toHaveLength(
+      project.sheets[project.rootSheetId]?.nodes.length ?? 0,
+    );
+  });
+
   it("marks motmod system components as non-placeable internal components", () => {
     const project = createEmptyProject("motmod visibility");
     const motionComponent = project.library.components["system:motmod:motion"];

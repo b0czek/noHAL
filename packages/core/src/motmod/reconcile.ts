@@ -19,6 +19,12 @@ import type {
 const MOTMOD_MANAGED_FAMILY_SET = new Set<MotmodManagedFamily>(
   MOTMOD_MANAGED_FAMILIES,
 );
+const MOTMOD_FAMILY_BY_SYSTEM_COMPONENT_ID = Object.fromEntries(
+  Object.entries(MOTMOD_SYSTEM_COMPONENT_IDS).map(([family, componentId]) => [
+    componentId,
+    family as MotmodManagedFamily,
+  ]),
+) as Record<string, MotmodManagedFamily>;
 
 const DEFAULT_MOTMOD_CONFIG: ProjectMotmodConfig = {
   numJoints: 3,
@@ -131,6 +137,11 @@ function familyFromNode(
   project: NoHALProject,
   node: ComponentNode,
 ): MotmodManagedFamily | null {
+  const familyFromSystemComponentId =
+    MOTMOD_FAMILY_BY_SYSTEM_COMPONENT_ID[node.componentId];
+  if (familyFromSystemComponentId) {
+    return familyFromSystemComponentId;
+  }
   const component = project.library.components[node.componentId];
   const managedFamily = isManagedBySystemManager(component, "motmod")
     ? component.system?.family
