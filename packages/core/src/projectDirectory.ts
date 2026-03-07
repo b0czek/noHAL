@@ -1,4 +1,5 @@
 import corePackageJson from "../package.json";
+import { isSystemComponent } from "./componentSystem";
 import {
   NOHAL_PROJECT_DIR_FORMAT,
   NOHAL_PROJECT_DIR_VERSION,
@@ -189,6 +190,8 @@ function getUsedComponentIds(project: NoHALProject): Set<string> {
   for (const sheet of Object.values(project.sheets)) {
     for (const node of sheet.nodes) {
       if (node.kind !== "component") continue;
+      const component = project.library.components[node.componentId];
+      if (isSystemComponent(component)) continue;
       used.add(node.componentId);
     }
   }

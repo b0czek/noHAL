@@ -1,4 +1,8 @@
-import { mergeManualLinuxCncComponents } from "./manual";
+import {
+  type LinuxCncVersion,
+  SUPPORTED_LINUXCNC_VERSIONS,
+} from "../../linuxcncVersion";
+import type { ImportedComponentDefinition } from "../../types";
 import {
   GENERATED_CATALOG_COMPONENT_HISTORIES,
   GENERATED_CATALOG_VERSION_METADATA,
@@ -7,11 +11,7 @@ import type {
   GeneratedCatalogComponentVariant,
   GeneratedCatalogVersionlessComponentDefinition,
 } from "./generatedTypes";
-import {
-  SUPPORTED_LINUXCNC_VERSIONS,
-  type LinuxCncVersion,
-} from "../../linuxcncVersion";
-import type { ImportedComponentDefinition } from "../../types";
+import { mergeManualLinuxCncComponents } from "./manual";
 
 export interface LinuxCncVersionCatalogData {
   version: LinuxCncVersion;

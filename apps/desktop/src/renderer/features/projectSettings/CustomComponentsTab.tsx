@@ -1,3 +1,4 @@
+import { isComponentShownInCustomComponents } from "@nohal/core/src/componentVisibility";
 import type { HalValueType } from "@nohal/core/src/types";
 import {
   HiOutlineArrowLeft,
@@ -30,7 +31,8 @@ export default function CustomComponentsTab() {
       .filter(
         (component) =>
           component.source !== "comp" &&
-          !state.componentStore.components[component.id],
+          !state.componentStore.components[component.id] &&
+          isComponentShownInCustomComponents(component),
       )
       .sort((a, b) => a.halComponentName.localeCompare(b.halComponentName)),
   );
@@ -44,7 +46,8 @@ export default function CustomComponentsTab() {
         if (
           !component ||
           component.source === "comp" ||
-          state.componentStore.components[component.id]
+          state.componentStore.components[component.id] ||
+          !isComponentShownInCustomComponents(component)
         ) {
           continue;
         }

@@ -1,6 +1,11 @@
 export type { ComponentStoreApi, StoreSourceRefreshResult } from "./model";
 export { createEmptyComponentStore } from "./model";
 export {
+  isStoreEntryCompatibleWithLinuxCncVersion,
+  listStoreEntriesForLinuxCncVersion,
+  listStoreSourcesForLinuxCncVersion,
+} from "./queries";
+export {
   addComponentDirSourceToStore,
   createComponentStoreApi,
   createComponentStoreService,
@@ -11,8 +16,3 @@ export {
   saveParsedCompFileToStore,
   scanCompDirectory,
 } from "./service";
-export {
-  isStoreEntryCompatibleWithLinuxCncVersion,
-  listStoreEntriesForLinuxCncVersion,
-  listStoreSourcesForLinuxCncVersion,
-} from "./queries";

@@ -1,11 +1,11 @@
+import type { LinuxCncVersion } from "../../../linuxcncVersion";
+import type { ImportedComponentDefinition } from "../../../types";
 import { debounce } from "./debounce";
 import { encoder } from "./encoder";
 import { encoderRatio } from "./encoder_ratio";
 import { pid } from "./pid";
 import { siggen } from "./siggen";
 import { simEncoder } from "./sim_encoder";
-import type { LinuxCncVersion } from "../../../linuxcncVersion";
-import type { ImportedComponentDefinition } from "../../../types";
 
 function manualLinuxCncComponents(
   version: LinuxCncVersion,

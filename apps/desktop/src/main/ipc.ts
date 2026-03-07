@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { parseCompComponentDefinition } from "@nohal/core/src/compParser";
 import { normalizeLinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
-import { createEmptyProject } from "@nohal/core/src/project";
+import { createEmptyProject, reconcileProject } from "@nohal/core/src/project";
 import type {
   MachineConfigHalFileSelection,
   NoHALProject,
@@ -50,6 +50,7 @@ export function registerIpcHandlers(): void {
       const project = createEmptyProject("NoHAL Project");
       project.target.linuxcncVersion =
         normalizeLinuxCncVersion(linuxcncVersion);
+      reconcileProject(project);
       const res = await dialog.showOpenDialog({
         title: "Select New NoHAL Project Folder",
         properties: ["openDirectory", "createDirectory"],

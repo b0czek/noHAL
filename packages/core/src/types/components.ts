@@ -29,7 +29,24 @@ export interface ComponentFunctionDefinition {
   declaredName: string;
   halSuffix: string;
   floatMode: ComponentFunctionFloatMode;
+  addfTargetTemplate?: string;
   doc?: string;
+}
+
+export interface ComponentVisibilityPolicy {
+  placeable?: boolean;
+  searchable?: boolean;
+  showInCustomComponents?: boolean;
+}
+
+export interface ComponentSystemMetadata {
+  manager: string;
+  family?: string;
+}
+
+export interface ComponentConstraintPolicy {
+  fixedInstanceName?: string;
+  fixedExportStage?: "main" | "postgui";
 }
 
 export type ComponentLoadrtStrategyId =
@@ -100,6 +117,9 @@ export interface ComponentDefinition {
     instanceConfig?: ComponentInstanceConfigDefinition;
     options?: Record<string, string | number | boolean>;
   };
+  visibility?: ComponentVisibilityPolicy;
+  system?: ComponentSystemMetadata;
+  constraints?: ComponentConstraintPolicy;
 }
 
 export interface ImportedComponentDefinition extends ComponentDefinition {

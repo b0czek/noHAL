@@ -1,3 +1,8 @@
+import { isSystemComponent } from "@nohal/core/src/componentSystem";
+import {
+  isComponentPlaceable,
+  isComponentSearchable,
+} from "@nohal/core/src/componentVisibility";
 import { getSheet } from "@nohal/core/src/graph";
 import { createMemo } from "solid-js";
 import type { KonvaSheetScene } from "../canvas/konvaSheetScene";
@@ -25,9 +30,12 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   const currentSheet = () => getSheet(state.project, state.activeSheetId);
 
   const componentChoices = createMemo(() =>
-    Object.values(state.project.library.components).sort((a, b) =>
-      a.halComponentName.localeCompare(b.halComponentName),
-    ),
+    Object.values(state.project.library.components)
+      .filter(
+        (component) =>
+          isComponentPlaceable(component) && isComponentSearchable(component),
+      )
+      .sort((a, b) => a.halComponentName.localeCompare(b.halComponentName)),
   );
 
   const menuPosition = (
@@ -124,6 +132,9 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       const node = sheet.nodes.find((n) => n.id === target.id);
       if (!node) return null;
       if (target.nodeKind === "component" && node.kind === "component") {
+        const isSystemManagedProtected = Boolean(
+          isSystemComponent(state.project.library.components[node.componentId]),
+        );
         const canRefreshStoredComponent = (() => {
           const entry = state.componentStore.components[node.componentId];
           if (!entry) return false;
@@ -143,13 +154,17 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
                 },
               ]
             : []),
-          {
-            label: t("inspector.deleteSelection"),
-            onSelect: () => {
-              actions.select({ kind: "node", id: node.id });
-              actions.removeSelection();
-            },
-          },
+          ...(isSystemManagedProtected
+            ? []
+            : [
+                {
+                  label: t("inspector.deleteSelection"),
+                  onSelect: () => {
+                    actions.select({ kind: "node", id: node.id });
+                    actions.removeSelection();
+                  },
+                },
+              ]),
         ];
         return {
           title: t("canvasContext.component"),

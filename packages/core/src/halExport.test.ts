@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { makeAddfQueueFunctionEntry } from "./addfQueue";
 import { exportProjectToHal } from "./halExport";
 import { createEmptyProject } from "./project";
 
@@ -210,5 +211,51 @@ describe("exportProjectToHal connection signal names", () => {
     expect(text).not.toContain("net ui_sig src.out sink.in0");
     expect(postguiText).toBeDefined();
     expect(postguiText).toContain("net ui_sig src.out sink.in0");
+  });
+
+  it("emits motmod functions in addf and allows thread assignment from root sheet queue", () => {
+    const project = createEmptyProject("Motmod Addf Functions");
+    const rootSheet = project.sheets[project.rootSheetId];
+    const motionNode = rootSheet.nodes.find(
+      (node) => node.kind === "component" && node.instanceName === "motion",
+    );
+    if (!motionNode || motionNode.kind !== "component")
+      throw new Error("expected managed motion node");
+    const fastThreadId = "thread_fast";
+    const fastOutputId = "sheetthread_fast";
+    project.halThreads?.push({
+      id: fastThreadId,
+      name: "fast-thread",
+      periodNs: 500_000,
+      floatMode: "fp",
+    });
+    rootSheet.hal = {
+      ...(rootSheet.hal ?? {}),
+      threadOutputs: [
+        ...(rootSheet.hal?.threadOutputs ?? []),
+        { id: fastOutputId, name: "fast", halThreadId: fastThreadId },
+      ],
+      addfQueue: [
+        makeAddfQueueFunctionEntry(
+          motionNode.id,
+          "motion_command_handler",
+          fastOutputId,
+        ),
+        makeAddfQueueFunctionEntry(motionNode.id, "motion_controller"),
+      ],
+    };
+
+    const { text } = exportProjectToHal(project);
+    const commandHandlerLines = text
+      .split("\n")
+      .filter((line) => line.includes("addf motion-command-handler "));
+    const controllerLines = text
+      .split("\n")
+      .filter((line) => line.includes("addf motion-controller "));
+
+    expect(commandHandlerLines).toHaveLength(1);
+    expect(controllerLines).toHaveLength(1);
+    expect(commandHandlerLines[0]).toContain("fast-thread");
+    expect(controllerLines[0]).toContain("servo-thread");
   });
 });

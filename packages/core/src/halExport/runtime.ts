@@ -5,6 +5,7 @@ import {
   makeAddfQueueNodeEntry,
   makeAddfQueueSubsheetOutputEntry,
 } from "../addfQueue";
+import { resolveAddfFunctionTarget } from "../componentFunctions";
 import { getSheet } from "../graph";
 import { isValidHalName } from "../halNames";
 import { interpolateLoadrt, interpolateLoadrtByStrategy } from "../loadrt";
@@ -379,6 +380,7 @@ export function buildRuntimeSections(
       const ordered: OrderedAddfQueueItem[] = [];
       const seen = new Set<string>();
       const coveredByNodeEntry = new Set<string>();
+      const coveredFunctionKeysByNodeId = new Map<string, Set<string>>();
 
       const pushItem = (item: OrderedAddfQueueItem) => {
         if (seen.has(item.queueKey)) return;
@@ -400,6 +402,13 @@ export function buildRuntimeSections(
             (item) => item.key === entry.functionKey,
           );
           if (!fn) continue;
+          const covered = coveredFunctionKeysByNodeId.get(node.id);
+          if (covered) covered.add(entry.functionKey);
+          else
+            coveredFunctionKeysByNodeId.set(
+              node.id,
+              new Set([entry.functionKey]),
+            );
           pushItem({
             queueKey,
             node,
@@ -510,6 +519,8 @@ export function buildRuntimeSections(
           continue;
         }
         for (const fn of functions) {
+          const covered = coveredFunctionKeysByNodeId.get(node.id);
+          if (covered?.has(fn.key)) continue;
           const queueEntry = makeAddfQueueFunctionEntry(node.id, fn.key);
           pushItem({
             queueKey:
@@ -612,17 +623,13 @@ export function buildRuntimeSections(
             continue;
           }
           addfEntries.push({
-            functionName: fn.halSuffix
-              ? `${item.instancePath}.${fn.halSuffix}`
-              : item.instancePath,
+            functionName: resolveAddfFunctionTarget(item.instancePath, fn),
             thread,
             parentSheetPath: item.parentSheetPath,
           });
           warnThreadFloatMismatch(
             thread,
-            fn.halSuffix
-              ? `${item.instancePath}.${fn.halSuffix}`
-              : item.instancePath,
+            resolveAddfFunctionTarget(item.instancePath, fn),
             fn.floatMode,
           );
           continue;
@@ -632,9 +639,10 @@ export function buildRuntimeSections(
         );
         if (!customTemplates && (component.functions?.length ?? 0) > 0) {
           for (const fn of component.functions ?? []) {
-            const functionName = fn.halSuffix
-              ? `${item.instancePath}.${fn.halSuffix}`
-              : item.instancePath;
+            const functionName = resolveAddfFunctionTarget(
+              item.instancePath,
+              fn,
+            );
             addfEntries.push({
               functionName,
               thread,

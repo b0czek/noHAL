@@ -96,6 +96,8 @@ export const en = {
   "componentDialog.exportStage": "Export Stage",
   "componentDialog.exportStageMain": "Main HALFILE",
   "componentDialog.exportStagePostgui": "POSTGUI_HALFILE",
+  "componentDialog.exportStageLockedPostgui":
+    "Export stage is fixed by component definition.",
   "componentDialog.functions": "Realtime Functions (addf)",
   "componentDialog.noFunctions": "No function metadata.",
   "componentDialog.functionDefault": "_ (default)",
@@ -146,6 +148,12 @@ export const en = {
   "projectSettings.motmod.threadsDerived": "Derived From Threads",
   "projectSettings.motmod.threadsDerivedHelp":
     "servo/base periods and base_thread_fp come from HAL Threads (servo-thread/base-thread).",
+  "projectSettings.motmod.syncStatusLabel": "System HAL projection",
+  "projectSettings.motmod.syncStatusInSync": "In sync",
+  "projectSettings.motmod.syncStatusOutOfSync": "Out of sync",
+  "projectSettings.motmod.syncSummary":
+    "Pending: +{add} add, -{remove} remove, {adopt} adopt, {ensure} ensure components, {update} update config",
+  "projectSettings.motmod.syncNow": "Sync now",
   "customComponents.title": "Custom Components",
   "customComponents.help":
     "Non-.comp components (including HAL-import generated ones). If set, load string is emitted verbatim during HAL export for that component.",
@@ -398,6 +406,10 @@ export const en = {
   "store.status.updatedHalThreadFloatMode":
     "Updated HAL thread float mode ({name}) to {mode}",
   "store.status.updatedMotmodConfig": "Updated motmod settings",
+  "store.status.motmodProjectionAlreadyInSync":
+    "Motmod system projection is already in sync",
+  "store.status.syncedMotmodProjection":
+    "Synced motmod projection (+{added}, -{removed}, {adopted} adopted, {ensured} ensured, {updated} updated)",
   "store.status.cannotRemoveLastHalThread":
     "At least one HAL thread must exist",
   "store.status.cannotRemoveRequiredHalThread":
@@ -424,6 +436,12 @@ export const en = {
     "Selected component is not a stored .comp component",
   "store.status.refreshedComponent": "Refreshed component: {componentName}",
   "store.status.refreshFailed": "Refresh failed: {error}",
+  "store.status.componentPlacementDisabled":
+    "Component '{componentName}' is system-managed and cannot be placed manually",
+  "store.status.cannotDeleteSystemManagedComponent":
+    "System-managed components cannot be deleted",
+  "store.status.removedSelectionSkippedSystemManaged":
+    "Removed selection (skipped {count} system-managed components)",
   "store.status.placedComponent": "Placed component {componentName}",
   "store.status.createdSubsheet": "Created subsheet {name}",
   "store.status.cannotPlaceSheetInsideItself":

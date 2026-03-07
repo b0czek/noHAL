@@ -1,11 +1,15 @@
+import {
+  fixedExportStageForComponent,
+  fixedInstanceNameForComponent,
+} from "@nohal/core/src/componentSystem";
 import { getNodePins, getNodeTitle } from "@nohal/core/src/graph";
 import type { ComponentInstanceConfigFieldDefinition } from "@nohal/core/src/types";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useI18n } from "../i18n";
-import { componentUsesLockedCanonicalInstanceNames } from "../state/store/helpers";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
+import { componentUsesLockedCanonicalInstanceNames } from "../state/store/helpers";
 
 export default function ComponentNodeDialog() {
   const { t } = useI18n();
@@ -32,8 +36,13 @@ export default function ComponentNodeDialog() {
   const instanceConfigFields = createMemo(
     () => component()?.runtime?.instanceConfig?.fields ?? [],
   );
-  const instanceNameLocked = createMemo(() =>
-    componentUsesLockedCanonicalInstanceNames(component()),
+  const fixedExportStage = createMemo(() =>
+    fixedExportStageForComponent(component()),
+  );
+  const instanceNameLocked = createMemo(
+    () =>
+      componentUsesLockedCanonicalInstanceNames(component()) ||
+      !!fixedInstanceNameForComponent(component()),
   );
   const pinFilterModes = ["all", "in", "out", "io"] as const;
   const [pinFilter, setPinFilter] =
@@ -164,7 +173,10 @@ export default function ComponentNodeDialog() {
                       <label>
                         {t("componentDialog.exportStage")}
                         <select
-                          value={node()?.exportStage ?? "main"}
+                          value={
+                            fixedExportStage() ?? node()?.exportStage ?? "main"
+                          }
+                          disabled={!!fixedExportStage()}
                           onChange={(evt) => {
                             const currentNode = node();
                             if (!currentNode) return;
@@ -182,6 +194,11 @@ export default function ComponentNodeDialog() {
                           </option>
                         </select>
                       </label>
+                      <Show when={!!fixedExportStage()}>
+                        <div class="muted">
+                          {t("componentDialog.exportStageLockedPostgui")}
+                        </div>
+                      </Show>
                     </>
                   )}
                 </Show>

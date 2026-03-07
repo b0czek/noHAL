@@ -1,4 +1,6 @@
+import { planMotmodReconcile } from "@nohal/core/src/motmod";
 import { createDefaultMotmodConfig } from "@nohal/core/src/project";
+import { Show } from "solid-js";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 
@@ -7,6 +9,7 @@ export default function MotmodTab() {
   const { state, actions } = useEditorStore();
 
   const motmod = () => state.project.motmod ?? createDefaultMotmodConfig();
+  const reconcilePlan = () => planMotmodReconcile(state.project);
 
   const setMotmodNumber = (
     key:
@@ -126,6 +129,38 @@ export default function MotmodTab() {
           </div>
           <div class="muted mono">
             {t("projectSettings.motmod.threadsDerivedHelp")}
+          </div>
+        </div>
+
+        <div class="project-settings-note">
+          <div class="threads-field-label">
+            {t("projectSettings.motmod.syncStatusLabel")}
+          </div>
+          <div class={`mono ${reconcilePlan().inSync ? "muted" : ""}`}>
+            {reconcilePlan().inSync
+              ? t("projectSettings.motmod.syncStatusInSync")
+              : t("projectSettings.motmod.syncStatusOutOfSync")}
+          </div>
+          <Show when={!reconcilePlan().inSync}>
+            <div class="muted mono">
+              {t("projectSettings.motmod.syncSummary", {
+                add: reconcilePlan().addNodes.length,
+                remove: reconcilePlan().removeNodes.length,
+                adopt: reconcilePlan().adoptNodes.length,
+                ensure: reconcilePlan().ensureComponents.length,
+                update: reconcilePlan().updateNodeConfigs.length,
+              })}
+            </div>
+          </Show>
+          <div>
+            <button
+              type="button"
+              class="btn"
+              disabled={reconcilePlan().inSync}
+              onClick={() => actions.syncMotmodManagedProjection()}
+            >
+              {t("projectSettings.motmod.syncNow")}
+            </button>
           </div>
         </div>
       </div>

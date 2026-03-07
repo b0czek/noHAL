@@ -1,8 +1,10 @@
 import { createId, safeKey } from "@nohal/core/src/id";
+import { planMotmodReconcile } from "@nohal/core/src/motmod";
 import {
   createDefaultMotmodConfig,
   createEmptyMachineConfig,
   isRequiredHalThreadName,
+  reconcileProject,
 } from "@nohal/core/src/project";
 import type {
   HalThreadDefinition,
@@ -977,6 +979,24 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         motmod[key] = normalized;
       });
       deps.setStatusT("store.status.updatedMotmodConfig");
+    },
+
+    syncMotmodManagedProjection(): void {
+      const plan = planMotmodReconcile(deps.state.project);
+      if (plan.inSync) {
+        deps.setStatusT("store.status.motmodProjectionAlreadyInSync");
+        return;
+      }
+      deps.withProject((project) => {
+        reconcileProject(project);
+      });
+      deps.setStatusT("store.status.syncedMotmodProjection", {
+        added: plan.addNodes.length,
+        removed: plan.removeNodes.length,
+        adopted: plan.adoptNodes.length,
+        ensured: plan.ensureComponents.length,
+        updated: plan.updateNodeConfigs.length,
+      });
     },
   };
 }

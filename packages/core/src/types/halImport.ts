@@ -89,6 +89,7 @@ export interface HalImportBuildOptions {
   draft: HalImportDraft;
   componentStore: ComponentStore;
   linkSelections: Record<string, HalImportLinkSelection>;
+  linuxcncVersion?: NoHALProject["target"]["linuxcncVersion"];
   projectName?: string;
   placementHeuristic?: HalImportPlacementHeuristic;
 }
