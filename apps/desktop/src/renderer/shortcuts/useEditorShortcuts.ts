@@ -45,11 +45,18 @@ export function useEditorShortcuts(): void {
         return;
       }
 
-      if (isEditableTarget(evt.target)) return;
-
       const key = evt.key.toLowerCase();
       const primaryModifier = evt.ctrlKey || evt.metaKey;
       if (!primaryModifier || evt.altKey) return;
+      const isSave = key === "s" && !evt.shiftKey;
+
+      if (isSave) {
+        evt.preventDefault();
+        void actions.saveProject();
+        return;
+      }
+
+      if (isEditableTarget(evt.target)) return;
 
       const isFindInSheet = key === "f" && !evt.shiftKey;
       const isFindInProject = key === "f" && evt.shiftKey;
