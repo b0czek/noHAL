@@ -5,9 +5,9 @@ import {
 import { getNodePins, getNodeTitle } from "@nohal/core/src/graph";
 import type { ComponentInstanceConfigFieldDefinition } from "@nohal/core/src/types";
 import { createMemo, createSignal, For, Show } from "solid-js";
+import type { OverlayDialogProps } from "../app/types";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
-import { useEditorUi } from "../state/EditorUiProvider";
 import { componentUsesLockedCanonicalInstanceNames } from "../state/store/helpers";
 import StringSelect from "./form/StringSelect";
 import { Badge } from "./ui/badge";
@@ -22,11 +22,20 @@ import {
 import { Input } from "./ui/input";
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "./ui/switch";
 
-export default function ComponentNodeDialog() {
+interface ComponentNodeDialogProps extends OverlayDialogProps {
+  nodeId: string;
+}
+
+export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
-  const editorUi = useEditorUi();
-  const node = () => editorUi.editingComponentNode();
+  const node = createMemo(() => {
+    const currentSheet = state.project.sheets[state.activeSheetId];
+    const currentNode = currentSheet?.nodes.find(
+      (candidate) => candidate.id === props.nodeId,
+    );
+    return currentNode?.kind === "component" ? currentNode : null;
+  });
   const component = createMemo(() => {
     const currentNode = node();
     if (!currentNode) return undefined;
@@ -108,9 +117,9 @@ export default function ComponentNodeDialog() {
 
   return (
     <Dialog
-      open={!!node()}
+      open
       onOpenChange={(isOpen) => {
-        if (!isOpen) editorUi.closeComponentEditor();
+        if (!isOpen) props.onClose();
       }}
     >
       <Show when={node()}>

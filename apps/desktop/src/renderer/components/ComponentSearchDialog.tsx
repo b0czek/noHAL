@@ -1,9 +1,13 @@
 import { getNodeTitle } from "@nohal/core/src/graph";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
+import type { OverlayDialogProps } from "../app/types";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
-import { useEditorUi } from "../state/EditorUiProvider";
+import {
+  type ComponentSearchScope,
+  useEditorUi,
+} from "../state/EditorUiProvider";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -22,11 +26,17 @@ type ComponentSearchResult = {
   searchText: string;
 };
 
+interface ComponentSearchDialogProps extends OverlayDialogProps {
+  scope: ComponentSearchScope;
+}
+
 function normalizeSearchText(value: string): string {
   return value.trim().toLowerCase();
 }
 
-export default function ComponentSearchDialog() {
+export default function ComponentSearchDialog(
+  props: ComponentSearchDialogProps,
+) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
   const editorUi = useEditorUi();
@@ -36,12 +46,9 @@ export default function ComponentSearchDialog() {
   let queryInputEl: HTMLInputElement | undefined;
 
   const results = createMemo<ComponentSearchResult[]>(() => {
-    const scope = editorUi.componentSearchScope();
-    if (!scope) return [];
-
     const allSheets = Object.values(state.project.sheets);
     const sourceSheets =
-      scope === "sheet"
+      props.scope === "sheet"
         ? allSheets.filter((sheet) => sheet.id === state.activeSheetId)
         : allSheets;
 
@@ -67,7 +74,7 @@ export default function ComponentSearchDialog() {
       }
     }
 
-    if (scope === "project") {
+    if (props.scope === "project") {
       collected.sort(
         (a, b) =>
           a.sheetName.localeCompare(b.sheetName) ||
@@ -95,10 +102,9 @@ export default function ComponentSearchDialog() {
   });
 
   createEffect(() => {
-    const scope = editorUi.componentSearchScope();
-    if (!scope) return;
+    props.scope;
     setQuery("");
-    setActiveIndex(scope === "sheet" ? -1 : 0);
+    setActiveIndex(props.scope === "sheet" ? -1 : 0);
     queueMicrotask(() => {
       queryInputEl?.focus();
       queryInputEl?.select();
@@ -120,8 +126,7 @@ export default function ComponentSearchDialog() {
   });
 
   createEffect(() => {
-    const scope = editorUi.componentSearchScope();
-    if (scope !== "project") return;
+    if (props.scope !== "project") return;
     const list = filteredResults();
     const count = list.length;
     if (count === 0) return;
@@ -147,7 +152,7 @@ export default function ComponentSearchDialog() {
     }
     actions.select({ kind: "node", id: result.nodeId });
     editorUi.requestNodeFocus(result.sheetId, result.nodeId);
-    if (options?.close) editorUi.closeComponentSearch();
+    if (options?.close) props.onClose();
   };
 
   const jumpToResult = (step: number) => {
@@ -177,180 +182,174 @@ export default function ComponentSearchDialog() {
     setActiveIndex((current + step + count) % count);
   };
 
-  return (
-    <Show when={editorUi.componentSearchScope()} keyed>
-      {(scope) => {
-        const scopeLabel =
-          scope === "project"
-            ? t("componentSearch.scope.project")
-            : t("componentSearch.scope.sheet");
+  const scopeLabel =
+    props.scope === "project"
+      ? t("componentSearch.scope.project")
+      : t("componentSearch.scope.sheet");
 
-        const content = (
-          <>
-            <Input
+  const content = (
+    <>
+      <Input
+        ref={(el) => {
+          queryInputEl = el;
+        }}
+        type="text"
+        value={query()}
+        placeholder={t("componentSearch.placeholder", {
+          scope: scopeLabel,
+        })}
+        onInput={(evt) => {
+          setQuery(evt.currentTarget.value);
+          setActiveIndex(props.scope === "project" ? 0 : -1);
+        }}
+        onKeyDown={(evt) => {
+          if (props.scope === "sheet" && evt.key === "Enter") {
+            evt.preventDefault();
+            jumpToResult(evt.shiftKey ? -1 : 1);
+            return;
+          }
+          if (evt.key === "ArrowDown") {
+            evt.preventDefault();
+            props.scope === "project" ? moveProjectActive(1) : jumpToResult(1);
+            return;
+          }
+          if (evt.key === "ArrowUp") {
+            evt.preventDefault();
+            props.scope === "project"
+              ? moveProjectActive(-1)
+              : jumpToResult(-1);
+            return;
+          }
+          if (props.scope === "project" && evt.key === "Enter") {
+            evt.preventDefault();
+            const list = filteredResults();
+            if (list.length === 0) return;
+            const index = activeIndex() < 0 ? 0 : activeIndex();
+            selectResult(list[index], { close: true });
+            return;
+          }
+          if (evt.key === "Escape") {
+            evt.preventDefault();
+            props.onClose();
+          }
+        }}
+      />
+      <Show
+        when={props.scope === "sheet"}
+        fallback={
+          <div class="text-xs text-muted-foreground">
+            {t("componentSearch.resultsCount", {
+              count: filteredResults().length,
+            })}
+          </div>
+        }
+      >
+        <div class="flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            title={t("common.up")}
+            onClick={() => jumpToResult(-1)}
+          >
+            ↑
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            title={t("common.down")}
+            onClick={() => jumpToResult(1)}
+          >
+            ↓
+          </Button>
+          <span class="mono text-xs text-muted-foreground">
+            {activeResultSummary()}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            title={t("common.close")}
+            onClick={props.onClose}
+          >
+            ×
+          </Button>
+        </div>
+      </Show>
+      <div class="grid max-h-[min(60vh,28rem)] gap-2 overflow-auto pr-1">
+        <For each={filteredResults()}>
+          {(result, index) => (
+            <button
               ref={(el) => {
-                queryInputEl = el;
+                resultRowElements.set(result.nodeId, el);
               }}
-              type="text"
-              value={query()}
-              placeholder={t("componentSearch.placeholder", {
-                scope: scopeLabel,
-              })}
-              onInput={(evt) => {
-                setQuery(evt.currentTarget.value);
-                setActiveIndex(scope === "project" ? 0 : -1);
-              }}
-              onKeyDown={(evt) => {
-                if (scope === "sheet" && evt.key === "Enter") {
-                  evt.preventDefault();
-                  jumpToResult(evt.shiftKey ? -1 : 1);
-                  return;
-                }
-                if (evt.key === "ArrowDown") {
-                  evt.preventDefault();
-                  scope === "project" ? moveProjectActive(1) : jumpToResult(1);
-                  return;
-                }
-                if (evt.key === "ArrowUp") {
-                  evt.preventDefault();
-                  scope === "project"
-                    ? moveProjectActive(-1)
-                    : jumpToResult(-1);
-                  return;
-                }
-                if (scope === "project" && evt.key === "Enter") {
-                  evt.preventDefault();
-                  const list = filteredResults();
-                  if (list.length === 0) return;
-                  const index = activeIndex() < 0 ? 0 : activeIndex();
-                  selectResult(list[index], { close: true });
-                  return;
-                }
-                if (evt.key === "Escape") {
-                  evt.preventDefault();
-                  editorUi.closeComponentSearch();
-                }
-              }}
-            />
-            <Show
-              when={scope === "sheet"}
-              fallback={
-                <div class="text-xs text-muted-foreground">
-                  {t("componentSearch.resultsCount", {
-                    count: filteredResults().length,
-                  })}
-                </div>
-              }
+              type="button"
+              class={`focus-ring w-full rounded-xl px-3 py-2 text-left transition ${
+                index() === activeIndex()
+                  ? "bg-accent/10 ring-1 ring-inset ring-accent/30"
+                  : "bg-black/20 hover:bg-white/[0.08]"
+              }`}
+              onMouseEnter={() => setActiveIndex(index())}
+              onClick={() => selectResult(result, { close: true })}
             >
-              <div class="flex items-center justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  title={t("common.up")}
-                  onClick={() => jumpToResult(-1)}
-                >
-                  ↑
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  title={t("common.down")}
-                  onClick={() => jumpToResult(1)}
-                >
-                  ↓
-                </Button>
-                <span class="mono text-xs text-muted-foreground">
-                  {activeResultSummary()}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  title={t("common.close")}
-                  onClick={editorUi.closeComponentSearch}
-                >
-                  ×
-                </Button>
+              <div class="mono truncate">{result.title}</div>
+              <div class="mt-0.5 text-xs text-muted-foreground">
+                {t("componentSearch.sheetMeta", {
+                  sheet: result.sheetName,
+                })}
               </div>
-            </Show>
-            <div class="grid max-h-[min(60vh,28rem)] gap-2 overflow-auto pr-1">
-              <For each={filteredResults()}>
-                {(result, index) => (
-                  <button
-                    ref={(el) => {
-                      resultRowElements.set(result.nodeId, el);
-                    }}
-                    type="button"
-                    class={`focus-ring w-full rounded-xl px-3 py-2 text-left transition ${
-                      index() === activeIndex()
-                        ? "bg-accent/10 ring-1 ring-inset ring-accent/30"
-                        : "bg-black/20 hover:bg-white/[0.08]"
-                    }`}
-                    onMouseEnter={() => setActiveIndex(index())}
-                    onClick={() => selectResult(result, { close: true })}
-                  >
-                    <div class="mono truncate">{result.title}</div>
-                    <div class="mt-0.5 text-xs text-muted-foreground">
-                      {t("componentSearch.sheetMeta", {
-                        sheet: result.sheetName,
-                      })}
-                    </div>
-                  </button>
-                )}
-              </For>
-              <Show when={filteredResults().length === 0}>
-                <div class="px-1 py-2 text-xs text-muted-foreground">
-                  {t("componentSearch.noResults")}
-                </div>
-              </Show>
-            </div>
-          </>
-        );
+            </button>
+          )}
+        </For>
+        <Show when={filteredResults().length === 0}>
+          <div class="px-1 py-2 text-xs text-muted-foreground">
+            {t("componentSearch.noResults")}
+          </div>
+        </Show>
+      </div>
+    </>
+  );
 
-        return (
-          <Portal>
-            <Show
-              when={scope === "project"}
-              fallback={
-                <div class="pointer-events-none fixed inset-0 z-[2147483000] flex items-start justify-end p-4">
-                  <div
-                    class="pointer-events-auto grid w-[min(35rem,calc(100vw-1.75rem))] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-card/90 p-3 shadow-2xl shadow-black/30 backdrop-blur"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label={t("componentSearch.ariaLabel")}
-                    onPointerDown={(evt) => evt.stopPropagation()}
-                    onContextMenu={(evt) => evt.preventDefault()}
-                  >
-                    {content}
-                  </div>
-                </div>
-              }
+  return (
+    <Portal>
+      <Show
+        when={props.scope === "project"}
+        fallback={
+          <div class="pointer-events-none fixed inset-0 z-[2147483000] flex items-start justify-end p-4">
+            <div
+              class="pointer-events-auto grid w-[min(35rem,calc(100vw-1.75rem))] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-card/90 p-3 shadow-2xl shadow-black/30 backdrop-blur"
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("componentSearch.ariaLabel")}
+              onPointerDown={(evt) => evt.stopPropagation()}
+              onContextMenu={(evt) => evt.preventDefault()}
             >
-              <Dialog
-                open
-                onOpenChange={(isOpen) => {
-                  if (!isOpen) editorUi.closeComponentSearch();
-                }}
-              >
-                <DialogContent
-                  class="w-[min(760px,calc(100vw-36px))] max-w-none rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(8,18,22,0.98),rgba(5,11,14,0.97))] p-0"
-                  onContextMenu={(evt: MouseEvent) => evt.preventDefault()}
-                >
-                  <DialogHeader class="bg-white/[0.04] px-4 py-3 text-left">
-                    <DialogTitle>{t("componentSearch.title")}</DialogTitle>
-                    <DialogDescription>
-                      {t("componentSearch.subtitle", { scope: scopeLabel })}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div class="grid gap-3 p-4">{content}</div>
-                </DialogContent>
-              </Dialog>
-            </Show>
-          </Portal>
-        );
-      }}
-    </Show>
+              {content}
+            </div>
+          </div>
+        }
+      >
+        <Dialog
+          open
+          onOpenChange={(isOpen) => {
+            if (!isOpen) props.onClose();
+          }}
+        >
+          <DialogContent
+            class="w-[min(760px,calc(100vw-36px))] max-w-none rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(8,18,22,0.98),rgba(5,11,14,0.97))] p-0"
+            onContextMenu={(evt: MouseEvent) => evt.preventDefault()}
+          >
+            <DialogHeader class="bg-white/[0.04] px-4 py-3 text-left">
+              <DialogTitle>{t("componentSearch.title")}</DialogTitle>
+              <DialogDescription>
+                {t("componentSearch.subtitle", { scope: scopeLabel })}
+              </DialogDescription>
+            </DialogHeader>
+            <div class="grid gap-3 p-4">{content}</div>
+          </DialogContent>
+        </Dialog>
+      </Show>
+    </Portal>
   );
 }

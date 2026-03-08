@@ -29,9 +29,9 @@ import {
   onCleanup,
   Show,
 } from "solid-js";
+import type { OverlayDialogProps } from "../app/types";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
-import { useEditorUi } from "../state/EditorUiProvider";
 import StringSelect from "./form/StringSelect";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -344,18 +344,17 @@ function buildSheetQueueRows(
   return rows;
 }
 
-export default function SheetSettingsDialog() {
+interface SheetSettingsDialogProps extends OverlayDialogProps {
+  sheetId: string;
+}
+
+export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
-  const editorUi = useEditorUi();
   const [draggingRowKey, setDraggingRowKey] = createSignal<string | null>(null);
   const [dropTargetId, setDropTargetId] = createSignal<string | null>(null);
 
-  const sheet = createMemo(() => {
-    const sheetId = editorUi.sheetSettingsSheetId();
-    if (!sheetId) return undefined;
-    return state.project.sheets[sheetId];
-  });
+  const sheet = createMemo(() => state.project.sheets[props.sheetId]);
   const threadOutputs = createMemo<SheetThreadOutputDefinition[]>(() => {
     const current = sheet();
     if (!current) return [];
@@ -366,7 +365,7 @@ export default function SheetSettingsDialog() {
   );
   const halThreads = createMemo(() => state.project.halThreads ?? []);
   const rows = createMemo(() =>
-    buildSheetQueueRows(state.project, editorUi.sheetSettingsSheetId(), {
+    buildSheetQueueRows(state.project, props.sheetId, {
       missingSheet: t("sheetSettings.missingSheet"),
       missing: t("sheetSettings.missing"),
       defaultFunction: t("sheetSettings.defaultFunction"),
@@ -383,9 +382,7 @@ export default function SheetSettingsDialog() {
   });
 
   const commitQueueOrder = (entries: SheetAddfQueueStoredEntry[]) => {
-    const sheetId = editorUi.sheetSettingsSheetId();
-    if (!sheetId) return;
-    actions.setSheetAddfQueue(sheetId, entries);
+    actions.setSheetAddfQueue(props.sheetId, entries);
   };
 
   const commitRows = (nextRows: SheetQueueRow[]) => {
@@ -487,9 +484,9 @@ export default function SheetSettingsDialog() {
 
   return (
     <Dialog
-      open={!!sheet()}
+      open
       onOpenChange={(isOpen) => {
-        if (!isOpen) editorUi.closeSheetSettings();
+        if (!isOpen) props.onClose();
       }}
     >
       <Show when={sheet()}>
@@ -518,9 +515,7 @@ export default function SheetSettingsDialog() {
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    const sheetId = editorUi.sheetSettingsSheetId();
-                    if (!sheetId) return;
-                    actions.addSheetThreadOutput(sheetId);
+                    actions.addSheetThreadOutput(props.sheetId);
                   }}
                 >
                   {t("sheetSettings.addThreadOutput")}
@@ -534,10 +529,8 @@ export default function SheetSettingsDialog() {
                         class="mono"
                         value={output.name}
                         onChange={(evt) => {
-                          const sheetId = editorUi.sheetSettingsSheetId();
-                          if (!sheetId) return;
                           actions.updateSheetThreadOutputName(
-                            sheetId,
+                            props.sheetId,
                             output.id,
                             evt.currentTarget.value,
                           );
@@ -559,10 +552,8 @@ export default function SheetSettingsDialog() {
                             })),
                           ]}
                           onChange={(value) => {
-                            const sheetId = editorUi.sheetSettingsSheetId();
-                            if (!sheetId) return;
                             actions.updateSheetThreadOutputHalBinding(
-                              sheetId,
+                              props.sheetId,
                               output.id,
                               value.trim() || null,
                             );
@@ -576,9 +567,10 @@ export default function SheetSettingsDialog() {
                           size="icon"
                           disabled={threadOutputs().length <= 1}
                           onClick={() => {
-                            const sheetId = editorUi.sheetSettingsSheetId();
-                            if (!sheetId) return;
-                            actions.removeSheetThreadOutput(sheetId, output.id);
+                            actions.removeSheetThreadOutput(
+                              props.sheetId,
+                              output.id,
+                            );
                           }}
                           title={t("common.remove")}
                           aria-label={t("common.remove")}
