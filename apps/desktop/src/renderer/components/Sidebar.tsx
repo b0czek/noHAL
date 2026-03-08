@@ -1,6 +1,6 @@
 import type { SheetDefinition } from "@nohal/core/src/types";
 import { HiOutlineChevronDown, HiOutlineChevronRight } from "solid-icons/hi";
-import { createEffect, createMemo, createSignal, For } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
@@ -24,15 +24,6 @@ export default function Sidebar() {
     new Set(),
   );
   const [isTreeCollapsed, setIsTreeCollapsed] = createSignal(false);
-  const placedSheetIds = createMemo(() => {
-    const ids = new Set<string>();
-    for (const sheet of Object.values(state.project.sheets)) {
-      for (const node of sheet.nodes) {
-        if (node.kind === "sheet") ids.add(node.sheetId);
-      }
-    }
-    return ids;
-  });
 
   const treeRoots = createMemo<SheetTreeNode[]>(() => {
     const allSheets = Object.values(state.project.sheets);
@@ -134,8 +125,6 @@ export default function Sidebar() {
     const hasChildren = () => branchProps.node.children.length > 0;
     const collapsed = () => isCollapsed(branchProps.node.sheet.id);
     const isActive = () => branchProps.node.sheet.id === state.activeSheetId;
-    const canPlace = () =>
-      !isActive() && !placedSheetIds().has(branchProps.node.sheet.id);
 
     return (
       <li class="min-w-0">
@@ -206,24 +195,10 @@ export default function Sidebar() {
           {branchProps.node.isOrphan && (
             <Badge variant="secondary">{t("sidebar.orphan")}</Badge>
           )}
-
-          {canPlace() && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              class="h-8 rounded-lg px-3"
-              onClick={() =>
-                actions.placeExistingSheetNode(branchProps.node.sheet.id)
-              }
-            >
-              {t("common.place")}
-            </Button>
-          )}
         </div>
 
         {hasChildren() && !collapsed() && (
-          <ul class="ml-4 border-l border-white/8 pl-4">
+          <ul class="ml-2 border-l border-white/8 pl-2">
             <For each={branchProps.node.children}>
               {(child) => <TreeBranch node={child} />}
             </For>
