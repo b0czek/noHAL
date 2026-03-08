@@ -228,6 +228,9 @@ export const en = {
   "sidebar.deleteSheet": "Delete Sheet",
 
   "projectCreation.projectLocalGenerated": "Project-local (generated)",
+  "projectCreation.systemComponent": "System component",
+  "projectCreation.systemAutoReason":
+    "recognized LinuxCNC system component",
   "projectCreation.storeFallback": "Store: {componentId}",
   "projectCreation.storeEntry": "Store: {name}",
   "projectCreation.ariaCreateProject": "Create New Project",

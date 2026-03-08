@@ -1,4 +1,5 @@
 import { listStoreEntriesForLinuxCncVersion } from "@nohal/core/src/componentStore";
+import { isSystemHalImportComponentGroup } from "@nohal/core/src/halImport";
 import type { HalImportPlacementHeuristic } from "@nohal/core/src/types";
 import {
   HiOutlineFolderOpen,
@@ -69,6 +70,9 @@ export default function MachineImportPage(props: MachineImportPageProps) {
   const selectionLabel = (encodedValue: string): string => {
     if (!encodedValue || encodedValue === "local") {
       return t("projectCreation.projectLocalGenerated");
+    }
+    if (encodedValue === "system") {
+      return t("projectCreation.systemComponent");
     }
     if (!encodedValue.startsWith("store:")) return encodedValue;
     const componentId = encodedValue.slice("store:".length);
@@ -469,12 +473,23 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                                       flow().linkSelections[group.id] ?? "local"
                                     }
                                     options={[
-                                      {
-                                        value: "local",
-                                        label: t(
-                                          "projectCreation.projectLocalGenerated",
-                                        ),
-                                      },
+                                      ...(isSystemHalImportComponentGroup(group)
+                                        ? [
+                                            {
+                                              value: "system",
+                                              label: t(
+                                                "projectCreation.systemComponent",
+                                              ),
+                                            },
+                                          ]
+                                        : [
+                                            {
+                                              value: "local",
+                                              label: t(
+                                                "projectCreation.projectLocalGenerated",
+                                              ),
+                                            },
+                                          ]),
                                       ...optionListForGroup(
                                         group.inferredHalComponentName,
                                       ).map((entry) => ({

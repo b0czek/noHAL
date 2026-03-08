@@ -1,5 +1,6 @@
 import {
   buildProjectFromHalImport as buildImportedProject,
+  isSystemHalImportComponentGroup,
   suggestHalImportLinks,
 } from "@nohal/core/src/halImport";
 import type {
@@ -268,11 +269,21 @@ export function useMachineImportFlow({
       const nextSelections: Record<string, string> = {};
       const nextReasons: Record<string, string> = {};
       for (const suggestion of suggestions) {
+        const group = draft.componentGroups.find(
+          (item) => item.id === suggestion.groupId,
+        );
+        const isSystemGroup = group
+          ? isSystemHalImportComponentGroup(group)
+          : false;
         nextSelections[suggestion.groupId] =
           suggestion.selection.mode === "store"
             ? `store:${suggestion.selection.componentId}`
-            : "local";
-        nextReasons[suggestion.groupId] = suggestion.reason;
+            : isSystemGroup
+              ? "system"
+              : "local";
+        nextReasons[suggestion.groupId] = isSystemGroup
+          ? t("projectCreation.systemAutoReason")
+          : suggestion.reason;
       }
       dispatchMachineImportFlow({
         type: "importDraftLoaded",
