@@ -133,7 +133,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
           </DialogHeader>
 
           <div class="grid min-h-0 gap-4 overflow-auto pr-1 lg:grid-cols-2">
-            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+            <section class="grid gap-3 rounded-2xl p-4">
               <div class="text-sm font-semibold tracking-tight">
                 {t("componentDialog.instance")}
               </div>
@@ -220,7 +220,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
               </Show>
             </section>
 
-            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+            <section class="grid gap-3 rounded-2xl p-4">
               <div class="text-sm font-semibold tracking-tight">
                 {t("componentDialog.functions")}
               </div>
@@ -260,7 +260,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
               </Show>
             </section>
 
-            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+            <section class="grid gap-3 rounded-2xl p-4">
               <div class="text-sm font-semibold tracking-tight">
                 {t("componentDialog.instanceConfig")}
               </div>
@@ -336,7 +336,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
               </Show>
             </section>
 
-            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+            <section class="grid gap-3 rounded-2xl p-4">
               <div class="text-sm font-semibold tracking-tight">
                 {t("componentDialog.parameters")}
               </div>
@@ -373,7 +373,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
               </Show>
             </section>
 
-            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20 lg:col-span-2">
+            <section class="grid gap-3 rounded-2xl p-4 lg:col-span-2">
               <div class="text-sm font-semibold tracking-tight">
                 {t("componentDialog.pinInitialValues")}
               </div>
@@ -410,7 +410,7 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
               </Show>
             </section>
 
-            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20 lg:col-span-2">
+            <section class="grid gap-3 rounded-2xl p-4 lg:col-span-2">
               <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="text-sm font-semibold tracking-tight">
                   {t("componentDialog.pins")}

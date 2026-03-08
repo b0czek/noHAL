@@ -158,7 +158,7 @@ export default function CustomComponentsTab() {
         <Show
           when={selectedComponent()}
           fallback={
-            <section class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+            <section class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-2xl p-4">
               <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {t("customComponents.catalogTitle")}
               </div>
@@ -199,7 +199,7 @@ export default function CustomComponentsTab() {
         >
           {(component) => (
             <section class="grid h-full min-h-0 auto-rows-max content-start gap-4 overflow-auto pr-1">
-              <div class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
+              <div class="grid gap-3 rounded-2xl p-4 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
                 <div class="flex items-start justify-between gap-3 lg:col-span-2">
                   <div class="grid gap-1">
                     <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -284,7 +284,7 @@ export default function CustomComponentsTab() {
                 </div>
               </div>
 
-              <div class="grid gap-4 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+              <div class="grid gap-4 rounded-2xl p-4">
                 <div class="flex items-center justify-between gap-3">
                   <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {t("customComponents.pinsTitle")}
@@ -393,7 +393,7 @@ export default function CustomComponentsTab() {
                 </Show>
               </div>
 
-              <div class="grid gap-4 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+              <div class="grid gap-4 rounded-2xl p-4">
                 <div class="flex items-center justify-between gap-3">
                   <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {t("customComponents.paramsTitle")}

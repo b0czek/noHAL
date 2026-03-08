@@ -593,6 +593,9 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                   <div class="text-sm text-muted-foreground">
                     {t("sheetSettings.addfQueueHelp")}
                   </div>
+                  <div class="text-sm font-semibold tracking-tight">
+                    {t("sheetSettings.queueItems")}
+                  </div>
                 </div>
                 <Button
                   type="button"
@@ -607,17 +610,11 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                   {t("sheetSettings.resetAZ")}
                 </Button>
               </div>
-            </section>
-
-            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
-              <div class="text-sm font-semibold tracking-tight">
-                {t("sheetSettings.queueItems")}
-              </div>
-              <div class="grid max-h-[min(60vh,620px)] gap-3 overflow-auto pr-1">
+              <div class="grid gap-3">
                 <For each={rowsByThreadOutput()}>
                   {(group) => (
                     <section
-                      class="grid gap-3 rounded-2xl bg-black/20 p-3"
+                      class="grid gap-3 rounded-2xl p-3"
                       onPointerEnter={() => {
                         const dragged = draggingRowKey();
                         if (!dragged) return;

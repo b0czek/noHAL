@@ -66,6 +66,18 @@ export default function IniTab() {
                 {t("iniEditor.valuesTitle")}
               </div>
               <div class="inline-flex flex-wrap items-center gap-2">
+                <Show when={isEditMode()}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => actions.addMachineIniSection()}
+                    title={t("iniEditor.addSection")}
+                    aria-label={t("iniEditor.addSection")}
+                  >
+                    <HiOutlinePlus size={16} aria-hidden="true" />
+                  </Button>
+                </Show>
                 <Button
                   type="button"
                   variant="secondary"
@@ -93,18 +105,6 @@ export default function IniTab() {
                     ? t("iniEditor.exitEditMode")
                     : t("iniEditor.enterEditMode")}
                 </Button>
-                <Show when={isEditMode()}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => actions.addMachineIniSection()}
-                    title={t("iniEditor.addSection")}
-                    aria-label={t("iniEditor.addSection")}
-                  >
-                    <HiOutlinePlus size={16} aria-hidden="true" />
-                  </Button>
-                </Show>
               </div>
             </div>
 
@@ -117,12 +117,12 @@ export default function IniTab() {
 
               <For each={cfg().ini.sections}>
                 {(section, sectionIndex) => (
-                  <div class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+                  <div class="grid gap-3 rounded-2xl px-1 py-2">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <Show
                         when={isEditMode()}
                         fallback={
-                          <div class="mono text-xs uppercase tracking-[0.18em] text-accent">
+                          <div class="mono text-sm uppercase tracking-[0.16em] text-accent">
                             [{section.name}]
                           </div>
                         }
@@ -188,7 +188,7 @@ export default function IniTab() {
                           <Show
                             when={isEditMode()}
                             fallback={
-                              <div class="grid gap-2 rounded-xl bg-black/20 px-3 py-2 sm:grid-cols-[minmax(180px,280px)_minmax(0,1fr)] sm:items-center">
+                              <div class="grid gap-2 rounded-xl bg-black/20 px-2 py-1.5 sm:grid-cols-[minmax(180px,280px)_minmax(0,1fr)] sm:items-center">
                                 <span class="mono text-xs text-muted-foreground">
                                   {entry.key}
                                 </span>
