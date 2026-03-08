@@ -53,7 +53,7 @@ export default function ProjectSettingsDialog() {
               onChange={(value) => setTab(value as ProjectSettingsTab)}
               class="grid h-full min-h-0 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]"
             >
-              <aside class="min-h-0 rounded-2xl border border-white/8 bg-black/10 p-2">
+              <aside class="min-h-0 rounded-2xl bg-white/[0.04] p-2 shadow-inner shadow-black/20">
                 <TabsList class="grid h-auto w-full grid-cols-1 gap-1 bg-transparent p-0">
                   <TabsTrigger
                     value="motmod"
@@ -82,7 +82,7 @@ export default function ProjectSettingsDialog() {
                 </TabsList>
               </aside>
 
-              <section class="min-h-0 overflow-hidden rounded-2xl border border-white/8 bg-black/10 p-4">
+              <section class="min-h-0 overflow-hidden rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
                 <TabsContent value="motmod" class="mt-0 h-full overflow-auto">
                   <MotmodTab />
                 </TabsContent>

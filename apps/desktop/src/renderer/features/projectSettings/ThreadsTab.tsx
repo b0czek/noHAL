@@ -41,7 +41,7 @@ export default function ThreadsTab() {
       <div class="grid gap-3">
         <For each={threads()}>
           {(thread, index) => (
-            <div class="grid gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 lg:grid-cols-[minmax(180px,1fr)_minmax(140px,220px)_minmax(160px,220px)_auto] lg:items-end">
+            <div class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20 lg:grid-cols-[minmax(180px,1fr)_minmax(140px,220px)_minmax(160px,220px)_auto] lg:items-end">
               <div class="grid gap-2">
                 <span class={fieldLabelClass}>{t("threadsDialog.name")}</span>
                 <Input
@@ -76,7 +76,7 @@ export default function ThreadsTab() {
                 <span class={fieldLabelClass}>
                   {t("threadsDialog.floatMode")}
                 </span>
-                <div class="inline-flex min-h-9 items-center gap-2 rounded-xl border border-white/8 bg-black/15 p-1">
+                <div class="inline-flex min-h-9 items-center gap-2 rounded-xl bg-black/20 p-1">
                   <Button
                     type="button"
                     size="sm"

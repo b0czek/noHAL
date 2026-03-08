@@ -115,16 +115,16 @@ export default function ComponentNodeDialog() {
     >
       <Show when={node()}>
         <DialogContent
-          class="w-[min(920px,calc(100vw-36px))] max-w-none rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(8,18,22,0.98),rgba(5,11,14,0.97))] p-0"
+          class="grid h-[min(780px,calc(100vh-36px))] w-[min(920px,calc(100vw-36px))] max-w-none grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-[1.75rem] border-white/10 bg-[linear-gradient(180deg,rgba(11,24,31,0.96),rgba(8,17,22,0.92))] p-5 shadow-2xl shadow-black/30"
           onContextMenu={(evt: MouseEvent) => evt.preventDefault()}
         >
-          <DialogHeader class="border-b border-white/10 bg-white/5 px-4 py-3 text-left">
+          <DialogHeader class="border-b border-white/8 pb-4 text-left">
             <DialogTitle>{t("componentDialog.title")}</DialogTitle>
             <DialogDescription class="mono">{nodeTitle()}</DialogDescription>
           </DialogHeader>
 
-          <div class="grid gap-4 p-4 lg:grid-cols-2">
-            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+          <div class="grid min-h-0 gap-4 overflow-auto pr-1 lg:grid-cols-2">
+            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
               <div class="text-sm font-semibold tracking-tight">
                 {t("componentDialog.instance")}
               </div>
@@ -150,7 +150,7 @@ export default function ComponentNodeDialog() {
               <Show when={component()}>
                 {(comp) => (
                   <>
-                    <div class="grid gap-2 rounded-xl border border-white/8 bg-white/5 p-3 text-sm">
+                    <div class="grid gap-2 rounded-xl bg-black/20 p-3 text-sm">
                       <div class="flex items-start justify-between gap-3">
                         <span class="text-muted-foreground">
                           {t("componentDialog.halComponent")}
@@ -211,7 +211,7 @@ export default function ComponentNodeDialog() {
               </Show>
             </section>
 
-            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
               <div class="text-sm font-semibold tracking-tight">
                 {t("componentDialog.functions")}
               </div>
@@ -227,7 +227,7 @@ export default function ComponentNodeDialog() {
                   <For each={componentFunctions()}>
                     {(fn) => (
                       <div
-                        class="grid gap-2 rounded-xl border border-white/8 bg-white/5 p-3 text-sm"
+                        class="grid gap-2 rounded-xl bg-black/20 p-3 text-sm"
                         title={fn.doc ?? ""}
                       >
                         <div class="flex flex-wrap items-center gap-2">
@@ -251,7 +251,7 @@ export default function ComponentNodeDialog() {
               </Show>
             </section>
 
-            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
               <div class="text-sm font-semibold tracking-tight">
                 {t("componentDialog.instanceConfig")}
               </div>
@@ -267,7 +267,7 @@ export default function ComponentNodeDialog() {
                   <For each={instanceConfigFields()}>
                     {(field) => (
                       <div
-                        class="grid gap-2 rounded-xl border border-white/8 bg-white/5 p-3"
+                        class="grid gap-2 rounded-xl bg-black/20 p-3"
                         title={field.doc ?? ""}
                       >
                         <span class="mono text-sm">{field.key}</span>
@@ -327,7 +327,7 @@ export default function ComponentNodeDialog() {
               </Show>
             </section>
 
-            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
               <div class="text-sm font-semibold tracking-tight">
                 {t("componentDialog.parameters")}
               </div>
@@ -342,7 +342,7 @@ export default function ComponentNodeDialog() {
                 <div class="grid gap-3">
                   <For each={componentParams()}>
                     {(param) => (
-                      <div class="grid gap-2 rounded-xl border border-white/8 bg-white/5 p-3">
+                      <div class="grid gap-2 rounded-xl bg-black/20 p-3">
                         <span class="mono text-sm">{param.name}</span>
                         <Input
                           value={node()?.paramValues[param.key] ?? ""}
@@ -364,7 +364,7 @@ export default function ComponentNodeDialog() {
               </Show>
             </section>
 
-            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4 lg:col-span-2">
+            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20 lg:col-span-2">
               <div class="text-sm font-semibold tracking-tight">
                 {t("componentDialog.pinInitialValues")}
               </div>
@@ -379,7 +379,7 @@ export default function ComponentNodeDialog() {
                 <div class="grid gap-3 md:grid-cols-2">
                   <For each={pins()}>
                     {(pin) => (
-                      <div class="grid gap-2 rounded-xl border border-white/8 bg-white/5 p-3">
+                      <div class="grid gap-2 rounded-xl bg-black/20 p-3">
                         <span class="mono text-sm">{pin.name}</span>
                         <Input
                           value={node()?.pinInitialValues?.[pin.key] ?? ""}
@@ -401,12 +401,12 @@ export default function ComponentNodeDialog() {
               </Show>
             </section>
 
-            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4 lg:col-span-2">
+            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20 lg:col-span-2">
               <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="text-sm font-semibold tracking-tight">
                   {t("componentDialog.pins")}
                 </div>
-                <div class="inline-flex flex-wrap items-center gap-2 rounded-xl border border-white/8 bg-white/5 p-1">
+                <div class="inline-flex flex-wrap items-center gap-2 rounded-xl bg-black/20 p-1">
                   <For each={pinFilterModes}>
                     {(mode) => (
                       <Button
@@ -424,7 +424,7 @@ export default function ComponentNodeDialog() {
               <div class="grid gap-2">
                 <For each={visiblePins()}>
                   {(pin) => (
-                    <div class="grid gap-2 rounded-xl border border-white/8 bg-white/5 px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+                    <div class="grid gap-2 rounded-xl bg-black/20 px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
                       <Badge
                         variant={
                           pin.direction === "in"

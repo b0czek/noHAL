@@ -283,10 +283,10 @@ export default function ComponentSearchDialog() {
                       resultRowElements.set(result.nodeId, el);
                     }}
                     type="button"
-                    class={`focus-ring w-full rounded-xl border px-3 py-2 text-left transition ${
+                    class={`focus-ring w-full rounded-xl px-3 py-2 text-left transition ${
                       index() === activeIndex()
-                        ? "border-accent/30 bg-accent/10"
-                        : "border-white/8 bg-black/10 hover:border-accent/30 hover:bg-white/5"
+                        ? "bg-accent/10 ring-1 ring-inset ring-accent/30"
+                        : "bg-black/20 hover:bg-white/[0.08]"
                     }`}
                     onMouseEnter={() => setActiveIndex(index())}
                     onClick={() => selectResult(result, { close: true })}
@@ -316,7 +316,7 @@ export default function ComponentSearchDialog() {
               fallback={
                 <div class="pointer-events-none fixed inset-0 z-[2147483000] flex items-start justify-end p-4">
                   <div
-                    class="pointer-events-auto grid w-[min(35rem,calc(100vw-1.75rem))] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-white/10 bg-card/90 p-3 shadow-2xl shadow-black/30 backdrop-blur"
+                    class="pointer-events-auto grid w-[min(35rem,calc(100vw-1.75rem))] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-card/90 p-3 shadow-2xl shadow-black/30 backdrop-blur"
                     role="dialog"
                     aria-modal="true"
                     aria-label={t("componentSearch.ariaLabel")}
@@ -338,7 +338,7 @@ export default function ComponentSearchDialog() {
                   class="w-[min(760px,calc(100vw-36px))] max-w-none rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(8,18,22,0.98),rgba(5,11,14,0.97))] p-0"
                   onContextMenu={(evt: MouseEvent) => evt.preventDefault()}
                 >
-                  <DialogHeader class="border-b border-white/10 bg-white/5 px-4 py-3 text-left">
+                  <DialogHeader class="bg-white/[0.04] px-4 py-3 text-left">
                     <DialogTitle>{t("componentSearch.title")}</DialogTitle>
                     <DialogDescription>
                       {t("componentSearch.subtitle", { scope: scopeLabel })}

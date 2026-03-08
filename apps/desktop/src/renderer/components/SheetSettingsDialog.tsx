@@ -494,16 +494,16 @@ export default function SheetSettingsDialog() {
     >
       <Show when={sheet()}>
         <DialogContent
-          class="w-[min(980px,calc(100vw-36px))] max-w-none rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(8,18,22,0.98),rgba(5,11,14,0.97))] p-0"
+          class="grid h-[min(780px,calc(100vh-36px))] w-[min(980px,calc(100vw-36px))] max-w-none grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-[1.75rem] border-white/10 bg-[linear-gradient(180deg,rgba(11,24,31,0.96),rgba(8,17,22,0.92))] p-5 shadow-2xl shadow-black/30"
           onContextMenu={(evt: MouseEvent) => evt.preventDefault()}
         >
-          <DialogHeader class="border-b border-white/10 bg-white/5 px-4 py-3 text-left">
+          <DialogHeader class="border-b border-white/8 pb-4 text-left">
             <DialogTitle>{t("sheetSettings.title")}</DialogTitle>
             <DialogDescription class="mono">{sheet()?.name}</DialogDescription>
           </DialogHeader>
 
-          <div class="grid gap-4 p-4">
-            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+          <div class="grid min-h-0 gap-4 overflow-auto pr-1">
+            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
               <div class="text-sm font-semibold tracking-tight">
                 {t("sheetSettings.threadOutputsTitle")}
               </div>
@@ -529,7 +529,7 @@ export default function SheetSettingsDialog() {
               <div class="grid max-h-56 gap-2 overflow-auto pr-1">
                 <For each={threadOutputs()}>
                   {(output) => (
-                    <div class="grid gap-3 rounded-xl border border-white/8 bg-white/5 p-3 lg:grid-cols-[minmax(0,1fr)_220px_auto] lg:items-center">
+                    <div class="grid gap-3 rounded-xl bg-black/20 p-3 lg:grid-cols-[minmax(0,1fr)_220px_auto] lg:items-center">
                       <Input
                         class="mono"
                         value={output.name}
@@ -592,7 +592,7 @@ export default function SheetSettingsDialog() {
               </div>
             </section>
 
-            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
               <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div class="grid gap-1">
                   <div class="text-sm font-semibold tracking-tight">
@@ -617,7 +617,7 @@ export default function SheetSettingsDialog() {
               </div>
             </section>
 
-            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+            <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
               <div class="text-sm font-semibold tracking-tight">
                 {t("sheetSettings.queueItems")}
               </div>
@@ -625,7 +625,7 @@ export default function SheetSettingsDialog() {
                 <For each={rowsByThreadOutput()}>
                   {(group) => (
                     <section
-                      class="grid gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-3"
+                      class="grid gap-3 rounded-2xl bg-black/20 p-3"
                       onPointerEnter={() => {
                         const dragged = draggingRowKey();
                         if (!dragged) return;
@@ -645,12 +645,12 @@ export default function SheetSettingsDialog() {
                         <For each={group.rows}>
                           {(row, index) => (
                             <div
-                              class={`grid gap-3 rounded-xl border p-3 transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center ${
+                              class={`grid gap-3 rounded-xl p-3 transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center ${
                                 draggingRowKey() === row.rowKey
                                   ? "border-accent/30 bg-accent/10 opacity-65"
                                   : dropTargetId() === `row:${row.rowKey}`
                                     ? "border-accent/30 bg-accent/10"
-                                    : "border-white/8 bg-white/5"
+                                    : "bg-black/20"
                               }`}
                               role="presentation"
                               onPointerEnter={() => {
@@ -795,10 +795,10 @@ export default function SheetSettingsDialog() {
                           )}
                         </For>
                         <div
-                          class={`min-h-[18px] rounded-lg border border-dashed transition ${
+                          class={`min-h-[18px] rounded-lg transition ${
                             dropTargetId() === `thread:${group.output.id}:end`
-                              ? "border-accent/30 bg-accent/10"
-                              : "border-white/8 bg-white/[0.02]"
+                              ? "border border-dashed border-accent/30 bg-accent/10"
+                              : "bg-white/[0.03]"
                           }`}
                           onPointerEnter={() => {
                             const dragged = draggingRowKey();

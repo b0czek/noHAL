@@ -42,7 +42,7 @@ export default function IniTab() {
       <Show
         when={machineConfig()}
         fallback={
-          <section class="grid gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+          <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
             <div class="text-base font-semibold">
               {t("iniEditor.noConfigTitle")}
             </div>
@@ -117,7 +117,7 @@ export default function IniTab() {
 
               <For each={cfg().ini.sections}>
                 {(section, sectionIndex) => (
-                  <div class="grid gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                  <div class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <Show
                         when={isEditMode()}
@@ -188,17 +188,17 @@ export default function IniTab() {
                           <Show
                             when={isEditMode()}
                             fallback={
-                              <div class="grid gap-2 rounded-xl border border-white/8 bg-black/10 px-3 py-2 sm:grid-cols-[minmax(180px,280px)_minmax(0,1fr)] sm:items-center">
+                              <div class="grid gap-2 rounded-xl bg-black/20 px-3 py-2 sm:grid-cols-[minmax(180px,280px)_minmax(0,1fr)] sm:items-center">
                                 <span class="mono text-xs text-muted-foreground">
                                   {entry.key}
                                 </span>
-                                <div class="min-w-0 rounded-xl border border-white/8 bg-background/40 px-3 py-2 text-sm">
+                                <div class="min-w-0 rounded-xl bg-background/40 px-3 py-2 text-sm">
                                   {entry.value}
                                 </div>
                               </div>
                             }
                           >
-                            <div class="grid gap-2 rounded-xl border border-white/8 bg-black/10 p-3 sm:grid-cols-[minmax(160px,240px)_minmax(0,1fr)_auto] sm:items-center">
+                            <div class="grid gap-2 rounded-xl bg-black/20 p-3 sm:grid-cols-[minmax(160px,240px)_minmax(0,1fr)_auto] sm:items-center">
                               <Input
                                 type="text"
                                 class="mono"

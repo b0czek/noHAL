@@ -136,7 +136,7 @@ export default function MotmodTab() {
       </div>
 
       <div class="grid gap-3 lg:grid-cols-2">
-        <div class="grid gap-2 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+        <div class="grid gap-2 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
           <div class={fieldLabelClass}>
             {t("projectSettings.motmod.threadsDerived")}
           </div>
@@ -145,7 +145,7 @@ export default function MotmodTab() {
           </div>
         </div>
 
-        <div class="grid gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+        <div class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
           <div class={fieldLabelClass}>
             {t("projectSettings.motmod.syncStatusLabel")}
           </div>

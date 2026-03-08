@@ -158,7 +158,7 @@ export default function CustomComponentsTab() {
         <Show
           when={selectedComponent()}
           fallback={
-            <section class="grid h-full min-h-0 gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+            <section class="grid h-full min-h-0 gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
               <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {t("customComponents.catalogTitle")}
               </div>
@@ -175,7 +175,7 @@ export default function CustomComponentsTab() {
                     {(component) => (
                       <button
                         type="button"
-                        class="focus-ring grid gap-1 rounded-2xl border border-white/8 bg-black/10 px-4 py-3 text-left transition hover:border-accent/30 hover:bg-white/5"
+                        class="focus-ring grid gap-1 rounded-2xl bg-black/20 px-4 py-3 text-left transition hover:bg-white/[0.08]"
                         onClick={() => setSelectedComponentId(component.id)}
                       >
                         <div class="mono font-medium">
@@ -199,7 +199,7 @@ export default function CustomComponentsTab() {
         >
           {(component) => (
             <section class="grid h-full min-h-0 gap-4 overflow-auto pr-1">
-              <div class="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+              <div class="flex flex-col gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
                 <div class="flex items-start justify-between gap-3">
                   <div class="grid gap-1">
                     <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -286,7 +286,7 @@ export default function CustomComponentsTab() {
                 </div>
               </div>
 
-              <div class="grid gap-4 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+              <div class="grid gap-4 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
                 <div class="flex items-center justify-between gap-3">
                   <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {t("customComponents.pinsTitle")}
@@ -321,7 +321,7 @@ export default function CustomComponentsTab() {
                   <div class="grid gap-3">
                     <For each={component().pins}>
                       {(pin) => (
-                        <div class="grid gap-3 rounded-xl border border-white/8 bg-black/10 p-3 lg:grid-cols-[minmax(0,1fr)_140px_140px_auto] lg:items-center">
+                        <div class="grid gap-3 rounded-xl bg-black/20 p-3 lg:grid-cols-[minmax(0,1fr)_140px_140px_auto] lg:items-center">
                           <div class="grid gap-2">
                             <span class={fieldLabelClass}>
                               {t("common.name")}
@@ -395,7 +395,7 @@ export default function CustomComponentsTab() {
                 </Show>
               </div>
 
-              <div class="grid gap-4 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+              <div class="grid gap-4 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
                 <div class="flex items-center justify-between gap-3">
                   <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {t("customComponents.paramsTitle")}
@@ -424,7 +424,7 @@ export default function CustomComponentsTab() {
                   <div class="grid gap-3">
                     <For each={component().params}>
                       {(param) => (
-                        <div class="grid gap-3 rounded-xl border border-white/8 bg-black/10 p-3 xl:grid-cols-[minmax(0,1fr)_140px_180px_minmax(0,1fr)_auto] xl:items-end">
+                        <div class="grid gap-3 rounded-xl bg-black/20 p-3 xl:grid-cols-[minmax(0,1fr)_140px_180px_minmax(0,1fr)_auto] xl:items-end">
                           <div class="grid gap-2">
                             <span class={fieldLabelClass}>
                               {t("common.name")}

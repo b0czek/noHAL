@@ -70,10 +70,10 @@ export default function ComponentStoreDialog() {
     >
       <Show when={editorUi.isComponentStoreOpen()}>
         <DialogContent
-          class="w-[min(1080px,calc(100vw-36px))] max-w-none rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(8,18,22,0.98),rgba(5,11,14,0.97))] p-0"
+          class="grid h-[min(760px,calc(100vh-36px))] w-[min(1080px,calc(100vw-36px))] max-w-none grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-[1.75rem] border-white/10 bg-[linear-gradient(180deg,rgba(11,24,31,0.96),rgba(8,17,22,0.92))] p-5 shadow-2xl shadow-black/30"
           onContextMenu={(evt: MouseEvent) => evt.preventDefault()}
         >
-          <DialogHeader class="border-b border-white/10 bg-white/5 px-4 py-3 text-left">
+          <DialogHeader class="border-b border-white/8 pb-4 text-left">
             <DialogTitle>{t("componentStore.title")}</DialogTitle>
             <DialogDescription>
               {t("componentStore.summary", {
@@ -83,11 +83,17 @@ export default function ComponentStoreDialog() {
             </DialogDescription>
           </DialogHeader>
 
-          <div class="grid items-start gap-4 p-4 lg:grid-cols-2">
-            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+          <div class="grid min-h-0 items-start gap-4 lg:grid-cols-2">
+            <section class="grid min-h-0 gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
               <div class="flex flex-wrap items-center justify-between gap-3">
-                <div class="text-sm font-semibold tracking-tight">
-                  {t("componentStore.sources")}
+                <div class="grid gap-1">
+                  <div class="text-sm font-semibold tracking-tight">
+                    {t("componentStore.sources")}
+                  </div>
+                  <div class="text-xs text-muted-foreground">
+                    {componentSources().length} source
+                    {componentSources().length === 1 ? "" : "s"}
+                  </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <Button
@@ -106,7 +112,7 @@ export default function ComponentStoreDialog() {
                 </div>
               </div>
 
-              <div class="grid max-h-[min(34vh,17.5rem)] gap-2 overflow-auto pr-1">
+              <div class="grid min-h-0 flex-1 gap-2 overflow-auto pr-1">
                 <For each={componentSources()}>
                   {(source) => {
                     const sourceComponentCount = () =>
@@ -122,7 +128,7 @@ export default function ComponentStoreDialog() {
 
                     return (
                       <div
-                        class="grid gap-3 rounded-xl border border-white/8 bg-white/5 p-3 lg:grid-cols-[minmax(0,1fr)_auto]"
+                        class="grid gap-3 rounded-xl bg-black/20 p-3 lg:grid-cols-[minmax(0,1fr)_auto]"
                         title={sourcePath()}
                       >
                         <div class="min-w-0">
@@ -191,10 +197,16 @@ export default function ComponentStoreDialog() {
               </div>
             </section>
 
-            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+            <section class="grid min-h-0 gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
               <div class="grid gap-3">
-                <div class="text-sm font-semibold tracking-tight">
-                  {t("componentStore.storedComponents")}
+                <div class="grid gap-1">
+                  <div class="text-sm font-semibold tracking-tight">
+                    {t("componentStore.storedComponents")}
+                  </div>
+                  <div class="text-xs text-muted-foreground">
+                    {filteredEntries().length} component
+                    {filteredEntries().length === 1 ? "" : "s"}
+                  </div>
                 </div>
                 <Input
                   type="text"
@@ -204,11 +216,11 @@ export default function ComponentStoreDialog() {
                 />
               </div>
 
-              <div class="grid max-h-[min(62vh,40rem)] gap-2 overflow-auto pr-1">
+              <div class="grid min-h-0 flex-1 gap-2 overflow-auto pr-1">
                 <For each={filteredEntries()}>
                   {(entry) => (
                     <div
-                      class="grid gap-3 rounded-xl border border-white/8 bg-white/5 p-3 lg:grid-cols-[minmax(0,1fr)_auto]"
+                      class="grid gap-3 rounded-xl bg-black/20 p-3 lg:grid-cols-[minmax(0,1fr)_auto]"
                       title={entry.sourceRef.filePath}
                     >
                       <div class="min-w-0">
