@@ -1,4 +1,5 @@
 import type { SheetDefinition } from "@nohal/core/src/types";
+import { HiOutlineChevronDown, HiOutlineChevronRight } from "solid-icons/hi";
 import { createEffect, createMemo, createSignal, For } from "solid-js";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
@@ -22,6 +23,7 @@ export default function Sidebar() {
   const [collapsedSheetIds, setCollapsedSheetIds] = createSignal<Set<string>>(
     new Set(),
   );
+  const [isTreeCollapsed, setIsTreeCollapsed] = createSignal(false);
   const placedSheetIds = createMemo(() => {
     const ids = new Set<string>();
     for (const sheet of Object.values(state.project.sheets)) {
@@ -232,16 +234,43 @@ export default function Sidebar() {
   };
 
   return (
-    <aside class="pointer-events-none absolute inset-y-3 left-3 z-10 w-[min(20rem,calc(100%-24rem))] min-w-[16rem]">
-      <Card class="pointer-events-auto flex h-full flex-col overflow-hidden">
-        <CardHeader class="pb-3">
+    <aside class="pointer-events-none absolute left-3 top-3 z-10 w-[min(20rem,calc(100%-24rem))] min-w-[16rem]">
+      <Card class="pointer-events-auto flex max-h-[min(42rem,calc(100vh-8rem))] flex-col overflow-hidden !border-white/12 ![background:linear-gradient(180deg,rgba(11,24,31,0.42),rgba(8,17,22,0.28))] backdrop-blur-2xl">
+        <CardHeader
+          class={`flex-row items-center justify-between gap-3 ${
+            isTreeCollapsed() ? "px-3 py-3" : "px-4 pb-2 pt-4"
+          }`}
+        >
           <CardTitle>{t("sidebar.sheets")}</CardTitle>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            class="size-7 rounded-lg"
+            aria-label={
+              isTreeCollapsed()
+                ? t("sidebar.expandSheet", { name: t("sidebar.sheets") })
+                : t("sidebar.collapseSheet", { name: t("sidebar.sheets") })
+            }
+            aria-expanded={!isTreeCollapsed()}
+            onClick={() => setIsTreeCollapsed((value) => !value)}
+          >
+            {isTreeCollapsed() ? (
+              <HiOutlineChevronRight size={16} aria-hidden="true" />
+            ) : (
+              <HiOutlineChevronDown size={16} aria-hidden="true" />
+            )}
+          </Button>
         </CardHeader>
-        <CardContent class="min-h-0 flex-1 overflow-auto pt-0">
-          <ul class="grid gap-1">
-            <For each={treeRoots()}>{(node) => <TreeBranch node={node} />}</For>
-          </ul>
-        </CardContent>
+        <Show when={!isTreeCollapsed()}>
+          <CardContent class="min-h-0 flex-1 overflow-auto pt-0">
+            <ul class="grid gap-1">
+              <For each={treeRoots()}>
+                {(node) => <TreeBranch node={node} />}
+              </For>
+            </ul>
+          </CardContent>
+        </Show>
       </Card>
     </aside>
   );

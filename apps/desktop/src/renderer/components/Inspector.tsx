@@ -13,13 +13,7 @@ import { useEditorUi } from "../state/EditorUiProvider";
 import StringSelect, { type StringSelectOption } from "./form/StringSelect";
 import { Alert } from "./ui/alert";
 import { Button } from "./ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 
@@ -81,197 +75,210 @@ export default function Inspector() {
     })();
 
   return (
-    <aside class="min-h-0 overflow-auto border-l border-white/8 bg-black/20 p-3">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("inspector.selection")}</CardTitle>
-        </CardHeader>
-        <CardContent class="grid gap-4">
-          <Show when={!state.selection}>
-            <CardDescription>{t("inspector.nothingSelected")}</CardDescription>
-          </Show>
+    <Show when={state.selection || state.exportWarnings.length > 0}>
+      <aside class="pointer-events-none absolute right-3 top-3 z-10 grid w-[min(22rem,calc(100%-24rem))] min-w-[18rem] gap-3">
+        <Show when={state.selection}>
+          <Card class="pointer-events-auto flex max-h-[min(42rem,calc(100vh-8rem))] flex-col overflow-hidden !border-white/12 ![background:linear-gradient(180deg,rgba(11,24,31,0.42),rgba(8,17,22,0.28))] backdrop-blur-2xl">
+            <CardHeader class="pb-3">
+              <CardTitle>{t("inspector.selection")}</CardTitle>
+            </CardHeader>
+            <CardContent class="min-h-0 flex-1 overflow-auto pt-0">
+              <div class="grid gap-4">
+                <Show when={selectedNode()}>
+                  {(node) => (
+                    <NodeInspector
+                      project={state.project}
+                      componentStore={state.componentStore}
+                      node={node()}
+                      onOpenComponentEditor={
+                        editorUi.openSelectedComponentEditor
+                      }
+                      onRename={(name) => actions.renameNode(node().id, name)}
+                      onEnterSelectedSheet={actions.enterSelectedSheet}
+                      onRefreshComponentInStore={(componentId) =>
+                        void actions.refreshComponentInStore(componentId)
+                      }
+                    />
+                  )}
+                </Show>
 
-          <Show when={selectedNode()}>
-            {(node) => (
-              <NodeInspector
-                project={state.project}
-                componentStore={state.componentStore}
-                node={node()}
-                onOpenComponentEditor={editorUi.openSelectedComponentEditor}
-                onRename={(name) => actions.renameNode(node().id, name)}
-                onEnterSelectedSheet={actions.enterSelectedSheet}
-                onRefreshComponentInStore={(componentId) =>
-                  void actions.refreshComponentInStore(componentId)
-                }
-              />
-            )}
-          </Show>
+                <Show when={selectedLabel()}>
+                  {(label) => (
+                    <div class="grid gap-3">
+                      <div class="grid gap-2">
+                        <FieldLabel>{t("common.name")}</FieldLabel>
+                        <Input
+                          value={label().name}
+                          onInput={(e) =>
+                            actions.updateLabel(label().id, {
+                              name: e.currentTarget.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div class="grid gap-2">
+                        <FieldLabel>{t("common.scope")}</FieldLabel>
+                        <StringSelect
+                          value={label().scope}
+                          options={labelScopeOptions}
+                          onChange={(value) =>
+                            actions.updateLabel(label().id, {
+                              scope: value as LabelScope,
+                            })
+                          }
+                        />
+                      </div>
+                      <RotationEditor
+                        value={label().rotation ?? 0}
+                        onChange={(rotation) =>
+                          actions.updateLabel(label().id, { rotation })
+                        }
+                      />
+                    </div>
+                  )}
+                </Show>
 
-          <Show when={selectedLabel()}>
-            {(label) => (
-              <div class="grid gap-3">
-                <div class="grid gap-2">
-                  <FieldLabel>{t("common.name")}</FieldLabel>
-                  <Input
-                    value={label().name}
-                    onInput={(e) =>
-                      actions.updateLabel(label().id, {
-                        name: e.currentTarget.value,
-                      })
-                    }
-                  />
-                </div>
-                <div class="grid gap-2">
-                  <FieldLabel>{t("common.scope")}</FieldLabel>
-                  <StringSelect
-                    value={label().scope}
-                    options={labelScopeOptions}
-                    onChange={(value) =>
-                      actions.updateLabel(label().id, {
-                        scope: value as LabelScope,
-                      })
-                    }
-                  />
-                </div>
-                <RotationEditor
-                  value={label().rotation ?? 0}
-                  onChange={(rotation) =>
-                    actions.updateLabel(label().id, { rotation })
-                  }
-                />
+                <Show when={selectedComment()}>
+                  {(comment) => (
+                    <div class="grid gap-3">
+                      <div class="grid gap-2">
+                        <FieldLabel>{t("common.text")}</FieldLabel>
+                        <Textarea
+                          rows={4}
+                          value={comment().text}
+                          onInput={(e) =>
+                            actions.updateComment(comment().id, {
+                              text: e.currentTarget.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <RotationEditor
+                        value={comment().rotation ?? 0}
+                        onChange={(rotation) =>
+                          actions.updateComment(comment().id, { rotation })
+                        }
+                      />
+                    </div>
+                  )}
+                </Show>
+
+                <Show when={selectedPort()}>
+                  {(port) => (
+                    <div class="grid gap-3">
+                      <div class="grid gap-2">
+                        <FieldLabel>{t("common.name")}</FieldLabel>
+                        <Input
+                          value={port().name}
+                          onInput={(e) =>
+                            actions.updateSheetPort(port().id, {
+                              name: e.currentTarget.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <div class="grid gap-2">
+                        <FieldLabel>{t("common.direction")}</FieldLabel>
+                        <StringSelect
+                          value={port().direction}
+                          options={portDirectionOptions}
+                          onChange={(value) =>
+                            actions.updateSheetPort(port().id, {
+                              direction: value as "in" | "out" | "io",
+                            })
+                          }
+                        />
+                      </div>
+                      <div class="grid gap-2">
+                        <FieldLabel>{t("common.type")}</FieldLabel>
+                        <StringSelect
+                          value={port().type}
+                          options={PORT_TYPE_OPTIONS}
+                          onChange={(value) =>
+                            actions.updateSheetPort(port().id, {
+                              type: value as HalValueType,
+                            })
+                          }
+                        />
+                      </div>
+                      <RotationEditor
+                        value={port().rotation ?? 0}
+                        onChange={(rotation) =>
+                          actions.updateSheetPort(port().id, { rotation })
+                        }
+                      />
+                    </div>
+                  )}
+                </Show>
+
+                <Show when={selectedConnection()}>
+                  {(conn) => (
+                    <div class="grid gap-3">
+                      <div class="grid gap-2">
+                        <FieldLabel>{t("common.signalName")}</FieldLabel>
+                        <Input
+                          value={conn().signalName ?? ""}
+                          placeholder={t("componentDialog.optionalPlaceholder")}
+                          onInput={(e) =>
+                            actions.updateDirectConnectionSignalName(
+                              conn().id,
+                              e.currentTarget.value,
+                            )
+                          }
+                        />
+                      </div>
+                      <div class="grid gap-2">
+                        <FieldLabel>
+                          {t("inspector.directConnections")}
+                        </FieldLabel>
+                        <div class="mono px-1 text-sm text-muted-foreground">
+                          {conn().id}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </Show>
+
+                <Show when={state.selection?.kind === "multi"}>
+                  <p class="text-sm text-muted-foreground">
+                    {t("inspector.multipleSelected")}
+                  </p>
+                </Show>
+                <Button variant="destructive" onClick={actions.removeSelection}>
+                  {t("inspector.deleteSelection")}
+                </Button>
               </div>
-            )}
-          </Show>
+            </CardContent>
+          </Card>
+        </Show>
 
-          <Show when={selectedComment()}>
-            {(comment) => (
-              <div class="grid gap-3">
-                <div class="grid gap-2">
-                  <FieldLabel>{t("common.text")}</FieldLabel>
-                  <Textarea
-                    rows={4}
-                    value={comment().text}
-                    onInput={(e) =>
-                      actions.updateComment(comment().id, {
-                        text: e.currentTarget.value,
-                      })
-                    }
-                  />
-                </div>
-                <RotationEditor
-                  value={comment().rotation ?? 0}
-                  onChange={(rotation) =>
-                    actions.updateComment(comment().id, { rotation })
-                  }
-                />
-              </div>
-            )}
-          </Show>
-
-          <Show when={selectedPort()}>
-            {(port) => (
-              <div class="grid gap-3">
-                <div class="grid gap-2">
-                  <FieldLabel>{t("common.name")}</FieldLabel>
-                  <Input
-                    value={port().name}
-                    onInput={(e) =>
-                      actions.updateSheetPort(port().id, {
-                        name: e.currentTarget.value,
-                      })
-                    }
-                  />
-                </div>
-                <div class="grid gap-2">
-                  <FieldLabel>{t("common.direction")}</FieldLabel>
-                  <StringSelect
-                    value={port().direction}
-                    options={portDirectionOptions}
-                    onChange={(value) =>
-                      actions.updateSheetPort(port().id, {
-                        direction: value as "in" | "out" | "io",
-                      })
-                    }
-                  />
-                </div>
-                <div class="grid gap-2">
-                  <FieldLabel>{t("common.type")}</FieldLabel>
-                  <StringSelect
-                    value={port().type}
-                    options={PORT_TYPE_OPTIONS}
-                    onChange={(value) =>
-                      actions.updateSheetPort(port().id, {
-                        type: value as HalValueType,
-                      })
-                    }
-                  />
-                </div>
-                <RotationEditor
-                  value={port().rotation ?? 0}
-                  onChange={(rotation) =>
-                    actions.updateSheetPort(port().id, { rotation })
-                  }
-                />
-              </div>
-            )}
-          </Show>
-
-          <Show when={selectedConnection()}>
-            {(conn) => (
-              <div class="grid gap-3">
-                <div class="grid gap-2">
-                  <FieldLabel>{t("common.signalName")}</FieldLabel>
-                  <Input
-                    value={conn().signalName ?? ""}
-                    placeholder={t("componentDialog.optionalPlaceholder")}
-                    onInput={(e) =>
-                      actions.updateDirectConnectionSignalName(
-                        conn().id,
-                        e.currentTarget.value,
-                      )
-                    }
-                  />
-                </div>
-                <div class="grid gap-2">
-                  <FieldLabel>{t("inspector.directConnections")}</FieldLabel>
-                  <div class="mono rounded-xl border border-white/8 bg-white/5 px-3 py-2 text-sm">
-                    {conn().id}
-                  </div>
-                </div>
-              </div>
-            )}
-          </Show>
-
-          <Show when={state.selection}>
-            <Show when={state.selection?.kind === "multi"}>
-              <CardDescription>
-                {t("inspector.multipleSelected")}
-              </CardDescription>
-            </Show>
-            <Button variant="destructive" onClick={actions.removeSelection}>
-              {t("inspector.deleteSelection")}
-            </Button>
-          </Show>
-        </CardContent>
-      </Card>
-
-      <Show when={state.exportWarnings.length > 0}>
-        <Card class="mt-3 border-warning/25">
-          <CardHeader>
-            <CardTitle>{t("inspector.warnings")}</CardTitle>
-          </CardHeader>
-          <CardContent class="grid gap-2">
-            <For each={state.exportWarnings}>
-              {(warning) => (
-                <Alert class="border-warning/30 bg-warning/10 text-foreground">
-                  {warning}
-                </Alert>
-              )}
-            </For>
-          </CardContent>
-        </Card>
-      </Show>
-    </aside>
+        <Show when={state.exportWarnings.length > 0}>
+          <Card class="pointer-events-auto overflow-hidden !border-white/12 ![background:linear-gradient(180deg,rgba(11,24,31,0.42),rgba(8,17,22,0.28))] backdrop-blur-2xl">
+            <CardHeader class="flex-row items-center justify-between gap-3 pb-3">
+              <CardTitle>{t("inspector.warnings")}</CardTitle>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                class="h-8 rounded-lg px-3"
+                onClick={() => actions.clearExportWarnings()}
+              >
+                {t("common.close")}
+              </Button>
+            </CardHeader>
+            <CardContent class="grid max-h-[min(16rem,calc(100vh-10rem))] gap-2 overflow-auto pt-0">
+              <For each={state.exportWarnings}>
+                {(warning) => (
+                  <Alert class="border-warning/20 bg-warning/5 text-foreground">
+                    {warning}
+                  </Alert>
+                )}
+              </For>
+            </CardContent>
+          </Card>
+        </Show>
+      </aside>
+    </Show>
   );
 }
 
@@ -350,7 +357,7 @@ function NodeInspector(props: {
   const componentParamCount = () => component()?.params.length ?? 0;
   return (
     <div class="grid gap-4">
-      <div class="mono rounded-xl border border-white/8 bg-white/5 px-3 py-2 text-sm">
+      <div class="mono px-1 text-sm text-muted-foreground">
         {getNodeTitle(props.project, props.node)}
       </div>
       <Show
@@ -395,13 +402,13 @@ function NodeInspector(props: {
         </Button>
       </Show>
       <Show when={props.node.kind === "component" && component()}>
-        <CardDescription>
+        <p class="text-sm text-muted-foreground">
           {componentParamCount() > 0
             ? t("inspector.parametersAvailableInDialog", {
                 count: componentParamCount(),
               })
             : t("inspector.noParameters")}
-        </CardDescription>
+        </p>
       </Show>
     </div>
   );

@@ -26,7 +26,7 @@ function EditorScreenContent(props: EditorScreenProps) {
     <div class="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
       <EditorTopbar onGoToLanding={props.onGoToLanding} />
 
-      <main class="relative grid min-h-0 grid-cols-[minmax(0,1fr)_22rem] overflow-hidden">
+      <main class="relative min-h-0 overflow-hidden">
         <Sidebar />
         <Canvas />
         <Inspector />

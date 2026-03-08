@@ -219,7 +219,9 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                                 <span class="text-muted-foreground">
                                   {t("componentDialog.halComponent")}
                                 </span>
-                                <span class="mono">{comp().halComponentName}</span>
+                                <span class="mono">
+                                  {comp().halComponentName}
+                                </span>
                               </div>
                               <div class="flex items-start justify-between gap-3">
                                 <span class="text-muted-foreground">
@@ -281,7 +283,10 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="functions" class="mt-0 h-full overflow-auto">
+                <TabsContent
+                  value="functions"
+                  class="mt-0 h-full overflow-auto"
+                >
                   <section class="grid gap-3">
                     <div class="text-sm font-semibold tracking-tight">
                       {t("componentDialog.functions")}
@@ -380,7 +385,9 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
                                 }
                               >
                                 <Switch
-                                  checked={instanceConfigValue(field) === "true"}
+                                  checked={
+                                    instanceConfigValue(field) === "true"
+                                  }
                                   onChange={(checked) => {
                                     const currentNode = node();
                                     if (!currentNode) return;
