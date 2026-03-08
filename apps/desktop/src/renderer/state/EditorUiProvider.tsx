@@ -38,30 +38,13 @@ function createEditorUiState() {
     if (!selection || selection.kind !== "node") return undefined;
     return currentSheet().nodes.find((n) => n.id === selection.id);
   });
-  const componentEditorNodeId = createMemo(() => {
-    const current = overlay();
-    return current?.kind === "component-editor" ? current.nodeId : null;
-  });
-  const isComponentStoreOpen = createMemo(
-    () => overlay()?.kind === "component-store",
-  );
-  const isProjectSettingsOpen = createMemo(
-    () => overlay()?.kind === "project-settings",
-  );
-  const sheetSettingsSheetId = createMemo(() => {
-    const current = overlay();
-    return current?.kind === "sheet-settings" ? current.sheetId : null;
-  });
-  const componentSearchScope = createMemo(() => {
-    const current = overlay();
-    return current?.kind === "component-search" ? current.scope : null;
-  });
   const editingComponentNode = createMemo(() => {
-    const id = componentEditorNodeId();
-    if (!id) return null;
-    const node = currentSheet().nodes.find((n) => n.id === id);
+    const current = overlay();
+    if (current?.kind !== "component-editor") return null;
+    const node = currentSheet().nodes.find((n) => n.id === current.nodeId);
     return node && node.kind === "component" ? node : null;
   });
+  const openOverlay = (next: EditorOverlay) => setOverlay(next);
 
   const labelClick = (labelId: string) => {
     if (state.pendingEndpoint) {
@@ -82,13 +65,13 @@ function createEditorUiState() {
       actions.setActiveSheet(node.sheetId);
       return;
     }
-    setOverlay({ kind: "component-editor", nodeId: node.id });
+    openOverlay({ kind: "component-editor", nodeId: node.id });
   };
 
   const openSelectedComponentEditor = () => {
     const node = selectedNode();
     if (!node || node.kind !== "component") return;
-    setOverlay({ kind: "component-editor", nodeId: node.id });
+    openOverlay({ kind: "component-editor", nodeId: node.id });
   };
 
   createEffect(() => {
@@ -109,46 +92,18 @@ function createEditorUiState() {
 
   return {
     activeOverlay: overlay,
-    currentSheet,
-    selectedNode,
-    editingComponentNode,
-    componentEditorNodeId,
-    isComponentStoreOpen,
-    isProjectSettingsOpen,
-    sheetSettingsSheetId,
     labelClick,
     commentClick,
+    openOverlay,
     openComponentEditorForNode,
     openSelectedComponentEditor,
     closeActiveOverlay: () => setOverlay(null),
-    closeComponentEditor: () =>
-      setOverlay((current) =>
-        current?.kind === "component-editor" ? null : current,
-      ),
-    openComponentStore: () => setOverlay({ kind: "component-store" }),
-    closeComponentStore: () =>
-      setOverlay((current) =>
-        current?.kind === "component-store" ? null : current,
-      ),
-    openProjectSettings: () => setOverlay({ kind: "project-settings" }),
-    closeProjectSettings: () =>
-      setOverlay((current) =>
-        current?.kind === "project-settings" ? null : current,
-      ),
+    openComponentStore: () => openOverlay({ kind: "component-store" }),
+    openProjectSettings: () => openOverlay({ kind: "project-settings" }),
     openSheetSettings: (sheetId: string) =>
-      setOverlay({ kind: "sheet-settings", sheetId }),
-    closeSheetSettings: () =>
-      setOverlay((current) =>
-        current?.kind === "sheet-settings" ? null : current,
-      ),
-    componentSearchScope,
-    isComponentSearchOpen: () => componentSearchScope() !== null,
+      openOverlay({ kind: "sheet-settings", sheetId }),
     openComponentSearch: (scope: ComponentSearchScope) =>
-      setOverlay({ kind: "component-search", scope }),
-    closeComponentSearch: () =>
-      setOverlay((current) =>
-        current?.kind === "component-search" ? null : current,
-      ),
+      openOverlay({ kind: "component-search", scope }),
     nodeFocusRequest,
     requestNodeFocus: (sheetId: string, nodeId: string) =>
       setNodeFocusRequest({
