@@ -92,7 +92,9 @@ function AppContent() {
           </Show>
         }
       >
-        <EditorScreen onGoToLanding={() => void goToLanding()} />
+        <div class="h-screen overflow-hidden">
+          <EditorScreen onGoToLanding={() => void goToLanding()} />
+        </div>
       </Show>
     </ContextMenuProvider>
   );

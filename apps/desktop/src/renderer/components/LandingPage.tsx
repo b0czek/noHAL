@@ -41,13 +41,13 @@ export default function LandingPage(props: LandingPageProps) {
   const landing = () => props.landing;
 
   return (
-    <div class="relative min-h-full overflow-auto px-4 py-8 sm:px-6">
+    <div class="relative min-h-screen bg-[linear-gradient(180deg,#081216_0%,#04090c_100%)] px-4 py-8 sm:px-6">
       <div
-        class="pointer-events-none fixed inset-0 opacity-45 [background-image:linear-gradient(rgba(122,230,208,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(122,230,208,0.025)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:radial-gradient(circle_at_50%_20%,black_35%,transparent_90%)]"
+        class="pointer-events-none fixed inset-0 opacity-45 [background-image:radial-gradient(circle_at_12%_6%,hsl(var(--accent)/0.12),transparent_28%),radial-gradient(circle_at_88%_8%,hsl(var(--primary)/0.12),transparent_24%),linear-gradient(rgba(122,230,208,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(122,230,208,0.025)_1px,transparent_1px)] [background-size:auto,auto,28px_28px,28px_28px]"
         aria-hidden="true"
       />
       <main class="relative z-10 mx-auto grid w-full max-w-5xl gap-5">
-        <Card class="overflow-hidden bg-[radial-gradient(circle_at_18%_12%,hsl(var(--accent)/0.14),transparent_38%),radial-gradient(circle_at_88%_14%,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,rgba(11,24,31,0.9),rgba(8,17,22,0.86))]">
+        <Card class="overflow-hidden border-white/10 bg-[radial-gradient(circle_at_18%_12%,hsl(var(--accent)/0.14),transparent_38%),radial-gradient(circle_at_88%_14%,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,rgba(11,24,31,0.9),rgba(8,17,22,0.86))]">
           <CardHeader class="gap-4 pb-0">
             <div class="flex items-center gap-3">
               <div class="grid size-12 place-items-center rounded-2xl bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--accent)))] text-lg font-semibold text-primary-foreground shadow-lg shadow-black/20">
@@ -70,7 +70,7 @@ export default function LandingPage(props: LandingPageProps) {
             </div>
           </CardHeader>
           <CardContent class="grid gap-5 pt-5">
-            <div class="inline-flex w-fit items-center gap-3 rounded-2xl border border-white/8 bg-black/15 px-4 py-3">
+            <div class="inline-flex w-fit items-center gap-3 rounded-2xl px-1 py-1">
               <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 {t("landing.targetLinuxCncVersion")}
               </span>
@@ -121,7 +121,7 @@ export default function LandingPage(props: LandingPageProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card class="border-white/8 bg-transparent shadow-none">
           <CardHeader class="flex-row items-center justify-between gap-4">
             <div>
               <CardTitle>{t("landing.recentProjects")}</CardTitle>
@@ -163,7 +163,7 @@ export default function LandingPage(props: LandingPageProps) {
                     {(entry) => (
                       <button
                         type="button"
-                        class="focus-ring grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-white/8 bg-black/10 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/5 disabled:cursor-default disabled:opacity-60 disabled:hover:translate-y-0 sm:gap-4 max-sm:grid-cols-1"
+                        class="focus-ring grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl px-4 py-3 text-left transition hover:bg-white/5 disabled:cursor-default disabled:opacity-60 sm:gap-4 max-sm:grid-cols-1"
                         disabled={landing().isLandingActionPending()}
                         onClick={() =>
                           void landing().openRecentProject(entry.projectPath)

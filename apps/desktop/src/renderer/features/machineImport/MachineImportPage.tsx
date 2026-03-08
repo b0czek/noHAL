@@ -104,13 +104,13 @@ export default function MachineImportPage(props: MachineImportPageProps) {
   ];
 
   return (
-    <div class="relative min-h-full overflow-auto px-4 py-8 sm:px-6">
+    <div class="relative min-h-screen bg-[linear-gradient(180deg,#081216_0%,#04090c_100%)] px-4 py-8 sm:px-6">
       <div
-        class="pointer-events-none fixed inset-0 opacity-45 [background-image:linear-gradient(rgba(122,230,208,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(122,230,208,0.025)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:radial-gradient(circle_at_50%_20%,black_35%,transparent_90%)]"
+        class="pointer-events-none fixed inset-0 opacity-45 [background-image:radial-gradient(circle_at_12%_6%,hsl(var(--accent)/0.12),transparent_28%),radial-gradient(circle_at_88%_8%,hsl(var(--primary)/0.12),transparent_24%),linear-gradient(rgba(122,230,208,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(122,230,208,0.025)_1px,transparent_1px)] [background-size:auto,auto,28px_28px,28px_28px]"
         aria-hidden="true"
       />
       <main class="relative z-10 mx-auto grid w-full max-w-5xl gap-5">
-        <Card class="overflow-hidden bg-[radial-gradient(circle_at_18%_12%,hsl(var(--accent)/0.14),transparent_38%),radial-gradient(circle_at_88%_14%,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,rgba(11,24,31,0.9),rgba(8,17,22,0.86))]">
+        <Card class="overflow-hidden border-white/10 bg-[radial-gradient(circle_at_18%_12%,hsl(var(--accent)/0.14),transparent_38%),radial-gradient(circle_at_88%_14%,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,rgba(11,24,31,0.9),rgba(8,17,22,0.86))]">
           <CardHeader class="gap-4">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div class="grid gap-1">
@@ -146,7 +146,7 @@ export default function MachineImportPage(props: MachineImportPageProps) {
         <Show
           when={flow().machineConfigSetup}
           fallback={
-            <Card>
+            <Card class="border-white/8 bg-transparent shadow-none">
               <CardContent class="pt-6 text-sm text-muted-foreground">
                 {t("projectCreation.importMachineConfigHelp")}
               </CardContent>
@@ -156,14 +156,14 @@ export default function MachineImportPage(props: MachineImportPageProps) {
           {(setup) => (
             <>
               <Show when={flow().step === "machine-files"}>
-                <Card>
+                <Card class="border-white/8 bg-transparent shadow-none">
                   <CardHeader>
                     <CardTitle>
                       {t("projectCreation.machineConfigIniSource")}
                     </CardTitle>
                   </CardHeader>
                   <CardContent class="grid gap-3">
-                    <div class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4 text-sm">
+                    <div class="grid gap-3 rounded-2xl p-1 text-sm">
                       <div class="flex items-start justify-between gap-3">
                         <span class="text-muted-foreground">
                           {t("common.file")}
@@ -183,7 +183,7 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                 </Card>
 
                 <Show when={setup().warnings.length > 0}>
-                  <Card class="border-warning/25">
+                  <Card class="border-warning/20 bg-transparent shadow-none">
                     <CardHeader>
                       <CardTitle>
                         {t("projectCreation.parserWarnings")}
@@ -201,7 +201,7 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                   </Card>
                 </Show>
 
-                <Card>
+                <Card class="border-white/8 bg-transparent shadow-none">
                   <CardHeader>
                     <CardTitle>
                       {t("projectCreation.selectedHalFilesList")}
@@ -216,10 +216,10 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                         </div>
                       }
                     >
-                      <div class="grid max-h-[320px] gap-3 overflow-auto pr-1">
+                      <div class="grid gap-3">
                         <For each={flow().selectedMachineHalFiles}>
                           {(halFile, index) => (
-                            <div class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+                            <div class="grid gap-3 rounded-2xl bg-black/15 p-4">
                               <Input
                                 type="text"
                                 class="mono"
@@ -328,14 +328,14 @@ export default function MachineImportPage(props: MachineImportPageProps) {
               <Show when={flow().step === "link" && flow().importDraft}>
                 {(draft) => (
                   <>
-                    <Card>
+                    <Card class="border-white/8 bg-transparent shadow-none">
                       <CardHeader>
                         <CardTitle>
                           {t("projectCreation.importSource")}
                         </CardTitle>
                       </CardHeader>
                       <CardContent class="grid gap-4">
-                        <div class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4 text-sm">
+                        <div class="grid gap-3 rounded-2xl p-1 text-sm">
                           <div class="flex items-start justify-between gap-3">
                             <span class="text-muted-foreground">
                               {t("common.file")}
@@ -419,7 +419,7 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                       </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card class="border-white/8 bg-transparent shadow-none">
                       <CardHeader>
                         <CardTitle>
                           {t("projectCreation.componentLinking")}
@@ -429,10 +429,10 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div class="grid max-h-[420px] gap-3 overflow-auto pr-1">
+                        <div class="grid gap-3">
                           <For each={draft().componentGroups}>
                             {(group) => (
-                              <div class="grid gap-4 rounded-2xl border border-white/8 bg-black/10 p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                              <div class="grid gap-4 rounded-2xl bg-black/15 p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                                 <div class="min-w-0 space-y-2">
                                   <div class="mono font-medium">
                                     {group.inferredHalComponentName}
@@ -515,7 +515,7 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                     </Card>
 
                     <Show when={draft().warnings.length > 0}>
-                      <Card class="border-warning/25">
+                      <Card class="border-warning/20 bg-transparent shadow-none">
                         <CardHeader>
                           <CardTitle>
                             {t("projectCreation.parserWarnings")}

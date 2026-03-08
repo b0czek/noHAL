@@ -194,6 +194,7 @@ export default function ComponentSearchDialog(
           queryInputEl = el;
         }}
         type="text"
+        class={props.scope === "sheet" ? "col-span-2" : undefined}
         value={query()}
         placeholder={t("componentSearch.placeholder", {
           scope: scopeLabel,
@@ -277,7 +278,13 @@ export default function ComponentSearchDialog(
           </Button>
         </div>
       </Show>
-      <div class="grid max-h-[min(60vh,28rem)] gap-2 overflow-auto pr-1">
+      <div
+        class={
+          props.scope === "sheet"
+            ? "col-span-2 grid max-h-[min(60vh,28rem)] gap-2 overflow-auto pr-1"
+            : "grid max-h-[min(60vh,28rem)] gap-2 overflow-auto pr-1"
+        }
+      >
         <For each={filteredResults()}>
           {(result, index) => (
             <button

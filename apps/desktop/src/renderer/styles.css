@@ -43,9 +43,12 @@
   }
 
   html,
-  body,
+  body {
+    @apply m-0 min-h-full;
+  }
+
   #root {
-    @apply m-0 h-full;
+    @apply min-h-screen;
   }
 
   body {
@@ -187,15 +190,22 @@
   }
 
   .canvas-context-menu {
-    @apply panel-surface absolute grid w-[min(22.5rem,calc(100%-1rem))] max-h-[min(28.75rem,calc(100%-1rem))] grid-rows-[auto_auto_1fr] gap-2 p-3;
+    @apply absolute grid w-[min(22.5rem,calc(100%-1rem))] max-h-[min(28.75rem,calc(100%-1rem))] grid-rows-[auto_auto_1fr] gap-2 rounded-[1.35rem] border border-white/10 p-2.5 text-foreground shadow-2xl shadow-black/30 backdrop-blur-2xl;
+    background:
+      radial-gradient(
+        circle at top left,
+        hsl(var(--accent) / 0.08),
+        transparent 36%
+      ),
+      linear-gradient(180deg, rgba(11, 24, 31, 0.78), rgba(8, 17, 22, 0.64));
   }
 
   .canvas-context-title {
-    @apply text-sm font-semibold;
+    @apply px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground;
   }
 
   .canvas-context-list {
-    @apply min-h-20 content-start pr-0.5;
+    @apply min-h-20 content-start gap-1 pr-0.5;
   }
 
   .canvas-context-list-compact {
@@ -203,11 +213,11 @@
   }
 
   .canvas-context-item {
-    @apply focus-ring grid w-full gap-0.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left text-foreground transition hover:border-accent/30 hover:bg-white/10;
+    @apply focus-ring grid w-full gap-0.5 rounded-xl px-3 py-2.5 text-left text-foreground transition hover:bg-white/10 disabled:cursor-default disabled:opacity-45;
   }
 
   .canvas-context-item-name {
-    @apply text-xs font-medium;
+    @apply text-[13px] font-medium;
   }
 
   .canvas-context-item-meta {
