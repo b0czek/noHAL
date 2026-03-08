@@ -20,14 +20,9 @@ export function useEditorShortcuts(): void {
   onMount(() => {
     const onKeyDown = (evt: KeyboardEvent) => {
       if (evt.key === "Escape") {
-        if (editorUi.isComponentSearchOpen()) {
+        if (editorUi.activeOverlay() !== null) {
           evt.preventDefault();
-          editorUi.closeComponentSearch();
-          return;
-        }
-        if (editorUi.componentEditorNodeId() !== null) {
-          evt.preventDefault();
-          editorUi.closeComponentEditor();
+          editorUi.closeActiveOverlay();
           return;
         }
         if (state.pendingEndpoint !== null) {
