@@ -1,5 +1,17 @@
 import { createSignal, Show } from "solid-js";
-import { Portal } from "solid-js/web";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 import { useEditorUi } from "../../state/EditorUiProvider";
@@ -7,7 +19,6 @@ import CustomComponentsTab from "./CustomComponentsTab";
 import IniTab from "./IniTab";
 import MotmodTab from "./MotmodTab";
 import ThreadsTab from "./ThreadsTab";
-import "./projectSettings.css";
 
 type ProjectSettingsTab = "motmod" | "threads" | "custom-components" | "ini";
 
@@ -18,87 +29,80 @@ export default function ProjectSettingsDialog() {
   const [tab, setTab] = createSignal<ProjectSettingsTab>("motmod");
 
   return (
-    <Show when={editorUi.isProjectSettingsOpen()}>
-      <Portal>
-        <div
-          class="modal-backdrop"
-          role="presentation"
-          onPointerDown={editorUi.closeProjectSettings}
+    <Dialog
+      open={editorUi.isProjectSettingsOpen()}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) editorUi.closeProjectSettings();
+      }}
+    >
+      <Show when={editorUi.isProjectSettingsOpen()}>
+        <DialogContent
+          class="grid h-[min(760px,calc(100vh-36px))] w-[min(1040px,calc(100vw-36px))] max-w-none grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-[1.75rem] border-white/10 bg-[linear-gradient(180deg,rgba(11,24,31,0.96),rgba(8,17,22,0.92))] p-5 shadow-2xl shadow-black/30"
+          onContextMenu={(evt: MouseEvent) => evt.preventDefault()}
         >
-          <div
-            class="modal project-settings-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("projectSettings.ariaLabel")}
-            onPointerDown={(evt) => evt.stopPropagation()}
-            onContextMenu={(evt) => evt.preventDefault()}
-          >
-            <div class="modal-header">
-              <div>
-                <div class="modal-title">{t("projectSettings.title")}</div>
-                <div class="modal-sub">{state.project.name}</div>
-              </div>
-              <button
-                type="button"
-                class="btn subtle"
-                onClick={editorUi.closeProjectSettings}
-              >
-                {t("common.close")}
-              </button>
+          <DialogHeader class="flex-row items-start justify-between gap-4 space-y-0 text-left">
+            <div>
+              <DialogTitle>{t("projectSettings.title")}</DialogTitle>
+              <DialogDescription>{state.project.name}</DialogDescription>
             </div>
+          </DialogHeader>
 
-            <div class="modal-body project-settings-body">
-              <aside class="panel project-settings-sidebar">
-                <div class="list compact">
-                  <button
-                    type="button"
-                    class={`field-menu-item ${tab() === "motmod" ? "is-active" : ""}`}
-                    onClick={() => setTab("motmod")}
+          <div class="min-h-0">
+            <Tabs
+              value={tab()}
+              onChange={(value) => setTab(value as ProjectSettingsTab)}
+              class="grid h-full min-h-0 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]"
+            >
+              <aside class="min-h-0 rounded-2xl border border-white/8 bg-black/10 p-2">
+                <TabsList class="grid h-auto w-full grid-cols-1 gap-1 bg-transparent p-0">
+                  <TabsTrigger
+                    value="motmod"
+                    class="justify-start rounded-xl px-3 py-2 text-left"
                   >
                     {t("projectSettings.tabMotmod")}
-                  </button>
-                  <button
-                    type="button"
-                    class={`field-menu-item ${tab() === "threads" ? "is-active" : ""}`}
-                    onClick={() => setTab("threads")}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="threads"
+                    class="justify-start rounded-xl px-3 py-2 text-left"
                   >
                     {t("projectSettings.tabThreads")}
-                  </button>
-                  <button
-                    type="button"
-                    class={`field-menu-item ${tab() === "custom-components" ? "is-active" : ""}`}
-                    onClick={() => setTab("custom-components")}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="custom-components"
+                    class="justify-start rounded-xl px-3 py-2 text-left"
                   >
                     {t("projectSettings.tabCustomComponents")}
-                  </button>
-                  <button
-                    type="button"
-                    class={`field-menu-item ${tab() === "ini" ? "is-active" : ""}`}
-                    onClick={() => setTab("ini")}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="ini"
+                    class="justify-start rounded-xl px-3 py-2 text-left"
                   >
                     {t("projectSettings.tabIniEditor")}
-                  </button>
-                </div>
+                  </TabsTrigger>
+                </TabsList>
               </aside>
 
-              <section class="panel project-settings-content">
-                <Show when={tab() === "motmod"}>
+              <section class="min-h-0 overflow-hidden rounded-2xl border border-white/8 bg-black/10 p-4">
+                <TabsContent value="motmod" class="mt-0 h-full overflow-auto">
                   <MotmodTab />
-                </Show>
-                <Show when={tab() === "threads"}>
+                </TabsContent>
+                <TabsContent value="threads" class="mt-0 h-full overflow-auto">
                   <ThreadsTab />
-                </Show>
-                <Show when={tab() === "custom-components"}>
+                </TabsContent>
+                <TabsContent
+                  value="custom-components"
+                  class="mt-0 h-full overflow-auto"
+                >
                   <CustomComponentsTab />
-                </Show>
-                <Show when={tab() === "ini"}>
+                </TabsContent>
+                <TabsContent value="ini" class="mt-0 h-full overflow-auto">
                   <IniTab />
-                </Show>
+                </TabsContent>
               </section>
-            </div>
+            </Tabs>
           </div>
-        </div>
-      </Portal>
-    </Show>
+        </DialogContent>
+      </Show>
+    </Dialog>
   );
 }

@@ -6,6 +6,10 @@ import {
   HiOutlineTrash,
 } from "solid-icons/hi";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import StringSelect from "../../components/form/StringSelect";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 
@@ -71,44 +75,73 @@ export default function CustomComponentsTab() {
     return customComponents().find((component) => component.id === id);
   });
 
+  const fieldLabelClass =
+    "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
+  const runtimeOptions = [
+    { value: "rt", label: t("customComponents.runtimeRt") },
+    { value: "userspace", label: t("customComponents.runtimeUserspace") },
+    { value: "unknown", label: t("customComponents.runtimeUnknown") },
+  ];
+  const pinDirectionOptions = [
+    { value: "in", label: t("componentDialog.pinFilter.in") },
+    { value: "out", label: t("componentDialog.pinFilter.out") },
+    { value: "io", label: t("componentDialog.pinFilter.io") },
+  ];
+  const halValueTypeOptions = halValueTypes.map((valueType) => ({
+    value: valueType,
+    label: valueType,
+  }));
+  const paramDirectionOptions = [
+    { value: "r", label: t("customComponents.paramDirectionRead") },
+    { value: "rw", label: t("customComponents.paramDirectionReadWrite") },
+  ];
+
   return (
-    <div class="custom-components-tab">
-      <div class="custom-components-header">
-        <div>
+    <div class="grid h-full min-h-0 gap-4">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0">
           <Show
             when={selectedComponent()}
             fallback={
-              <>
-                <div class="panel-title">{t("customComponents.title")}</div>
-                <div class="muted">{t("customComponents.help")}</div>
-              </>
+              <div class="grid gap-1">
+                <div class="text-lg font-semibold">
+                  {t("customComponents.title")}
+                </div>
+                <div class="text-sm text-muted-foreground">
+                  {t("customComponents.help")}
+                </div>
+              </div>
             }
           >
             {(component) => (
-              <div class="custom-components-header-main">
-                <button
+              <div class="flex items-start gap-3">
+                <Button
                   type="button"
-                  class="btn subtle icon-btn"
+                  variant="ghost"
+                  size="icon"
                   title={t("common.back")}
                   aria-label={t("common.back")}
                   onClick={() => setSelectedComponentId(null)}
                 >
                   <HiOutlineArrowLeft size={16} aria-hidden="true" />
-                </button>
-                <div>
-                  <div class="panel-title">
+                </Button>
+                <div class="min-w-0">
+                  <div class="text-lg font-semibold">
                     {t("customComponents.editorTitle")}
                   </div>
-                  <div class="muted mono">{component().halComponentName}</div>
+                  <div class="mono truncate text-sm text-muted-foreground">
+                    {component().halComponentName}
+                  </div>
                 </div>
               </div>
             )}
           </Show>
         </div>
         <Show when={!selectedComponent()}>
-          <button
+          <Button
             type="button"
-            class="btn subtle icon-btn"
+            variant="secondary"
+            size="icon"
             title={t("customComponents.addComponent")}
             aria-label={t("customComponents.addComponent")}
             onClick={() => {
@@ -117,42 +150,44 @@ export default function CustomComponentsTab() {
             }}
           >
             <HiOutlinePlus size={16} aria-hidden="true" />
-          </button>
+          </Button>
         </Show>
       </div>
 
-      <div class="custom-components-content">
+      <div class="min-h-0 overflow-hidden">
         <Show
           when={selectedComponent()}
           fallback={
-            <section class="custom-components-catalog custom-components-catalog-view">
-              <div class="sub-title">{t("customComponents.catalogTitle")}</div>
+            <section class="grid h-full min-h-0 gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+              <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {t("customComponents.catalogTitle")}
+              </div>
               <Show
                 when={customComponents().length > 0}
                 fallback={
-                  <div class="muted">{t("customComponents.empty")}</div>
+                  <div class="text-sm text-muted-foreground">
+                    {t("customComponents.empty")}
+                  </div>
                 }
               >
-                <div class="custom-components-catalog-list">
+                <div class="grid min-h-0 gap-2 overflow-auto pr-1">
                   <For each={customComponents()}>
                     {(component) => (
                       <button
                         type="button"
-                        class="component-row custom-component-catalog-item"
+                        class="focus-ring grid gap-1 rounded-2xl border border-white/8 bg-black/10 px-4 py-3 text-left transition hover:border-accent/30 hover:bg-white/5"
                         onClick={() => setSelectedComponentId(component.id)}
                       >
-                        <div class="custom-component-main">
-                          <div class="component-name mono">
-                            {component.halComponentName}
-                          </div>
-                          <div class="component-sub">
-                            {t("customComponents.stats", {
-                              pins: component.pins.length,
-                              params: component.params.length,
-                              instances:
-                                instanceCountByComponentId()[component.id] ?? 0,
-                            })}
-                          </div>
+                        <div class="mono font-medium">
+                          {component.halComponentName}
+                        </div>
+                        <div class="text-sm text-muted-foreground">
+                          {t("customComponents.stats", {
+                            pins: component.pins.length,
+                            params: component.params.length,
+                            instances:
+                              instanceCountByComponentId()[component.id] ?? 0,
+                          })}
                         </div>
                       </button>
                     )}
@@ -163,100 +198,103 @@ export default function CustomComponentsTab() {
           }
         >
           {(component) => (
-            <section class="custom-components-editor custom-components-editor-view">
-              <div class="custom-components-editor-header">
-                <div class="sub-title">{t("customComponents.editorTitle")}</div>
-                <button
-                  type="button"
-                  class="btn subtle icon-btn"
-                  disabled={
-                    (instanceCountByComponentId()[component().id] ?? 0) > 0
-                  }
-                  aria-label={t("customComponents.removeComponent")}
-                  title={
-                    (instanceCountByComponentId()[component().id] ?? 0) > 0
-                      ? t("customComponents.cannotRemoveInUse", {
-                          count:
-                            instanceCountByComponentId()[component().id] ?? 0,
-                        })
-                      : t("customComponents.removeComponent")
-                  }
-                  onClick={() => actions.removeCustomComponent(component().id)}
-                >
-                  <HiOutlineTrash size={16} aria-hidden="true" />
-                </button>
-              </div>
+            <section class="grid h-full min-h-0 gap-4 overflow-auto pr-1">
+              <div class="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="grid gap-1">
+                    <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      {t("customComponents.editorTitle")}
+                    </div>
+                    <div class="mono text-sm text-muted-foreground">
+                      {component().halComponentName}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={
+                      (instanceCountByComponentId()[component().id] ?? 0) > 0
+                    }
+                    aria-label={t("customComponents.removeComponent")}
+                    title={
+                      (instanceCountByComponentId()[component().id] ?? 0) > 0
+                        ? t("customComponents.cannotRemoveInUse", {
+                            count:
+                              instanceCountByComponentId()[component().id] ?? 0,
+                          })
+                        : t("customComponents.removeComponent")
+                    }
+                    onClick={() =>
+                      actions.removeCustomComponent(component().id)
+                    }
+                  >
+                    <HiOutlineTrash size={16} aria-hidden="true" />
+                  </Button>
+                </div>
 
-              <div class="project-settings-form-list custom-component-core-fields">
-                <label>
-                  <span class="threads-field-label">
-                    {t("customComponents.componentName")}
+                <div class="grid gap-3 lg:grid-cols-2">
+                  <div class="grid gap-2">
+                    <span class={fieldLabelClass}>
+                      {t("customComponents.componentName")}
+                    </span>
+                    <Input
+                      type="text"
+                      class="mono"
+                      value={component().halComponentName}
+                      onChange={(evt) =>
+                        actions.updateCustomComponentHalComponentName(
+                          component().id,
+                          evt.currentTarget.value,
+                        )
+                      }
+                    />
+                  </div>
+                  <div class="grid gap-2">
+                    <span class={fieldLabelClass}>
+                      {t("customComponents.runtime")}
+                    </span>
+                    <StringSelect
+                      value={component().runtime?.kind ?? "unknown"}
+                      options={runtimeOptions}
+                      onChange={(value) =>
+                        actions.updateCustomComponentRuntimeKind(
+                          component().id,
+                          value as "rt" | "userspace" | "unknown",
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div class="grid gap-2">
+                  <span class={fieldLabelClass}>
+                    {t("customComponents.loadString")}
                   </span>
-                  <input
-                    type="text"
-                    class="mono"
-                    value={component().halComponentName}
+                  <Textarea
+                    class="mono min-h-[80px]"
+                    rows={2}
+                    value={component().loadCommand ?? ""}
+                    placeholder={t("customComponents.loadStringPlaceholder")}
                     onChange={(evt) =>
-                      actions.updateCustomComponentHalComponentName(
+                      actions.updateCustomComponentLoadCommand(
                         component().id,
                         evt.currentTarget.value,
                       )
                     }
                   />
-                </label>
-                <label>
-                  <span class="threads-field-label">
-                    {t("customComponents.runtime")}
-                  </span>
-                  <select
-                    value={component().runtime?.kind ?? "unknown"}
-                    onChange={(evt) =>
-                      actions.updateCustomComponentRuntimeKind(
-                        component().id,
-                        evt.currentTarget.value as
-                          | "rt"
-                          | "userspace"
-                          | "unknown",
-                      )
-                    }
-                  >
-                    <option value="rt">
-                      {t("customComponents.runtimeRt")}
-                    </option>
-                    <option value="userspace">
-                      {t("customComponents.runtimeUserspace")}
-                    </option>
-                    <option value="unknown">
-                      {t("customComponents.runtimeUnknown")}
-                    </option>
-                  </select>
-                </label>
+                </div>
               </div>
 
-              <label class="threads-field custom-component-load-field">
-                <span class="threads-field-label">
-                  {t("customComponents.loadString")}
-                </span>
-                <textarea
-                  class="mono custom-component-load-input"
-                  rows={2}
-                  value={component().loadCommand ?? ""}
-                  placeholder={t("customComponents.loadStringPlaceholder")}
-                  onChange={(evt) =>
-                    actions.updateCustomComponentLoadCommand(
-                      component().id,
-                      evt.currentTarget.value,
-                    )
-                  }
-                />
-              </label>
-
-              <div class="custom-component-pins">
-                <div class="custom-component-section-header">
-                  <div class="sub-title">{t("customComponents.pinsTitle")}</div>
-                  <button
+              <div class="grid gap-4 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {t("customComponents.pinsTitle")}
+                  </div>
+                  <Button
                     type="button"
-                    class="btn subtle icon-btn"
+                    variant="ghost"
+                    size="icon"
                     title={t("customComponents.addPin")}
                     aria-label={t("customComponents.addPin")}
                     onClick={() =>
@@ -264,76 +302,80 @@ export default function CustomComponentsTab() {
                     }
                   >
                     <HiOutlinePlus size={16} aria-hidden="true" />
-                  </button>
+                  </Button>
                 </div>
                 <Show
                   when={component().pins.length > 0}
                   fallback={
-                    <div class="muted">{t("customComponents.noPins")}</div>
+                    <div class="text-sm text-muted-foreground">
+                      {t("customComponents.noPins")}
+                    </div>
                   }
                 >
-                  <div class="custom-component-pin-list-head">
+                  <div class="hidden grid-cols-[minmax(0,1fr)_140px_140px_auto] gap-3 px-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground lg:grid">
                     <span>{t("common.name")}</span>
                     <span>{t("common.direction")}</span>
                     <span>{t("common.type")}</span>
                     <span />
                   </div>
-                  <div class="custom-component-pin-list">
+                  <div class="grid gap-3">
                     <For each={component().pins}>
                       {(pin) => (
-                        <div class="custom-component-pin-row custom-component-pin-row-dense">
-                          <input
-                            type="text"
-                            class="mono"
-                            value={pin.name}
-                            onChange={(evt) =>
-                              actions.updateCustomComponentPinName(
-                                component().id,
-                                pin.key,
-                                evt.currentTarget.value,
-                              )
-                            }
-                          />
-                          <select
-                            value={pin.direction}
-                            onChange={(evt) =>
-                              actions.updateCustomComponentPinDirection(
-                                component().id,
-                                pin.key,
-                                evt.currentTarget.value as "in" | "out" | "io",
-                              )
-                            }
-                          >
-                            <option value="in">
-                              {t("componentDialog.pinFilter.in")}
-                            </option>
-                            <option value="out">
-                              {t("componentDialog.pinFilter.out")}
-                            </option>
-                            <option value="io">
-                              {t("componentDialog.pinFilter.io")}
-                            </option>
-                          </select>
-                          <select
-                            value={pin.type}
-                            onChange={(evt) =>
-                              actions.updateCustomComponentPinType(
-                                component().id,
-                                pin.key,
-                                evt.currentTarget.value as HalValueType,
-                              )
-                            }
-                          >
-                            <For each={halValueTypes}>
-                              {(valueType) => (
-                                <option value={valueType}>{valueType}</option>
-                              )}
-                            </For>
-                          </select>
-                          <div class="custom-component-row-actions">
-                            <button
+                        <div class="grid gap-3 rounded-xl border border-white/8 bg-black/10 p-3 lg:grid-cols-[minmax(0,1fr)_140px_140px_auto] lg:items-center">
+                          <div class="grid gap-2">
+                            <span class={fieldLabelClass}>
+                              {t("common.name")}
+                            </span>
+                            <Input
+                              type="text"
+                              class="mono"
+                              value={pin.name}
+                              onChange={(evt) =>
+                                actions.updateCustomComponentPinName(
+                                  component().id,
+                                  pin.key,
+                                  evt.currentTarget.value,
+                                )
+                              }
+                            />
+                          </div>
+                          <div class="grid gap-2">
+                            <span class={fieldLabelClass}>
+                              {t("common.direction")}
+                            </span>
+                            <StringSelect
+                              value={pin.direction}
+                              options={pinDirectionOptions}
+                              onChange={(value) =>
+                                actions.updateCustomComponentPinDirection(
+                                  component().id,
+                                  pin.key,
+                                  value as "in" | "out" | "io",
+                                )
+                              }
+                            />
+                          </div>
+                          <div class="grid gap-2">
+                            <span class={fieldLabelClass}>
+                              {t("common.type")}
+                            </span>
+                            <StringSelect
+                              value={pin.type}
+                              options={halValueTypeOptions}
+                              onChange={(value) =>
+                                actions.updateCustomComponentPinType(
+                                  component().id,
+                                  pin.key,
+                                  value as HalValueType,
+                                )
+                              }
+                            />
+                          </div>
+                          <div class="flex justify-end lg:self-end">
+                            <Button
                               type="button"
-                              class="btn subtle icon-btn"
+                              variant="ghost"
+                              size="icon"
                               title={t("common.remove")}
                               aria-label={t("common.remove")}
                               onClick={() =>
@@ -344,7 +386,7 @@ export default function CustomComponentsTab() {
                               }
                             >
                               <HiOutlineTrash size={16} aria-hidden="true" />
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -353,14 +395,15 @@ export default function CustomComponentsTab() {
                 </Show>
               </div>
 
-              <div class="custom-component-pins">
-                <div class="custom-component-section-header">
-                  <div class="sub-title">
+              <div class="grid gap-4 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {t("customComponents.paramsTitle")}
                   </div>
-                  <button
+                  <Button
                     type="button"
-                    class="btn subtle icon-btn"
+                    variant="ghost"
+                    size="icon"
                     title={t("customComponents.addParam")}
                     aria-label={t("customComponents.addParam")}
                     onClick={() =>
@@ -368,23 +411,25 @@ export default function CustomComponentsTab() {
                     }
                   >
                     <HiOutlinePlus size={16} aria-hidden="true" />
-                  </button>
+                  </Button>
                 </div>
                 <Show
                   when={component().params.length > 0}
                   fallback={
-                    <div class="muted">{t("customComponents.noParams")}</div>
+                    <div class="text-sm text-muted-foreground">
+                      {t("customComponents.noParams")}
+                    </div>
                   }
                 >
-                  <div class="custom-component-pin-list">
+                  <div class="grid gap-3">
                     <For each={component().params}>
                       {(param) => (
-                        <div class="custom-component-pin-row">
-                          <label class="threads-field">
-                            <span class="threads-field-label">
+                        <div class="grid gap-3 rounded-xl border border-white/8 bg-black/10 p-3 xl:grid-cols-[minmax(0,1fr)_140px_180px_minmax(0,1fr)_auto] xl:items-end">
+                          <div class="grid gap-2">
+                            <span class={fieldLabelClass}>
                               {t("common.name")}
                             </span>
-                            <input
+                            <Input
                               type="text"
                               class="mono"
                               value={param.name}
@@ -396,55 +441,44 @@ export default function CustomComponentsTab() {
                                 )
                               }
                             />
-                          </label>
-                          <label class="threads-field">
-                            <span class="threads-field-label">
+                          </div>
+                          <div class="grid gap-2">
+                            <span class={fieldLabelClass}>
                               {t("common.type")}
                             </span>
-                            <select
+                            <StringSelect
                               value={param.type}
-                              onChange={(evt) =>
+                              options={halValueTypeOptions}
+                              onChange={(value) =>
                                 actions.updateCustomComponentParamType(
                                   component().id,
                                   param.key,
-                                  evt.currentTarget.value as HalValueType,
+                                  value as HalValueType,
                                 )
                               }
-                            >
-                              <For each={halValueTypes}>
-                                {(valueType) => (
-                                  <option value={valueType}>{valueType}</option>
-                                )}
-                              </For>
-                            </select>
-                          </label>
-                          <label class="threads-field">
-                            <span class="threads-field-label">
+                            />
+                          </div>
+                          <div class="grid gap-2">
+                            <span class={fieldLabelClass}>
                               {t("customComponents.paramDirection")}
                             </span>
-                            <select
+                            <StringSelect
                               value={param.direction}
-                              onChange={(evt) =>
+                              options={paramDirectionOptions}
+                              onChange={(value) =>
                                 actions.updateCustomComponentParamDirection(
                                   component().id,
                                   param.key,
-                                  evt.currentTarget.value as "r" | "rw",
+                                  value as "r" | "rw",
                                 )
                               }
-                            >
-                              <option value="r">
-                                {t("customComponents.paramDirectionRead")}
-                              </option>
-                              <option value="rw">
-                                {t("customComponents.paramDirectionReadWrite")}
-                              </option>
-                            </select>
-                          </label>
-                          <label class="threads-field">
-                            <span class="threads-field-label">
+                            />
+                          </div>
+                          <div class="grid gap-2">
+                            <span class={fieldLabelClass}>
                               {t("customComponents.paramDefaultValue")}
                             </span>
-                            <input
+                            <Input
                               type="text"
                               class="mono"
                               value={param.defaultValue ?? ""}
@@ -457,11 +491,12 @@ export default function CustomComponentsTab() {
                                 )
                               }
                             />
-                          </label>
-                          <div class="custom-component-row-actions">
-                            <button
+                          </div>
+                          <div class="flex justify-end">
+                            <Button
                               type="button"
-                              class="btn subtle icon-btn"
+                              variant="ghost"
+                              size="icon"
                               title={t("common.remove")}
                               aria-label={t("common.remove")}
                               onClick={() =>
@@ -472,7 +507,7 @@ export default function CustomComponentsTab() {
                               }
                             >
                               <HiOutlineTrash size={16} aria-hidden="true" />
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}

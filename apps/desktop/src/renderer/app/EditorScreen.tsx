@@ -27,10 +27,10 @@ function EditorScreenContent(props: EditorScreenProps) {
   useEditorShortcuts();
 
   return (
-    <div class="app-shell">
+    <div class="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
       <EditorTopbar onGoToLanding={props.onGoToLanding} />
 
-      <main class="workspace">
+      <main class="relative grid min-h-0 grid-cols-[minmax(0,1fr)_22rem] overflow-hidden">
         <Sidebar />
         <Canvas />
         <Inspector />

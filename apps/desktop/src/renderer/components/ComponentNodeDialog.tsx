@@ -5,11 +5,22 @@ import {
 import { getNodePins, getNodeTitle } from "@nohal/core/src/graph";
 import type { ComponentInstanceConfigFieldDefinition } from "@nohal/core/src/types";
 import { createMemo, createSignal, For, Show } from "solid-js";
-import { Portal } from "solid-js/web";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 import { componentUsesLockedCanonicalInstanceNames } from "../state/store/helpers";
+import StringSelect from "./form/StringSelect";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "./ui/switch";
 
 export default function ComponentNodeDialog() {
   const { t } = useI18n();
@@ -65,8 +76,9 @@ export default function ComponentNodeDialog() {
   };
   const addfTargetForFunction = (halSuffix: string) => {
     const instanceName = node()?.instanceName ?? "";
-    if (!instanceName)
+    if (!instanceName) {
       return halSuffix ? `{instance}.${halSuffix}` : "{instance}";
+    }
     return halSuffix ? `${instanceName}.${halSuffix}` : instanceName;
   };
   const defaultInstanceConfigValue = (
@@ -91,321 +103,349 @@ export default function ComponentNodeDialog() {
     if (field.type === "number") return "any";
     return undefined;
   };
+  const fieldLabelClass =
+    "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
 
   return (
-    <Show when={node()}>
-      <Portal>
-        <div
-          class="modal-backdrop"
-          role="presentation"
-          onPointerDown={() => editorUi.closeComponentEditor()}
+    <Dialog
+      open={!!node()}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) editorUi.closeComponentEditor();
+      }}
+    >
+      <Show when={node()}>
+        <DialogContent
+          class="w-[min(920px,calc(100vw-36px))] max-w-none rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(8,18,22,0.98),rgba(5,11,14,0.97))] p-0"
+          onContextMenu={(evt: MouseEvent) => evt.preventDefault()}
         >
-          <div
-            class="modal component-settings-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("componentDialog.ariaLabel")}
-            onPointerDown={(evt) => evt.stopPropagation()}
-            onContextMenu={(evt) => evt.preventDefault()}
-          >
-            <div class="modal-header">
-              <div>
-                <div class="modal-title">{t("componentDialog.title")}</div>
-                <div class="modal-sub mono">{nodeTitle()}</div>
+          <DialogHeader class="border-b border-white/10 bg-white/5 px-4 py-3 text-left">
+            <DialogTitle>{t("componentDialog.title")}</DialogTitle>
+            <DialogDescription class="mono">{nodeTitle()}</DialogDescription>
+          </DialogHeader>
+
+          <div class="grid gap-4 p-4 lg:grid-cols-2">
+            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+              <div class="text-sm font-semibold tracking-tight">
+                {t("componentDialog.instance")}
               </div>
-              <button
-                type="button"
-                class="btn subtle"
-                onClick={editorUi.closeComponentEditor}
-              >
-                {t("common.close")}
-              </button>
-            </div>
-
-            <div class="modal-body">
-              <section class="panel">
-                <div class="panel-title">{t("componentDialog.instance")}</div>
-                <label>
+              <div class="grid gap-2">
+                <span class={fieldLabelClass}>
                   {t("componentDialog.instanceName")}
-                  <input
-                    value={node()?.instanceName ?? ""}
-                    disabled={instanceNameLocked()}
-                    onInput={(evt) => {
-                      const currentNode = node();
-                      if (!currentNode) return;
-                      actions.renameNode(
-                        currentNode.id,
-                        evt.currentTarget.value,
-                      );
-                    }}
-                  />
-                </label>
-                <Show when={instanceNameLocked()}>
-                  <div class="muted">
-                    {t("componentDialog.instanceNameLocked")}
-                  </div>
-                </Show>
-                <Show when={component()}>
-                  {(comp) => (
-                    <>
-                      <div class="list compact">
-                        <div class="list-row">
-                          <span class="muted">
-                            {t("componentDialog.halComponent")}
-                          </span>
-                          <span class="mono">{comp().halComponentName}</span>
-                        </div>
-                        <div class="list-row">
-                          <span class="muted">
-                            {t("componentDialog.source")}
-                          </span>
-                          <span>{comp().source}</span>
-                        </div>
-                        <div class="list-row">
-                          <span class="muted">
-                            {t("componentDialog.runtime")}
-                          </span>
-                          <span>
-                            {comp().runtime?.kind ?? t("common.unknown")}
-                          </span>
-                        </div>
+                </span>
+                <Input
+                  value={node()?.instanceName ?? ""}
+                  disabled={instanceNameLocked()}
+                  onInput={(evt) => {
+                    const currentNode = node();
+                    if (!currentNode) return;
+                    actions.renameNode(currentNode.id, evt.currentTarget.value);
+                  }}
+                />
+              </div>
+              <Show when={instanceNameLocked()}>
+                <div class="text-sm text-muted-foreground">
+                  {t("componentDialog.instanceNameLocked")}
+                </div>
+              </Show>
+              <Show when={component()}>
+                {(comp) => (
+                  <>
+                    <div class="grid gap-2 rounded-xl border border-white/8 bg-white/5 p-3 text-sm">
+                      <div class="flex items-start justify-between gap-3">
+                        <span class="text-muted-foreground">
+                          {t("componentDialog.halComponent")}
+                        </span>
+                        <span class="mono">{comp().halComponentName}</span>
                       </div>
-                      <label>
+                      <div class="flex items-start justify-between gap-3">
+                        <span class="text-muted-foreground">
+                          {t("componentDialog.source")}
+                        </span>
+                        <span>{comp().source}</span>
+                      </div>
+                      <div class="flex items-start justify-between gap-3">
+                        <span class="text-muted-foreground">
+                          {t("componentDialog.runtime")}
+                        </span>
+                        <span>
+                          {comp().runtime?.kind ?? t("common.unknown")}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="grid gap-2">
+                      <span class={fieldLabelClass}>
                         {t("componentDialog.exportStage")}
-                        <select
-                          value={
-                            fixedExportStage() ?? node()?.exportStage ?? "main"
-                          }
-                          disabled={!!fixedExportStage()}
-                          onChange={(evt) => {
-                            const currentNode = node();
-                            if (!currentNode) return;
-                            actions.updateNodeExportStage(
-                              currentNode.id,
-                              evt.currentTarget.value as "main" | "postgui",
-                            );
-                          }}
-                        >
-                          <option value="main">
-                            {t("componentDialog.exportStageMain")}
-                          </option>
-                          <option value="postgui">
-                            {t("componentDialog.exportStagePostgui")}
-                          </option>
-                        </select>
-                      </label>
-                      <Show when={!!fixedExportStage()}>
-                        <div class="muted">
-                          {t("componentDialog.exportStageLockedPostgui")}
-                        </div>
-                      </Show>
-                    </>
-                  )}
-                </Show>
-              </section>
+                      </span>
+                      <StringSelect
+                        value={
+                          fixedExportStage() ?? node()?.exportStage ?? "main"
+                        }
+                        disabled={!!fixedExportStage()}
+                        options={[
+                          {
+                            value: "main",
+                            label: t("componentDialog.exportStageMain"),
+                          },
+                          {
+                            value: "postgui",
+                            label: t("componentDialog.exportStagePostgui"),
+                          },
+                        ]}
+                        onChange={(value) => {
+                          const currentNode = node();
+                          if (!currentNode) return;
+                          actions.updateNodeExportStage(
+                            currentNode.id,
+                            value as "main" | "postgui",
+                          );
+                        }}
+                      />
+                    </div>
+                    <Show when={!!fixedExportStage()}>
+                      <div class="text-sm text-muted-foreground">
+                        {t("componentDialog.exportStageLockedPostgui")}
+                      </div>
+                    </Show>
+                  </>
+                )}
+              </Show>
+            </section>
 
-              <section class="panel">
-                <div class="panel-title">{t("componentDialog.functions")}</div>
-                <Show
-                  when={componentFunctions().length > 0}
-                  fallback={
-                    <div class="muted">{t("componentDialog.noFunctions")}</div>
-                  }
-                >
-                  <div class="list compact">
-                    <For each={componentFunctions()}>
-                      {(fn) => (
-                        <div class="list-row" title={fn.doc ?? ""}>
-                          <span class="chip type">{fn.floatMode}</span>
+            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+              <div class="text-sm font-semibold tracking-tight">
+                {t("componentDialog.functions")}
+              </div>
+              <Show
+                when={componentFunctions().length > 0}
+                fallback={
+                  <div class="text-sm text-muted-foreground">
+                    {t("componentDialog.noFunctions")}
+                  </div>
+                }
+              >
+                <div class="grid gap-2">
+                  <For each={componentFunctions()}>
+                    {(fn) => (
+                      <div
+                        class="grid gap-2 rounded-xl border border-white/8 bg-white/5 p-3 text-sm"
+                        title={fn.doc ?? ""}
+                      >
+                        <div class="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline">{fn.floatMode}</Badge>
                           <span class="mono">
                             {fn.declaredName === "_"
                               ? t("componentDialog.functionDefault")
                               : fn.halSuffix}
                           </span>
-                          <span class="muted">
-                            {t("componentDialog.functionAddf")}
-                          </span>
-                          <span class="mono">
-                            {addfTargetForFunction(fn.halSuffix)}
-                          </span>
                         </div>
-                      )}
-                    </For>
-                  </div>
-                </Show>
-              </section>
-
-              <section class="panel">
-                <div class="panel-title">
-                  {t("componentDialog.instanceConfig")}
+                        <div class="text-xs text-muted-foreground">
+                          {t("componentDialog.functionAddf")}
+                        </div>
+                        <div class="mono text-sm">
+                          {addfTargetForFunction(fn.halSuffix)}
+                        </div>
+                      </div>
+                    )}
+                  </For>
                 </div>
-                <Show
-                  when={instanceConfigFields().length > 0}
-                  fallback={
-                    <div class="muted">
-                      {t("componentDialog.noInstanceConfig")}
-                    </div>
-                  }
-                >
-                  <div class="inspector-group">
-                    <For each={instanceConfigFields()}>
-                      {(field) => (
-                        <label title={field.doc ?? ""}>
-                          <span class="mono">{field.key}</span>
-                          <Show
-                            when={field.type === "boolean"}
-                            fallback={
-                              <input
-                                type={instanceConfigInputType(field)}
-                                step={instanceConfigInputStep(field)}
-                                min={
-                                  field.min !== undefined
-                                    ? `${field.min}`
-                                    : undefined
-                                }
-                                max={
-                                  field.max !== undefined
-                                    ? `${field.max}`
-                                    : undefined
-                                }
-                                value={instanceConfigValue(field)}
-                                onInput={(evt) => {
-                                  const currentNode = node();
-                                  if (!currentNode) return;
-                                  actions.updateNodeInstanceConfigValue(
-                                    currentNode.id,
-                                    field.key,
-                                    evt.currentTarget.value,
-                                  );
-                                }}
-                                placeholder={defaultInstanceConfigValue(field)}
-                              />
-                            }
-                          >
-                            <input
-                              type="checkbox"
-                              checked={instanceConfigValue(field) === "true"}
-                              onChange={(evt) => {
+              </Show>
+            </section>
+
+            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+              <div class="text-sm font-semibold tracking-tight">
+                {t("componentDialog.instanceConfig")}
+              </div>
+              <Show
+                when={instanceConfigFields().length > 0}
+                fallback={
+                  <div class="text-sm text-muted-foreground">
+                    {t("componentDialog.noInstanceConfig")}
+                  </div>
+                }
+              >
+                <div class="grid gap-3">
+                  <For each={instanceConfigFields()}>
+                    {(field) => (
+                      <div
+                        class="grid gap-2 rounded-xl border border-white/8 bg-white/5 p-3"
+                        title={field.doc ?? ""}
+                      >
+                        <span class="mono text-sm">{field.key}</span>
+                        <Show
+                          when={field.type === "boolean"}
+                          fallback={
+                            <Input
+                              type={instanceConfigInputType(field)}
+                              step={instanceConfigInputStep(field)}
+                              min={
+                                field.min !== undefined
+                                  ? `${field.min}`
+                                  : undefined
+                              }
+                              max={
+                                field.max !== undefined
+                                  ? `${field.max}`
+                                  : undefined
+                              }
+                              value={instanceConfigValue(field)}
+                              onInput={(evt) => {
                                 const currentNode = node();
                                 if (!currentNode) return;
                                 actions.updateNodeInstanceConfigValue(
                                   currentNode.id,
                                   field.key,
-                                  evt.currentTarget.checked ? "true" : "false",
+                                  evt.currentTarget.value,
                                 );
                               }}
+                              placeholder={defaultInstanceConfigValue(field)}
                             />
-                          </Show>
-                        </label>
-                      )}
-                    </For>
-                  </div>
-                </Show>
-              </section>
-
-              <section class="panel">
-                <div class="panel-title">{t("componentDialog.parameters")}</div>
-                <Show
-                  when={componentParams().length > 0}
-                  fallback={
-                    <div class="muted">{t("componentDialog.noParameters")}</div>
-                  }
-                >
-                  <div class="inspector-group">
-                    <For each={componentParams()}>
-                      {(param) => (
-                        <label>
-                          <span class="mono">{param.name}</span>
-                          <input
-                            value={node()?.paramValues[param.key] ?? ""}
-                            onInput={(evt) => {
+                          }
+                        >
+                          <Switch
+                            checked={instanceConfigValue(field) === "true"}
+                            onChange={(checked) => {
                               const currentNode = node();
                               if (!currentNode) return;
-                              actions.updateNodeParam(
+                              actions.updateNodeInstanceConfigValue(
                                 currentNode.id,
-                                param.key,
-                                evt.currentTarget.value,
+                                field.key,
+                                checked ? "true" : "false",
                               );
                             }}
-                            placeholder={param.defaultValue ?? ""}
-                          />
-                        </label>
-                      )}
-                    </For>
-                  </div>
-                </Show>
-              </section>
-
-              <section class="panel">
-                <div class="panel-title">
-                  {t("componentDialog.pinInitialValues")}
-                </div>
-                <Show
-                  when={pins().length > 0}
-                  fallback={
-                    <div class="muted">{t("componentDialog.noPins")}</div>
-                  }
-                >
-                  <div class="inspector-group">
-                    <For each={pins()}>
-                      {(pin) => (
-                        <label>
-                          <span class="mono">{pin.name}</span>
-                          <input
-                            value={node()?.pinInitialValues?.[pin.key] ?? ""}
-                            onInput={(evt) => {
-                              const currentNode = node();
-                              if (!currentNode) return;
-                              actions.updateNodePinInitialValue(
-                                currentNode.id,
-                                pin.key,
-                                evt.currentTarget.value,
-                              );
-                            }}
-                            placeholder={t(
-                              "componentDialog.optionalPlaceholder",
-                            )}
-                          />
-                        </label>
-                      )}
-                    </For>
-                  </div>
-                </Show>
-              </section>
-
-              <section class="panel">
-                <div class="panel-title">{t("componentDialog.pins")}</div>
-                <div class="toolbar-group pin-filter-row">
-                  <For each={pinFilterModes}>
-                    {(mode) => (
-                      <button
-                        type="button"
-                        class={`mini ${pinFilter() === mode ? "is-active-filter" : ""}`}
-                        onClick={() => setPinFilter(mode)}
-                      >
-                        {pinFilterLabel(mode)}
-                      </button>
-                    )}
-                  </For>
-                </div>
-                <div class="list compact">
-                  <For each={visiblePins()}>
-                    {(pin) => (
-                      <div class="list-row">
-                        <span class={`chip dir-${pin.direction}`}>
-                          {pin.direction}
-                        </span>
-                        <span class="mono">{pin.name}</span>
-                        <span class="chip type">{pin.type}</span>
+                            class="flex items-center justify-between gap-3"
+                          >
+                            <SwitchLabel class="text-sm">Enabled</SwitchLabel>
+                            <SwitchControl>
+                              <SwitchThumb />
+                            </SwitchControl>
+                          </Switch>
+                        </Show>
                       </div>
                     )}
                   </For>
                 </div>
-              </section>
-            </div>
+              </Show>
+            </section>
+
+            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+              <div class="text-sm font-semibold tracking-tight">
+                {t("componentDialog.parameters")}
+              </div>
+              <Show
+                when={componentParams().length > 0}
+                fallback={
+                  <div class="text-sm text-muted-foreground">
+                    {t("componentDialog.noParameters")}
+                  </div>
+                }
+              >
+                <div class="grid gap-3">
+                  <For each={componentParams()}>
+                    {(param) => (
+                      <div class="grid gap-2 rounded-xl border border-white/8 bg-white/5 p-3">
+                        <span class="mono text-sm">{param.name}</span>
+                        <Input
+                          value={node()?.paramValues[param.key] ?? ""}
+                          onInput={(evt) => {
+                            const currentNode = node();
+                            if (!currentNode) return;
+                            actions.updateNodeParam(
+                              currentNode.id,
+                              param.key,
+                              evt.currentTarget.value,
+                            );
+                          }}
+                          placeholder={param.defaultValue ?? ""}
+                        />
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </Show>
+            </section>
+
+            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4 lg:col-span-2">
+              <div class="text-sm font-semibold tracking-tight">
+                {t("componentDialog.pinInitialValues")}
+              </div>
+              <Show
+                when={pins().length > 0}
+                fallback={
+                  <div class="text-sm text-muted-foreground">
+                    {t("componentDialog.noPins")}
+                  </div>
+                }
+              >
+                <div class="grid gap-3 md:grid-cols-2">
+                  <For each={pins()}>
+                    {(pin) => (
+                      <div class="grid gap-2 rounded-xl border border-white/8 bg-white/5 p-3">
+                        <span class="mono text-sm">{pin.name}</span>
+                        <Input
+                          value={node()?.pinInitialValues?.[pin.key] ?? ""}
+                          onInput={(evt) => {
+                            const currentNode = node();
+                            if (!currentNode) return;
+                            actions.updateNodePinInitialValue(
+                              currentNode.id,
+                              pin.key,
+                              evt.currentTarget.value,
+                            );
+                          }}
+                          placeholder={t("componentDialog.optionalPlaceholder")}
+                        />
+                      </div>
+                    )}
+                  </For>
+                </div>
+              </Show>
+            </section>
+
+            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4 lg:col-span-2">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="text-sm font-semibold tracking-tight">
+                  {t("componentDialog.pins")}
+                </div>
+                <div class="inline-flex flex-wrap items-center gap-2 rounded-xl border border-white/8 bg-white/5 p-1">
+                  <For each={pinFilterModes}>
+                    {(mode) => (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={pinFilter() === mode ? "default" : "ghost"}
+                        onClick={() => setPinFilter(mode)}
+                      >
+                        {pinFilterLabel(mode)}
+                      </Button>
+                    )}
+                  </For>
+                </div>
+              </div>
+              <div class="grid gap-2">
+                <For each={visiblePins()}>
+                  {(pin) => (
+                    <div class="grid gap-2 rounded-xl border border-white/8 bg-white/5 px-3 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
+                      <Badge
+                        variant={
+                          pin.direction === "in"
+                            ? "outline"
+                            : pin.direction === "out"
+                              ? "warning"
+                              : "secondary"
+                        }
+                      >
+                        {pin.direction}
+                      </Badge>
+                      <span class="mono min-w-0 truncate">{pin.name}</span>
+                      <Badge variant="outline">{pin.type}</Badge>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </section>
           </div>
-        </div>
-      </Portal>
-    </Show>
+        </DialogContent>
+      </Show>
+    </Dialog>
   );
 }

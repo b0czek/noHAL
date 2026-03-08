@@ -29,10 +29,20 @@ import {
   onCleanup,
   Show,
 } from "solid-js";
-import { Portal } from "solid-js/web";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
+import StringSelect from "./form/StringSelect";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { Input } from "./ui/input";
 
 interface SheetQueueRow {
   rowKey: string;
@@ -476,107 +486,94 @@ export default function SheetSettingsDialog() {
   });
 
   return (
-    <Show when={sheet()}>
-      <Portal>
-        <div
-          class="modal-backdrop"
-          role="presentation"
-          onPointerDown={() => editorUi.closeSheetSettings()}
+    <Dialog
+      open={!!sheet()}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) editorUi.closeSheetSettings();
+      }}
+    >
+      <Show when={sheet()}>
+        <DialogContent
+          class="w-[min(980px,calc(100vw-36px))] max-w-none rounded-[1.5rem] border-white/10 bg-[linear-gradient(180deg,rgba(8,18,22,0.98),rgba(5,11,14,0.97))] p-0"
+          onContextMenu={(evt: MouseEvent) => evt.preventDefault()}
         >
-          <div
-            class="modal sheet-settings-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("sheetSettings.ariaLabel")}
-            onPointerDown={(evt) => evt.stopPropagation()}
-            onContextMenu={(evt) => evt.preventDefault()}
-          >
-            <div class="modal-header">
-              <div>
-                <div class="modal-title">{t("sheetSettings.title")}</div>
-                <div class="modal-sub mono">{sheet()?.name}</div>
-              </div>
-              <button
-                type="button"
-                class="btn subtle"
-                onClick={editorUi.closeSheetSettings}
-              >
-                {t("common.close")}
-              </button>
-            </div>
+          <DialogHeader class="border-b border-white/10 bg-white/5 px-4 py-3 text-left">
+            <DialogTitle>{t("sheetSettings.title")}</DialogTitle>
+            <DialogDescription class="mono">{sheet()?.name}</DialogDescription>
+          </DialogHeader>
 
-            <div class="modal-body sheet-settings-body">
-              <section class="panel">
-                <div class="panel-title">
-                  {t("sheetSettings.threadOutputsTitle")}
-                </div>
-                <div class="component-store-toolbar">
-                  <div class="muted">
-                    {t("sheetSettings.threadOutputsHelp")}
-                  </div>
-                  <Show when={isRootSheet()}>
-                    <div class="muted">
-                      {t("sheetSettings.rootThreadBindingHelp")}
-                    </div>
-                  </Show>
-                  <div class="toolbar-group">
-                    <button
-                      type="button"
-                      class="btn subtle"
-                      onClick={() => {
-                        const sheetId = editorUi.sheetSettingsSheetId();
-                        if (!sheetId) return;
-                        actions.addSheetThreadOutput(sheetId);
-                      }}
-                    >
-                      {t("sheetSettings.addThreadOutput")}
-                    </button>
-                  </div>
-                </div>
-                <div class="list compact">
-                  <For each={threadOutputs()}>
-                    {(output) => (
-                      <div class="list-row">
-                        <input
-                          class="mono"
-                          value={output.name}
-                          onChange={(evt) => {
+          <div class="grid gap-4 p-4">
+            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+              <div class="text-sm font-semibold tracking-tight">
+                {t("sheetSettings.threadOutputsTitle")}
+              </div>
+              <div class="grid gap-2 text-sm text-muted-foreground">
+                <div>{t("sheetSettings.threadOutputsHelp")}</div>
+                <Show when={isRootSheet()}>
+                  <div>{t("sheetSettings.rootThreadBindingHelp")}</div>
+                </Show>
+              </div>
+              <div class="flex justify-start">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    const sheetId = editorUi.sheetSettingsSheetId();
+                    if (!sheetId) return;
+                    actions.addSheetThreadOutput(sheetId);
+                  }}
+                >
+                  {t("sheetSettings.addThreadOutput")}
+                </Button>
+              </div>
+              <div class="grid max-h-56 gap-2 overflow-auto pr-1">
+                <For each={threadOutputs()}>
+                  {(output) => (
+                    <div class="grid gap-3 rounded-xl border border-white/8 bg-white/5 p-3 lg:grid-cols-[minmax(0,1fr)_220px_auto] lg:items-center">
+                      <Input
+                        class="mono"
+                        value={output.name}
+                        onChange={(evt) => {
+                          const sheetId = editorUi.sheetSettingsSheetId();
+                          if (!sheetId) return;
+                          actions.updateSheetThreadOutputName(
+                            sheetId,
+                            output.id,
+                            evt.currentTarget.value,
+                          );
+                        }}
+                      />
+                      <Show when={isRootSheet()}>
+                        <StringSelect
+                          value={output.halThreadId ?? ""}
+                          options={[
+                            {
+                              value: "",
+                              label: t(
+                                "sheetSettings.rootThreadBindingUnbound",
+                              ),
+                            },
+                            ...halThreads().map((thread) => ({
+                              value: thread.id,
+                              label: thread.name,
+                            })),
+                          ]}
+                          onChange={(value) => {
                             const sheetId = editorUi.sheetSettingsSheetId();
                             if (!sheetId) return;
-                            actions.updateSheetThreadOutputName(
+                            actions.updateSheetThreadOutputHalBinding(
                               sheetId,
                               output.id,
-                              evt.currentTarget.value,
+                              value.trim() || null,
                             );
                           }}
                         />
-                        <Show when={isRootSheet()}>
-                          <select
-                            value={output.halThreadId ?? ""}
-                            title={t("sheetSettings.rootThreadBinding")}
-                            onChange={(evt) => {
-                              const sheetId = editorUi.sheetSettingsSheetId();
-                              if (!sheetId) return;
-                              actions.updateSheetThreadOutputHalBinding(
-                                sheetId,
-                                output.id,
-                                evt.currentTarget.value.trim() || null,
-                              );
-                            }}
-                          >
-                            <option value="">
-                              {t("sheetSettings.rootThreadBindingUnbound")}
-                            </option>
-                            <For each={halThreads()}>
-                              {(thread) => (
-                                <option value={thread.id}>{thread.name}</option>
-                              )}
-                            </For>
-                          </select>
-                        </Show>
-                        <button
+                      </Show>
+                      <div class="flex justify-end">
+                        <Button
                           type="button"
-                          class="btn subtle icon-btn"
+                          variant="ghost"
+                          size="icon"
                           disabled={threadOutputs().length <= 1}
                           onClick={() => {
                             const sheetId = editorUi.sheetSettingsSheetId();
@@ -587,239 +584,249 @@ export default function SheetSettingsDialog() {
                           aria-label={t("common.remove")}
                         >
                           <HiOutlineTrash size={16} aria-hidden="true" />
-                        </button>
+                        </Button>
                       </div>
-                    )}
-                  </For>
-                </div>
-              </section>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </section>
 
-              <section class="panel">
-                <div class="panel-title">
-                  {t("sheetSettings.addfQueueTitle")}
-                </div>
-                <div class="component-store-toolbar">
-                  <div class="muted">{t("sheetSettings.addfQueueHelp")}</div>
-                  <div class="toolbar-group">
-                    <button
-                      type="button"
-                      class="btn subtle"
-                      onClick={() => {
-                        const sorted = [...rows()].sort((a, b) =>
-                          a.sortName.localeCompare(b.sortName),
-                        );
-                        commitRows(sorted);
-                      }}
-                    >
-                      {t("sheetSettings.resetAZ")}
-                    </button>
+            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div class="grid gap-1">
+                  <div class="text-sm font-semibold tracking-tight">
+                    {t("sheetSettings.addfQueueTitle")}
+                  </div>
+                  <div class="text-sm text-muted-foreground">
+                    {t("sheetSettings.addfQueueHelp")}
                   </div>
                 </div>
-              </section>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    const sorted = [...rows()].sort((a, b) =>
+                      a.sortName.localeCompare(b.sortName),
+                    );
+                    commitRows(sorted);
+                  }}
+                >
+                  {t("sheetSettings.resetAZ")}
+                </Button>
+              </div>
+            </section>
 
-              <section class="panel">
-                <div class="panel-title">{t("sheetSettings.queueItems")}</div>
-                <div class="addf-queue-list">
-                  <For each={rowsByThreadOutput()}>
-                    {(group) => (
-                      <section
-                        class="addf-queue-thread-section"
-                        onPointerEnter={() => {
-                          const dragged = draggingRowKey();
-                          if (!dragged) return;
-                          if (group.rows.length > 0) return;
-                          setDropTargetId(`thread:${group.output.id}:end`);
-                          appendRowToThread(dragged, group.output.id);
-                        }}
-                      >
-                        <div class="addf-queue-thread-header">
-                          <span class="chip type">{group.output.name}</span>
-                          <span class="muted mono">{group.rows.length}</span>
-                        </div>
+            <section class="grid gap-3 rounded-2xl border border-white/8 bg-black/10 p-4">
+              <div class="text-sm font-semibold tracking-tight">
+                {t("sheetSettings.queueItems")}
+              </div>
+              <div class="grid max-h-[min(60vh,620px)] gap-3 overflow-auto pr-1">
+                <For each={rowsByThreadOutput()}>
+                  {(group) => (
+                    <section
+                      class="grid gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-3"
+                      onPointerEnter={() => {
+                        const dragged = draggingRowKey();
+                        if (!dragged) return;
+                        if (group.rows.length > 0) return;
+                        setDropTargetId(`thread:${group.output.id}:end`);
+                        appendRowToThread(dragged, group.output.id);
+                      }}
+                    >
+                      <div class="flex items-center justify-between gap-3">
+                        <Badge variant="outline">{group.output.name}</Badge>
+                        <span class="mono text-xs text-muted-foreground">
+                          {group.rows.length}
+                        </span>
+                      </div>
 
-                        <div class="addf-queue-thread-rows">
-                          <For each={group.rows}>
-                            {(row, index) => (
-                              <div
-                                class="component-row addf-queue-row"
-                                classList={{
-                                  "is-dragging":
-                                    draggingRowKey() === row.rowKey,
-                                  "is-drop-target":
-                                    dropTargetId() === `row:${row.rowKey}`,
-                                }}
-                                role="presentation"
-                                onPointerEnter={() => {
-                                  const dragged = draggingRowKey();
-                                  if (!dragged || dragged === row.rowKey)
-                                    return;
+                      <div class="grid gap-3">
+                        <For each={group.rows}>
+                          {(row, index) => (
+                            <div
+                              class={`grid gap-3 rounded-xl border p-3 transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center ${
+                                draggingRowKey() === row.rowKey
+                                  ? "border-accent/30 bg-accent/10 opacity-65"
+                                  : dropTargetId() === `row:${row.rowKey}`
+                                    ? "border-accent/30 bg-accent/10"
+                                    : "border-white/8 bg-white/5"
+                              }`}
+                              role="presentation"
+                              onPointerEnter={() => {
+                                const dragged = draggingRowKey();
+                                if (!dragged || dragged === row.rowKey) return;
+                                setDropTargetId(`row:${row.rowKey}`);
+                                moveRowBefore(
+                                  dragged,
+                                  row.rowKey,
+                                  group.output.id,
+                                );
+                              }}
+                              onPointerUp={() => {
+                                if (!draggingRowKey()) return;
+                                setDraggingRowKey(null);
+                                setDropTargetId(null);
+                              }}
+                            >
+                              <button
+                                type="button"
+                                class={`grid h-10 w-10 place-items-center rounded-lg transition ${
+                                  draggingRowKey() === row.rowKey
+                                    ? "bg-accent/10"
+                                    : "hover:bg-accent/5"
+                                }`}
+                                title={t("sheetSettings.dragToReorder")}
+                                onPointerDown={(evt) => {
+                                  evt.preventDefault();
+                                  evt.stopPropagation();
+                                  setDraggingRowKey(row.rowKey);
                                   setDropTargetId(`row:${row.rowKey}`);
-                                  moveRowBefore(
-                                    dragged,
-                                    row.rowKey,
-                                    group.output.id,
-                                  );
-                                }}
-                                onPointerUp={() => {
-                                  if (!draggingRowKey()) return;
-                                  setDraggingRowKey(null);
-                                  setDropTargetId(null);
                                 }}
                               >
-                                <button
-                                  type="button"
-                                  class={`addf-drag-handle-btn ${draggingRowKey() === row.rowKey ? "is-active" : ""}`}
-                                  title={t("sheetSettings.dragToReorder")}
-                                  onPointerDown={(evt) => {
-                                    evt.preventDefault();
-                                    evt.stopPropagation();
-                                    setDraggingRowKey(row.rowKey);
-                                    setDropTargetId(`row:${row.rowKey}`);
-                                  }}
+                                <span
+                                  class="grid grid-cols-2 gap-1"
+                                  aria-hidden="true"
                                 >
-                                  <span
-                                    class="addf-drag-dot-grid"
-                                    aria-hidden="true"
-                                  >
-                                    <span />
-                                    <span />
-                                    <span />
-                                    <span />
+                                  <span class="h-1 w-1 rounded-full bg-foreground/70" />
+                                  <span class="h-1 w-1 rounded-full bg-foreground/70" />
+                                  <span class="h-1 w-1 rounded-full bg-foreground/70" />
+                                  <span class="h-1 w-1 rounded-full bg-foreground/70" />
+                                </span>
+                              </button>
+                              <div class="min-w-0">
+                                <div class="mono truncate font-medium">
+                                  <span class="mr-2 inline-block min-w-7 text-right text-muted-foreground">
+                                    {index() + 1}.
                                   </span>
-                                </button>
-                                <div class="component-store-main">
-                                  <div class="component-name mono">
-                                    <span class="addf-queue-index">
-                                      {index() + 1}.
-                                    </span>{" "}
-                                    {row.title}
-                                  </div>
-                                  <div class="component-sub">
-                                    <span class="chip type">
-                                      {row.kind === "subsheet"
-                                        ? t("sheetSettings.kindSheet")
-                                        : row.kind === "function"
-                                          ? t("sheetSettings.kindFunction")
-                                          : t("sheetSettings.kindRt")}
-                                    </span>{" "}
-                                    {row.subtitle}
-                                  </div>
+                                  {row.title}
                                 </div>
-                                <div class="component-store-actions addf-queue-actions">
-                                  <button
-                                    type="button"
-                                    class="mini icon-btn"
-                                    disabled={index() === 0}
-                                    title={t("common.up")}
-                                    aria-label={t("common.up")}
-                                    onClick={() => {
-                                      const prev = group.rows[index() - 1];
-                                      if (!prev) return;
-                                      moveRowBefore(
-                                        row.rowKey,
-                                        prev.rowKey,
-                                        group.output.id,
-                                      );
-                                    }}
-                                  >
-                                    <HiOutlineChevronUp
-                                      size={16}
-                                      aria-hidden="true"
-                                    />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    class="mini icon-btn"
-                                    disabled={index() === group.rows.length - 1}
-                                    title={t("common.down")}
-                                    aria-label={t("common.down")}
-                                    onClick={() => {
-                                      const next = group.rows[index() + 1];
-                                      if (!next) return;
-                                      const currentRows = rows();
-                                      const nextRows = [...currentRows];
-                                      const draggedIndex = nextRows.findIndex(
-                                        (item) => item.rowKey === row.rowKey,
-                                      );
-                                      const nextIndex = nextRows.findIndex(
-                                        (item) => item.rowKey === next.rowKey,
-                                      );
-                                      if (draggedIndex < 0 || nextIndex < 0)
-                                        return;
-                                      const [item] = nextRows.splice(
-                                        draggedIndex,
-                                        1,
-                                      );
-                                      if (!item) return;
-                                      item.sheetThreadOutputId =
-                                        group.output.id;
-                                      item.queueEntry =
-                                        typeof item.queueEntry === "string"
-                                          ? makeAddfQueueNodeEntry(
-                                              item.nodeId,
-                                              group.output.id,
-                                            )
-                                          : {
-                                              ...item.queueEntry,
-                                              sheetThreadOutputId:
-                                                group.output.id,
-                                            };
-                                      item.queueKey =
-                                        addfQueueEntryKey(item.queueEntry) ??
-                                        item.queueKey;
-                                      const nextInsertIndex =
-                                        nextRows.findIndex(
-                                          (candidate) =>
-                                            candidate.rowKey === next.rowKey,
-                                        ) + 1;
-                                      nextRows.splice(nextInsertIndex, 0, item);
-                                      commitRows(nextRows);
-                                    }}
-                                  >
-                                    <HiOutlineChevronDown
-                                      size={16}
-                                      aria-hidden="true"
-                                    />
-                                  </button>
+                                <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                  <Badge variant="outline">
+                                    {row.kind === "subsheet"
+                                      ? t("sheetSettings.kindSheet")
+                                      : row.kind === "function"
+                                        ? t("sheetSettings.kindFunction")
+                                        : t("sheetSettings.kindRt")}
+                                  </Badge>
+                                  <span>{row.subtitle}</span>
                                 </div>
                               </div>
-                            )}
-                          </For>
-                          <div
-                            class="addf-queue-thread-dropzone"
-                            classList={{
-                              "is-drop-target":
-                                dropTargetId() ===
-                                `thread:${group.output.id}:end`,
-                            }}
-                            onPointerEnter={() => {
-                              const dragged = draggingRowKey();
-                              if (!dragged) return;
-                              setDropTargetId(`thread:${group.output.id}:end`);
-                              appendRowToThread(dragged, group.output.id);
-                            }}
-                            onPointerUp={() => {
-                              if (!draggingRowKey()) return;
-                              setDraggingRowKey(null);
-                              setDropTargetId(null);
-                            }}
-                          />
-                        </div>
-                      </section>
-                    )}
-                  </For>
+                              <div class="flex items-center justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={index() === 0}
+                                  title={t("common.up")}
+                                  aria-label={t("common.up")}
+                                  onClick={() => {
+                                    const prev = group.rows[index() - 1];
+                                    if (!prev) return;
+                                    moveRowBefore(
+                                      row.rowKey,
+                                      prev.rowKey,
+                                      group.output.id,
+                                    );
+                                  }}
+                                >
+                                  <HiOutlineChevronUp
+                                    size={16}
+                                    aria-hidden="true"
+                                  />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={index() === group.rows.length - 1}
+                                  title={t("common.down")}
+                                  aria-label={t("common.down")}
+                                  onClick={() => {
+                                    const next = group.rows[index() + 1];
+                                    if (!next) return;
+                                    const currentRows = rows();
+                                    const nextRows = [...currentRows];
+                                    const draggedIndex = nextRows.findIndex(
+                                      (item) => item.rowKey === row.rowKey,
+                                    );
+                                    const nextIndex = nextRows.findIndex(
+                                      (item) => item.rowKey === next.rowKey,
+                                    );
+                                    if (draggedIndex < 0 || nextIndex < 0) {
+                                      return;
+                                    }
+                                    const [item] = nextRows.splice(
+                                      draggedIndex,
+                                      1,
+                                    );
+                                    if (!item) return;
+                                    item.sheetThreadOutputId = group.output.id;
+                                    item.queueEntry =
+                                      typeof item.queueEntry === "string"
+                                        ? makeAddfQueueNodeEntry(
+                                            item.nodeId,
+                                            group.output.id,
+                                          )
+                                        : {
+                                            ...item.queueEntry,
+                                            sheetThreadOutputId:
+                                              group.output.id,
+                                          };
+                                    item.queueKey =
+                                      addfQueueEntryKey(item.queueEntry) ??
+                                      item.queueKey;
+                                    const nextInsertIndex =
+                                      nextRows.findIndex(
+                                        (candidate) =>
+                                          candidate.rowKey === next.rowKey,
+                                      ) + 1;
+                                    nextRows.splice(nextInsertIndex, 0, item);
+                                    commitRows(nextRows);
+                                  }}
+                                >
+                                  <HiOutlineChevronDown
+                                    size={16}
+                                    aria-hidden="true"
+                                  />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </For>
+                        <div
+                          class={`min-h-[18px] rounded-lg border border-dashed transition ${
+                            dropTargetId() === `thread:${group.output.id}:end`
+                              ? "border-accent/30 bg-accent/10"
+                              : "border-white/8 bg-white/[0.02]"
+                          }`}
+                          onPointerEnter={() => {
+                            const dragged = draggingRowKey();
+                            if (!dragged) return;
+                            setDropTargetId(`thread:${group.output.id}:end`);
+                            appendRowToThread(dragged, group.output.id);
+                          }}
+                          onPointerUp={() => {
+                            if (!draggingRowKey()) return;
+                            setDraggingRowKey(null);
+                            setDropTargetId(null);
+                          }}
+                        />
+                      </div>
+                    </section>
+                  )}
+                </For>
 
-                  <Show when={rows().length === 0}>
-                    <div class="muted component-store-empty">
-                      {t("sheetSettings.empty")}
-                    </div>
-                  </Show>
-                </div>
-              </section>
-            </div>
+                <Show when={rows().length === 0}>
+                  <div class="px-1 py-2 text-xs text-muted-foreground">
+                    {t("sheetSettings.empty")}
+                  </div>
+                </Show>
+              </div>
+            </section>
           </div>
-        </div>
-      </Portal>
-    </Show>
+        </DialogContent>
+      </Show>
+    </Dialog>
   );
 }

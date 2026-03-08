@@ -7,7 +7,16 @@ import { HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
 import { For, Show } from "solid-js";
 import type { LandingProjectFlowController } from "../app/useLandingProjectFlow";
 import { useI18n } from "../i18n";
-import "./LandingPage.css";
+import StringSelect from "./form/StringSelect";
+import { Alert } from "./ui/alert";
+import { Button } from "./ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
 
 interface LandingPageProps {
   landing: LandingProjectFlowController;
@@ -32,75 +41,97 @@ export default function LandingPage(props: LandingPageProps) {
   const landing = () => props.landing;
 
   return (
-    <div class="landing-shell">
-      <div class="landing-backdrop-grid" aria-hidden="true" />
-      <main class="landing-main">
-        <section class="landing-hero panel">
-          <div class="brand landing-brand">
-            <div class="brand-mark">N</div>
-            <div>
-              <div class="brand-name">NoHAL</div>
-              <div class="brand-sub">{t("landing.brandSubtitle")}</div>
+    <div class="relative min-h-full overflow-auto px-4 py-8 sm:px-6">
+      <div
+        class="pointer-events-none fixed inset-0 opacity-45 [background-image:linear-gradient(rgba(122,230,208,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(122,230,208,0.025)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:radial-gradient(circle_at_50%_20%,black_35%,transparent_90%)]"
+        aria-hidden="true"
+      />
+      <main class="relative z-10 mx-auto grid w-full max-w-5xl gap-5">
+        <Card class="overflow-hidden bg-[radial-gradient(circle_at_18%_12%,hsl(var(--accent)/0.14),transparent_38%),radial-gradient(circle_at_88%_14%,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,rgba(11,24,31,0.9),rgba(8,17,22,0.86))]">
+          <CardHeader class="gap-4 pb-0">
+            <div class="flex items-center gap-3">
+              <div class="grid size-12 place-items-center rounded-2xl bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--accent)))] text-lg font-semibold text-primary-foreground shadow-lg shadow-black/20">
+                N
+              </div>
+              <div>
+                <div class="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  NoHAL
+                </div>
+                <CardDescription>{t("landing.brandSubtitle")}</CardDescription>
+              </div>
             </div>
-          </div>
-          <h1 class="landing-title">{t("landing.title")}</h1>
-          <p class="landing-copy">{t("landing.copy")}</p>
-          <div class="landing-version-pick">
-            <span class="muted">{t("landing.targetLinuxCncVersion")}</span>
-            <select
-              value={props.selectedLinuxCncVersion}
-              onChange={(evt) =>
-                props.onSelectedLinuxCncVersionChange(
-                  evt.currentTarget.value as LinuxCncVersion,
-                )
-              }
-            >
-              <For each={SUPPORTED_LINUXCNC_VERSIONS}>
-                {(version) => (
-                  <option value={version}>{`LinuxCNC ${version}`}</option>
-                )}
-              </For>
-            </select>
-          </div>
-          <div class="landing-actions">
-            <button
-              type="button"
-              class="btn accent landing-action-btn"
-              disabled={landing().isLandingActionPending()}
-              onClick={() => void landing().createBlankProject()}
-            >
-              <HiOutlineDocumentPlus size={18} aria-hidden="true" />
-              {t("projectCreation.createBlank")}
-            </button>
-            <button
-              type="button"
-              class="btn landing-action-btn"
-              disabled={landing().isLandingActionPending()}
-              onClick={props.onImportMachineConfiguration}
-            >
-              {t("projectCreation.importMachineConfig")}
-            </button>
-            <button
-              type="button"
-              class="btn landing-action-btn"
-              disabled={landing().isLandingActionPending()}
-              onClick={() => void landing().openProject()}
-            >
-              <HiOutlineFolderOpen size={18} aria-hidden="true" />
-              {t("landing.openProject")}
-            </button>
-          </div>
-          <Show when={landing().landingError()}>
-            {(message) => <div class="landing-error">{message()}</div>}
-          </Show>
-        </section>
+            <div class="grid gap-3">
+              <h1 class="max-w-[14ch] text-4xl font-semibold tracking-tight sm:text-5xl">
+                {t("landing.title")}
+              </h1>
+              <p class="max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
+                {t("landing.copy")}
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent class="grid gap-5 pt-5">
+            <div class="inline-flex w-fit items-center gap-3 rounded-2xl border border-white/8 bg-black/15 px-4 py-3">
+              <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                {t("landing.targetLinuxCncVersion")}
+              </span>
+              <StringSelect
+                value={props.selectedLinuxCncVersion}
+                class="min-w-[11rem]"
+                options={SUPPORTED_LINUXCNC_VERSIONS.map((version) => ({
+                  value: version,
+                  label: `LinuxCNC ${version}`,
+                }))}
+                onChange={(value) =>
+                  props.onSelectedLinuxCncVersionChange(
+                    value as LinuxCncVersion,
+                  )
+                }
+              />
+            </div>
+            <div class="flex flex-wrap gap-3">
+              <Button
+                class="h-11 rounded-xl px-5"
+                disabled={landing().isLandingActionPending()}
+                onClick={() => void landing().createBlankProject()}
+              >
+                <HiOutlineDocumentPlus size={18} aria-hidden="true" />
+                {t("projectCreation.createBlank")}
+              </Button>
+              <Button
+                variant="outline"
+                class="h-11 rounded-xl px-5"
+                disabled={landing().isLandingActionPending()}
+                onClick={props.onImportMachineConfiguration}
+              >
+                {t("projectCreation.importMachineConfig")}
+              </Button>
+              <Button
+                variant="secondary"
+                class="h-11 rounded-xl px-5"
+                disabled={landing().isLandingActionPending()}
+                onClick={() => void landing().openProject()}
+              >
+                <HiOutlineFolderOpen size={18} aria-hidden="true" />
+                {t("landing.openProject")}
+              </Button>
+            </div>
+            <Show when={landing().landingError()}>
+              {(message) => <Alert variant="destructive">{message()}</Alert>}
+            </Show>
+          </CardContent>
+        </Card>
 
-        <section class="landing-recents panel">
-          <div class="landing-recents-header">
-            <div class="panel-title">{t("landing.recentProjects")}</div>
-            <button
-              type="button"
-              class="mini"
+        <Card>
+          <CardHeader class="flex-row items-center justify-between gap-4">
+            <div>
+              <CardTitle>{t("landing.recentProjects")}</CardTitle>
+              <CardDescription>
+                {t("landing.noRecentProjectsHint")}
+              </CardDescription>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => void landing().refreshRecentProjects()}
               disabled={
                 landing().isRecentProjectsLoading() ||
@@ -108,55 +139,56 @@ export default function LandingPage(props: LandingPageProps) {
               }
             >
               {t("common.refresh")}
-            </button>
-          </div>
-
-          <Show
-            when={!landing().isRecentProjectsLoading()}
-            fallback={
-              <div class="landing-recents-empty muted">
-                {t("landing.loadingRecentProjects")}
-              </div>
-            }
-          >
+            </Button>
+          </CardHeader>
+          <CardContent>
             <Show
-              when={landing().recentProjects().length > 0}
+              when={!landing().isRecentProjectsLoading()}
               fallback={
-                <div class="landing-recents-empty muted">
-                  {t("landing.noRecentProjectsHint")}
+                <div class="py-4 text-sm text-muted-foreground">
+                  {t("landing.loadingRecentProjects")}
                 </div>
               }
             >
-              <div class="landing-recents-list">
-                <For each={landing().recentProjects()}>
-                  {(entry) => (
-                    <button
-                      type="button"
-                      class="landing-recent-row"
-                      disabled={landing().isLandingActionPending()}
-                      onClick={() =>
-                        void landing().openRecentProject(entry.projectPath)
-                      }
-                      title={entry.projectPath}
-                    >
-                      <div class="landing-recent-main">
-                        <div class="landing-recent-name">
-                          {recentProjectName(entry)}
+              <Show
+                when={landing().recentProjects().length > 0}
+                fallback={
+                  <div class="py-4 text-sm text-muted-foreground">
+                    {t("landing.noRecentProjectsHint")}
+                  </div>
+                }
+              >
+                <div class="grid max-h-[min(70vh,700px)] gap-3 overflow-auto">
+                  <For each={landing().recentProjects()}>
+                    {(entry) => (
+                      <button
+                        type="button"
+                        class="focus-ring grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-white/8 bg-black/10 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-accent/30 hover:bg-white/5 disabled:cursor-default disabled:opacity-60 disabled:hover:translate-y-0 sm:gap-4 max-sm:grid-cols-1"
+                        disabled={landing().isLandingActionPending()}
+                        onClick={() =>
+                          void landing().openRecentProject(entry.projectPath)
+                        }
+                        title={entry.projectPath}
+                      >
+                        <div class="min-w-0">
+                          <div class="truncate font-medium">
+                            {recentProjectName(entry)}
+                          </div>
+                          <div class="mono mt-1 truncate text-xs text-muted-foreground">
+                            {recentProjectPathTail(entry.projectPath)}
+                          </div>
                         </div>
-                        <div class="landing-recent-path mono">
-                          {recentProjectPathTail(entry.projectPath)}
+                        <div class="justify-self-end text-xs text-muted-foreground max-sm:justify-self-start">
+                          {formatDateTime(entry.lastOpenedAt)}
                         </div>
-                      </div>
-                      <div class="landing-recent-time">
-                        {formatDateTime(entry.lastOpenedAt)}
-                      </div>
-                    </button>
-                  )}
-                </For>
-              </div>
+                      </button>
+                    )}
+                  </For>
+                </div>
+              </Show>
             </Show>
-          </Show>
-        </section>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

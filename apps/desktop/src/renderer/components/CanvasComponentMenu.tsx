@@ -1,6 +1,7 @@
 import type { ComponentDefinition } from "@nohal/core/src/types";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { useI18n } from "../i18n";
+import { Input } from "./ui/input";
 
 interface CanvasComponentMenuProps {
   components: ComponentDefinition[];
@@ -27,8 +28,9 @@ export default function CanvasComponentMenu(props: CanvasComponentMenuProps) {
       <div class="canvas-context-title" aria-hidden="true">
         {t("canvasComponentMenu.title")}
       </div>
-      <input
+      <Input
         type="text"
+        class="bg-black/10"
         placeholder={t("canvasComponentMenu.filterPlaceholder")}
         value={query()}
         onInput={(evt) => setQuery(evt.currentTarget.value)}
