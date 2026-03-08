@@ -1,5 +1,8 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import solid from "vite-plugin-solid";
+
+const rendererRoot = fileURLToPath(new URL("./src/renderer", import.meta.url));
 
 function nohalDepsPlugin() {
   return externalizeDepsPlugin({
@@ -49,6 +52,12 @@ export default defineConfig({
     },
   },
   renderer: {
+    resolve: {
+      alias: {
+        "~": rendererRoot,
+        "@renderer": rendererRoot,
+      },
+    },
     plugins: [solid()],
   },
 });

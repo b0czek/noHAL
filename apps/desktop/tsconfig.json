@@ -4,6 +4,7 @@
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
+    "baseUrl": ".",
     "skipLibCheck": true,
     "moduleResolution": "node",
     "resolveJsonModule": true,
@@ -13,6 +14,10 @@
     "noEmit": true,
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
+    "paths": {
+      "~/*": ["src/renderer/*"],
+      "@renderer/*": ["src/renderer/*"]
+    },
     "types": []
   },
   "include": ["src/renderer/**/*", "src/global.d.ts"]

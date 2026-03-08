@@ -6,10 +6,25 @@ import {
   HiOutlineTrash,
 } from "solid-icons/hi";
 import { createMemo, For, Show } from "solid-js";
+import StringSelect from "../../components/form/StringSelect";
+import { Alert } from "../../components/ui/alert";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import {
+  Switch,
+  SwitchControl,
+  SwitchLabel,
+  SwitchThumb,
+} from "../../components/ui/switch";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
-import "../../components/LandingPage.css";
-import "./machineImport.css";
 import type { MachineImportController } from "./useMachineImportFlow";
 
 export interface MachineImportPageProps {
@@ -38,8 +53,9 @@ export default function MachineImportPage(props: MachineImportPageProps) {
     for (const entry of entries) {
       const name = entry.parsed.halComponentName.toLowerCase();
       if (name === lower) exact.push(entry);
-      else if (name.includes(lower) || lower.includes(name))
+      else if (name.includes(lower) || lower.includes(name)) {
         partial.push(entry);
+      }
     }
     return [
       ...exact,
@@ -76,419 +92,464 @@ export default function MachineImportPage(props: MachineImportPageProps) {
       : t("projectCreation.subtitleLink"),
   );
 
+  const placementOptions = [
+    {
+      value: "related-groups",
+      label: t("projectCreation.placementRelatedGroups"),
+    },
+    {
+      value: "alphabetical",
+      label: t("projectCreation.placementAlphabetical"),
+    },
+  ];
+
   return (
-    <div class="landing-shell">
-      <div class="landing-backdrop-grid" aria-hidden="true" />
-      <main class="landing-main machine-import-main">
-        <section class="panel landing-hero machine-import-hero">
-          <div class="machine-import-hero-header">
-            <div>
-              <div class="panel-title">
-                {t("projectCreation.importMachineConfig")}
+    <div class="relative min-h-screen bg-[linear-gradient(180deg,#081216_0%,#04090c_100%)] px-4 py-8 sm:px-6">
+      <div
+        class="pointer-events-none fixed inset-0 opacity-45 [background-image:radial-gradient(circle_at_12%_6%,hsl(var(--accent)/0.12),transparent_28%),radial-gradient(circle_at_88%_8%,hsl(var(--primary)/0.12),transparent_24%),linear-gradient(rgba(122,230,208,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(122,230,208,0.025)_1px,transparent_1px)] [background-size:auto,auto,28px_28px,28px_28px]"
+        aria-hidden="true"
+      />
+      <main class="relative z-10 mx-auto grid w-full max-w-5xl gap-5">
+        <Card class="overflow-hidden border-white/10 bg-[radial-gradient(circle_at_18%_12%,hsl(var(--accent)/0.14),transparent_38%),radial-gradient(circle_at_88%_14%,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,rgba(11,24,31,0.9),rgba(8,17,22,0.86))]">
+          <CardHeader class="gap-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div class="grid gap-1">
+                <CardTitle>
+                  {t("projectCreation.importMachineConfig")}
+                </CardTitle>
+                <CardDescription>{pageSubtitle()}</CardDescription>
               </div>
-              <div class="muted">{pageSubtitle()}</div>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={machineImport().closeMachineImportFlow}
+                disabled={flow().isBusy}
+              >
+                {t("common.back")}
+              </Button>
             </div>
-            <button
-              type="button"
-              class="btn subtle"
-              onClick={machineImport().closeMachineImportFlow}
-              disabled={flow().isBusy}
-            >
-              {t("common.back")}
-            </button>
-          </div>
-          <div class="machine-import-hero-actions">
-            <button
-              type="button"
-              class="btn"
-              onClick={() => void machineImport().pickMachineIniFile()}
-              disabled={flow().isBusy}
-            >
-              {t("projectCreation.pickMachineIniFile")}
-            </button>
-          </div>
-          <Show when={flow().errorMessage}>
-            {(message) => <div class="landing-error">{message()}</div>}
-          </Show>
-        </section>
+            <div class="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                onClick={() => void machineImport().pickMachineIniFile()}
+                disabled={flow().isBusy}
+              >
+                {t("projectCreation.pickMachineIniFile")}
+              </Button>
+            </div>
+            <Show when={flow().errorMessage}>
+              {(message) => <Alert variant="destructive">{message()}</Alert>}
+            </Show>
+          </CardHeader>
+        </Card>
 
         <Show
           when={flow().machineConfigSetup}
           fallback={
-            <section class="panel">
-              <div class="muted">
+            <Card class="border-white/8 bg-transparent shadow-none">
+              <CardContent class="pt-6 text-sm text-muted-foreground">
                 {t("projectCreation.importMachineConfigHelp")}
-              </div>
-            </section>
+              </CardContent>
+            </Card>
           }
         >
           {(setup) => (
             <>
               <Show when={flow().step === "machine-files"}>
-                <section class="panel">
-                  <div class="panel-title">
-                    {t("projectCreation.machineConfigIniSource")}
-                  </div>
-                  <div class="list compact">
-                    <div class="list-row">
-                      <span class="muted">{t("common.file")}</span>
-                      <span class="mono new-project-path">
-                        {setup().ini.sourcePath ?? t("common.unspecified")}
-                      </span>
+                <Card class="border-white/8 bg-transparent shadow-none">
+                  <CardHeader>
+                    <CardTitle>
+                      {t("projectCreation.machineConfigIniSource")}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent class="grid gap-3">
+                    <div class="grid gap-3 rounded-2xl p-1 text-sm">
+                      <div class="flex items-start justify-between gap-3">
+                        <span class="text-muted-foreground">
+                          {t("common.file")}
+                        </span>
+                        <span class="mono max-w-[70%] truncate text-right">
+                          {setup().ini.sourcePath ?? t("common.unspecified")}
+                        </span>
+                      </div>
+                      <div class="flex items-start justify-between gap-3">
+                        <span class="text-muted-foreground">
+                          {t("projectCreation.iniKeys")}
+                        </span>
+                        <span>{iniKeyCount()}</span>
+                      </div>
                     </div>
-                    <div class="list-row">
-                      <span class="muted">{t("projectCreation.iniKeys")}</span>
-                      <span>{iniKeyCount()}</span>
-                    </div>
-                  </div>
-                </section>
+                  </CardContent>
+                </Card>
 
                 <Show when={setup().warnings.length > 0}>
-                  <section class="panel warn">
-                    <div class="panel-title">
-                      {t("projectCreation.parserWarnings")}
-                    </div>
-                    <div class="list compact">
+                  <Card class="border-warning/20 bg-transparent shadow-none">
+                    <CardHeader>
+                      <CardTitle>
+                        {t("projectCreation.parserWarnings")}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent class="grid gap-2">
                       <For each={setup().warnings.slice(0, 20)}>
-                        {(warning) => <div class="warning-item">{warning}</div>}
-                      </For>
-                    </div>
-                  </section>
-                </Show>
-
-                <section class="panel">
-                  <div class="panel-title">
-                    {t("projectCreation.selectedHalFilesList")}
-                  </div>
-                  <Show
-                    when={flow().selectedMachineHalFiles.length > 0}
-                    fallback={
-                      <div class="muted">
-                        {t("projectCreation.noSelectedHalFiles")}
-                      </div>
-                    }
-                  >
-                    <div class="list machine-hal-file-list">
-                      <For each={flow().selectedMachineHalFiles}>
-                        {(halFile, index) => (
-                          <div class="list-row machine-hal-file-row">
-                            <input
-                              type="text"
-                              class="mono machine-hal-file-input"
-                              value={halFile.filePath}
-                              onInput={(evt) =>
-                                machineImport().updateMachineHalFilePath(
-                                  index(),
-                                  evt.currentTarget.value,
-                                )
-                              }
-                            />
-                            <div class="machine-hal-file-actions">
-                              <div class="machine-hal-file-toggle-control">
-                                <span class="machine-hal-file-toggle-label">
-                                  {t("projectCreation.resolveIniInHalFile")}
-                                </span>
-                                <button
-                                  type="button"
-                                  class={`machine-hal-file-switch${
-                                    halFile.resolveIniSubstitutions
-                                      ? " is-on"
-                                      : ""
-                                  }`}
-                                  role="switch"
-                                  aria-checked={halFile.resolveIniSubstitutions}
-                                  onClick={() =>
-                                    machineImport().updateMachineHalFileResolveIni(
-                                      index(),
-                                      !halFile.resolveIniSubstitutions,
-                                    )
-                                  }
-                                  disabled={flow().isBusy}
-                                  title={t(
-                                    "projectCreation.resolveIniInHalFile",
-                                  )}
-                                  aria-label={t(
-                                    "projectCreation.resolveIniInHalFile",
-                                  )}
-                                />
-                              </div>
-                              <button
-                                type="button"
-                                class="mini icon-btn"
-                                onClick={() =>
-                                  void machineImport().pickMachineHalFileForRow(
-                                    index(),
-                                  )
-                                }
-                                disabled={flow().isBusy}
-                                title={t("projectCreation.browseHalFile")}
-                                aria-label={t("projectCreation.browseHalFile")}
-                              >
-                                <HiOutlineFolderOpen
-                                  size={15}
-                                  aria-hidden="true"
-                                />
-                              </button>
-                              <button
-                                type="button"
-                                class="mini icon-btn"
-                                onClick={() =>
-                                  machineImport().removeMachineHalFilePath(
-                                    index(),
-                                  )
-                                }
-                                disabled={flow().isBusy}
-                                title={t("projectCreation.removeHalFileRow")}
-                                aria-label={t(
-                                  "projectCreation.removeHalFileRow",
-                                )}
-                              >
-                                <HiOutlineTrash size={15} aria-hidden="true" />
-                              </button>
-                            </div>
-                          </div>
+                        {(warning) => (
+                          <Alert class="border-warning/30 bg-warning/10 text-foreground">
+                            {warning}
+                          </Alert>
                         )}
                       </For>
-                    </div>
-                  </Show>
-                  <div class="machine-hal-file-list-footer">
-                    <button
-                      type="button"
-                      class="btn"
-                      onClick={machineImport().addBlankMachineHalFilePath}
-                      disabled={flow().isBusy}
-                    >
-                      <HiOutlinePlus size={16} aria-hidden="true" />
-                      {t("projectCreation.addHalFileRow")}
-                    </button>
-                  </div>
-                </section>
+                    </CardContent>
+                  </Card>
+                </Show>
 
-                <div class="new-project-dialog-footer">
-                  <button
-                    type="button"
-                    class="btn accent"
-                    onClick={() => void machineImport().continueToLinkStep()}
-                    disabled={flow().isBusy}
-                  >
-                    {t("projectCreation.continueToComponentLinking")}
-                  </button>
-                </div>
+                <Card class="border-white/8 bg-transparent shadow-none">
+                  <CardHeader>
+                    <CardTitle>
+                      {t("projectCreation.selectedHalFilesList")}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent class="grid gap-4">
+                    <Show
+                      when={flow().selectedMachineHalFiles.length > 0}
+                      fallback={
+                        <div class="text-sm text-muted-foreground">
+                          {t("projectCreation.noSelectedHalFiles")}
+                        </div>
+                      }
+                    >
+                      <div class="grid gap-3">
+                        <For each={flow().selectedMachineHalFiles}>
+                          {(halFile, index) => (
+                            <div class="grid gap-3 rounded-2xl bg-black/15 p-4">
+                              <Input
+                                type="text"
+                                class="mono"
+                                value={halFile.filePath}
+                                onInput={(evt) =>
+                                  machineImport().updateMachineHalFilePath(
+                                    index(),
+                                    evt.currentTarget.value,
+                                  )
+                                }
+                              />
+                              <div class="flex flex-wrap items-center justify-between gap-3">
+                                <Switch
+                                  checked={halFile.resolveIniSubstitutions}
+                                  disabled={flow().isBusy}
+                                  onChange={(checked) =>
+                                    machineImport().updateMachineHalFileResolveIni(
+                                      index(),
+                                      checked,
+                                    )
+                                  }
+                                  class="flex items-center gap-3"
+                                >
+                                  <SwitchLabel class="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                                    {t("projectCreation.resolveIniInHalFile")}
+                                  </SwitchLabel>
+                                  <SwitchControl>
+                                    <SwitchThumb />
+                                  </SwitchControl>
+                                </Switch>
+                                <div class="flex items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      void machineImport().pickMachineHalFileForRow(
+                                        index(),
+                                      )
+                                    }
+                                    disabled={flow().isBusy}
+                                    title={t("projectCreation.browseHalFile")}
+                                    aria-label={t(
+                                      "projectCreation.browseHalFile",
+                                    )}
+                                  >
+                                    <HiOutlineFolderOpen
+                                      size={15}
+                                      aria-hidden="true"
+                                    />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      machineImport().removeMachineHalFilePath(
+                                        index(),
+                                      )
+                                    }
+                                    disabled={flow().isBusy}
+                                    title={t(
+                                      "projectCreation.removeHalFileRow",
+                                    )}
+                                    aria-label={t(
+                                      "projectCreation.removeHalFileRow",
+                                    )}
+                                  >
+                                    <HiOutlineTrash
+                                      size={15}
+                                      aria-hidden="true"
+                                    />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </For>
+                      </div>
+                    </Show>
+                    <div class="flex justify-start">
+                      <Button
+                        type="button"
+                        onClick={machineImport().addBlankMachineHalFilePath}
+                        disabled={flow().isBusy}
+                      >
+                        <HiOutlinePlus size={16} aria-hidden="true" />
+                        {t("projectCreation.addHalFileRow")}
+                      </Button>
+                    </div>
+                    <div class="flex justify-end">
+                      <Button
+                        type="button"
+                        onClick={() =>
+                          void machineImport().continueToLinkStep()
+                        }
+                        disabled={flow().isBusy}
+                      >
+                        {t("projectCreation.continueToComponentLinking")}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </Show>
 
               <Show when={flow().step === "link" && flow().importDraft}>
                 {(draft) => (
                   <>
-                    <section class="panel">
-                      <div class="panel-title">
-                        {t("projectCreation.importSource")}
-                      </div>
-                      <div class="list compact">
-                        <div class="list-row">
-                          <span class="muted">{t("common.file")}</span>
-                          <span class="mono new-project-path">
-                            {flow().machineConfigImport?.machineConfig.ini
-                              .sourcePath ??
-                              draft().sourcePath ??
-                              t("common.unspecified")}
-                          </span>
+                    <Card class="border-white/8 bg-transparent shadow-none">
+                      <CardHeader>
+                        <CardTitle>
+                          {t("projectCreation.importSource")}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent class="grid gap-4">
+                        <div class="grid gap-3 rounded-2xl p-1 text-sm">
+                          <div class="flex items-start justify-between gap-3">
+                            <span class="text-muted-foreground">
+                              {t("common.file")}
+                            </span>
+                            <span class="mono max-w-[70%] truncate text-right">
+                              {flow().machineConfigImport?.machineConfig.ini
+                                .sourcePath ??
+                                draft().sourcePath ??
+                                t("common.unspecified")}
+                            </span>
+                          </div>
+                          <Show when={flow().machineConfigImport}>
+                            {(machineConfigImport) => (
+                              <div class="flex items-start justify-between gap-3">
+                                <span class="text-muted-foreground">
+                                  {t("projectCreation.halFiles")}
+                                </span>
+                                <span>
+                                  {
+                                    machineConfigImport().machineConfig.halSources.filter(
+                                      (source) => source.status === "loaded",
+                                    ).length
+                                  }
+                                </span>
+                              </div>
+                            )}
+                          </Show>
+                          <div class="flex items-start justify-between gap-3">
+                            <span class="text-muted-foreground">
+                              {t("projectCreation.components")}
+                            </span>
+                            <span>{draft().componentGroups.length}</span>
+                          </div>
+                          <div class="flex items-start justify-between gap-3">
+                            <span class="text-muted-foreground">
+                              {t("projectCreation.nets")}
+                            </span>
+                            <span>{draft().nets.length}</span>
+                          </div>
+                          <div class="flex items-start justify-between gap-3">
+                            <span class="text-muted-foreground">
+                              {t("projectCreation.setp")}
+                            </span>
+                            <span>{draft().setps.length}</span>
+                          </div>
+                          <div class="flex items-start justify-between gap-3">
+                            <span class="text-muted-foreground">
+                              {t("projectCreation.addf")}
+                            </span>
+                            <span>{draft().addfs.length}</span>
+                          </div>
                         </div>
-                        <Show when={flow().machineConfigImport}>
-                          {(machineImport) => (
-                            <div class="list-row">
-                              <span class="muted">
-                                {t("projectCreation.halFiles")}
-                              </span>
-                              <span>
-                                {
-                                  machineImport().machineConfig.halSources.filter(
-                                    (source) => source.status === "loaded",
-                                  ).length
-                                }
-                              </span>
-                            </div>
-                          )}
-                        </Show>
-                        <div class="list-row">
-                          <span class="muted">
-                            {t("projectCreation.components")}
-                          </span>
-                          <span>{draft().componentGroups.length}</span>
-                        </div>
-                        <div class="list-row">
-                          <span class="muted">{t("projectCreation.nets")}</span>
-                          <span>{draft().nets.length}</span>
-                        </div>
-                        <div class="list-row">
-                          <span class="muted">{t("projectCreation.setp")}</span>
-                          <span>{draft().setps.length}</span>
-                        </div>
-                        <div class="list-row">
-                          <span class="muted">{t("projectCreation.addf")}</span>
-                          <span>{draft().addfs.length}</span>
-                        </div>
-                        <div class="list-row">
-                          <span class="muted">
+                        <div class="grid gap-2">
+                          <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                             {t("projectCreation.placement")}
                           </span>
-                          <select
+                          <StringSelect
                             value={flow().placementHeuristic}
-                            onChange={(evt) =>
+                            options={placementOptions}
+                            disabled={flow().isBusy}
+                            onChange={(value) =>
                               machineImport().changeHalImportPlacementHeuristic(
-                                evt.currentTarget
-                                  .value as HalImportPlacementHeuristic,
+                                value as HalImportPlacementHeuristic,
                               )
                             }
-                            disabled={flow().isBusy}
-                            title={t("projectCreation.placementTitle")}
-                          >
-                            <option value="related-groups">
-                              {t("projectCreation.placementRelatedGroups")}
-                            </option>
-                            <option value="alphabetical">
-                              {t("projectCreation.placementAlphabetical")}
-                            </option>
-                          </select>
+                          />
+                          <div class="text-sm text-muted-foreground">
+                            {t("projectCreation.placementHelp")}
+                          </div>
                         </div>
-                      </div>
-                      <div class="muted">
-                        {t("projectCreation.placementHelp")}
-                      </div>
-                      <div class="new-project-choice-actions">
-                        <button
-                          type="button"
-                          class="mini"
-                          onClick={machineImport().backToMachineFilesStep}
-                          disabled={flow().isBusy}
-                        >
-                          {t("common.back")}
-                        </button>
-                      </div>
-                    </section>
+                        <div class="flex justify-start">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={machineImport().backToMachineFilesStep}
+                            disabled={flow().isBusy}
+                          >
+                            {t("common.back")}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                    <section class="panel">
-                      <div class="panel-title">
-                        {t("projectCreation.componentLinking")}
-                      </div>
-                      <div class="muted new-project-linking-help">
-                        {t("projectCreation.componentLinkingHelp")}
-                      </div>
-                      <div class="new-project-link-list">
-                        <For each={draft().componentGroups}>
-                          {(group) => (
-                            <div class="new-project-link-row">
-                              <div class="new-project-link-main">
-                                <div class="component-name mono">
-                                  {group.inferredHalComponentName}
-                                </div>
-                                <div class="component-sub">
-                                  {t("projectCreation.groupStats", {
-                                    instances: group.instances.length,
-                                    pins: group.pins.length,
-                                    params: group.params.length,
-                                    runtime: group.runtimeHint,
-                                  })}
-                                </div>
-                                <Show when={flow().linkReasons[group.id]}>
-                                  <div class="component-sub">
-                                    {t("projectCreation.autoReason", {
-                                      reason: flow().linkReasons[group.id],
+                    <Card class="border-white/8 bg-transparent shadow-none">
+                      <CardHeader>
+                        <CardTitle>
+                          {t("projectCreation.componentLinking")}
+                        </CardTitle>
+                        <CardDescription>
+                          {t("projectCreation.componentLinkingHelp")}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div class="grid gap-3">
+                          <For each={draft().componentGroups}>
+                            {(group) => (
+                              <div class="grid gap-4 rounded-2xl bg-black/15 p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                                <div class="min-w-0 space-y-2">
+                                  <div class="mono font-medium">
+                                    {group.inferredHalComponentName}
+                                  </div>
+                                  <div class="text-sm text-muted-foreground">
+                                    {t("projectCreation.groupStats", {
+                                      instances: group.instances.length,
+                                      pins: group.pins.length,
+                                      params: group.params.length,
+                                      runtime: group.runtimeHint,
                                     })}
                                   </div>
-                                </Show>
-                                <div class="component-sub mono">
-                                  {group.instances
-                                    .slice(0, 3)
-                                    .map((item) => item.instanceName)
-                                    .join(", ")}
-                                  {group.instances.length > 3 ? " ..." : ""}
+                                  <Show when={flow().linkReasons[group.id]}>
+                                    <div class="text-sm text-muted-foreground">
+                                      {t("projectCreation.autoReason", {
+                                        reason: flow().linkReasons[group.id],
+                                      })}
+                                    </div>
+                                  </Show>
+                                  <div class="mono text-xs text-muted-foreground">
+                                    {group.instances
+                                      .slice(0, 3)
+                                      .map((item) => item.instanceName)
+                                      .join(", ")}
+                                    {group.instances.length > 3 ? " ..." : ""}
+                                  </div>
                                 </div>
-                              </div>
-                              <div class="new-project-link-select">
-                                <label>
-                                  {t("projectCreation.linkTarget")}
-                                  <select
+                                <div class="grid gap-2">
+                                  <span class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                                    {t("projectCreation.linkTarget")}
+                                  </span>
+                                  <StringSelect
                                     value={
                                       flow().linkSelections[group.id] ?? "local"
                                     }
-                                    onChange={(evt) =>
+                                    options={[
+                                      {
+                                        value: "local",
+                                        label: t(
+                                          "projectCreation.projectLocalGenerated",
+                                        ),
+                                      },
+                                      ...optionListForGroup(
+                                        group.inferredHalComponentName,
+                                      ).map((entry) => ({
+                                        value: `store:${entry.componentId}`,
+                                        label: `${entry.parsed.halComponentName} (${entry.parsed.pins.length}p/${entry.parsed.params.length} prm)`,
+                                      })),
+                                    ]}
+                                    onChange={(value) =>
                                       machineImport().changeHalImportLinkSelection(
                                         group.id,
-                                        evt.currentTarget.value,
+                                        value,
                                       )
                                     }
+                                  />
+                                  <div
+                                    class="text-xs text-muted-foreground"
                                     title={selectionLabel(
                                       flow().linkSelections[group.id] ??
                                         "local",
                                     )}
                                   >
-                                    <option value="local">
-                                      {t(
-                                        "projectCreation.projectLocalGenerated",
-                                      )}
-                                    </option>
-                                    <For
-                                      each={optionListForGroup(
-                                        group.inferredHalComponentName,
-                                      )}
-                                    >
-                                      {(entry) => (
-                                        <option
-                                          value={`store:${entry.componentId}`}
-                                        >
-                                          {entry.parsed.halComponentName} (
-                                          {entry.parsed.pins.length}
-                                          p/{entry.parsed.params.length} prm)
-                                        </option>
-                                      )}
-                                    </For>
-                                  </select>
-                                </label>
+                                    {selectionLabel(
+                                      flow().linkSelections[group.id] ??
+                                        "local",
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </For>
-                        <Show when={draft().componentGroups.length === 0}>
-                          <div class="muted">
-                            {t("projectCreation.noComponentGroups")}
-                          </div>
-                        </Show>
-                      </div>
-                    </section>
-
-                    <Show when={draft().warnings.length > 0}>
-                      <section class="panel warn">
-                        <div class="panel-title">
-                          {t("projectCreation.parserWarnings")}
-                        </div>
-                        <div class="list compact">
-                          <For each={draft().warnings.slice(0, 20)}>
-                            {(warning) => (
-                              <div class="warning-item">{warning}</div>
                             )}
                           </For>
+                          <Show when={draft().componentGroups.length === 0}>
+                            <div class="text-sm text-muted-foreground">
+                              {t("projectCreation.noComponentGroups")}
+                            </div>
+                          </Show>
                         </div>
-                        <Show when={draft().warnings.length > 20}>
-                          <div class="muted">
-                            {t("projectCreation.parserWarningsTruncated", {
-                              count: draft().warnings.length,
-                            })}
-                          </div>
-                        </Show>
-                      </section>
+                      </CardContent>
+                    </Card>
+
+                    <Show when={draft().warnings.length > 0}>
+                      <Card class="border-warning/20 bg-transparent shadow-none">
+                        <CardHeader>
+                          <CardTitle>
+                            {t("projectCreation.parserWarnings")}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent class="grid gap-2">
+                          <For each={draft().warnings.slice(0, 20)}>
+                            {(warning) => (
+                              <Alert class="border-warning/30 bg-warning/10 text-foreground">
+                                {warning}
+                              </Alert>
+                            )}
+                          </For>
+                          <Show when={draft().warnings.length > 20}>
+                            <div class="text-sm text-muted-foreground">
+                              {t("projectCreation.parserWarningsTruncated", {
+                                count: draft().warnings.length,
+                              })}
+                            </div>
+                          </Show>
+                        </CardContent>
+                      </Card>
                     </Show>
 
-                    <div class="new-project-dialog-footer">
-                      <button
+                    <div class="flex justify-end">
+                      <Button
                         type="button"
-                        class="btn accent"
                         onClick={() =>
                           void machineImport().createImportedProject()
                         }
                         disabled={flow().isBusy}
                       >
                         {t("projectCreation.createImportedProject")}
-                      </button>
+                      </Button>
                     </div>
                   </>
                 )}

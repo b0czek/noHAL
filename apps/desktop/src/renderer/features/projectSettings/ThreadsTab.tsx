@@ -1,6 +1,9 @@
 import { isRequiredHalThreadName } from "@nohal/core/src/project";
 import { HiOutlineTrash } from "solid-icons/hi";
 import { For, Show } from "solid-js";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 
@@ -18,31 +21,30 @@ export default function ThreadsTab() {
     if (!Number.isFinite(ns) || ns <= 0) return;
     actions.updateHalThreadPeriodNs(threadId, ns);
   };
+  const fieldLabelClass =
+    "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
 
   return (
-    <>
-      <div class="threads-dialog-panel-header">
-        <div class="panel-title">{t("threadsDialog.threads")}</div>
-        <button
-          type="button"
-          class="btn"
-          onClick={() => actions.addHalThread()}
-        >
+    <div class="grid gap-5">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="grid gap-1">
+          <div class="text-lg font-semibold">{t("threadsDialog.threads")}</div>
+          <div class="text-sm text-muted-foreground">
+            {t("threadsDialog.help")}
+          </div>
+        </div>
+        <Button type="button" onClick={() => actions.addHalThread()}>
           {t("threadsDialog.addThread")}
-        </button>
+        </Button>
       </div>
 
-      <div class="muted">{t("threadsDialog.help")}</div>
-
-      <div class="threads-list">
+      <div class="grid gap-3">
         <For each={threads()}>
           {(thread, index) => (
-            <div class="threads-row">
-              <label class="threads-field">
-                <span class="threads-field-label">
-                  {t("threadsDialog.name")}
-                </span>
-                <input
+            <div class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20 lg:grid-cols-[minmax(180px,1fr)_minmax(140px,220px)_minmax(160px,220px)_140px] lg:items-end">
+              <div class="grid gap-2">
+                <span class={fieldLabelClass}>{t("threadsDialog.name")}</span>
+                <Input
                   type="text"
                   class="mono"
                   value={thread.name}
@@ -54,12 +56,12 @@ export default function ThreadsTab() {
                     )
                   }
                 />
-              </label>
-              <label class="threads-field">
-                <span class="threads-field-label">
+              </div>
+              <div class="grid gap-2">
+                <span class={fieldLabelClass}>
                   {t("threadsDialog.periodNsLabel")}
                 </span>
-                <input
+                <Input
                   type="number"
                   class="mono"
                   min="1"
@@ -69,45 +71,61 @@ export default function ThreadsTab() {
                     setThreadPeriodNs(thread.id, evt.currentTarget.value)
                   }
                 />
-              </label>
-              <label class="threads-field">
-                <span class="threads-field-label">
+              </div>
+              <div class="grid gap-2">
+                <span class={fieldLabelClass}>
                   {t("threadsDialog.floatMode")}
                 </span>
-                <div class="threads-toggle mono">
-                  <button
+                <div class="inline-flex min-h-9 w-fit items-center gap-2 justify-self-start rounded-xl bg-black/20 p-1">
+                  <Button
                     type="button"
-                    class={`mini ${!isServoThread(thread.name) && (thread.floatMode ?? "fp") === "nofp" ? "is-active-filter" : ""}`}
+                    size="sm"
+                    variant={
+                      !isServoThread(thread.name) &&
+                      (thread.floatMode ?? "fp") === "nofp"
+                        ? "default"
+                        : "ghost"
+                    }
                     disabled={isServoThread(thread.name)}
                     onClick={() =>
                       actions.updateHalThreadFloatMode(thread.id, "nofp")
                     }
                   >
                     {t("threadsDialog.floatNoFp")}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
-                    class={`mini ${isServoThread(thread.name) || (thread.floatMode ?? "fp") === "fp" ? "is-active-filter" : ""}`}
+                    size="sm"
+                    variant={
+                      isServoThread(thread.name) ||
+                      (thread.floatMode ?? "fp") === "fp"
+                        ? "default"
+                        : "ghost"
+                    }
                     onClick={() =>
                       actions.updateHalThreadFloatMode(thread.id, "fp")
                     }
                   >
                     {t("threadsDialog.floatFp")}
-                  </button>
+                  </Button>
                 </div>
-              </label>
-              <div class="threads-row-meta">
-                <Show when={isMotmodOwnedThread(thread.name)}>
-                  <span
-                    class="chip threads-origin-chip"
+              </div>
+              <div class="grid grid-cols-[58px_40px_auto] items-center justify-end gap-3 lg:justify-self-end">
+                <Show
+                  when={isMotmodOwnedThread(thread.name)}
+                  fallback={<span aria-hidden="true" class="h-6 w-[58px]" />}
+                >
+                  <Badge
+                    variant="secondary"
                     title={t("threadsDialog.loadedViaMotmod")}
                   >
                     motmod
-                  </span>
+                  </Badge>
                 </Show>
-                <button
+                <Button
                   type="button"
-                  class="btn subtle icon-btn"
+                  variant="ghost"
+                  size="icon"
                   disabled={
                     threads().length <= 1 ||
                     isRequiredHalThreadName(thread.name)
@@ -117,13 +135,13 @@ export default function ThreadsTab() {
                   aria-label={t("threadsDialog.removeThread")}
                 >
                   <HiOutlineTrash size={16} aria-hidden="true" />
-                </button>
-                <span class="muted threads-row-index">{index() + 1}</span>
+                </Button>
+                <span class="text-sm text-muted-foreground">{index() + 1}</span>
               </div>
             </div>
           )}
         </For>
       </div>
-    </>
+    </div>
   );
 }

@@ -1,6 +1,9 @@
 import { planMotmodReconcile } from "@nohal/core/src/motmod";
 import { createDefaultMotmodConfig } from "@nohal/core/src/project";
 import { Show } from "solid-js";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 
@@ -25,18 +28,26 @@ export default function MotmodTab() {
     if (!Number.isFinite(next)) return;
     actions.updateMotmodNumericConfig(key, next);
   };
+  const fieldLabelClass =
+    "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
 
   return (
-    <>
-      <div class="panel-title">{t("projectSettings.motmodTitle")}</div>
-      <div class="muted">{t("projectSettings.motmodHelp")}</div>
+    <div class="grid gap-6">
+      <div class="grid gap-1">
+        <div class="text-lg font-semibold">
+          {t("projectSettings.motmodTitle")}
+        </div>
+        <div class="text-sm text-muted-foreground">
+          {t("projectSettings.motmodHelp")}
+        </div>
+      </div>
 
-      <div class="project-settings-form-list">
-        <label>
-          <span class="threads-field-label">
+      <div class="grid gap-3 lg:grid-cols-2">
+        <div class="grid gap-2">
+          <span class={fieldLabelClass}>
             {t("projectSettings.motmod.numJoints")}
           </span>
-          <input
+          <Input
             type="number"
             min="1"
             step="1"
@@ -45,13 +56,13 @@ export default function MotmodTab() {
               setMotmodNumber("numJoints", evt.currentTarget.value)
             }
           />
-        </label>
+        </div>
 
-        <label>
-          <span class="threads-field-label">
+        <div class="grid gap-2">
+          <span class={fieldLabelClass}>
             {t("projectSettings.motmod.numDio")}
           </span>
-          <input
+          <Input
             type="number"
             min="0"
             step="1"
@@ -60,13 +71,13 @@ export default function MotmodTab() {
               setMotmodNumber("numDio", evt.currentTarget.value)
             }
           />
-        </label>
+        </div>
 
-        <label>
-          <span class="threads-field-label">
+        <div class="grid gap-2">
+          <span class={fieldLabelClass}>
             {t("projectSettings.motmod.numAio")}
           </span>
-          <input
+          <Input
             type="number"
             min="0"
             step="1"
@@ -75,13 +86,13 @@ export default function MotmodTab() {
               setMotmodNumber("numAio", evt.currentTarget.value)
             }
           />
-        </label>
+        </div>
 
-        <label>
-          <span class="threads-field-label">
+        <div class="grid gap-2">
+          <span class={fieldLabelClass}>
             {t("projectSettings.motmod.trajPeriodNs")}
           </span>
-          <input
+          <Input
             type="number"
             min="0"
             step="1"
@@ -91,13 +102,13 @@ export default function MotmodTab() {
               setMotmodNumber("trajPeriodNs", evt.currentTarget.value)
             }
           />
-        </label>
+        </div>
 
-        <label>
-          <span class="threads-field-label">
+        <div class="grid gap-2">
+          <span class={fieldLabelClass}>
             {t("projectSettings.motmod.numSpindles")}
           </span>
-          <input
+          <Input
             type="number"
             min="1"
             step="1"
@@ -106,13 +117,13 @@ export default function MotmodTab() {
               setMotmodNumber("numSpindles", evt.currentTarget.value)
             }
           />
-        </label>
+        </div>
 
-        <label>
-          <span class="threads-field-label">
+        <div class="grid gap-2">
+          <span class={fieldLabelClass}>
             {t("projectSettings.motmod.numMiscError")}
           </span>
-          <input
+          <Input
             type="number"
             min="0"
             step="1"
@@ -121,28 +132,32 @@ export default function MotmodTab() {
               setMotmodNumber("numMiscError", evt.currentTarget.value)
             }
           />
-        </label>
+        </div>
+      </div>
 
-        <div class="project-settings-note">
-          <div class="threads-field-label">
+      <div class="grid gap-3 lg:grid-cols-2">
+        <div class="grid gap-2 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+          <div class={fieldLabelClass}>
             {t("projectSettings.motmod.threadsDerived")}
           </div>
-          <div class="muted mono">
+          <div class="mono text-sm text-muted-foreground">
             {t("projectSettings.motmod.threadsDerivedHelp")}
           </div>
         </div>
 
-        <div class="project-settings-note">
-          <div class="threads-field-label">
+        <div class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+          <div class={fieldLabelClass}>
             {t("projectSettings.motmod.syncStatusLabel")}
           </div>
-          <div class={`mono ${reconcilePlan().inSync ? "muted" : ""}`}>
-            {reconcilePlan().inSync
-              ? t("projectSettings.motmod.syncStatusInSync")
-              : t("projectSettings.motmod.syncStatusOutOfSync")}
+          <div>
+            <Badge variant={reconcilePlan().inSync ? "secondary" : "warning"}>
+              {reconcilePlan().inSync
+                ? t("projectSettings.motmod.syncStatusInSync")
+                : t("projectSettings.motmod.syncStatusOutOfSync")}
+            </Badge>
           </div>
           <Show when={!reconcilePlan().inSync}>
-            <div class="muted mono">
+            <div class="mono text-sm text-muted-foreground">
               {t("projectSettings.motmod.syncSummary", {
                 add: reconcilePlan().addNodes.length,
                 remove: reconcilePlan().removeNodes.length,
@@ -152,18 +167,17 @@ export default function MotmodTab() {
               })}
             </div>
           </Show>
-          <div>
-            <button
+          <div class="flex justify-start">
+            <Button
               type="button"
-              class="btn"
               disabled={reconcilePlan().inSync}
               onClick={() => actions.syncMotmodManagedProjection()}
             >
               {t("projectSettings.motmod.syncNow")}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

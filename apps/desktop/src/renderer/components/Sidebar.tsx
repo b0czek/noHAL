@@ -1,9 +1,13 @@
 import type { SheetDefinition } from "@nohal/core/src/types";
-import { createEffect, createMemo, createSignal, For } from "solid-js";
+import { HiOutlineChevronDown, HiOutlineChevronRight } from "solid-icons/hi";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 import { useContextMenu } from "./ContextMenuProvider";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export default function Sidebar() {
   const { t } = useI18n();
@@ -19,15 +23,7 @@ export default function Sidebar() {
   const [collapsedSheetIds, setCollapsedSheetIds] = createSignal<Set<string>>(
     new Set(),
   );
-  const placedSheetIds = createMemo(() => {
-    const ids = new Set<string>();
-    for (const sheet of Object.values(state.project.sheets)) {
-      for (const node of sheet.nodes) {
-        if (node.kind === "sheet") ids.add(node.sheetId);
-      }
-    }
-    return ids;
-  });
+  const [isTreeCollapsed, setIsTreeCollapsed] = createSignal(false);
 
   const treeRoots = createMemo<SheetTreeNode[]>(() => {
     const allSheets = Object.values(state.project.sheets);
@@ -129,16 +125,17 @@ export default function Sidebar() {
     const hasChildren = () => branchProps.node.children.length > 0;
     const collapsed = () => isCollapsed(branchProps.node.sheet.id);
     const isActive = () => branchProps.node.sheet.id === state.activeSheetId;
-    const canPlace = () =>
-      !isActive() && !placedSheetIds().has(branchProps.node.sheet.id);
 
     return (
-      <li class="sheet-tree-node">
-        <div class={`sheet-tree-entry ${isActive() ? "is-active" : ""}`}>
+      <li class="min-w-0">
+        <div
+          class={`relative flex min-w-0 items-center gap-2 py-1 ${isActive() ? "text-foreground" : "text-muted-foreground"}`}
+        >
           {hasChildren() ? (
-            <button
-              type="button"
-              class="sheet-tree-toggle"
+            <Button
+              variant="ghost"
+              size="icon"
+              class="size-7 rounded-lg border border-white/8 bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground"
               aria-label={
                 collapsed()
                   ? t("sidebar.expandSheet", {
@@ -152,14 +149,14 @@ export default function Sidebar() {
               onClick={() => toggleCollapsed(branchProps.node.sheet.id)}
             >
               {collapsed() ? "+" : "-"}
-            </button>
+            </Button>
           ) : (
-            <span class="sheet-tree-toggle-spacer" aria-hidden="true" />
+            <span class="inline-block size-7 shrink-0" aria-hidden="true" />
           )}
 
           <button
             type="button"
-            class={`linkish sheet-tree-name ${isActive() ? "is-active" : ""}`}
+            class={`focus-ring min-w-0 flex-1 rounded-xl px-3 py-2 text-left transition hover:bg-white/5 ${isActive() ? "bg-accent/12 text-foreground" : ""}`}
             onClick={() => actions.setActiveSheet(branchProps.node.sheet.id)}
             onContextMenu={(evt) => {
               evt.preventDefault();
@@ -192,28 +189,16 @@ export default function Sidebar() {
             }}
             title={branchProps.node.sheet.name}
           >
-            {branchProps.node.sheet.name}
+            <span class="block truncate">{branchProps.node.sheet.name}</span>
           </button>
 
           {branchProps.node.isOrphan && (
-            <span class="sheet-tree-tag">{t("sidebar.orphan")}</span>
-          )}
-
-          {canPlace() && (
-            <button
-              type="button"
-              class="mini sheet-tree-place"
-              onClick={() =>
-                actions.placeExistingSheetNode(branchProps.node.sheet.id)
-              }
-            >
-              {t("common.place")}
-            </button>
+            <Badge variant="secondary">{t("sidebar.orphan")}</Badge>
           )}
         </div>
 
         {hasChildren() && !collapsed() && (
-          <ul class="sheet-tree-list">
+          <ul class="ml-2 border-l border-white/8 pl-2">
             <For each={branchProps.node.children}>
               {(child) => <TreeBranch node={child} />}
             </For>
@@ -224,15 +209,44 @@ export default function Sidebar() {
   };
 
   return (
-    <aside class="sidebar">
-      <section class="panel">
-        <div class="panel-title">{t("sidebar.sheets")}</div>
-        <div class="sheet-tree">
-          <ul class="sheet-tree-list is-root">
-            <For each={treeRoots()}>{(node) => <TreeBranch node={node} />}</For>
-          </ul>
-        </div>
-      </section>
+    <aside class="pointer-events-none absolute left-3 top-3 z-10 w-[min(20rem,calc(100%-24rem))] min-w-[16rem]">
+      <Card class="pointer-events-auto flex max-h-[min(42rem,calc(100vh-8rem))] flex-col overflow-hidden !border-white/12 ![background:linear-gradient(180deg,rgba(11,24,31,0.42),rgba(8,17,22,0.28))] backdrop-blur-2xl">
+        <CardHeader
+          class={`flex-row items-center justify-between gap-3 ${
+            isTreeCollapsed() ? "px-3 py-3" : "px-4 pb-2 pt-4"
+          }`}
+        >
+          <CardTitle>{t("sidebar.sheets")}</CardTitle>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            class="size-7 rounded-lg"
+            aria-label={
+              isTreeCollapsed()
+                ? t("sidebar.expandSheet", { name: t("sidebar.sheets") })
+                : t("sidebar.collapseSheet", { name: t("sidebar.sheets") })
+            }
+            aria-expanded={!isTreeCollapsed()}
+            onClick={() => setIsTreeCollapsed((value) => !value)}
+          >
+            {isTreeCollapsed() ? (
+              <HiOutlineChevronRight size={16} aria-hidden="true" />
+            ) : (
+              <HiOutlineChevronDown size={16} aria-hidden="true" />
+            )}
+          </Button>
+        </CardHeader>
+        <Show when={!isTreeCollapsed()}>
+          <CardContent class="min-h-0 flex-1 overflow-auto pt-0">
+            <ul class="grid gap-1">
+              <For each={treeRoots()}>
+                {(node) => <TreeBranch node={node} />}
+              </For>
+            </ul>
+          </CardContent>
+        </Show>
+      </Card>
     </aside>
   );
 }

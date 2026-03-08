@@ -5,6 +5,8 @@ import {
   HiOutlineTrash,
 } from "solid-icons/hi";
 import { createSignal, For, Show } from "solid-js";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 
@@ -28,36 +30,57 @@ export default function IniTab() {
 
   const confirmRemoveField = (sectionName: string, key: string) =>
     window.confirm(t("iniEditor.confirmRemoveField", { sectionName, key }));
-
   return (
-    <>
-      <div class="panel-title">{t("iniEditor.title")}</div>
-      <div class="muted">{t("iniEditor.subtitle")}</div>
+    <div class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-5">
+      <div class="grid gap-1">
+        <div class="text-lg font-semibold">{t("iniEditor.title")}</div>
+        <div class="text-sm text-muted-foreground">
+          {t("iniEditor.subtitle")}
+        </div>
+      </div>
 
       <Show
         when={machineConfig()}
         fallback={
-          <section class="ini-editor-sections-panel">
-            <div class="panel-title">{t("iniEditor.noConfigTitle")}</div>
-            <div class="muted">{t("iniEditor.noConfigHelp")}</div>
-            <button
+          <section class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+            <div class="text-base font-semibold">
+              {t("iniEditor.noConfigTitle")}
+            </div>
+            <div class="text-sm text-muted-foreground">
+              {t("iniEditor.noConfigHelp")}
+            </div>
+            <Button
               type="button"
-              class="btn"
+              class="w-fit"
               onClick={() => actions.ensureMachineConfig()}
             >
               {t("iniEditor.createEmptyConfig")}
-            </button>
+            </Button>
           </section>
         }
       >
         {(cfg) => (
-          <section class="ini-editor-sections-panel">
-            <div class="ini-editor-panel-header">
-              <div class="panel-title">{t("iniEditor.valuesTitle")}</div>
-              <div class="ini-editor-actions">
-                <button
+          <section class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div class="text-base font-semibold">
+                {t("iniEditor.valuesTitle")}
+              </div>
+              <div class="inline-flex flex-wrap items-center gap-2">
+                <Show when={isEditMode()}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => actions.addMachineIniSection()}
+                    title={t("iniEditor.addSection")}
+                    aria-label={t("iniEditor.addSection")}
+                  >
+                    <HiOutlinePlus size={16} aria-hidden="true" />
+                  </Button>
+                </Show>
+                <Button
                   type="button"
-                  class="btn subtle ini-editor-mode-btn"
+                  variant="secondary"
                   onClick={toggleEditMode}
                   title={
                     isEditMode()
@@ -81,41 +104,32 @@ export default function IniTab() {
                   {isEditMode()
                     ? t("iniEditor.exitEditMode")
                     : t("iniEditor.enterEditMode")}
-                </button>
-                <Show when={isEditMode()}>
-                  <button
-                    type="button"
-                    class="btn subtle icon-btn"
-                    onClick={() => actions.addMachineIniSection()}
-                    title={t("iniEditor.addSection")}
-                    aria-label={t("iniEditor.addSection")}
-                  >
-                    <HiOutlinePlus size={16} aria-hidden="true" />
-                  </button>
-                </Show>
+                </Button>
               </div>
             </div>
 
-            <div class="ini-editor-sections">
+            <div class="grid min-h-0 gap-3 overflow-auto pr-1">
               <Show when={cfg().ini.sections.length === 0}>
-                <div class="muted">{t("iniEditor.emptyDocument")}</div>
+                <div class="text-sm text-muted-foreground">
+                  {t("iniEditor.emptyDocument")}
+                </div>
               </Show>
 
               <For each={cfg().ini.sections}>
                 {(section, sectionIndex) => (
-                  <div class="ini-editor-section">
-                    <div class="ini-editor-section-header">
+                  <div class="grid gap-3 rounded-2xl px-1 py-2">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <Show
                         when={isEditMode()}
                         fallback={
-                          <div class="ini-editor-section-title mono">
+                          <div class="mono text-sm uppercase tracking-[0.16em] text-accent">
                             [{section.name}]
                           </div>
                         }
                       >
-                        <label class="ini-editor-section-title">
+                        <div class="flex min-w-0 items-center gap-2">
                           <span class="mono">[</span>
-                          <input
+                          <Input
                             type="text"
                             class="mono"
                             value={section.name}
@@ -127,14 +141,15 @@ export default function IniTab() {
                             }
                           />
                           <span class="mono">]</span>
-                        </label>
+                        </div>
                       </Show>
 
                       <Show when={isEditMode()}>
-                        <div class="ini-editor-actions">
-                          <button
+                        <div class="inline-flex items-center gap-2 self-end sm:self-auto">
+                          <Button
                             type="button"
-                            class="btn subtle icon-btn"
+                            variant="ghost"
+                            size="icon"
                             onClick={() =>
                               actions.addMachineIniField(sectionIndex())
                             }
@@ -142,10 +157,11 @@ export default function IniTab() {
                             aria-label={t("iniEditor.addField")}
                           >
                             <HiOutlinePlus size={16} aria-hidden="true" />
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
-                            class="btn subtle icon-btn"
+                            variant="ghost"
+                            size="icon"
                             onClick={() => {
                               if (
                                 !confirmRemoveSection(
@@ -161,31 +177,31 @@ export default function IniTab() {
                             aria-label={t("iniEditor.removeSection")}
                           >
                             <HiOutlineTrash size={16} aria-hidden="true" />
-                          </button>
+                          </Button>
                         </div>
                       </Show>
                     </div>
 
-                    <div class="ini-editor-rows">
+                    <div class="grid gap-2">
                       <For each={section.entries}>
                         {(entry, entryIndex) => (
                           <Show
                             when={isEditMode()}
                             fallback={
-                              <div class="ini-editor-row ini-editor-row-view">
-                                <span class="mono ini-editor-key">
+                              <div class="grid gap-2 rounded-xl bg-black/20 px-2 py-1.5 sm:grid-cols-[minmax(180px,280px)_minmax(0,1fr)] sm:items-center">
+                                <span class="mono text-xs text-muted-foreground">
                                   {entry.key}
                                 </span>
-                                <div class="ini-editor-value-static">
+                                <div class="min-w-0 break-all px-1 text-sm">
                                   {entry.value}
                                 </div>
                               </div>
                             }
                           >
-                            <div class="ini-editor-row">
-                              <input
+                            <div class="grid gap-2 rounded-xl bg-black/20 p-3 sm:grid-cols-[minmax(160px,240px)_minmax(0,1fr)_auto] sm:items-center">
+                              <Input
                                 type="text"
-                                class="mono ini-editor-key"
+                                class="mono"
                                 value={entry.key}
                                 onChange={(evt) =>
                                   actions.updateMachineIniKey(
@@ -195,7 +211,7 @@ export default function IniTab() {
                                   )
                                 }
                               />
-                              <input
+                              <Input
                                 type="text"
                                 value={entry.value}
                                 onChange={(evt) =>
@@ -206,9 +222,10 @@ export default function IniTab() {
                                   )
                                 }
                               />
-                              <button
+                              <Button
                                 type="button"
-                                class="btn subtle icon-btn"
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => {
                                   if (
                                     !confirmRemoveField(section.name, entry.key)
@@ -224,14 +241,16 @@ export default function IniTab() {
                                 aria-label={t("iniEditor.removeField")}
                               >
                                 <HiOutlineTrash size={16} aria-hidden="true" />
-                              </button>
+                              </Button>
                             </div>
                           </Show>
                         )}
                       </For>
 
                       <Show when={section.entries.length === 0}>
-                        <div class="muted">{t("iniEditor.emptySection")}</div>
+                        <div class="text-sm text-muted-foreground">
+                          {t("iniEditor.emptySection")}
+                        </div>
                       </Show>
                     </div>
                   </div>
@@ -241,6 +260,6 @@ export default function IniTab() {
           </section>
         )}
       </Show>
-    </>
+    </div>
   );
 }

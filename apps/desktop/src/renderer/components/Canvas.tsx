@@ -109,7 +109,7 @@ export default function Canvas() {
   });
 
   return (
-    <div class="canvas-shell" role="presentation">
+    <div class="canvas-shell absolute inset-0" role="presentation">
       <div class="canvas-grid" style={gridStyle()}>
         <div
           ref={(el) => {

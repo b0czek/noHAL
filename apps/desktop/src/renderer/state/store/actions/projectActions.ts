@@ -136,6 +136,10 @@ export function createProjectActions(deps: EditorStoreActionContext) {
   };
 
   return {
+    clearExportWarnings(): void {
+      deps.setState("exportWarnings", []);
+    },
+
     async newProject(linuxcncVersion?: LinuxCncVersion): Promise<boolean> {
       return runProjectTransition(
         deps,

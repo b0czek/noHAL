@@ -27,11 +27,9 @@ import {
   ensureInstanceName,
   findNode,
   isNodeEndpointInSet,
-  isSheetPlacedInProject,
   nextName,
   removeSheetNodeReferencesForDeletedSheets,
   selectionBoundsForNodesAndLabels,
-  sheetContainsSheet,
   syncProjectUi,
 } from "../helpers";
 import type { EditorStoreActionContext } from "./types";
@@ -476,38 +474,6 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         name: childName,
         ports: child.ports.length,
       });
-    },
-
-    placeExistingSheetNode(sheetIdToPlace: string): void {
-      const project = deps.state.project;
-      const activeSheetId = deps.state.activeSheetId;
-      if (sheetIdToPlace === activeSheetId) {
-        deps.setStatusT("store.status.cannotPlaceSheetInsideItself");
-        return;
-      }
-      if (isSheetPlacedInProject(project, sheetIdToPlace)) {
-        deps.setStatusT("store.status.sheetAlreadyPlaced");
-        return;
-      }
-      if (sheetContainsSheet(project, sheetIdToPlace, activeSheetId)) {
-        deps.setStatusT("store.status.cannotCreateRecursiveSheetHierarchy");
-        return;
-      }
-      const target = project.sheets[sheetIdToPlace];
-      if (!target) return;
-
-      deps.withProject((nextProject) => {
-        const sheet = getSheet(nextProject, activeSheetId);
-        const node: SheetNode = {
-          id: createId("node"),
-          kind: "sheet",
-          sheetId: sheetIdToPlace,
-          instanceName: ensureInstanceName(sheet, target.name),
-          position: defaultNodePosition(sheet),
-        };
-        sheet.nodes.push(node);
-      });
-      deps.setStatusT("store.status.placedSubsheet", { name: target.name });
     },
 
     deleteSheetDefinition(sheetId: string): void {

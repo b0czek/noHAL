@@ -1,24 +1,26 @@
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 
+import { Badge } from "./ui/badge";
+
 export default function StatusBar() {
   const { t } = useI18n();
   const { state } = useEditorStore();
   const currentProjectLabel = () => state.projectPath ?? t("common.unsaved");
 
   return (
-    <footer class="workspace-statusbar">
-      <div class="workspace-statusbar-item workspace-statusbar-item-status">
-        <span class="workspace-statusbar-label">{t("common.status")}</span>
-        <span>{state.status}</span>
+    <footer class="flex min-w-0 items-center justify-between gap-4 border-t border-white/8 bg-black/20 px-4 py-2 backdrop-blur">
+      <div class="flex min-w-0 items-center gap-3 text-sm">
+        <Badge variant="secondary">{t("common.status")}</Badge>
+        <span class="truncate text-muted-foreground">{state.status}</span>
       </div>
-      <div class="workspace-statusbar-item workspace-statusbar-item-file">
-        <span class="workspace-statusbar-label">
+      <div class="flex min-w-0 max-w-[60%] items-center gap-3 text-sm">
+        <Badge variant={state.isDirty ? "warning" : "secondary"}>
           {t("common.project")}
           {state.isDirty ? "*" : ""}
-        </span>
+        </Badge>
         <span
-          class="mono workspace-statusbar-value"
+          class="mono truncate text-muted-foreground"
           title={currentProjectLabel()}
         >
           {currentProjectLabel()}
