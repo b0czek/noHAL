@@ -1,4 +1,4 @@
-import { getNodePins, getNodeTitle, getSheet } from "@nohal/core/src/graph";
+import { getNodeTitle, getSheet } from "@nohal/core/src/graph";
 import type {
   ComponentStore,
   HalValueType,
@@ -12,7 +12,6 @@ import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 import StringSelect, { type StringSelectOption } from "./form/StringSelect";
 import { Alert } from "./ui/alert";
-import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -337,7 +336,6 @@ function NodeInspector(props: {
   onRefreshComponentInStore: (componentId: string) => void;
 }) {
   const { t } = useI18n();
-  const pins = () => getNodePins(props.project, props.node);
   const component = () =>
     props.node.kind === "component"
       ? props.project.library.components[props.node.componentId]
@@ -350,14 +348,6 @@ function NodeInspector(props: {
       return entry.sourceRef.kind !== "linuxcnc-builtin";
     })();
   const componentParamCount = () => component()?.params.length ?? 0;
-  const pinSetpValue = (pinKey: string) => {
-    if (props.node.kind !== "component") return undefined;
-    const raw = props.node.pinInitialValues?.[pinKey];
-    if (typeof raw !== "string") return undefined;
-    const value = raw.trim();
-    return value.length > 0 ? value : undefined;
-  };
-
   return (
     <div class="grid gap-4">
       <div class="mono rounded-xl border border-white/8 bg-white/5 px-3 py-2 text-sm">
@@ -404,38 +394,6 @@ function NodeInspector(props: {
           {t("inspector.enterSubsheet")}
         </Button>
       </Show>
-      <div class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-        {t("inspector.pins")}
-      </div>
-      <div class="grid gap-2">
-        <For each={pins()}>
-          {(pin) => {
-            const setpValue = pinSetpValue(pin.key);
-            return (
-              <div class="flex items-center gap-2 rounded-xl border border-white/8 bg-white/5 px-3 py-2">
-                <Badge variant="secondary">{pin.direction}</Badge>
-                <span class="mono min-w-0 flex-1 truncate text-sm">
-                  {pin.name}
-                </span>
-                <div class="ml-auto flex min-w-0 items-center gap-2">
-                  <Show when={setpValue}>
-                    {(value) => (
-                      <Badge
-                        variant="outline"
-                        class="mono normal-case tracking-normal"
-                        title={`setp ${props.node.instanceName}.${pin.name} ${value()}`}
-                      >
-                        setp {value()}
-                      </Badge>
-                    )}
-                  </Show>
-                  <Badge variant="secondary">{pin.type}</Badge>
-                </div>
-              </div>
-            );
-          }}
-        </For>
-      </div>
       <Show when={props.node.kind === "component" && component()}>
         <CardDescription>
           {componentParamCount() > 0
