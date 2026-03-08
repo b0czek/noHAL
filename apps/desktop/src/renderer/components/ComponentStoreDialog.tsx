@@ -83,8 +83,8 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div class="grid min-h-0 items-start gap-4 lg:grid-cols-2">
-          <section class="grid min-h-0 gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+        <div class="grid h-full min-h-0 gap-4 lg:grid-cols-2">
+          <section class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="grid gap-1">
                 <div class="text-sm font-semibold tracking-tight">
@@ -112,7 +112,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
               </div>
             </div>
 
-            <div class="grid min-h-0 flex-1 gap-2 overflow-auto pr-1">
+            <div class="grid min-h-0 auto-rows-max content-start gap-2 overflow-y-auto pr-1">
               <For each={componentSources()}>
                 {(source) => {
                   const sourceComponentCount = () =>
@@ -197,7 +197,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
             </div>
           </section>
 
-          <section class="grid min-h-0 gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+          <section class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 overflow-hidden rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
             <div class="grid gap-3">
               <div class="grid gap-1">
                 <div class="text-sm font-semibold tracking-tight">
@@ -216,7 +216,7 @@ export default function ComponentStoreDialog(props: ComponentStoreDialogProps) {
               />
             </div>
 
-            <div class="grid min-h-0 flex-1 gap-2 overflow-auto pr-1">
+            <div class="grid min-h-0 auto-rows-max content-start gap-2 overflow-y-auto pr-1">
               <For each={filteredEntries()}>
                 {(entry) => (
                   <div

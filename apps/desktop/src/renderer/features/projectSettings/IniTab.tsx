@@ -31,7 +31,7 @@ export default function IniTab() {
   const confirmRemoveField = (sectionName: string, key: string) =>
     window.confirm(t("iniEditor.confirmRemoveField", { sectionName, key }));
   return (
-    <div class="grid gap-5">
+    <div class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-5">
       <div class="grid gap-1">
         <div class="text-lg font-semibold">{t("iniEditor.title")}</div>
         <div class="text-sm text-muted-foreground">
@@ -60,7 +60,7 @@ export default function IniTab() {
         }
       >
         {(cfg) => (
-          <section class="grid min-h-0 gap-4">
+          <section class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div class="text-base font-semibold">
                 {t("iniEditor.valuesTitle")}
@@ -108,7 +108,7 @@ export default function IniTab() {
               </div>
             </div>
 
-            <div class="grid max-h-[60vh] gap-3 overflow-auto pr-1">
+            <div class="grid min-h-0 gap-3 overflow-auto pr-1">
               <Show when={cfg().ini.sections.length === 0}>
                 <div class="text-sm text-muted-foreground">
                   {t("iniEditor.emptyDocument")}
@@ -192,7 +192,7 @@ export default function IniTab() {
                                 <span class="mono text-xs text-muted-foreground">
                                   {entry.key}
                                 </span>
-                                <div class="min-w-0 rounded-xl bg-background/40 px-3 py-2 text-sm">
+                                <div class="min-w-0 break-all px-1 text-sm">
                                   {entry.value}
                                 </div>
                               </div>

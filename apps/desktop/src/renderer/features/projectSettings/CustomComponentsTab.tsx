@@ -97,7 +97,7 @@ export default function CustomComponentsTab() {
   ];
 
   return (
-    <div class="grid h-full min-h-0 gap-4">
+    <div class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-4">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0">
           <Show
@@ -154,11 +154,11 @@ export default function CustomComponentsTab() {
         </Show>
       </div>
 
-      <div class="min-h-0 overflow-hidden">
+      <div class="h-full min-h-0 overflow-hidden">
         <Show
           when={selectedComponent()}
           fallback={
-            <section class="grid h-full min-h-0 gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
+            <section class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20">
               <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 {t("customComponents.catalogTitle")}
               </div>
@@ -170,7 +170,7 @@ export default function CustomComponentsTab() {
                   </div>
                 }
               >
-                <div class="grid min-h-0 gap-2 overflow-auto pr-1">
+                <div class="grid min-h-0 auto-rows-max content-start gap-2 overflow-auto pr-1">
                   <For each={customComponents()}>
                     {(component) => (
                       <button
@@ -198,9 +198,9 @@ export default function CustomComponentsTab() {
           }
         >
           {(component) => (
-            <section class="grid h-full min-h-0 gap-4 overflow-auto pr-1">
-              <div class="flex flex-col gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-                <div class="flex items-start justify-between gap-3">
+            <section class="grid h-full min-h-0 auto-rows-max content-start gap-4 overflow-auto pr-1">
+              <div class="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
+                <div class="flex items-start justify-between gap-3 lg:col-span-2">
                   <div class="grid gap-1">
                     <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                       {t("customComponents.editorTitle")}
@@ -233,41 +233,39 @@ export default function CustomComponentsTab() {
                   </Button>
                 </div>
 
-                <div class="grid gap-3 lg:grid-cols-2">
-                  <div class="grid gap-2">
-                    <span class={fieldLabelClass}>
-                      {t("customComponents.componentName")}
-                    </span>
-                    <Input
-                      type="text"
-                      class="mono"
-                      value={component().halComponentName}
-                      onChange={(evt) =>
-                        actions.updateCustomComponentHalComponentName(
-                          component().id,
-                          evt.currentTarget.value,
-                        )
-                      }
-                    />
-                  </div>
-                  <div class="grid gap-2">
-                    <span class={fieldLabelClass}>
-                      {t("customComponents.runtime")}
-                    </span>
-                    <StringSelect
-                      value={component().runtime?.kind ?? "unknown"}
-                      options={runtimeOptions}
-                      onChange={(value) =>
-                        actions.updateCustomComponentRuntimeKind(
-                          component().id,
-                          value as "rt" | "userspace" | "unknown",
-                        )
-                      }
-                    />
-                  </div>
+                <div class="grid gap-2">
+                  <span class={fieldLabelClass}>
+                    {t("customComponents.componentName")}
+                  </span>
+                  <Input
+                    type="text"
+                    class="mono"
+                    value={component().halComponentName}
+                    onChange={(evt) =>
+                      actions.updateCustomComponentHalComponentName(
+                        component().id,
+                        evt.currentTarget.value,
+                      )
+                    }
+                  />
+                </div>
+                <div class="grid gap-2">
+                  <span class={fieldLabelClass}>
+                    {t("customComponents.runtime")}
+                  </span>
+                  <StringSelect
+                    value={component().runtime?.kind ?? "unknown"}
+                    options={runtimeOptions}
+                    onChange={(value) =>
+                      actions.updateCustomComponentRuntimeKind(
+                        component().id,
+                        value as "rt" | "userspace" | "unknown",
+                      )
+                    }
+                  />
                 </div>
 
-                <div class="grid gap-2">
+                <div class="grid gap-2 lg:col-span-2">
                   <span class={fieldLabelClass}>
                     {t("customComponents.loadString")}
                   </span>
@@ -323,7 +321,7 @@ export default function CustomComponentsTab() {
                       {(pin) => (
                         <div class="grid gap-3 rounded-xl bg-black/20 p-3 lg:grid-cols-[minmax(0,1fr)_140px_140px_auto] lg:items-center">
                           <div class="grid gap-2">
-                            <span class={fieldLabelClass}>
+                            <span class={`${fieldLabelClass} lg:hidden`}>
                               {t("common.name")}
                             </span>
                             <Input
@@ -340,7 +338,7 @@ export default function CustomComponentsTab() {
                             />
                           </div>
                           <div class="grid gap-2">
-                            <span class={fieldLabelClass}>
+                            <span class={`${fieldLabelClass} lg:hidden`}>
                               {t("common.direction")}
                             </span>
                             <StringSelect
@@ -356,7 +354,7 @@ export default function CustomComponentsTab() {
                             />
                           </div>
                           <div class="grid gap-2">
-                            <span class={fieldLabelClass}>
+                            <span class={`${fieldLabelClass} lg:hidden`}>
                               {t("common.type")}
                             </span>
                             <StringSelect
@@ -421,12 +419,19 @@ export default function CustomComponentsTab() {
                     </div>
                   }
                 >
+                  <div class="hidden grid-cols-[minmax(0,1fr)_140px_180px_minmax(0,1fr)_auto] gap-3 px-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground xl:grid">
+                    <span>{t("common.name")}</span>
+                    <span>{t("common.type")}</span>
+                    <span>{t("customComponents.paramDirection")}</span>
+                    <span>{t("customComponents.paramDefaultValue")}</span>
+                    <span />
+                  </div>
                   <div class="grid gap-3">
                     <For each={component().params}>
                       {(param) => (
                         <div class="grid gap-3 rounded-xl bg-black/20 p-3 xl:grid-cols-[minmax(0,1fr)_140px_180px_minmax(0,1fr)_auto] xl:items-end">
                           <div class="grid gap-2">
-                            <span class={fieldLabelClass}>
+                            <span class={`${fieldLabelClass} xl:hidden`}>
                               {t("common.name")}
                             </span>
                             <Input
@@ -443,7 +448,7 @@ export default function CustomComponentsTab() {
                             />
                           </div>
                           <div class="grid gap-2">
-                            <span class={fieldLabelClass}>
+                            <span class={`${fieldLabelClass} xl:hidden`}>
                               {t("common.type")}
                             </span>
                             <StringSelect
@@ -459,7 +464,7 @@ export default function CustomComponentsTab() {
                             />
                           </div>
                           <div class="grid gap-2">
-                            <span class={fieldLabelClass}>
+                            <span class={`${fieldLabelClass} xl:hidden`}>
                               {t("customComponents.paramDirection")}
                             </span>
                             <StringSelect
@@ -475,7 +480,7 @@ export default function CustomComponentsTab() {
                             />
                           </div>
                           <div class="grid gap-2">
-                            <span class={fieldLabelClass}>
+                            <span class={`${fieldLabelClass} xl:hidden`}>
                               {t("customComponents.paramDefaultValue")}
                             </span>
                             <Input
