@@ -64,6 +64,7 @@ export default function EditorOverlayHost() {
         {(current) => (
           <GeneralSettingsDialog
             initialTab={current().initialTab}
+            context="project"
             onClose={editorUi.closeActiveOverlay}
           />
         )}

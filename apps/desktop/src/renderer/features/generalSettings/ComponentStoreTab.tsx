@@ -1,27 +1,36 @@
+import { listStoreEntriesForLinuxCncVersion } from "@nohal/core/src/componentStore";
 import {
-  listStoreEntriesForLinuxCncVersion,
-  listStoreSourcesForLinuxCncVersion,
-} from "@nohal/core/src/componentStore";
-import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
+  type LinuxCncVersion,
+  SUPPORTED_LINUXCNC_VERSIONS,
+} from "@nohal/core/src/linuxcncVersion";
 import type { ComponentStore } from "@nohal/core/src/types";
 import { createMemo, createSignal, For, Show } from "solid-js";
+import StringSelect from "../../components/form/StringSelect";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
+import type { GeneralSettingsContext } from "./types";
 
 interface ComponentStoreTabProps {
-  linuxcncVersion?: LinuxCncVersion;
+  context?: GeneralSettingsContext;
 }
 
 export default function ComponentStoreTab(props: ComponentStoreTabProps) {
   const { t, formatDateTime } = useI18n();
   const { state, actions } = useEditorStore();
   const [query, setQuery] = createSignal("");
+  const [selectedLinuxCncVersion, setSelectedLinuxCncVersion] =
+    createSignal<LinuxCncVersion>(
+      SUPPORTED_LINUXCNC_VERSIONS[SUPPORTED_LINUXCNC_VERSIONS.length - 1],
+    );
 
+  const isProjectContext = () => props.context !== "standalone";
   const activeLinuxCncVersion = () =>
-    props.linuxcncVersion ?? state.project.target.linuxcncVersion;
+    isProjectContext()
+      ? state.project.target.linuxcncVersion
+      : selectedLinuxCncVersion();
 
   const versionScopedEntries = createMemo(() =>
     listStoreEntriesForLinuxCncVersion(
@@ -50,14 +59,13 @@ export default function ComponentStoreTab(props: ComponentStoreTabProps) {
   };
 
   const componentSources = createMemo(() =>
-    listStoreSourcesForLinuxCncVersion(
-      state.componentStore,
-      activeLinuxCncVersion(),
-    ).sort((a, b) => {
-      const aPath = sourcePathForSort(a);
-      const bPath = sourcePathForSort(b);
-      return aPath.localeCompare(bPath);
-    }),
+    Object.values(state.componentStore.sources)
+      .filter((source) => source.kind !== "linuxcnc-builtin")
+      .sort((a, b) => {
+        const aPath = sourcePathForSort(a);
+        const bPath = sourcePathForSort(b);
+        return aPath.localeCompare(bPath);
+      }),
   );
 
   return (
@@ -111,11 +119,7 @@ export default function ComponentStoreTab(props: ComponentStoreTabProps) {
                     (entry) => entry.sourceRef.sourceId === source.id,
                   ).length;
                 const sourcePath = () =>
-                  source.kind === "comp-dir"
-                    ? source.dirPath
-                    : source.kind === "comp-file"
-                      ? source.filePath
-                      : `LinuxCNC ${source.linuxcncVersion} built-ins (${source.refName})`;
+                  source.kind === "comp-dir" ? source.dirPath : source.filePath;
 
                 return (
                   <div
@@ -159,7 +163,6 @@ export default function ComponentStoreTab(props: ComponentStoreTabProps) {
                         onClick={() =>
                           void actions.refreshComponentSource(source.id)
                         }
-                        disabled={source.kind === "linuxcnc-builtin"}
                       >
                         {t("componentStore.refresh")}
                       </Button>
@@ -170,7 +173,6 @@ export default function ComponentStoreTab(props: ComponentStoreTabProps) {
                         onClick={() =>
                           void actions.deleteComponentSource(source.id)
                         }
-                        disabled={source.kind === "linuxcnc-builtin"}
                       >
                         {t("componentStore.deleteSource")}
                       </Button>
@@ -194,9 +196,38 @@ export default function ComponentStoreTab(props: ComponentStoreTabProps) {
               <div class="text-sm font-semibold tracking-tight">
                 {t("componentStore.storedComponents")}
               </div>
-              <div class="text-xs text-muted-foreground">
-                {filteredEntries().length} component
-                {filteredEntries().length === 1 ? "" : "s"}
+              <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>
+                  {filteredEntries().length} component
+                  {filteredEntries().length === 1 ? "" : "s"}
+                </span>
+                <Show
+                  when={isProjectContext()}
+                  fallback={
+                    <>
+                      <span aria-hidden="true">•</span>
+                      <span>{t("componentStore.browseVersion")}</span>
+                      <StringSelect
+                        value={activeLinuxCncVersion()}
+                        class="min-w-[8.5rem]"
+                        options={SUPPORTED_LINUXCNC_VERSIONS.map((version) => ({
+                          value: version,
+                          label: `LinuxCNC ${version}`,
+                        }))}
+                        onChange={(value) =>
+                          setSelectedLinuxCncVersion(value as LinuxCncVersion)
+                        }
+                      />
+                    </>
+                  }
+                >
+                  <span aria-hidden="true">•</span>
+                  <span>
+                    {t("componentStore.projectVersion", {
+                      version: `LinuxCNC ${activeLinuxCncVersion()}`,
+                    })}
+                  </span>
+                </Show>
               </div>
             </div>
             <Input

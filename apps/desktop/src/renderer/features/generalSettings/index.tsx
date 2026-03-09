@@ -1,15 +1,14 @@
-import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
 import { createSignal } from "solid-js";
 import type { OverlayDialogProps } from "../../app/types";
 import SettingsDialogShell from "../../components/settings/SettingsDialogShell";
 import { useI18n } from "../../i18n";
 import ComponentStoreTab from "./ComponentStoreTab";
 import InterfaceTab from "./InterfaceTab";
-import type { GeneralSettingsTab } from "./types";
+import type { GeneralSettingsContext, GeneralSettingsTab } from "./types";
 
 interface GeneralSettingsDialogProps extends OverlayDialogProps {
   initialTab?: GeneralSettingsTab;
-  linuxcncVersion?: LinuxCncVersion;
+  context?: GeneralSettingsContext;
 }
 
 export default function GeneralSettingsDialog(
@@ -36,9 +35,7 @@ export default function GeneralSettingsDialog(
         {
           value: "component-store",
           label: t("generalSettings.tabComponentStore"),
-          content: (
-            <ComponentStoreTab linuxcncVersion={props.linuxcncVersion} />
-          ),
+          content: <ComponentStoreTab context={props.context} />,
         },
       ]}
     />

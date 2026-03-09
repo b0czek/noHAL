@@ -202,7 +202,7 @@ export default function LandingPage(props: LandingPageProps) {
 
       <Show when={isGeneralSettingsOpen()}>
         <GeneralSettingsDialog
-          linuxcncVersion={props.selectedLinuxCncVersion}
+          context="standalone"
           onClose={() => setIsGeneralSettingsOpen(false)}
         />
       </Show>
