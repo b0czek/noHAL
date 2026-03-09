@@ -40,9 +40,6 @@ export const NODE_FILL = "rgba(10, 20, 25, 0.96)";
 export const SYSTEM_NODE_FILL = "rgba(11, 24, 28, 0.98)";
 export const SHEET_NODE_FILL = "rgba(17, 14, 9, 0.96)";
 export const SHEET_NODE_BORDER = "rgba(242, 185, 75, 0.18)";
-export const HEADER_FILL = "rgba(255, 255, 255, 0.03)";
-export const SYSTEM_NODE_HEADER_FILL = "rgba(122, 230, 208, 0.08)";
-export const HEADER_DIVIDER = "rgba(255, 255, 255, 0.05)";
 export const SYSTEM_NODE_BORDER = "rgba(122, 230, 208, 0.22)";
 
 // Shared UI dimensions

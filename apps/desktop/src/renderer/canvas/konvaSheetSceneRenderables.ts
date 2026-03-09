@@ -16,8 +16,6 @@ import {
   CORNER_RADIUS_MD,
   FONT_MONO,
   FONT_SANS,
-  HEADER_DIVIDER,
-  HEADER_FILL,
   HEADER_H,
   NEUTRAL_BORDER,
   NODE_FILL,
@@ -39,7 +37,6 @@ import {
   SIDE_ROW_H,
   SYSTEM_NODE_BORDER,
   SYSTEM_NODE_FILL,
-  SYSTEM_NODE_HEADER_FILL,
   TEXT_MUTED,
   TEXT_PRIMARY,
   TEXT_SOFT,
@@ -167,13 +164,11 @@ function componentNodeTint(
 ): {
   bodyFill: string;
   idleBorder: string;
-  headerFill: string;
 } {
   if (node.kind === "sheet") {
     return {
       bodyFill: SHEET_NODE_FILL,
       idleBorder: SHEET_NODE_BORDER,
-      headerFill: HEADER_FILL,
     };
   }
 
@@ -182,14 +177,12 @@ function componentNodeTint(
     return {
       bodyFill: SYSTEM_NODE_FILL,
       idleBorder: SYSTEM_NODE_BORDER,
-      headerFill: SYSTEM_NODE_HEADER_FILL,
     };
   }
 
   return {
     bodyFill: NODE_FILL,
     idleBorder: NEUTRAL_BORDER,
-    headerFill: HEADER_FILL,
   };
 }
 
@@ -358,23 +351,6 @@ export function renderNodes(args: RenderNodesArgs): void {
         fill: tint.bodyFill,
         stroke: selected ? PENDING_BORDER : tint.idleBorder,
         strokeWidth: selected ? 2 : 1,
-      }),
-    );
-
-    const header = new Konva.Rect({
-      x: 0,
-      y: 0,
-      width: layout.width,
-      height: HEADER_H,
-      cornerRadius: [14, 14, 0, 0],
-      fill: tint.headerFill,
-    });
-    nodeGroup.add(header);
-    nodeGroup.add(
-      new Konva.Line({
-        points: [0, HEADER_H, layout.width, HEADER_H],
-        stroke: HEADER_DIVIDER,
-        strokeWidth: BASE_STROKE_WIDTH,
       }),
     );
     nodeGroup.add(
