@@ -1,4 +1,5 @@
 import type { ComponentStore } from "./componentStore";
+import type { ComponentDefinition } from "./components";
 import type { NoHALProject, ProjectMotmodConfig } from "./project";
 
 export interface HalImportObservedPin {
@@ -89,6 +90,7 @@ export interface HalImportBuildOptions {
   draft: HalImportDraft;
   componentStore: ComponentStore;
   linkSelections: Record<string, HalImportLinkSelection>;
+  projectLocalComponentOverrides?: Record<string, ComponentDefinition>;
   linuxcncVersion?: NoHALProject["target"]["linuxcncVersion"];
   projectName?: string;
   placementHeuristic?: HalImportPlacementHeuristic;

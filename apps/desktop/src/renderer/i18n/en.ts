@@ -275,10 +275,14 @@ export const en = {
   "projectCreation.componentLinking": "Component Linking",
   "projectCreation.componentLinkingHelp":
     "Review automatic matches. Any group left as project-local will become a component that belongs only to this project.",
+  "projectCreation.generatedComponents": "Generated Components",
+  "projectCreation.generatedComponentsHelp":
+    "Edit project-local component definitions before creating the imported project.",
   "projectCreation.groupStats":
     "{instances} instances • {pins} pins • {params} params • runtime {runtime}",
   "projectCreation.autoReason": "Auto: {reason}",
   "projectCreation.linkTarget": "Link Target",
+  "projectCreation.editGeneratedComponent": "Edit generated component",
   "projectCreation.noComponentGroups": "No component groups were detected.",
   "projectCreation.parserWarnings": "Parser Warnings",
   "projectCreation.parserWarningsTruncated":

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyComponentStore } from "../componentStore";
 import { getNodePins } from "../graph";
+import type { ComponentDefinition } from "../types";
 import { buildProjectFromHalImport } from "./build";
 
 describe("buildProjectFromHalImport", () => {
@@ -197,5 +198,99 @@ describe("buildProjectFromHalImport", () => {
     expect(
       result.project.library.components["halimport:iocontrol"],
     ).toBeUndefined();
+  });
+
+  it("uses edited project-local component overrides when provided", () => {
+    const editedComponent: ComponentDefinition = {
+      id: "halimport:custom_logic",
+      name: "custom_logic_edited",
+      halComponentName: "custom_logic_edited",
+      source: "manual",
+      runtime: { kind: "userspace" },
+      loadCommand: "loadusr custom_logic_edited",
+      pins: [
+        {
+          key: "in_a",
+          name: "in-a",
+          direction: "in",
+          type: "float",
+        },
+        {
+          key: "out_b",
+          name: "out-b",
+          direction: "out",
+          type: "float",
+        },
+      ],
+      params: [
+        {
+          key: "gain",
+          name: "gain",
+          direction: "rw",
+          type: "float",
+          defaultValue: "2.5",
+        },
+      ],
+    };
+
+    const result = buildProjectFromHalImport({
+      draft: {
+        parser: "nohal-hal-v1",
+        lineCount: 0,
+        componentGroups: [
+          {
+            id: "group_custom_logic",
+            inferredHalComponentName: "custom_logic",
+            runtimeHint: "rt",
+            loadCommand: "loadrt custom_logic",
+            instances: [
+              {
+                instanceName: "custom_logic.0",
+                componentGroupId: "group_custom_logic",
+                pinNames: ["in-a", "out-b"],
+                paramValues: {},
+              },
+            ],
+            pins: [
+              {
+                name: "in-a",
+                observedDirections: ["in"],
+              },
+              {
+                name: "out-b",
+                observedDirections: ["out"],
+              },
+            ],
+            params: [],
+          },
+        ],
+        nets: [],
+        setps: [],
+        addfs: [],
+        warnings: [],
+      },
+      componentStore: createEmptyComponentStore(),
+      linkSelections: {},
+      projectLocalComponentOverrides: {
+        group_custom_logic: editedComponent,
+      },
+      linuxcncVersion: "2.10",
+    });
+
+    const component =
+      result.project.library.components["halimport:custom_logic"];
+    expect(component?.halComponentName).toBe("custom_logic_edited");
+    expect(component?.runtime?.kind).toBe("userspace");
+    expect(component?.loadCommand).toBe("loadusr custom_logic_edited");
+    expect(component?.params[0]?.defaultValue).toBe("2.5");
+
+    const root = result.project.sheets[result.project.rootSheetId];
+    const node = root.nodes.find(
+      (entry) =>
+        entry.kind === "component" && entry.instanceName === "custom_logic.0",
+    );
+    expect(node).toBeDefined();
+    if (!node || node.kind !== "component") return;
+    expect(node.componentId).toBe("halimport:custom_logic");
   });
 });
