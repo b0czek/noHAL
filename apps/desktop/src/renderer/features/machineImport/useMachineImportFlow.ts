@@ -276,7 +276,7 @@ export function useMachineImportFlow({
     setMachineImportFlow(
       "generatedLocalComponents",
       groupId,
-      transform(structuredClone(component)),
+      transform(structuredClone(unwrap(component))),
     );
   };
 
@@ -428,7 +428,9 @@ export function useMachineImportFlow({
           const component =
             machineImportFlow.generatedLocalComponents[group.id] ??
             generatedLocalComponents[group.id];
-          return component ? [[group.id, component] as const] : [];
+          return component
+            ? [[group.id, structuredClone(unwrap(component))] as const]
+            : [];
         }),
       );
 

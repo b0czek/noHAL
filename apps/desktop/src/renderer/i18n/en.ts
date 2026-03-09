@@ -280,6 +280,7 @@ export const en = {
     "{instances} instances • {pins} pins • {params} params • runtime {runtime}",
   "projectCreation.autoReason": "Auto: {reason}",
   "projectCreation.linkTarget": "Link Target",
+  "projectCreation.editGeneratedComponent": "Edit generated component",
   "projectCreation.noComponentGroups": "No component groups were detected.",
   "projectCreation.parserWarnings": "Parser Warnings",
   "projectCreation.parserWarningsTruncated":

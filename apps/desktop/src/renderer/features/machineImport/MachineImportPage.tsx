@@ -3,6 +3,7 @@ import { isSystemHalImportComponentGroup } from "@nohal/core/src/halImport";
 import type { HalImportPlacementHeuristic } from "@nohal/core/src/types";
 import {
   HiOutlineFolderOpen,
+  HiOutlinePencilSquare,
   HiOutlinePlus,
   HiOutlineTrash,
 } from "solid-icons/hi";
@@ -17,6 +18,13 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import {
   Switch,
@@ -38,7 +46,7 @@ export default function MachineImportPage(props: MachineImportPageProps) {
   const { state } = useEditorStore();
   const machineImport = () => props.machineImport;
   const flow = () => machineImport().machineImportFlow;
-  const [selectedGeneratedGroupId, setSelectedGeneratedGroupId] = createSignal<
+  const [editingGeneratedGroupId, setEditingGeneratedGroupId] = createSignal<
     string | null
   >(null);
   const storeEntries = createMemo(() =>
@@ -111,43 +119,36 @@ export default function MachineImportPage(props: MachineImportPageProps) {
     },
   ];
 
-  const editableLocalGroups = createMemo(() => {
-    const draft = flow().importDraft;
-    if (!draft) return [];
-    return draft.componentGroups.filter(
-      (group) => (flow().linkSelections[group.id] ?? "local") === "local",
+  const editingGeneratedGroup = createMemo(() => {
+    const groupId = editingGeneratedGroupId();
+    if (!groupId) return undefined;
+    return flow().importDraft?.componentGroups.find(
+      (group) => group.id === groupId,
     );
   });
 
-  const selectedGeneratedGroup = createMemo(() => {
-    const groupId = selectedGeneratedGroupId();
-    if (!groupId) return undefined;
-    return editableLocalGroups().find((group) => group.id === groupId);
-  });
-
-  const selectedGeneratedComponent = createMemo(() => {
-    const groupId = selectedGeneratedGroupId();
+  const editingGeneratedComponent = createMemo(() => {
+    const groupId = editingGeneratedGroupId();
     if (!groupId) return undefined;
     return flow().generatedLocalComponents[groupId];
   });
 
-  const selectedGeneratedEditor = createMemo(() => {
-    const group = selectedGeneratedGroup();
-    const component = selectedGeneratedComponent();
+  const editingGeneratedEditor = createMemo(() => {
+    const group = editingGeneratedGroup();
+    const component = editingGeneratedComponent();
     if (!group || !component) return undefined;
     return { group, component };
   });
 
   createEffect(() => {
-    const current = selectedGeneratedGroupId();
-    if (
-      current &&
-      editableLocalGroups().some((group) => group.id === current) &&
-      selectedGeneratedComponent()
-    ) {
+    const current = editingGeneratedGroupId();
+    if (!current) return;
+    if ((flow().linkSelections[current] ?? "local") !== "local") {
+      setEditingGeneratedGroupId(null);
       return;
     }
-    setSelectedGeneratedGroupId(editableLocalGroups()[0]?.id ?? null);
+    if (editingGeneratedEditor()) return;
+    setEditingGeneratedGroupId(null);
   });
 
   return (
@@ -547,17 +548,49 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                                       )
                                     }
                                   />
-                                  <div
-                                    class="text-xs text-muted-foreground"
-                                    title={selectionLabel(
-                                      flow().linkSelections[group.id] ??
-                                        "local",
-                                    )}
-                                  >
-                                    {selectionLabel(
-                                      flow().linkSelections[group.id] ??
-                                        "local",
-                                    )}
+                                  <div class="flex items-center gap-1">
+                                    <div
+                                      class="text-xs text-muted-foreground"
+                                      title={selectionLabel(
+                                        flow().linkSelections[group.id] ??
+                                          "local",
+                                      )}
+                                    >
+                                      {selectionLabel(
+                                        flow().linkSelections[group.id] ??
+                                          "local",
+                                      )}
+                                    </div>
+                                    <Show
+                                      when={
+                                        (flow().linkSelections[group.id] ??
+                                          "local") === "local" &&
+                                        flow().generatedLocalComponents[
+                                          group.id
+                                        ]
+                                      }
+                                    >
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        disabled={flow().isBusy}
+                                        title={t(
+                                          "projectCreation.editGeneratedComponent",
+                                        )}
+                                        aria-label={t(
+                                          "projectCreation.editGeneratedComponent",
+                                        )}
+                                        onClick={() =>
+                                          setEditingGeneratedGroupId(group.id)
+                                        }
+                                      >
+                                        <HiOutlinePencilSquare
+                                          size={15}
+                                          aria-hidden="true"
+                                        />
+                                      </Button>
+                                    </Show>
                                   </div>
                                 </div>
                               </div>
@@ -571,165 +604,6 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                         </div>
                       </CardContent>
                     </Card>
-
-                    <Show when={editableLocalGroups().length > 0}>
-                      <Card class="border-white/8 bg-transparent shadow-none">
-                        <CardHeader>
-                          <CardTitle>
-                            {t("projectCreation.generatedComponents")}
-                          </CardTitle>
-                          <CardDescription>
-                            {t("projectCreation.generatedComponentsHelp")}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div class="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-                            <div class="grid auto-rows-max gap-2">
-                              <For each={editableLocalGroups()}>
-                                {(group) => (
-                                  <button
-                                    type="button"
-                                    class={`focus-ring grid gap-1 rounded-2xl px-4 py-3 text-left transition ${
-                                      selectedGeneratedGroupId() === group.id
-                                        ? "bg-white/[0.09]"
-                                        : "bg-black/20 hover:bg-white/[0.08]"
-                                    }`}
-                                    onClick={() =>
-                                      setSelectedGeneratedGroupId(group.id)
-                                    }
-                                  >
-                                    <div class="mono font-medium">
-                                      {flow().generatedLocalComponents[group.id]
-                                        ?.halComponentName ??
-                                        group.inferredHalComponentName}
-                                    </div>
-                                    <div class="text-sm text-muted-foreground">
-                                      {t("projectCreation.groupStats", {
-                                        instances: group.instances.length,
-                                        pins:
-                                          flow().generatedLocalComponents[
-                                            group.id
-                                          ]?.pins.length ?? group.pins.length,
-                                        params:
-                                          flow().generatedLocalComponents[
-                                            group.id
-                                          ]?.params.length ??
-                                          group.params.length,
-                                        runtime:
-                                          flow().generatedLocalComponents[
-                                            group.id
-                                          ]?.runtime?.kind ?? group.runtimeHint,
-                                      })}
-                                    </div>
-                                  </button>
-                                )}
-                              </For>
-                            </div>
-                            <Show when={selectedGeneratedEditor()}>
-                              {(editor) => (
-                                <div class="min-h-0">
-                                  <CustomComponentEditor
-                                    component={editor().component}
-                                    onHalComponentNameChange={(value) =>
-                                      machineImport().updateGeneratedLocalComponentHalComponentName(
-                                        editor().group.id,
-                                        value,
-                                      )
-                                    }
-                                    onRuntimeKindChange={(value) =>
-                                      machineImport().updateGeneratedLocalComponentRuntimeKind(
-                                        editor().group.id,
-                                        value,
-                                      )
-                                    }
-                                    onLoadCommandChange={(value) =>
-                                      machineImport().updateGeneratedLocalComponentLoadCommand(
-                                        editor().group.id,
-                                        value,
-                                      )
-                                    }
-                                    onAddPin={() =>
-                                      machineImport().addGeneratedLocalComponentPin(
-                                        editor().group.id,
-                                      )
-                                    }
-                                    onRemovePin={(pinKey) =>
-                                      machineImport().removeGeneratedLocalComponentPin(
-                                        editor().group.id,
-                                        pinKey,
-                                      )
-                                    }
-                                    onPinNameChange={(pinKey, value) =>
-                                      machineImport().updateGeneratedLocalComponentPinName(
-                                        editor().group.id,
-                                        pinKey,
-                                        value,
-                                      )
-                                    }
-                                    onPinTypeChange={(pinKey, value) =>
-                                      machineImport().updateGeneratedLocalComponentPinType(
-                                        editor().group.id,
-                                        pinKey,
-                                        value,
-                                      )
-                                    }
-                                    onPinDirectionChange={(pinKey, value) =>
-                                      machineImport().updateGeneratedLocalComponentPinDirection(
-                                        editor().group.id,
-                                        pinKey,
-                                        value,
-                                      )
-                                    }
-                                    onAddParam={() =>
-                                      machineImport().addGeneratedLocalComponentParam(
-                                        editor().group.id,
-                                      )
-                                    }
-                                    onRemoveParam={(paramKey) =>
-                                      machineImport().removeGeneratedLocalComponentParam(
-                                        editor().group.id,
-                                        paramKey,
-                                      )
-                                    }
-                                    onParamNameChange={(paramKey, value) =>
-                                      machineImport().updateGeneratedLocalComponentParamName(
-                                        editor().group.id,
-                                        paramKey,
-                                        value,
-                                      )
-                                    }
-                                    onParamTypeChange={(paramKey, value) =>
-                                      machineImport().updateGeneratedLocalComponentParamType(
-                                        editor().group.id,
-                                        paramKey,
-                                        value,
-                                      )
-                                    }
-                                    onParamDirectionChange={(paramKey, value) =>
-                                      machineImport().updateGeneratedLocalComponentParamDirection(
-                                        editor().group.id,
-                                        paramKey,
-                                        value,
-                                      )
-                                    }
-                                    onParamDefaultValueChange={(
-                                      paramKey,
-                                      value,
-                                    ) =>
-                                      machineImport().updateGeneratedLocalComponentParamDefaultValue(
-                                        editor().group.id,
-                                        paramKey,
-                                        value,
-                                      )
-                                    }
-                                  />
-                                </div>
-                              )}
-                            </Show>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Show>
 
                     <Show when={draft().warnings.length > 0}>
                       <Card class="border-warning/20 bg-transparent shadow-none">
@@ -768,6 +642,127 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                         {t("projectCreation.createImportedProject")}
                       </Button>
                     </div>
+
+                    <Show when={editingGeneratedEditor()}>
+                      {(editor) => (
+                        <Dialog
+                          open
+                          onOpenChange={(isOpen) => {
+                            if (!isOpen) setEditingGeneratedGroupId(null);
+                          }}
+                        >
+                          <DialogContent
+                            class="grid h-[min(760px,calc(100vh-36px))] w-[min(1040px,calc(100vw-36px))] max-w-none grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-[1.75rem] border-white/10 bg-[linear-gradient(180deg,rgba(11,24,31,0.96),rgba(8,17,22,0.92))] p-5 shadow-2xl shadow-black/30"
+                            onContextMenu={(evt: MouseEvent) =>
+                              evt.preventDefault()
+                            }
+                          >
+                            <DialogHeader class="text-left">
+                              <DialogTitle>
+                                {t("projectCreation.editGeneratedComponent")}
+                              </DialogTitle>
+                              <DialogDescription class="mono">
+                                {editor().component.halComponentName}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div class="min-h-0 overflow-hidden">
+                              <CustomComponentEditor
+                                component={editor().component}
+                                onHalComponentNameChange={(value) =>
+                                  machineImport().updateGeneratedLocalComponentHalComponentName(
+                                    editor().group.id,
+                                    value,
+                                  )
+                                }
+                                onRuntimeKindChange={(value) =>
+                                  machineImport().updateGeneratedLocalComponentRuntimeKind(
+                                    editor().group.id,
+                                    value,
+                                  )
+                                }
+                                onLoadCommandChange={(value) =>
+                                  machineImport().updateGeneratedLocalComponentLoadCommand(
+                                    editor().group.id,
+                                    value,
+                                  )
+                                }
+                                onAddPin={() =>
+                                  machineImport().addGeneratedLocalComponentPin(
+                                    editor().group.id,
+                                  )
+                                }
+                                onRemovePin={(pinKey) =>
+                                  machineImport().removeGeneratedLocalComponentPin(
+                                    editor().group.id,
+                                    pinKey,
+                                  )
+                                }
+                                onPinNameChange={(pinKey, value) =>
+                                  machineImport().updateGeneratedLocalComponentPinName(
+                                    editor().group.id,
+                                    pinKey,
+                                    value,
+                                  )
+                                }
+                                onPinTypeChange={(pinKey, value) =>
+                                  machineImport().updateGeneratedLocalComponentPinType(
+                                    editor().group.id,
+                                    pinKey,
+                                    value,
+                                  )
+                                }
+                                onPinDirectionChange={(pinKey, value) =>
+                                  machineImport().updateGeneratedLocalComponentPinDirection(
+                                    editor().group.id,
+                                    pinKey,
+                                    value,
+                                  )
+                                }
+                                onAddParam={() =>
+                                  machineImport().addGeneratedLocalComponentParam(
+                                    editor().group.id,
+                                  )
+                                }
+                                onRemoveParam={(paramKey) =>
+                                  machineImport().removeGeneratedLocalComponentParam(
+                                    editor().group.id,
+                                    paramKey,
+                                  )
+                                }
+                                onParamNameChange={(paramKey, value) =>
+                                  machineImport().updateGeneratedLocalComponentParamName(
+                                    editor().group.id,
+                                    paramKey,
+                                    value,
+                                  )
+                                }
+                                onParamTypeChange={(paramKey, value) =>
+                                  machineImport().updateGeneratedLocalComponentParamType(
+                                    editor().group.id,
+                                    paramKey,
+                                    value,
+                                  )
+                                }
+                                onParamDirectionChange={(paramKey, value) =>
+                                  machineImport().updateGeneratedLocalComponentParamDirection(
+                                    editor().group.id,
+                                    paramKey,
+                                    value,
+                                  )
+                                }
+                                onParamDefaultValueChange={(paramKey, value) =>
+                                  machineImport().updateGeneratedLocalComponentParamDefaultValue(
+                                    editor().group.id,
+                                    paramKey,
+                                    value,
+                                  )
+                                }
+                              />
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </Show>
                   </>
                 )}
               </Show>
