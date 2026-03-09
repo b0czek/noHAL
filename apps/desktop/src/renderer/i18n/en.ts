@@ -229,8 +229,7 @@ export const en = {
 
   "projectCreation.projectLocalGenerated": "Project-local (generated)",
   "projectCreation.systemComponent": "System component",
-  "projectCreation.systemAutoReason":
-    "recognized LinuxCNC system component",
+  "projectCreation.systemAutoReason": "recognized LinuxCNC system component",
   "projectCreation.storeFallback": "Store: {componentId}",
   "projectCreation.storeEntry": "Store: {name}",
   "projectCreation.ariaCreateProject": "Create New Project",
@@ -274,6 +273,9 @@ export const en = {
   "projectCreation.componentLinking": "Component Linking",
   "projectCreation.componentLinkingHelp":
     "Review automatic matches. Any group left as project-local will generate a component definition stored in this project.",
+  "projectCreation.generatedComponents": "Generated Components",
+  "projectCreation.generatedComponentsHelp":
+    "Edit project-local component definitions before creating the imported project.",
   "projectCreation.groupStats":
     "{instances} instances • {pins} pins • {params} params • runtime {runtime}",
   "projectCreation.autoReason": "Auto: {reason}",

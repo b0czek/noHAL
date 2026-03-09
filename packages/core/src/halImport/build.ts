@@ -170,6 +170,185 @@ function buildObservedFunctionsForImportedGroup(
   return out;
 }
 
+function buildMappedStorePinTypes(
+  draft: HalImportBuildOptions["draft"],
+  componentStore: HalImportBuildOptions["componentStore"],
+  selections: Map<string, HalImportLinkSelection>,
+): Map<string, HalValueType[]> {
+  const groupByInstance = new Map<string, HalImportComponentGroup>();
+  const instanceByName = new Map<
+    string,
+    HalImportComponentGroup["instances"][number]
+  >();
+  for (const group of draft.componentGroups) {
+    for (const instance of group.instances) {
+      groupByInstance.set(instance.instanceName, group);
+      instanceByName.set(instance.instanceName, instance);
+    }
+  }
+
+  const storeComponentsById = new Map(
+    Object.values(componentStore.components).map((entry) => [
+      entry.componentId,
+      entry.parsed,
+    ]),
+  );
+
+  const mappedStorePinTypes = new Map<string, HalValueType[]>();
+  for (const net of draft.nets) {
+    const knownTypes: HalValueType[] = [];
+    for (const endpoint of net.endpoints) {
+      const group = groupByInstance.get(endpoint.instanceName);
+      if (!group) continue;
+      const sel = selections.get(group.id);
+      if (!sel || sel.mode !== "store") continue;
+      const comp = storeComponentsById.get(sel.componentId);
+      const pin = findMatchingComponentPin(
+        comp,
+        endpoint.pinName,
+        instanceByName.get(endpoint.instanceName)?.instanceConfigValues,
+      );
+      if (pin) knownTypes.push(pin.type);
+    }
+    if (knownTypes.length === 0) continue;
+    for (const endpoint of net.endpoints) {
+      const group = groupByInstance.get(endpoint.instanceName);
+      if (!group) continue;
+      const sel = selections.get(group.id);
+      if (sel?.mode === "store") continue;
+      const key = `${group.id}::${endpoint.pinName}`;
+      const list = mappedStorePinTypes.get(key);
+      if (list) list.push(...knownTypes);
+      else mappedStorePinTypes.set(key, [...knownTypes]);
+    }
+  }
+
+  return mappedStorePinTypes;
+}
+
+function buildGeneratedProjectLocalComponent(
+  group: HalImportComponentGroup,
+  draft: HalImportBuildOptions["draft"],
+  mappedStorePinTypes: Map<string, HalValueType[]>,
+  warnings: string[],
+  usedProjectComponentIds: Set<string>,
+): ComponentDefinition {
+  const pinNames = group.pins.map((pin) => pin.name);
+  const pinNameSet = new Set(pinNames);
+  const pinKeys = uniqueKeyForNames(pinNames, "pin");
+  const filteredGroupParams = group.params.filter((param) => {
+    if (!pinNameSet.has(param.name)) return true;
+    warnings.push(
+      `Treating '${group.inferredHalComponentName}.${param.name}' as pin-initial-value target during import (not generating duplicate param)`,
+    );
+    return false;
+  });
+  const paramNames = filteredGroupParams.map((param) => param.name);
+  const paramKeys = uniqueKeyForNames(paramNames, "param");
+
+  const pins: ComponentPinDefinition[] = group.pins.map((pin) => {
+    const typeHints = mappedStorePinTypes.get(`${group.id}::${pin.name}`) ?? [];
+    const uniqueTypes = Array.from(new Set(typeHints));
+    let type: HalValueType = "bit";
+    if (uniqueTypes.length === 1) type = uniqueTypes[0] ?? "bit";
+    else if (uniqueTypes.length > 1) {
+      warnings.push(
+        `Type inference conflict for ${group.inferredHalComponentName}.${pin.name}: ${uniqueTypes.join(", ")} (defaulting to bit)`,
+      );
+    }
+    return {
+      key: pinKeys[pin.name] ?? safeKey(pin.name),
+      name: pin.name,
+      direction: mergeDirections(pin.observedDirections),
+      type,
+    };
+  });
+
+  const params = filteredGroupParams.map((param) => {
+    const inferredType =
+      param.sampleValues.length > 0
+        ? parseValueType(
+            param.sampleValues[param.sampleValues.length - 1] ?? "",
+          )
+        : "float";
+    return {
+      key: paramKeys[param.name] ?? safeKey(param.name),
+      name: param.name,
+      direction: "rw" as const,
+      type: inferredType,
+      ...(param.sampleValues.length > 0
+        ? {
+            defaultValue:
+              param.sampleValues[param.sampleValues.length - 1] ?? "",
+          }
+        : {}),
+    };
+  });
+
+  const localId = chooseLocalComponentId(
+    group.inferredHalComponentName,
+    usedProjectComponentIds,
+  );
+  const observedFunctions = buildObservedFunctionsForImportedGroup(
+    group,
+    draft,
+  );
+  return {
+    id: localId,
+    name: group.inferredHalComponentName,
+    halComponentName: group.inferredHalComponentName,
+    source: "manual",
+    ...(group.loadCommand?.trim()
+      ? { loadCommand: group.loadCommand.trim() }
+      : {}),
+    runtime: { kind: group.runtimeHint },
+    pins,
+    params,
+    ...(observedFunctions.length > 0 ? { functions: observedFunctions } : {}),
+    docs: {
+      description: "Generated from imported HAL file (project-local component)",
+    },
+  };
+}
+
+export function buildGeneratedLocalComponentsFromHalImport(
+  options: Pick<
+    HalImportBuildOptions,
+    "draft" | "componentStore" | "linkSelections"
+  >,
+): Record<string, ComponentDefinition> {
+  const selections = new Map<string, HalImportLinkSelection>();
+  for (const group of options.draft.componentGroups) {
+    const selection = options.linkSelections[group.id];
+    selections.set(
+      group.id,
+      selection ?? { groupId: group.id, mode: "project-local" },
+    );
+  }
+
+  const warnings: string[] = [];
+  const mappedStorePinTypes = buildMappedStorePinTypes(
+    options.draft,
+    options.componentStore,
+    selections,
+  );
+  const usedProjectComponentIds = new Set<string>();
+  const generatedByGroupId: Record<string, ComponentDefinition> = {};
+
+  for (const group of options.draft.componentGroups) {
+    if (selections.get(group.id)?.mode === "store") continue;
+    generatedByGroupId[group.id] = buildGeneratedProjectLocalComponent(
+      group,
+      options.draft,
+      mappedStorePinTypes,
+      warnings,
+      usedProjectComponentIds,
+    );
+  }
+
+  return generatedByGroupId;
+}
+
 export function buildProjectFromHalImport(
   options: HalImportBuildOptions,
 ): HalImportBuildResult {
@@ -239,38 +418,21 @@ export function buildProjectFromHalImport(
     );
   }
 
-  const mappedStorePinTypes = new Map<string, HalValueType[]>();
-  for (const net of draft.nets) {
-    const knownTypes: HalValueType[] = [];
-    for (const endpoint of net.endpoints) {
-      const group = groupByInstance.get(endpoint.instanceName);
-      if (!group) continue;
-      const sel = selections.get(group.id);
-      if (!sel || sel.mode !== "store") continue;
-      const comp = storeComponentsById.get(sel.componentId);
-      const pin = findMatchingComponentPin(
-        comp,
-        endpoint.pinName,
-        instanceByName.get(endpoint.instanceName)?.instanceConfigValues,
-      );
-      if (pin) knownTypes.push(pin.type);
-    }
-    if (knownTypes.length === 0) continue;
-    for (const endpoint of net.endpoints) {
-      const group = groupByInstance.get(endpoint.instanceName);
-      if (!group) continue;
-      const sel = selections.get(group.id);
-      if (sel?.mode === "store") continue;
-      const key = `${group.id}::${endpoint.pinName}`;
-      const list = mappedStorePinTypes.get(key);
-      if (list) list.push(...knownTypes);
-      else mappedStorePinTypes.set(key, [...knownTypes]);
-    }
-  }
+  const mappedStorePinTypes = buildMappedStorePinTypes(
+    draft,
+    componentStore,
+    selections,
+  );
 
   const usedProjectComponentIds = new Set<string>(
     Object.keys(project.library.components),
   );
+  const generatedProjectLocalComponents =
+    buildGeneratedLocalComponentsFromHalImport({
+      draft,
+      componentStore,
+      linkSelections,
+    });
   const resolvedComponentByGroupId = new Map<string, ComponentDefinition>();
   const resolvedComponentIdByGroupId = new Map<string, string>();
 
@@ -289,87 +451,20 @@ export function buildProjectFromHalImport(
       );
     }
 
-    const pinNames = group.pins.map((pin) => pin.name);
-    const pinNameSet = new Set(pinNames);
-    const pinKeys = uniqueKeyForNames(pinNames, "pin");
-    const filteredGroupParams = group.params.filter((param) => {
-      if (!pinNameSet.has(param.name)) return true;
-      warnings.push(
-        `Treating '${group.inferredHalComponentName}.${param.name}' as pin-initial-value target during import (not generating duplicate param)`,
+    const generated =
+      options.projectLocalComponentOverrides?.[group.id] ??
+      generatedProjectLocalComponents[group.id] ??
+      buildGeneratedProjectLocalComponent(
+        group,
+        draft,
+        mappedStorePinTypes,
+        warnings,
+        usedProjectComponentIds,
       );
-      return false;
-    });
-    const paramNames = filteredGroupParams.map((param) => param.name);
-    const paramKeys = uniqueKeyForNames(paramNames, "param");
-
-    const pins: ComponentPinDefinition[] = group.pins.map((pin) => {
-      const typeHints =
-        mappedStorePinTypes.get(`${group.id}::${pin.name}`) ?? [];
-      const uniqueTypes = Array.from(new Set(typeHints));
-      let type: HalValueType = "bit";
-      if (uniqueTypes.length === 1) type = uniqueTypes[0] ?? "bit";
-      else if (uniqueTypes.length > 1) {
-        warnings.push(
-          `Type inference conflict for ${group.inferredHalComponentName}.${pin.name}: ${uniqueTypes.join(", ")} (defaulting to bit)`,
-        );
-      }
-      return {
-        key: pinKeys[pin.name] ?? safeKey(pin.name),
-        name: pin.name,
-        direction: mergeDirections(pin.observedDirections),
-        type,
-      };
-    });
-
-    const params = filteredGroupParams.map((param) => {
-      const inferredType =
-        param.sampleValues.length > 0
-          ? parseValueType(
-              param.sampleValues[param.sampleValues.length - 1] ?? "",
-            )
-          : "float";
-      return {
-        key: paramKeys[param.name] ?? safeKey(param.name),
-        name: param.name,
-        direction: "rw" as const,
-        type: inferredType,
-        ...(param.sampleValues.length > 0
-          ? {
-              defaultValue:
-                param.sampleValues[param.sampleValues.length - 1] ?? "",
-            }
-          : {}),
-      };
-    });
-
-    const localId = chooseLocalComponentId(
-      group.inferredHalComponentName,
-      usedProjectComponentIds,
-    );
-    const observedFunctions = buildObservedFunctionsForImportedGroup(
-      group,
-      draft,
-    );
-    const generated: ComponentDefinition = {
-      id: localId,
-      name: group.inferredHalComponentName,
-      halComponentName: group.inferredHalComponentName,
-      source: "manual",
-      ...(group.loadCommand?.trim()
-        ? { loadCommand: group.loadCommand.trim() }
-        : {}),
-      runtime: { kind: group.runtimeHint },
-      pins,
-      params,
-      ...(observedFunctions.length > 0 ? { functions: observedFunctions } : {}),
-      docs: {
-        description:
-          "Generated from imported HAL file (project-local component)",
-      },
-    };
-    project.library.components[localId] = generated;
+    usedProjectComponentIds.add(generated.id);
+    project.library.components[generated.id] = structuredClone(generated);
     resolvedComponentByGroupId.set(group.id, generated);
-    resolvedComponentIdByGroupId.set(group.id, localId);
+    resolvedComponentIdByGroupId.set(group.id, generated.id);
   }
 
   const nodeIdByInstanceName = new Map<string, string>();
