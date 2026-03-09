@@ -1,11 +1,16 @@
 import {
+  buildGeneratedLocalComponentsFromHalImport,
   buildProjectFromHalImport as buildImportedProject,
   isSystemHalImportComponentGroup,
   suggestHalImportLinks,
 } from "@nohal/core/src/halImport";
+import { safeKey } from "@nohal/core/src/id";
 import type {
+  ComponentDefinition,
   HalImportDraft,
+  HalImportLinkSelection,
   HalImportPlacementHeuristic,
+  HalValueType,
   LinuxCncVersion,
   MachineConfigHalFileSelection,
   MachineConfigImportDraft,
@@ -29,6 +34,7 @@ type MachineImportFlowState = {
   selectedMachineHalFiles: MachineConfigHalFileSelection[];
   linkSelections: Record<string, string>;
   linkReasons: Record<string, string>;
+  generatedLocalComponents: Record<string, ComponentDefinition>;
   placementHeuristic: HalImportPlacementHeuristic;
 };
 
@@ -43,6 +49,7 @@ type MachineImportFlowEvent =
       machineConfigImport: MachineConfigImportDraft;
       linkSelections: Record<string, string>;
       linkReasons: Record<string, string>;
+      generatedLocalComponents: Record<string, ComponentDefinition>;
     }
   | {
       type: "machineConfigSetupLoaded";
@@ -71,6 +78,7 @@ function createInitialMachineImportFlowState(): MachineImportFlowState {
     selectedMachineHalFiles: [],
     linkSelections: {},
     linkReasons: {},
+    generatedLocalComponents: {},
     placementHeuristic: "related-groups",
   };
 }
@@ -80,6 +88,35 @@ function makeMachineHalSelection(
   resolveIniSubstitutions = true,
 ): MachineConfigHalFileSelection {
   return { filePath, resolveIniSubstitutions };
+}
+
+function nextUniqueIdentifier(
+  base: string,
+  existing: ReadonlyArray<string>,
+  separator = "_",
+): string {
+  const normalized = base.trim() || "item";
+  if (!existing.includes(normalized)) return normalized;
+  let index = 2;
+  while (existing.includes(`${normalized}${separator}${index}`)) index += 1;
+  return `${normalized}${separator}${index}`;
+}
+
+function nextUniqueMemberKey(
+  preferredName: string,
+  existingKeys: ReadonlyArray<string>,
+  fallback: string,
+): string {
+  const baseKey = safeKey(preferredName) || fallback;
+  const used = new Set(existingKeys);
+  if (!used.has(baseKey)) return baseKey;
+  let index = 2;
+  let candidate = `${baseKey}_${index}`;
+  while (used.has(candidate)) {
+    index += 1;
+    candidate = `${baseKey}_${index}`;
+  }
+  return candidate;
 }
 
 function reduceMachineImportFlowState(
@@ -107,6 +144,7 @@ function reduceMachineImportFlowState(
         machineConfigImport: event.machineConfigImport,
         linkSelections: event.linkSelections,
         linkReasons: event.linkReasons,
+        generatedLocalComponents: event.generatedLocalComponents,
         step: "link",
       };
     case "machineConfigSetupLoaded":
@@ -118,6 +156,7 @@ function reduceMachineImportFlowState(
         selectedMachineHalFiles: event.setup.suggestedHalFilePaths.map(
           (filePath) => makeMachineHalSelection(filePath),
         ),
+        generatedLocalComponents: {},
         errorMessage: null,
         step: "machine-files",
       };
@@ -192,6 +231,67 @@ export function useMachineImportFlow({
     setMachineImportFlow((current) =>
       reduceMachineImportFlowState(current, event),
     );
+  };
+
+  const toLinkSelections = (
+    draft: HalImportDraft,
+    encodedSelections: Record<string, string>,
+  ): Record<string, HalImportLinkSelection> =>
+    Object.fromEntries(
+      draft.componentGroups.map((group) => {
+        const value = encodedSelections[group.id] ?? "local";
+        if (value.startsWith("store:")) {
+          return [
+            group.id,
+            {
+              groupId: group.id,
+              mode: "store" as const,
+              componentId: value.slice("store:".length),
+            },
+          ];
+        }
+        return [
+          group.id,
+          { groupId: group.id, mode: "project-local" as const },
+        ];
+      }),
+    );
+
+  const buildGeneratedLocalComponents = (
+    draft: HalImportDraft,
+    encodedSelections: Record<string, string>,
+  ) =>
+    buildGeneratedLocalComponentsFromHalImport({
+      draft,
+      componentStore: state.componentStore,
+      linkSelections: toLinkSelections(draft, encodedSelections),
+    });
+
+  const updateGeneratedLocalComponent = (
+    groupId: string,
+    transform: (component: ComponentDefinition) => ComponentDefinition,
+  ) => {
+    const component = machineImportFlow.generatedLocalComponents[groupId];
+    if (!component) return;
+    setMachineImportFlow(
+      "generatedLocalComponents",
+      groupId,
+      transform(structuredClone(unwrap(component))),
+    );
+  };
+
+  const ensureGeneratedLocalComponent = (
+    groupId: string,
+    encodedSelections = machineImportFlow.linkSelections,
+  ) => {
+    if (machineImportFlow.generatedLocalComponents[groupId]) return;
+    const draft = machineImportFlow.importDraft;
+    if (!draft) return;
+    const generated = buildGeneratedLocalComponents(draft, encodedSelections)[
+      groupId
+    ];
+    if (!generated) return;
+    setMachineImportFlow("generatedLocalComponents", groupId, generated);
   };
 
   const closeMachineImportFlow = () => {
@@ -285,12 +385,17 @@ export function useMachineImportFlow({
           ? t("projectCreation.systemAutoReason")
           : suggestion.reason;
       }
+      const generatedLocalComponents = buildGeneratedLocalComponents(
+        draft,
+        nextSelections,
+      );
       dispatchMachineImportFlow({
         type: "importDraftLoaded",
         draft,
         machineConfigImport: machineImport,
         linkSelections: nextSelections,
         linkReasons: nextReasons,
+        generatedLocalComponents,
       });
     } catch (error) {
       dispatchMachineImportFlow({
@@ -308,23 +413,24 @@ export function useMachineImportFlow({
     dispatchMachineImportFlow({ type: "setError", message: null });
     dispatchMachineImportFlow({ type: "setBusy", value: true });
     try {
-      const linkSelections = Object.fromEntries(
-        draft.componentGroups.map((group) => {
+      const linkSelections = toLinkSelections(
+        draft,
+        machineImportFlow.linkSelections,
+      );
+      const generatedLocalComponents = buildGeneratedLocalComponents(
+        draft,
+        machineImportFlow.linkSelections,
+      );
+      const projectLocalComponentOverrides = Object.fromEntries(
+        draft.componentGroups.flatMap((group) => {
           const value = machineImportFlow.linkSelections[group.id] ?? "local";
-          if (value.startsWith("store:")) {
-            return [
-              group.id,
-              {
-                groupId: group.id,
-                mode: "store" as const,
-                componentId: value.slice("store:".length),
-              },
-            ];
-          }
-          return [
-            group.id,
-            { groupId: group.id, mode: "project-local" as const },
-          ];
+          if (value !== "local") return [];
+          const component =
+            machineImportFlow.generatedLocalComponents[group.id] ??
+            generatedLocalComponents[group.id];
+          return component
+            ? [[group.id, structuredClone(unwrap(component))] as const]
+            : [];
         }),
       );
 
@@ -332,6 +438,7 @@ export function useMachineImportFlow({
         draft,
         componentStore: state.componentStore,
         linkSelections,
+        projectLocalComponentOverrides,
         linuxcncVersion: selectedLinuxCncVersion(),
         placementHeuristic: machineImportFlow.placementHeuristic,
       });
@@ -378,8 +485,15 @@ export function useMachineImportFlow({
     dispatchMachineImportFlow({ type: "setError", message: null });
   };
 
-  const changeHalImportLinkSelection = (groupId: string, value: string) =>
+  const changeHalImportLinkSelection = (groupId: string, value: string) => {
+    const nextSelections = {
+      ...machineImportFlow.linkSelections,
+      [groupId]: value,
+    };
     dispatchMachineImportFlow({ type: "setLinkSelection", groupId, value });
+    if (value === "local")
+      ensureGeneratedLocalComponent(groupId, nextSelections);
+  };
 
   const updateMachineHalFilePath = (index: number, filePath: string) =>
     dispatchMachineImportFlow({
@@ -409,6 +523,181 @@ export function useMachineImportFlow({
       value,
     });
 
+  const updateGeneratedLocalComponentHalComponentName = (
+    groupId: string,
+    value: string,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      const normalized = value.trim();
+      if (!normalized) return component;
+      component.halComponentName = normalized;
+      component.name = normalized;
+      return component;
+    });
+
+  const updateGeneratedLocalComponentRuntimeKind = (
+    groupId: string,
+    value: "rt" | "userspace" | "unknown",
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      component.runtime = {
+        ...(component.runtime ?? { kind: value }),
+        kind: value,
+      };
+      return component;
+    });
+
+  const updateGeneratedLocalComponentLoadCommand = (
+    groupId: string,
+    value: string,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      const normalized = value.trim();
+      if (normalized) component.loadCommand = normalized;
+      else delete component.loadCommand;
+      return component;
+    });
+
+  const addGeneratedLocalComponentPin = (groupId: string) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      const nextName = nextUniqueIdentifier(
+        "pin",
+        component.pins.map((pin) => pin.name),
+      );
+      const nextKey = nextUniqueMemberKey(
+        nextName,
+        component.pins.map((pin) => pin.key),
+        "pin",
+      );
+      component.pins.push({
+        key: nextKey,
+        name: nextName,
+        direction: "in",
+        type: "bit",
+      });
+      return component;
+    });
+
+  const removeGeneratedLocalComponentPin = (groupId: string, pinKey: string) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      component.pins = component.pins.filter((pin) => pin.key !== pinKey);
+      return component;
+    });
+
+  const updateGeneratedLocalComponentPinName = (
+    groupId: string,
+    pinKey: string,
+    value: string,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      const normalized = value.trim();
+      if (!normalized) return component;
+      const pin = component.pins.find((item) => item.key === pinKey);
+      if (pin) pin.name = normalized;
+      return component;
+    });
+
+  const updateGeneratedLocalComponentPinType = (
+    groupId: string,
+    pinKey: string,
+    value: HalValueType,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      const pin = component.pins.find((item) => item.key === pinKey);
+      if (pin) pin.type = value;
+      return component;
+    });
+
+  const updateGeneratedLocalComponentPinDirection = (
+    groupId: string,
+    pinKey: string,
+    value: "in" | "out" | "io",
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      const pin = component.pins.find((item) => item.key === pinKey);
+      if (pin) pin.direction = value;
+      return component;
+    });
+
+  const addGeneratedLocalComponentParam = (groupId: string) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      const nextName = nextUniqueIdentifier(
+        "param",
+        component.params.map((param) => param.name),
+      );
+      const nextKey = nextUniqueMemberKey(
+        nextName,
+        component.params.map((param) => param.key),
+        "param",
+      );
+      component.params.push({
+        key: nextKey,
+        name: nextName,
+        direction: "rw",
+        type: "float",
+      });
+      return component;
+    });
+
+  const removeGeneratedLocalComponentParam = (
+    groupId: string,
+    paramKey: string,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      component.params = component.params.filter(
+        (param) => param.key !== paramKey,
+      );
+      return component;
+    });
+
+  const updateGeneratedLocalComponentParamName = (
+    groupId: string,
+    paramKey: string,
+    value: string,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      const normalized = value.trim();
+      if (!normalized) return component;
+      const param = component.params.find((item) => item.key === paramKey);
+      if (param) param.name = normalized;
+      return component;
+    });
+
+  const updateGeneratedLocalComponentParamType = (
+    groupId: string,
+    paramKey: string,
+    value: HalValueType,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      const param = component.params.find((item) => item.key === paramKey);
+      if (param) param.type = value;
+      return component;
+    });
+
+  const updateGeneratedLocalComponentParamDirection = (
+    groupId: string,
+    paramKey: string,
+    value: "r" | "rw",
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      const param = component.params.find((item) => item.key === paramKey);
+      if (param) param.direction = value;
+      return component;
+    });
+
+  const updateGeneratedLocalComponentParamDefaultValue = (
+    groupId: string,
+    paramKey: string,
+    value: string,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      const param = component.params.find((item) => item.key === paramKey);
+      if (!param) return component;
+      if (value.trim()) param.defaultValue = value;
+      else delete param.defaultValue;
+      return component;
+    });
+
   return {
     selectedLinuxCncVersion,
     machineImportFlow,
@@ -425,6 +714,20 @@ export function useMachineImportFlow({
     removeMachineHalFilePath,
     addBlankMachineHalFilePath,
     changeHalImportPlacementHeuristic,
+    updateGeneratedLocalComponentHalComponentName,
+    updateGeneratedLocalComponentRuntimeKind,
+    updateGeneratedLocalComponentLoadCommand,
+    addGeneratedLocalComponentPin,
+    removeGeneratedLocalComponentPin,
+    updateGeneratedLocalComponentPinName,
+    updateGeneratedLocalComponentPinType,
+    updateGeneratedLocalComponentPinDirection,
+    addGeneratedLocalComponentParam,
+    removeGeneratedLocalComponentParam,
+    updateGeneratedLocalComponentParamName,
+    updateGeneratedLocalComponentParamType,
+    updateGeneratedLocalComponentParamDirection,
+    updateGeneratedLocalComponentParamDefaultValue,
   };
 }
 
