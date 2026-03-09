@@ -4,9 +4,10 @@ import {
   type ParentProps,
   useContext,
 } from "solid-js";
+import type { AppLocale } from "../../shared/appSettings";
 import { en, type TranslationKey } from "./en";
 
-export type LocaleCode = "en";
+export type LocaleCode = AppLocale;
 
 type TranslationParams = Record<
   string,

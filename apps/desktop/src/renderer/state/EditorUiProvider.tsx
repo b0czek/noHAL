@@ -7,12 +7,13 @@ import {
   type ParentProps,
   useContext,
 } from "solid-js";
+import type { GeneralSettingsTab } from "../features/generalSettings/types";
 import { useEditorStore } from "./EditorStoreProvider";
 
 export type ComponentSearchScope = "sheet" | "project";
 export type EditorOverlay =
   | { kind: "component-editor"; nodeId: string }
-  | { kind: "component-store" }
+  | { kind: "general-settings"; initialTab?: GeneralSettingsTab }
   | { kind: "project-settings" }
   | { kind: "sheet-settings"; sheetId: string }
   | { kind: "component-search"; scope: ComponentSearchScope };
@@ -98,7 +99,8 @@ function createEditorUiState() {
     openComponentEditorForNode,
     openSelectedComponentEditor,
     closeActiveOverlay: () => setOverlay(null),
-    openComponentStore: () => openOverlay({ kind: "component-store" }),
+    openGeneralSettings: (initialTab?: GeneralSettingsTab) =>
+      openOverlay({ kind: "general-settings", initialTab }),
     openProjectSettings: () => openOverlay({ kind: "project-settings" }),
     openSheetSettings: (sheetId: string) =>
       openOverlay({ kind: "sheet-settings", sheetId }),

@@ -35,6 +35,7 @@ export const en = {
     "No recent projects yet. Create a blank project, import a machine configuration, or open an existing project.",
   "landing.targetLinuxCncVersion": "Target LinuxCNC version",
   "landing.importedMachineStatus": "Imported machine configuration{suffix}",
+  "landing.generalSettings": "General Settings",
 
   "topbar.goToLanding": "Go to landing page",
   "topbar.openProject": "Open project",
@@ -43,6 +44,7 @@ export const en = {
   "topbar.redo": "Redo",
   "topbar.build": "Build",
   "topbar.projectSettings": "Project Settings",
+  "topbar.generalSettings": "General Settings",
   "topbar.componentStore": "Component Store",
   "topbar.addSubsheet": "+ Subsheet",
   "topbar.addText": "+ Text",
@@ -94,8 +96,8 @@ export const en = {
   "componentDialog.source": "Source",
   "componentDialog.runtime": "Runtime",
   "componentDialog.exportStage": "Export Stage",
-  "componentDialog.exportStageMain": "Main HALFILE",
-  "componentDialog.exportStagePostgui": "POSTGUI_HALFILE",
+  "componentDialog.exportStageMain": "Main HAL File",
+  "componentDialog.exportStagePostgui": "Postgui HAL File",
   "componentDialog.exportStageLockedPostgui":
     "Export stage is fixed by component definition.",
   "componentDialog.functions": "Realtime Functions (addf)",
@@ -121,7 +123,7 @@ export const en = {
     "Manage thread names and periods used for addf scheduling/export defaults.",
   "threadsDialog.threads": "Threads",
   "threadsDialog.help":
-    "By default, projects start with one servo thread at 1000000 ns. Thread periods are stored in nanoseconds.",
+    "By default, projects start with one servo thread at 1000000 ns. Thread periods are shown in nanoseconds.",
   "threadsDialog.addThread": "Add Thread",
   "threadsDialog.removeThread": "Remove Thread",
   "threadsDialog.name": "Name",
@@ -138,7 +140,7 @@ export const en = {
   "projectSettings.tabCustomComponents": "Custom Components",
   "projectSettings.tabIniEditor": "INI Editor",
   "projectSettings.motmodTitle": "Motion Module (motmod)",
-  "projectSettings.motmodHelp": "Configure common motmod loadrt parameters.",
+  "projectSettings.motmodHelp": "Configure common motmod settings.",
   "projectSettings.motmod.numJoints": "num_joints",
   "projectSettings.motmod.numDio": "num_dio",
   "projectSettings.motmod.numAio": "num_aio",
@@ -156,14 +158,14 @@ export const en = {
   "projectSettings.motmod.syncNow": "Sync now",
   "customComponents.title": "Custom Components",
   "customComponents.help":
-    "Non-.comp components (including HAL-import generated ones). If set, load string is emitted verbatim during HAL export for that component.",
+    "Components that are not backed by a `.comp` file. You can define the command used to load them.",
   "customComponents.addComponent": "Add Component",
   "customComponents.catalogTitle": "Custom Components",
   "customComponents.editorTitle": "Component Editor",
   "customComponents.selectComponentHint":
     "Select a component from the list to edit it.",
   "customComponents.empty":
-    "No custom components yet. Import a HAL config or add components outside the .comp store.",
+    "No custom components yet. Import a HAL config or add a component that is not in the component library.",
   "customComponents.removeComponent": "Remove Component",
   "customComponents.cannotRemoveInUse":
     "Component is used by {count} placed instance(s). Remove instances first.",
@@ -229,8 +231,7 @@ export const en = {
 
   "projectCreation.projectLocalGenerated": "Project-local (generated)",
   "projectCreation.systemComponent": "System component",
-  "projectCreation.systemAutoReason":
-    "recognized LinuxCNC system component",
+  "projectCreation.systemAutoReason": "recognized LinuxCNC system component",
   "projectCreation.storeFallback": "Store: {componentId}",
   "projectCreation.storeEntry": "Store: {name}",
   "projectCreation.ariaCreateProject": "Create New Project",
@@ -247,7 +248,7 @@ export const en = {
   "projectCreation.createBlank": "Create Blank",
   "projectCreation.importMachineConfig": "Import Machine Configuration",
   "projectCreation.importMachineConfigHelp":
-    "Pick a LinuxCNC `.ini` file first. Then review parsed HALFILE entries and manually choose HAL files before continuing to component linking.",
+    "Pick a LinuxCNC `.ini` file first. Then review the referenced HAL files and choose what to include before continuing to component linking.",
   "projectCreation.pickMachineIniFile": "Pick INI File",
   "projectCreation.addHalFileRow": "Add Row",
   "projectCreation.continueToComponentLinking": "Continue to Component Linking",
@@ -273,7 +274,7 @@ export const en = {
     "Groups connected components together before laying out the imported sheet, which usually reduces long crossing wires.",
   "projectCreation.componentLinking": "Component Linking",
   "projectCreation.componentLinkingHelp":
-    "Review automatic matches. Any group left as project-local will generate a component definition stored in this project.",
+    "Review automatic matches. Any group left as project-local will become a component that belongs only to this project.",
   "projectCreation.groupStats":
     "{instances} instances • {pins} pins • {params} params • runtime {runtime}",
   "projectCreation.autoReason": "Auto: {reason}",
@@ -286,8 +287,7 @@ export const en = {
 
   "componentStore.ariaLabel": "Component Store",
   "componentStore.title": "Component Store",
-  "componentStore.summary":
-    "{components} stored components • {sources} sources",
+  "componentStore.summary": "{components} components • {sources} sources",
   "componentStore.sources": "Component Sources",
   "componentStore.addDirSource": "Add Dir Source",
   "componentStore.importCompFile": "Import .comp",
@@ -296,15 +296,30 @@ export const en = {
   "componentStore.refresh": "Refresh",
   "componentStore.deleteSource": "Delete Source",
   "componentStore.noSources": "No component sources yet.",
-  "componentStore.storedComponents": "Stored Components",
-  "componentStore.filterPlaceholder": "Filter stored components...",
+  "componentStore.storedComponents": "Components",
+  "componentStore.filterPlaceholder": "Filter components...",
   "componentStore.componentStats": "{pins} pins • {params} params",
   "componentStore.componentWarnings": "{count} warnings",
   "componentStore.dirSource": "dir source",
   "componentStore.fileImport": "file import",
-  "componentStore.builtinSource": "versioned built-in store",
-  "componentStore.noStoredComponents": "No stored components yet.",
-  "componentStore.noMatchingComponents": "No matching stored components.",
+  "componentStore.builtinSource": "built-in library",
+  "componentStore.noStoredComponents": "No components yet.",
+  "componentStore.noMatchingComponents": "No matching components.",
+
+  "generalSettings.title": "General Settings",
+  "generalSettings.description": "Settings that apply across projects.",
+  "generalSettings.tabInterface": "Interface",
+  "generalSettings.tabComponentStore": "Component Store",
+  "generalSettings.interfaceTitle": "Interface",
+  "generalSettings.interfaceHelp":
+    "Adjust app-wide presentation settings that should persist across projects.",
+  "generalSettings.interfaceScaleLabel": "Interface Scale",
+  "generalSettings.interfaceScaleHelp":
+    "Adjust the size of the interface in this window. Changes apply immediately and are remembered for later.",
+  "generalSettings.languageLabel": "Language",
+  "generalSettings.languageHelp":
+    "Choose the app language. Only English is available right now.",
+  "generalSettings.languageOptionEnglish": "English",
 
   "iniEditor.ariaLabel": "INI Editor",
   "iniEditor.title": "INI Editor",
@@ -436,7 +451,7 @@ export const en = {
     "Deleted source {path} ({removed} components removed)",
   "store.status.deleteSourceFailed": "Delete source failed: {error}",
   "store.status.selectedComponentNotStoredComp":
-    "Selected component is not a stored .comp component",
+    "Selected component is not from the component library",
   "store.status.refreshedComponent": "Refreshed component: {componentName}",
   "store.status.refreshFailed": "Refresh failed: {error}",
   "store.status.componentPlacementDisabled":

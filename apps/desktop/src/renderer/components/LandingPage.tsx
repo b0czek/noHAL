@@ -4,8 +4,9 @@ import {
 } from "@nohal/core/src/linuxcncVersion";
 import type { RecentProjectEntry } from "@nohal/core/src/types";
 import { HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
-import { For, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
 import type { LandingProjectFlowController } from "../app/useLandingProjectFlow";
+import GeneralSettingsDialog from "../features/generalSettings";
 import { useI18n } from "../i18n";
 import StringSelect from "./form/StringSelect";
 import { Alert } from "./ui/alert";
@@ -39,6 +40,7 @@ function recentProjectPathTail(projectPath: string): string {
 export default function LandingPage(props: LandingPageProps) {
   const { t, formatDateTime } = useI18n();
   const landing = () => props.landing;
+  const [isGeneralSettingsOpen, setIsGeneralSettingsOpen] = createSignal(false);
 
   return (
     <div class="relative min-h-screen bg-[linear-gradient(180deg,#081216_0%,#04090c_100%)] px-4 py-8 sm:px-6">
@@ -113,6 +115,13 @@ export default function LandingPage(props: LandingPageProps) {
               >
                 <HiOutlineFolderOpen size={18} aria-hidden="true" />
                 {t("landing.openProject")}
+              </Button>
+              <Button
+                variant="outline"
+                class="h-11 rounded-xl px-5"
+                onClick={() => setIsGeneralSettingsOpen(true)}
+              >
+                {t("landing.generalSettings")}
               </Button>
             </div>
             <Show when={landing().landingError()}>
@@ -190,6 +199,13 @@ export default function LandingPage(props: LandingPageProps) {
           </CardContent>
         </Card>
       </main>
+
+      <Show when={isGeneralSettingsOpen()}>
+        <GeneralSettingsDialog
+          linuxcncVersion={props.selectedLinuxCncVersion}
+          onClose={() => setIsGeneralSettingsOpen(false)}
+        />
+      </Show>
     </div>
   );
 }

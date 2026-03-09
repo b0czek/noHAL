@@ -1,8 +1,8 @@
 import { Match, Switch } from "solid-js";
 import ComponentNodeDialog from "../components/ComponentNodeDialog";
 import ComponentSearchDialog from "../components/ComponentSearchDialog";
-import ComponentStoreDialog from "../components/ComponentStoreDialog";
 import SheetSettingsDialog from "../components/SheetSettingsDialog";
+import GeneralSettingsDialog from "../features/generalSettings";
 import ProjectSettingsDialog from "../features/projectSettings";
 import { type EditorOverlay, useEditorUi } from "../state/EditorUiProvider";
 
@@ -13,6 +13,10 @@ type ComponentEditorOverlay = Extract<
 type ComponentSearchOverlay = Extract<
   EditorOverlay,
   { kind: "component-search" }
+>;
+type GeneralSettingsOverlay = Extract<
+  EditorOverlay,
+  { kind: "general-settings" }
 >;
 type SheetSettingsOverlay = Extract<EditorOverlay, { kind: "sheet-settings" }>;
 
@@ -51,9 +55,18 @@ export default function EditorOverlayHost() {
         )}
       </Match>
       <Match
-        when={overlay()?.kind === "component-store" ? overlay() : undefined}
+        when={
+          overlay()?.kind === "general-settings"
+            ? (overlay() as GeneralSettingsOverlay)
+            : undefined
+        }
       >
-        <ComponentStoreDialog onClose={editorUi.closeActiveOverlay} />
+        {(current) => (
+          <GeneralSettingsDialog
+            initialTab={current().initialTab}
+            onClose={editorUi.closeActiveOverlay}
+          />
+        )}
       </Match>
       <Match
         when={overlay()?.kind === "project-settings" ? overlay() : undefined}

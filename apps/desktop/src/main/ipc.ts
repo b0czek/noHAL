@@ -7,6 +7,8 @@ import type {
   NoHALProject,
 } from "@nohal/core/src/types";
 import { BrowserWindow, dialog, ipcMain } from "electron";
+import { appSettings } from "./appSettings";
+import { applyChangedAppSettings } from "./appSettingsEffects";
 import { componentStore } from "./componentStore";
 import {
   machineConfigImport,
@@ -42,6 +44,15 @@ export function registerIpcHandlers(): void {
     const win = BrowserWindow.fromWebContents(evt.sender);
     if (!win) return "cancel" as const;
     return promptUnsavedChangesChoice(win);
+  });
+
+  ipcMain.handle("nohal:get-app-settings", async () => appSettings.read());
+
+  ipcMain.handle("nohal:update-app-settings", async (evt, patch) => {
+    const { previous, current } = await appSettings.update(patch);
+    const win = BrowserWindow.fromWebContents(evt.sender);
+    await applyChangedAppSettings({ win }, current, previous);
+    return current;
   });
 
   ipcMain.handle(

@@ -2,6 +2,8 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BrowserWindow, dialog } from "electron";
+import { appSettings } from "./appSettings";
+import { applyChangedAppSettings } from "./appSettingsEffects";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const windowDirtyState = new WeakMap<BrowserWindow, boolean>();
@@ -86,7 +88,7 @@ export function resolveRendererSaveBeforeCloseRequest(
   pending.resolve(didSave);
 }
 
-export function createWindow(): void {
+export async function createWindow(): Promise<void> {
   const preloadCandidates = [
     path.join(__dirname, "../preload/index.cjs"),
     path.join(__dirname, "../preload/index.mjs"),
@@ -95,6 +97,7 @@ export function createWindow(): void {
   const preloadPath =
     preloadCandidates.find((candidate) => existsSync(candidate)) ??
     preloadCandidates[0];
+  const settings = await appSettings.read();
 
   const win = new BrowserWindow({
     width: 1600,
@@ -108,6 +111,7 @@ export function createWindow(): void {
       nodeIntegration: false,
     },
   });
+  await applyChangedAppSettings({ win }, settings);
   win.setMenuBarVisibility(false);
   setWindowDirtyState(win, false);
 

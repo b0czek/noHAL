@@ -4,10 +4,10 @@ import { createWindow } from "./window";
 
 app.whenReady().then(() => {
   registerIpcHandlers();
-  createWindow();
+  void createWindow();
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) void createWindow();
   });
 });
 

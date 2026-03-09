@@ -9,6 +9,7 @@ import type {
   NoHALProject,
   RecentProjectEntry,
 } from "@nohal/core/src/types";
+import type { AppSettings, AppSettingsPatch } from "../shared/appSettings";
 
 export type UnsavedChangesChoice = "save" | "discard" | "cancel";
 
@@ -16,6 +17,8 @@ export interface NoHALApi {
   setWindowDirtyState(isDirty: boolean): void;
   promptUnsavedChanges(): Promise<UnsavedChangesChoice>;
   onRequestSaveBeforeClose(listener: () => Promise<boolean>): () => void;
+  getAppSettings(): Promise<AppSettings>;
+  updateAppSettings(patch: AppSettingsPatch): Promise<AppSettings>;
   newProject(
     linuxcncVersion?: LinuxCncVersion,
   ): Promise<{ project: NoHALProject; projectPath: string } | null>;

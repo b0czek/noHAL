@@ -8,6 +8,7 @@ import type {
   NoHALProject,
 } from "@nohal/core/src/types";
 import { contextBridge, ipcRenderer } from "electron";
+import type { AppSettings } from "../shared/appSettings";
 import type { NoHALApi } from "./api";
 
 const api: NoHALApi = {
@@ -18,6 +19,13 @@ const api: NoHALApi = {
     ipcRenderer.invoke("nohal:prompt-unsaved-changes") as Promise<
       "save" | "discard" | "cancel"
     >,
+  getAppSettings: () =>
+    ipcRenderer.invoke("nohal:get-app-settings") as Promise<AppSettings>,
+  updateAppSettings: (patch) =>
+    ipcRenderer.invoke(
+      "nohal:update-app-settings",
+      patch,
+    ) as Promise<AppSettings>,
   onRequestSaveBeforeClose: (listener) => {
     const handler = async (_event: unknown, requestId: number) => {
       let didSave = false;

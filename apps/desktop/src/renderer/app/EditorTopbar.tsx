@@ -95,8 +95,11 @@ export default function EditorTopbar(props: EditorTopbarProps) {
         <Button variant="outline" onClick={editorUi.openProjectSettings}>
           {t("topbar.projectSettings")}
         </Button>
-        <Button variant="outline" onClick={editorUi.openComponentStore}>
-          {t("topbar.componentStore")}
+        <Button
+          variant="outline"
+          onClick={() => editorUi.openGeneralSettings()}
+        >
+          {t("topbar.generalSettings")}
         </Button>
       </div>
 
