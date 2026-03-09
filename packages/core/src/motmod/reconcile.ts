@@ -9,6 +9,12 @@ import {
 } from "../componentStore/catalog/system/motmod";
 import { isManagedBySystemManager } from "../componentSystem";
 import { createId } from "../id";
+import {
+  buildSystemOverrideDefinition,
+  sameComponentDefinition,
+  sameInstanceConfigValues,
+  sameSystemComponentDefinition,
+} from "../systemReconcile/shared";
 import type {
   ComponentDefinition,
   ComponentNode,
@@ -19,6 +25,7 @@ import type {
 const MOTMOD_MANAGED_FAMILY_SET = new Set<MotmodManagedFamily>(
   MOTMOD_MANAGED_FAMILIES,
 );
+const MOTMOD_CUSTOM_OVERRIDE_MANAGER = "motmod-custom";
 const MOTMOD_FAMILY_BY_SYSTEM_COMPONENT_ID = Object.fromEntries(
   Object.entries(MOTMOD_SYSTEM_COMPONENT_IDS).map(([family, componentId]) => [
     componentId,
@@ -64,11 +71,17 @@ export interface MotmodReconcileUpdateNodeConfigAction {
   instanceConfigValues?: Record<string, string>;
 }
 
+export interface MotmodReconcileUpgradeComponentAction {
+  componentId: string;
+  family: MotmodManagedFamily;
+}
+
 export interface MotmodReconcilePlan {
   inSync: boolean;
   motmodWillNormalize: boolean;
   normalizedMotmod: ProjectMotmodConfig;
   ensureComponents: MotmodReconcileEnsureComponentAction[];
+  upgradeComponents: MotmodReconcileUpgradeComponentAction[];
   addNodes: MotmodReconcileAddNodeAction[];
   removeNodes: MotmodReconcileRemoveNodeAction[];
   adoptNodes: MotmodReconcileAdoptNodeAction[];
@@ -188,89 +201,24 @@ function chooseFreePosition(
   return candidate;
 }
 
-function samePinSchema(
-  a: ComponentDefinition["pins"],
-  b: ComponentDefinition["pins"],
-): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) {
-    const left = a[i];
-    const right = b[i];
-    if (!left || !right) return false;
-    if (
-      left.key !== right.key ||
-      left.name !== right.name ||
-      left.direction !== right.direction ||
-      left.type !== right.type
-    ) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function normalizeInstanceConfigValues(
-  value: Record<string, string> | undefined,
-): Record<string, string> | undefined {
-  if (!value) return undefined;
-  const entries = Object.entries(value)
-    .map(([key, item]) => [key.trim(), `${item}`.trim()] as const)
-    .filter(([key, item]) => key.length > 0 && item.length > 0)
-    .sort(([a], [b]) => a.localeCompare(b));
-  if (entries.length === 0) return undefined;
-  return Object.fromEntries(entries);
-}
-
-function sameInstanceConfigValues(
-  a: Record<string, string> | undefined,
-  b: Record<string, string> | undefined,
-): boolean {
-  const left = normalizeInstanceConfigValues(a);
-  const right = normalizeInstanceConfigValues(b);
-  if (!left && !right) return true;
-  if (!left || !right) return false;
-  const leftKeys = Object.keys(left);
-  const rightKeys = Object.keys(right);
-  if (leftKeys.length !== rightKeys.length) return false;
-  for (const key of leftKeys) {
-    if (!(key in right)) return false;
-    if (left[key] !== right[key]) return false;
-  }
-  return true;
-}
-
-function isSameSystemComponentDefinition(
-  existing: ComponentDefinition | undefined,
-  expected: ComponentDefinition,
-): boolean {
-  if (!existing) return false;
-  if (existing.halComponentName !== expected.halComponentName) return false;
-  if (existing.source !== expected.source) return false;
-  if (
-    (existing.runtime?.kind ?? "unknown") !==
-    (expected.runtime?.kind ?? "unknown")
-  ) {
-    return false;
-  }
-  if (
-    JSON.stringify(existing.runtime?.instanceConfig ?? null) !==
-    JSON.stringify(expected.runtime?.instanceConfig ?? null)
-  ) {
-    return false;
-  }
-  if (
-    existing.system?.manager !== expected.system?.manager ||
-    existing.system?.family !== expected.system?.family
-  ) {
-    return false;
-  }
-  if (
-    JSON.stringify(existing.constraints ?? null) !==
-    JSON.stringify(expected.constraints ?? null)
-  ) {
-    return false;
-  }
-  return samePinSchema(existing.pins, expected.pins);
+function buildMotmodCustomOverrideDefinition(
+  component: ComponentDefinition | undefined,
+  family: MotmodManagedFamily,
+  linuxcncVersion: NoHALProject["target"]["linuxcncVersion"],
+  motmod: ProjectMotmodConfig,
+): ComponentDefinition | null {
+  if (!component) return null;
+  const expected = createMotmodSystemComponentDefinition(
+    family,
+    linuxcncVersion,
+  );
+  return buildSystemOverrideDefinition(
+    component,
+    expected,
+    MOTMOD_CUSTOM_OVERRIDE_MANAGER,
+    family,
+    managedInstanceConfigValuesForFamily(family, linuxcncVersion, motmod),
+  );
 }
 
 function pruneUnusedImportedMotmodFamilyComponents(
@@ -309,6 +257,7 @@ export function planMotmodReconcile(
     motmodWillNormalize: !isSameMotmodConfig(project.motmod, normalizedMotmod),
     normalizedMotmod,
     ensureComponents: [],
+    upgradeComponents: [],
     addNodes: [],
     removeNodes: [],
     adoptNodes: [],
@@ -329,7 +278,7 @@ export function planMotmodReconcile(
       family,
       project.target.linuxcncVersion,
     );
-    if (!isSameSystemComponentDefinition(existing, expected)) {
+    if (!sameSystemComponentDefinition(existing, expected)) {
       plan.ensureComponents.push({ family, componentId });
     }
   }
@@ -338,6 +287,7 @@ export function planMotmodReconcile(
     const requiredInstances = requiredByFamily[family];
     const requiredSet = new Set(requiredInstances);
     const seenManagedRequired = new Set<string>();
+    const queuedUpgradeComponentIds = new Set<string>();
     const expectedInstanceConfigValues = managedInstanceConfigValuesForFamily(
       family,
       project.target.linuxcncVersion,
@@ -351,10 +301,32 @@ export function planMotmodReconcile(
 
       const wasManaged = isManagedAsFamily(project, node, family);
       const component = project.library.components[node.componentId];
+      const customOverride = buildMotmodCustomOverrideDefinition(
+        component,
+        family,
+        project.target.linuxcncVersion,
+        normalizedMotmod,
+      );
+      if (
+        customOverride &&
+        !sameComponentDefinition(component, customOverride) &&
+        !queuedUpgradeComponentIds.has(node.componentId)
+      ) {
+        plan.upgradeComponents.push({
+          componentId: node.componentId,
+          family,
+        });
+        queuedUpgradeComponentIds.add(node.componentId);
+      }
+      const isCustomOverride =
+        component?.system?.manager === MOTMOD_CUSTOM_OVERRIDE_MANAGER ||
+        !!customOverride;
       const canAdopt =
         !wasManaged &&
         requiredSet.has(node.instanceName) &&
-        component?.runtime?.kind !== "rt";
+        (component?.runtime?.kind !== "rt" ||
+          component?.system?.manager === MOTMOD_CUSTOM_OVERRIDE_MANAGER) &&
+        !customOverride;
 
       if (canAdopt) {
         plan.adoptNodes.push({
@@ -364,7 +336,7 @@ export function planMotmodReconcile(
         });
       }
 
-      if (!wasManaged && !canAdopt) continue;
+      if (!wasManaged && !canAdopt && !isCustomOverride) continue;
 
       if (!requiredSet.has(node.instanceName)) {
         plan.removeNodes.push({
@@ -418,6 +390,7 @@ export function planMotmodReconcile(
   plan.inSync =
     !plan.motmodWillNormalize &&
     plan.ensureComponents.length === 0 &&
+    plan.upgradeComponents.length === 0 &&
     plan.addNodes.length === 0 &&
     plan.removeNodes.length === 0 &&
     plan.adoptNodes.length === 0 &&
@@ -440,6 +413,17 @@ export function reconcileMotmodManagedNodes(
         action.family,
         project.target.linuxcncVersion,
       );
+  }
+
+  for (const action of plan.upgradeComponents) {
+    const upgraded = buildMotmodCustomOverrideDefinition(
+      project.library.components[action.componentId],
+      action.family,
+      project.target.linuxcncVersion,
+      plan.normalizedMotmod,
+    );
+    if (!upgraded) continue;
+    project.library.components[action.componentId] = upgraded;
   }
 
   const adoptNodeIdSet = new Set(plan.adoptNodes.map((item) => item.nodeId));

@@ -1,5 +1,8 @@
 import { listStoreEntriesForLinuxCncVersion } from "@nohal/core/src/componentStore";
-import { isSystemHalImportComponentGroup } from "@nohal/core/src/halImport";
+import {
+  analyzeSystemHalImportOverride,
+  isSystemHalImportComponentGroup,
+} from "@nohal/core/src/halImport";
 import type { HalImportPlacementHeuristic } from "@nohal/core/src/types";
 import {
   HiOutlineFolderOpen,
@@ -139,6 +142,33 @@ export default function MachineImportPage(props: MachineImportPageProps) {
     if (!group || !component) return undefined;
     return { group, component };
   });
+
+  const systemOverrideAnalysisForGroup = (groupId: string) => {
+    const group = flow().importDraft?.componentGroups.find(
+      (item) => item.id === groupId,
+    );
+    const component = flow().generatedLocalComponents[groupId];
+    if (!group || !component) return null;
+    return analyzeSystemHalImportOverride(group, component, {
+      linuxcncVersion: machineImport().selectedLinuxCncVersion(),
+      motmod: flow().importDraft?.motmod,
+    });
+  };
+
+  const systemOverrideItemsLabel = (groupId: string) => {
+    const analysis = systemOverrideAnalysisForGroup(groupId);
+    if (!analysis) return "";
+    const items = [
+      ...analysis.extraPins.map((name) => `pin:${name}`),
+      ...analysis.extraParams.map((name) => `param:${name}`),
+      ...analysis.extraFunctions.map((name) => `fn:${name}`),
+    ];
+    if (items.length <= 4) return items.join(", ");
+    return t("projectCreation.systemOverrideItemsTruncated", {
+      items: items.slice(0, 4).join(", "),
+      count: items.length - 4,
+    });
+  };
 
   createEffect(() => {
     const current = editingGeneratedGroupId();
@@ -564,6 +594,24 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                                     <Show
                                       when={
                                         (flow().linkSelections[group.id] ??
+                                          "local") === "system" &&
+                                        systemOverrideAnalysisForGroup(group.id)
+                                      }
+                                    >
+                                      <span
+                                        class="rounded-full border border-warning/30 bg-warning/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.16em] text-warning"
+                                        title={t(
+                                          "projectCreation.systemOverrideBadgeTitle",
+                                        )}
+                                      >
+                                        {t(
+                                          "projectCreation.systemOverrideBadge",
+                                        )}
+                                      </span>
+                                    </Show>
+                                    <Show
+                                      when={
+                                        (flow().linkSelections[group.id] ??
                                           "local") === "local" &&
                                         flow().generatedLocalComponents[
                                           group.id
@@ -592,6 +640,42 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                                       </Button>
                                     </Show>
                                   </div>
+                                  <Show
+                                    when={
+                                      (flow().linkSelections[group.id] ??
+                                        "local") === "system" &&
+                                      systemOverrideAnalysisForGroup(group.id)
+                                    }
+                                  >
+                                    {(analysis) => (
+                                      <Alert class="border-warning/30 bg-warning/10 text-foreground">
+                                        <div class="grid gap-1">
+                                          <div class="text-sm font-medium">
+                                            {t(
+                                              "projectCreation.systemOverrideNotice",
+                                            )}
+                                          </div>
+                                          <div class="text-sm text-muted-foreground">
+                                            {t(
+                                              "projectCreation.systemOverrideDetails",
+                                              {
+                                                pins: analysis().extraPins
+                                                  .length,
+                                                params:
+                                                  analysis().extraParams.length,
+                                                functions:
+                                                  analysis().extraFunctions
+                                                    .length,
+                                              },
+                                            )}
+                                          </div>
+                                          <div class="mono text-xs text-muted-foreground">
+                                            {systemOverrideItemsLabel(group.id)}
+                                          </div>
+                                        </div>
+                                      </Alert>
+                                    )}
+                                  </Show>
                                 </div>
                               </div>
                             )}

@@ -5,6 +5,7 @@ export {
 export { suggestHalImportLinks } from "./links";
 export { parseHalImportDraft } from "./parse";
 export {
+  analyzeSystemHalImportOverride,
   isSystemHalImportComponentGroup,
   isSystemHalImportComponentName,
 } from "./system";

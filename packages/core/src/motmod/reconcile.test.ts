@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { makeAddfQueueFunctionEntry } from "../addfQueue";
 import { getNodePins } from "../graph";
+import { exportProjectToHal } from "../halExport";
 import {
   createEmptyProject,
   parseNoHALProject,
@@ -351,6 +353,109 @@ describe("motmod-managed obligatory components", () => {
     expect(
       project.library.components[adopted.componentId]?.system?.family,
     ).toBe("joint");
+  });
+
+  it("keeps non-standard motion pins in a system-derived custom override", () => {
+    const project = createEmptyProject("motmod custom motion override");
+    const root = project.sheets[project.rootSheetId];
+    root.nodes = root.nodes.filter(
+      (node) => !(node.kind === "component" && node.instanceName === "motion"),
+    );
+
+    project.library.components["halimport:motion"] = {
+      id: "halimport:motion",
+      name: "motion",
+      halComponentName: "motion",
+      source: "manual",
+      runtime: { kind: "unknown" },
+      pins: [
+        {
+          key: "motion_enabled",
+          name: "motion-enabled",
+          direction: "out",
+          type: "bit",
+        },
+        {
+          key: "extra_fault",
+          name: "extra-fault",
+          direction: "in",
+          type: "bit",
+        },
+      ],
+      params: [],
+    };
+    project.library.components["test:src"] = {
+      id: "test:src",
+      name: "src",
+      halComponentName: "src",
+      source: "manual",
+      runtime: { kind: "unknown" },
+      pins: [{ key: "out", name: "out", direction: "out", type: "bit" }],
+      params: [],
+    };
+
+    root.nodes.push(
+      {
+        id: "node_motion_custom",
+        kind: "component",
+        componentId: "halimport:motion",
+        instanceName: "motion",
+        position: { x: 0, y: 0 },
+        paramValues: {},
+      },
+      {
+        id: "node_src",
+        kind: "component",
+        componentId: "test:src",
+        instanceName: "src",
+        position: { x: 220, y: 0 },
+        paramValues: {},
+      },
+    );
+
+    reconcileMotmodManagedNodes(project);
+
+    const motionNode = root.nodes.find(
+      (node): node is (typeof root.nodes)[number] & { kind: "component" } =>
+        node.kind === "component" && node.id === "node_motion_custom",
+    );
+    expect(motionNode?.componentId).toBe("halimport:motion");
+    if (!motionNode) return;
+
+    const motionPins = getNodePins(project, motionNode).map((pin) => pin.name);
+    expect(motionPins).toContain("extra-fault");
+    expect(motionPins).toContain("digital-in-03");
+    expect(
+      project.library.components["halimport:motion"]?.system?.manager,
+    ).not.toBe("motmod");
+
+    const extraPin = getNodePins(project, motionNode).find(
+      (pin) => pin.name === "extra-fault",
+    );
+    expect(extraPin).toBeDefined();
+    if (!extraPin) return;
+
+    root.directConnections.push({
+      id: "dc_motion_extra",
+      a: { kind: "node-pin", nodeId: "node_src", pinKey: "out" },
+      b: {
+        kind: "node-pin",
+        nodeId: "node_motion_custom",
+        pinKey: extraPin.key,
+      },
+      signalName: "motion_extra",
+    });
+    root.hal = {
+      ...(root.hal ?? {}),
+      addfQueue: [
+        makeAddfQueueFunctionEntry("node_motion_custom", "motion_controller"),
+      ],
+    };
+
+    const out = exportProjectToHal(project);
+    expect(out.text).toContain("net motion_extra src.out motion.extra-fault");
+    expect(out.text).toContain("addf motion-controller servo-thread");
+    expect(out.text).not.toContain("loadrt motion");
   });
 
   it("rebinds already-managed nodes to system component ids", () => {

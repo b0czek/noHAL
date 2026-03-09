@@ -232,6 +232,14 @@ export const en = {
   "projectCreation.projectLocalGenerated": "Project-local (generated)",
   "projectCreation.systemComponent": "System component",
   "projectCreation.systemAutoReason": "recognized LinuxCNC system component",
+  "projectCreation.systemOverrideBadge": "override",
+  "projectCreation.systemOverrideBadgeTitle":
+    "This system link will be imported as a custom override to preserve non-standard members.",
+  "projectCreation.systemOverrideNotice":
+    "Will auto-convert to a custom system override on import.",
+  "projectCreation.systemOverrideDetails":
+    "Preserving {pins} extra pin(s), {params} extra param(s), and {functions} extra function(s).",
+  "projectCreation.systemOverrideItemsTruncated": "{items}, +{count} more",
   "projectCreation.storeFallback": "Store: {componentId}",
   "projectCreation.storeEntry": "Store: {name}",
   "projectCreation.ariaCreateProject": "Create New Project",
