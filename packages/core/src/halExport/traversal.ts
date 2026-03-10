@@ -83,17 +83,22 @@ function createLocalEndpointIdMap(
 }
 
 function localEndpointRefToId(
+  ctx: ExportContext,
   map: Map<string, string>,
+  sheetName: string,
   ref:
     | { kind: "node-pin"; nodeId: string; pinKey: string }
     | { kind: "sheet-port"; portId: string },
-): string {
+): string | null {
   const key =
     ref.kind === "node-pin"
       ? `node:${ref.nodeId}:${ref.pinKey}`
       : `port:${ref.portId}`;
   const value = map.get(key);
-  if (!value) throw new Error(`Missing local endpoint map entry: ${key}`);
+  if (!value) {
+    pushFatal(ctx, `Sheet '${sheetName}' references missing endpoint '${key}'`);
+    return null;
+  }
   return value;
 }
 
@@ -172,8 +177,9 @@ export function traverseSheetInstance(
   }
 
   for (const conn of sheet.directConnections) {
-    const a = localEndpointRefToId(localIds, conn.a);
-    const b = localEndpointRefToId(localIds, conn.b);
+    const a = localEndpointRefToId(ctx, localIds, sheet.name, conn.a);
+    const b = localEndpointRefToId(ctx, localIds, sheet.name, conn.b);
+    if (!a || !b) continue;
     ctx.union.union(a, b);
     const explicitSignalName = conn.signalName?.trim();
     if (explicitSignalName) {
@@ -193,7 +199,13 @@ export function traverseSheetInstance(
       );
       continue;
     }
-    const endpoint = localEndpointRefToId(localIds, anchor.endpoint);
+    const endpoint = localEndpointRefToId(
+      ctx,
+      localIds,
+      sheet.name,
+      anchor.endpoint,
+    );
+    if (!endpoint) continue;
     const scopeKey = label.name;
 
     if (label.scope === "global") {
