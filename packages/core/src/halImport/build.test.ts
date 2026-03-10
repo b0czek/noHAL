@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyComponentStore } from "../componentStore";
 import { getNodePins } from "../graph";
+import { findSystemSheet, findSystemSheetNode } from "../systemSheet";
 import type { ComponentDefinition } from "../types";
 import { buildProjectFromHalImport } from "./build";
 
@@ -22,7 +23,7 @@ describe("buildProjectFromHalImport", () => {
     });
 
     const managedInstanceNames = result.project.sheets[
-      result.project.rootSheetId
+      findSystemSheet(result.project)?.id ?? result.project.rootSheetId
     ].nodes
       .filter(
         (node) =>
@@ -115,8 +116,8 @@ describe("buildProjectFromHalImport", () => {
       linuxcncVersion: "2.7",
     });
 
-    const root = result.project.sheets[result.project.rootSheetId];
-    const motionNode = root.nodes.find(
+    const systemSheet = findSystemSheet(result.project);
+    const motionNode = systemSheet?.nodes.find(
       (node) =>
         node.kind === "component" &&
         node.instanceName === "motion" &&
@@ -183,8 +184,8 @@ describe("buildProjectFromHalImport", () => {
       linuxcncVersion: "2.10",
     });
 
-    const root = result.project.sheets[result.project.rootSheetId];
-    const iocontrolNode = root.nodes.find(
+    const systemSheet = findSystemSheet(result.project);
+    const iocontrolNode = systemSheet?.nodes.find(
       (node) =>
         node.kind === "component" &&
         node.instanceName === "iocontrol.0" &&
@@ -292,5 +293,55 @@ describe("buildProjectFromHalImport", () => {
     expect(node).toBeDefined();
     if (!node || node.kind !== "component") return;
     expect(node.componentId).toBe("halimport:custom_logic");
+  });
+
+  it("places imported system-managed nodes behind the System subsheet", () => {
+    const result = buildProjectFromHalImport({
+      draft: {
+        parser: "nohal-hal-v1",
+        lineCount: 0,
+        componentGroups: [
+          {
+            id: "group_motion",
+            inferredHalComponentName: "motion",
+            runtimeHint: "unknown",
+            instances: [
+              {
+                instanceName: "motion",
+                componentGroupId: "group_motion",
+                pinNames: ["motion-enabled"],
+                paramValues: {},
+              },
+            ],
+            pins: [{ name: "motion-enabled", observedDirections: ["out"] }],
+            params: [],
+          },
+        ],
+        nets: [],
+        setps: [],
+        addfs: [],
+        warnings: [],
+      },
+      componentStore: createEmptyComponentStore(),
+      linkSelections: {},
+      linuxcncVersion: "2.10",
+    });
+
+    const root = result.project.sheets[result.project.rootSheetId];
+    const systemSheet = findSystemSheet(result.project);
+    const systemSheetNode = findSystemSheetNode(result.project);
+
+    expect(systemSheet?.name).toBe("System");
+    expect(systemSheetNode?.kind).toBe("sheet");
+    expect(
+      root.nodes.some(
+        (node) => node.kind === "component" && node.instanceName === "motion",
+      ),
+    ).toBe(false);
+    expect(
+      systemSheet?.nodes.some(
+        (node) => node.kind === "component" && node.instanceName === "motion",
+      ),
+    ).toBe(true);
   });
 });

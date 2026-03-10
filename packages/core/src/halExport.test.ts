@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeAddfQueueFunctionEntry } from "./addfQueue";
 import { exportProjectToHal } from "./halExport";
 import { createEmptyProject } from "./project";
+import { findSystemSheet, findSystemSheetNode } from "./systemSheet";
 
 function makeConnectedProject(signalName?: string) {
   const project = createEmptyProject("Signal Name Test");
@@ -216,13 +217,21 @@ describe("exportProjectToHal connection signal names", () => {
   it("emits motmod functions in addf and allows thread assignment from root sheet queue", () => {
     const project = createEmptyProject("Motmod Addf Functions");
     const rootSheet = project.sheets[project.rootSheetId];
-    const motionNode = rootSheet.nodes.find(
+    const systemSheet = findSystemSheet(project);
+    const systemSheetNode = findSystemSheetNode(project);
+    const motionNode = systemSheet?.nodes.find(
       (node) => node.kind === "component" && node.instanceName === "motion",
     );
-    if (!motionNode || motionNode.kind !== "component")
+    if (
+      !motionNode ||
+      motionNode.kind !== "component" ||
+      !systemSheet ||
+      !systemSheetNode
+    )
       throw new Error("expected managed motion node");
     const fastThreadId = "thread_fast";
     const fastOutputId = "sheetthread_fast";
+    const systemFastOutputId = "sheetthread_system_fast";
     project.halThreads?.push({
       id: fastThreadId,
       name: "fast-thread",
@@ -235,14 +244,28 @@ describe("exportProjectToHal connection signal names", () => {
         ...(rootSheet.hal?.threadOutputs ?? []),
         { id: fastOutputId, name: "fast", halThreadId: fastThreadId },
       ],
+    };
+    systemSheet.hal = {
+      ...(systemSheet.hal ?? {}),
+      threadOutputs: [
+        ...(systemSheet.hal?.threadOutputs ?? []),
+        { id: systemFastOutputId, name: "fast" },
+      ],
       addfQueue: [
         makeAddfQueueFunctionEntry(
           motionNode.id,
           "motion_command_handler",
-          fastOutputId,
+          systemFastOutputId,
         ),
         makeAddfQueueFunctionEntry(motionNode.id, "motion_controller"),
       ],
+    };
+    systemSheetNode.hal = {
+      ...(systemSheetNode.hal ?? {}),
+      threadMap: {
+        ...(systemSheetNode.hal?.threadMap ?? {}),
+        [systemFastOutputId]: fastOutputId,
+      },
     };
 
     const { text } = exportProjectToHal(project);

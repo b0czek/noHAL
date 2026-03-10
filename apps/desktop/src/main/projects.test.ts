@@ -258,9 +258,11 @@ describe("projects persistence (directory format)", () => {
 
     await projectDirectory.writeProjectDirectory(project, targetDir);
 
-    const [childSheetId] = Object.keys(project.sheets).filter(
-      (sheetId) => sheetId !== project.rootSheetId,
-    );
+    const childSheetId = Object.values(project.sheets).find(
+      (sheet) => sheet.name === "Child",
+    )?.id;
+    expect(childSheetId).toBeDefined();
+    if (!childSheetId) return;
     const nextProject: NoHALProject = {
       ...project,
       sheets: Object.fromEntries(
@@ -273,7 +275,7 @@ describe("projects persistence (directory format)", () => {
     await projectDirectory.writeProjectDirectory(nextProject, targetDir);
 
     const sheetFiles = await readdir(path.join(targetDir, "sheets"));
-    expect(sheetFiles).toHaveLength(1);
+    expect(sheetFiles).toHaveLength(Object.keys(nextProject.sheets).length);
     expect(sheetFiles.some((name) => name.includes(childSheetId))).toBe(false);
   });
 

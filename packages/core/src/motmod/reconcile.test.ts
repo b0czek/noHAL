@@ -7,6 +7,7 @@ import {
   parseNoHALProject,
   stringifyNoHALProject,
 } from "../project";
+import { findSystemSheet } from "../systemSheet";
 import {
   createMotmodSystemComponentDefinition,
   planMotmodReconcile,
@@ -14,8 +15,8 @@ import {
 } from ".";
 
 function managedInstanceNames(project: ReturnType<typeof createEmptyProject>) {
-  const root = project.sheets[project.rootSheetId];
-  return root.nodes
+  const systemSheet = findSystemSheet(project);
+  return (systemSheet?.nodes ?? [])
     .filter(
       (node) =>
         node.kind === "component" &&
@@ -52,8 +53,9 @@ describe("motmod-managed obligatory components", () => {
 
   it("plans missing nodes without mutating until reconcile is called", () => {
     const project = createEmptyProject("motmod plan mutate");
-    const root = project.sheets[project.rootSheetId];
-    root.nodes = root.nodes.filter(
+    const systemSheet = findSystemSheet(project);
+    if (!systemSheet) throw new Error("expected system sheet");
+    systemSheet.nodes = systemSheet.nodes.filter(
       (node) => !(node.kind === "component" && node.instanceName === "joint.2"),
     );
 
@@ -236,8 +238,8 @@ describe("motmod-managed obligatory components", () => {
 
   it("expands motion dio/aio pins from instanceConfig values", () => {
     const project = createEmptyProject("motmod motion expansion");
-    const root = project.sheets[project.rootSheetId];
-    const motion = root.nodes.find(
+    const systemSheet = findSystemSheet(project);
+    const motion = systemSheet?.nodes.find(
       (node) => node.kind === "component" && node.instanceName === "motion",
     );
     expect(motion).toBeDefined();
@@ -302,8 +304,9 @@ describe("motmod-managed obligatory components", () => {
 
   it("restores removed managed nodes during project save/load normalization", () => {
     const project = createEmptyProject("motmod normalize");
-    const root = project.sheets[project.rootSheetId];
-    root.nodes = root.nodes.filter(
+    const systemSheet = findSystemSheet(project);
+    if (!systemSheet) throw new Error("expected system sheet");
+    systemSheet.nodes = systemSheet.nodes.filter(
       (node) => !(node.kind === "component" && node.instanceName === "joint.2"),
     );
 
@@ -315,8 +318,9 @@ describe("motmod-managed obligatory components", () => {
 
   it("adopts existing non-rt motion-owned nodes and rebinds to system definitions", () => {
     const project = createEmptyProject("motmod adopt");
-    const root = project.sheets[project.rootSheetId];
-    root.nodes = root.nodes.filter(
+    const systemSheet = findSystemSheet(project);
+    if (!systemSheet) throw new Error("expected system sheet");
+    systemSheet.nodes = systemSheet.nodes.filter(
       (node) => !(node.kind === "component" && node.instanceName === "joint.0"),
     );
 
@@ -332,7 +336,7 @@ describe("motmod-managed obligatory components", () => {
       params: [],
     };
 
-    root.nodes.push({
+    systemSheet.nodes.push({
       id: "node_existing_joint_0",
       kind: "component",
       componentId: "halimport:joint",
@@ -343,7 +347,7 @@ describe("motmod-managed obligatory components", () => {
 
     reconcileMotmodManagedNodes(project);
 
-    const adopted = root.nodes.find(
+    const adopted = systemSheet.nodes.find(
       (node) =>
         node.kind === "component" && node.id === "node_existing_joint_0",
     );
@@ -357,8 +361,9 @@ describe("motmod-managed obligatory components", () => {
 
   it("keeps non-standard motion pins in a system-derived custom override", () => {
     const project = createEmptyProject("motmod custom motion override");
-    const root = project.sheets[project.rootSheetId];
-    root.nodes = root.nodes.filter(
+    const systemSheet = findSystemSheet(project);
+    if (!systemSheet) throw new Error("expected system sheet");
+    systemSheet.nodes = systemSheet.nodes.filter(
       (node) => !(node.kind === "component" && node.instanceName === "motion"),
     );
 
@@ -394,7 +399,7 @@ describe("motmod-managed obligatory components", () => {
       params: [],
     };
 
-    root.nodes.push(
+    systemSheet.nodes.push(
       {
         id: "node_motion_custom",
         kind: "component",
@@ -415,8 +420,10 @@ describe("motmod-managed obligatory components", () => {
 
     reconcileMotmodManagedNodes(project);
 
-    const motionNode = root.nodes.find(
-      (node): node is (typeof root.nodes)[number] & { kind: "component" } =>
+    const motionNode = systemSheet.nodes.find(
+      (
+        node,
+      ): node is (typeof systemSheet.nodes)[number] & { kind: "component" } =>
         node.kind === "component" && node.id === "node_motion_custom",
     );
     expect(motionNode?.componentId).toBe("halimport:motion");
@@ -435,7 +442,7 @@ describe("motmod-managed obligatory components", () => {
     expect(extraPin).toBeDefined();
     if (!extraPin) return;
 
-    root.directConnections.push({
+    systemSheet.directConnections.push({
       id: "dc_motion_extra",
       a: { kind: "node-pin", nodeId: "node_src", pinKey: "out" },
       b: {
@@ -445,23 +452,25 @@ describe("motmod-managed obligatory components", () => {
       },
       signalName: "motion_extra",
     });
-    root.hal = {
-      ...(root.hal ?? {}),
+    systemSheet.hal = {
+      ...(systemSheet.hal ?? {}),
       addfQueue: [
         makeAddfQueueFunctionEntry("node_motion_custom", "motion_controller"),
       ],
     };
 
     const out = exportProjectToHal(project);
-    expect(out.text).toContain("net motion_extra src.out motion.extra-fault");
+    expect(out.text).toContain(
+      "net motion_extra system.src.out system.motion.extra-fault",
+    );
     expect(out.text).toContain("addf motion-controller servo-thread");
     expect(out.text).not.toContain("loadrt motion");
   });
 
   it("rebinds already-managed nodes to system component ids", () => {
     const project = createEmptyProject("motmod managed rebind");
-    const root = project.sheets[project.rootSheetId];
-    const managedJoint = root.nodes.find(
+    const systemSheet = findSystemSheet(project);
+    const managedJoint = systemSheet?.nodes.find(
       (node) =>
         node.kind === "component" &&
         project.library.components[node.componentId]?.system?.manager ===

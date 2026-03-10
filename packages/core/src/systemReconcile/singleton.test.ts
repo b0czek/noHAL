@@ -4,6 +4,7 @@ import { getNodePins } from "../graph";
 import { exportProjectToHal } from "../halExport";
 import { createId } from "../id";
 import { createEmptyProject } from "../project";
+import { findSystemSheet } from "../systemSheet";
 import type {
   ComponentDefinition,
   ComponentNode,
@@ -147,8 +148,8 @@ function reconcileTestSystem(project: NoHALProject): NoHALProject {
 function findTestNode(
   project: ReturnType<typeof createEmptyProject>,
 ): ComponentNode | undefined {
-  const root = project.sheets[project.rootSheetId];
-  return root.nodes.find(
+  const systemSheet = findSystemSheet(project);
+  return systemSheet?.nodes.find(
     (node): node is ComponentNode =>
       node.kind === "component" && node.instanceName === "testsys",
   );
@@ -174,13 +175,14 @@ describe("systemReconcile singleton", () => {
 
   it("adopts standard imported nodes and prunes duplicates", () => {
     const project = createEmptyProject("system singleton adopt");
-    const root = project.sheets[project.rootSheetId];
+    const systemSheet = findSystemSheet(project);
+    if (!systemSheet) throw new Error("expected system sheet");
 
     project.library.components["halimport:testsys"] =
       createImportedTestComponent({
         runtime: { kind: "userspace" },
       });
-    root.nodes.push(
+    systemSheet.nodes.push(
       {
         id: createId("node"),
         kind: "component",
@@ -201,7 +203,7 @@ describe("systemReconcile singleton", () => {
 
     reconcileTestSystem(project);
 
-    const testNodes = root.nodes.filter(
+    const testNodes = systemSheet.nodes.filter(
       (node) => node.kind === "component" && isTestLikeNode(project, node),
     );
     expect(testNodes).toHaveLength(1);
@@ -211,7 +213,8 @@ describe("systemReconcile singleton", () => {
 
   it("keeps custom overrides when imported members are non-standard", () => {
     const project = createEmptyProject("system singleton custom override");
-    const root = project.sheets[project.rootSheetId];
+    const systemSheet = findSystemSheet(project);
+    if (!systemSheet) throw new Error("expected system sheet");
 
     project.library.components["halimport:testsys"] =
       createImportedTestComponent({
@@ -270,7 +273,7 @@ describe("systemReconcile singleton", () => {
       params: [],
     };
 
-    root.nodes.push(
+    systemSheet.nodes.push(
       {
         id: "node_testsys",
         kind: "component",
@@ -319,7 +322,7 @@ describe("systemReconcile singleton", () => {
     expect(extraPin).toBeDefined();
     if (!extraPin) return;
 
-    root.directConnections.push({
+    systemSheet.directConnections.push({
       id: "dc_testsys_extra",
       a: { kind: "node-pin", nodeId: "node_src", pinKey: "out" },
       b: { kind: "node-pin", nodeId: node.id, pinKey: extraPin.key },
@@ -329,7 +332,7 @@ describe("systemReconcile singleton", () => {
     const out = exportProjectToHal(project);
     expect(out.text).not.toContain("testsys.aux-ready");
     expect(out.postguiText ?? "").toContain(
-      "net testsys_extra src.out testsys.aux-ready",
+      "net testsys_extra system.src.out system.testsys.aux-ready",
     );
   });
 

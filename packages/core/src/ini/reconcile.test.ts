@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { resolveComponentPinsForInstance } from "../componentInstance";
 import { getNodePins } from "../graph";
 import { createEmptyProject } from "../project";
+import { findSystemSheet } from "../systemSheet";
 import type { ComponentNode } from "../types";
 import {
   createIniSystemComponentDefinition,
@@ -10,8 +11,8 @@ import {
 } from ".";
 
 function findIniNode(project: ReturnType<typeof createEmptyProject>) {
-  const root = project.sheets[project.rootSheetId];
-  return root.nodes.find(
+  const systemSheet = findSystemSheet(project);
+  return systemSheet?.nodes.find(
     (node): node is ComponentNode =>
       node.kind === "component" && node.instanceName === "ini",
   );

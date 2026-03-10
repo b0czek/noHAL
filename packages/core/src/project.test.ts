@@ -5,6 +5,7 @@ import {
   REQUIRED_HAL_THREAD_NAME,
   reconcileProject,
 } from "./project";
+import { findSystemSheet, findSystemSheetNode } from "./systemSheet";
 
 describe("project defaults", () => {
   it("binds the top sheet default output to servo-thread", () => {
@@ -51,5 +52,12 @@ describe("project defaults", () => {
     if (node?.kind === "component") {
       expect(node.exportStage).toBe("postgui");
     }
+  });
+
+  it("creates a placed System subsheet for managed components", () => {
+    const project = createEmptyProject("System Sheet Test");
+
+    expect(findSystemSheet(project)?.name).toBe("System");
+    expect(findSystemSheetNode(project)?.kind).toBe("sheet");
   });
 });

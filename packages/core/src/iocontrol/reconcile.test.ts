@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { exportProjectToHal } from "../halExport";
 import { createEmptyProject } from "../project";
+import { findSystemSheet } from "../systemSheet";
 import type { ComponentNode } from "../types";
 import {
   createIocontrolSystemComponentDefinition,
@@ -9,8 +10,8 @@ import {
 } from ".";
 
 function findIocontrolNode(project: ReturnType<typeof createEmptyProject>) {
-  const root = project.sheets[project.rootSheetId];
-  return root.nodes.find(
+  const systemSheet = findSystemSheet(project);
+  return systemSheet?.nodes.find(
     (node): node is ComponentNode =>
       node.kind === "component" &&
       node.instanceName === IOCONTROL_INSTANCE_NAME,
@@ -30,10 +31,10 @@ describe("iocontrol-managed system component", () => {
 
   it("exports iocontrol nets without suggesting a manual loadusr command", () => {
     const project = createEmptyProject("iocontrol export");
-    const root = project.sheets[project.rootSheetId];
+    const systemSheet = findSystemSheet(project);
     const iocontrolNode = findIocontrolNode(project);
     expect(iocontrolNode).toBeDefined();
-    if (!iocontrolNode) return;
+    if (!iocontrolNode || !systemSheet) return;
 
     project.library.components["test:src"] = {
       id: "test:src",
@@ -44,7 +45,7 @@ describe("iocontrol-managed system component", () => {
       pins: [{ key: "out", name: "out", direction: "out", type: "bit" }],
       params: [],
     };
-    root.nodes.push({
+    systemSheet.nodes.push({
       id: "node_src",
       kind: "component",
       componentId: "test:src",
@@ -52,7 +53,7 @@ describe("iocontrol-managed system component", () => {
       position: { x: 200, y: 200 },
       paramValues: {},
     });
-    root.directConnections.push({
+    systemSheet.directConnections.push({
       id: "dc_iocontrol_enable",
       a: { kind: "node-pin", nodeId: "node_src", pinKey: "out" },
       b: {
@@ -65,7 +66,7 @@ describe("iocontrol-managed system component", () => {
 
     const out = exportProjectToHal(project);
     expect(out.text).toContain(
-      "net machine_enable src.out iocontrol.0.emc-enable-in",
+      "net machine_enable system.src.out system.iocontrol.0.emc-enable-in",
     );
     expect(out.text).not.toContain("iocontrol: iocontrol.0");
     expect(out.text).not.toContain("loadusr iocontrol");
