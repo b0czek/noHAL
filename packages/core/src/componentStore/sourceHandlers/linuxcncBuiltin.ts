@@ -1,19 +1,22 @@
 import { SUPPORTED_LINUXCNC_VERSIONS } from "../../linuxcncVersion";
 import type { ComponentStore, LinuxCncVersion } from "../../types";
-import { LINUXCNC_VERSION_CATALOG } from "../catalog";
+import { loadAllLinuxCncVersionCatalogs } from "../catalog";
 import { upsertStoredComponentEntry } from "./shared";
 
 function createLinuxCncBuiltinSourceId(version: LinuxCncVersion): string {
   return `linuxcnc-builtin:${version}`;
 }
 
-export function applyLinuxCncBuiltinSources(store: ComponentStore): void {
+export async function applyLinuxCncBuiltinSources(
+  store: ComponentStore,
+): Promise<void> {
   const expectedSourceIds = new Set<string>();
+  const builtins = await loadAllLinuxCncVersionCatalogs();
 
   for (const version of SUPPORTED_LINUXCNC_VERSIONS) {
+    const builtin = builtins[version];
     const sourceId = createLinuxCncBuiltinSourceId(version);
     expectedSourceIds.add(sourceId);
-    const builtin = LINUXCNC_VERSION_CATALOG[version];
     const existing = store.sources[sourceId];
 
     store.sources[sourceId] = {

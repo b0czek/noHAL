@@ -46,12 +46,12 @@ export const readComponentStoreFileFromDisk =
       const content = await io.fs.readTextFile(normalizedStoreFilePath);
       const parsed = JSON.parse(content) as unknown;
       assertComponentStoreShape(parsed);
-      applyLinuxCncBuiltinSources(parsed);
+      await applyLinuxCncBuiltinSources(parsed);
       return parsed;
     } catch (error) {
       if (isErrnoCode(error, "ENOENT")) {
         const empty = createEmptyComponentStore();
-        applyLinuxCncBuiltinSources(empty);
+        await applyLinuxCncBuiltinSources(empty);
         return empty;
       }
       throw error;
