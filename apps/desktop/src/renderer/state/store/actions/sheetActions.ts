@@ -1,32 +1,21 @@
-import {
-  addfQueueEntryNodeId,
-  makeAddfQueueNodeEntry,
-  normalizeAddfQueueEntries,
-} from "@nohal/core/src/addfQueue";
-import {
-  endpointKey,
-  getSheet,
-  resolveEndpointInSheet,
-} from "@nohal/core/src/graph";
+import { normalizeAddfQueueEntries } from "@nohal/core/src/addfQueue";
+import { isSystemComponent } from "@nohal/core/src/componentSystem";
+import { getSheet } from "@nohal/core/src/graph";
 import { createId } from "@nohal/core/src/id";
-import { createSheet, createSheetPortDraft } from "@nohal/core/src/project";
+import { createSheet } from "@nohal/core/src/project";
 import { normalizeSheetThreadOutputs } from "@nohal/core/src/sheetThreads";
+import { moveSelectionIntoSubsheet } from "@nohal/core/src/subsheetMove";
+import { findSystemSheet } from "@nohal/core/src/systemSheet";
 import type {
   SheetAddfQueueStoredEntry,
-  SheetDefinition,
-  SheetEndpointRef,
   SheetNode,
 } from "@nohal/core/src/types";
 import {
-  cloneEndpoint,
   cloneProject,
   collectSheetSubtreeIds,
   defaultNodePosition,
-  defaultPortPosition,
-  directConnectionPairKey,
   ensureInstanceName,
   findNode,
-  isNodeEndpointInSet,
   nextName,
   removeSheetNodeReferencesForDeletedSheets,
   selectionBoundsForNodesAndLabels,
@@ -35,6 +24,20 @@ import {
 import type { EditorStoreActionContext } from "./types";
 
 export function createSheetActions(deps: EditorStoreActionContext) {
+  const isSystemManagedProtectedNode = (
+    project: EditorStoreActionContext["state"]["project"],
+    node: { kind: string; componentId?: string },
+  ): boolean =>
+    node.kind === "component" &&
+    !!(
+      node.componentId &&
+      isSystemComponent(project.library.components[node.componentId])
+    );
+  const isProtectedSystemSheet = (
+    project: EditorStoreActionContext["state"]["project"],
+    sheetId: string,
+  ): boolean => findSystemSheet(project)?.id === sheetId;
+
   const setActiveSheet = (sheetId: string): void => {
     if (!deps.state.project.sheets[sheetId]) return;
     deps.setState("activeSheetId", sheetId);
@@ -217,19 +220,24 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       const movedLabels = parentSheet.labels.filter((l) =>
         selectedLabelIds.has(l.id),
       );
+      if (
+        movedNodes.some((node) =>
+          isSystemManagedProtectedNode(currentProject, node),
+        )
+      ) {
+        deps.setStatusT("store.status.cannotSubsheetSystemManagedComponent");
+        return;
+      }
       if (movedNodes.length === 0 && movedLabels.length === 0) {
         deps.setStatusT("store.status.cannotSubsheetEmptySelection");
         return;
       }
 
       const movedNodeIdSet = new Set(movedNodes.map((n) => n.id));
-      const movedLabelIdSet = new Set(movedLabels.map((l) => l.id));
 
       const allNames = new Set(Object.values(next.sheets).map((s) => s.name));
       const childName = nextName("Sheet", allNames);
       const child = createSheet(childName, parentSheet.id);
-      const childPortNames = new Set<string>();
-      const childPortsByEndpointKey = new Map<string, { id: string }>();
 
       const childNodePosition = selectionBoundsForNodesAndLabels(
         movedNodes,
@@ -243,226 +251,14 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         instanceName: ensureInstanceName(parentSheet, childName),
         position: { x: childNodePosition.x, y: childNodePosition.y },
       };
-
-      const ensureBoundaryPortForEndpoint = (endpoint: SheetEndpointRef) => {
-        const key = endpointKey(endpoint);
-        const existing = childPortsByEndpointKey.get(key);
-        if (existing) return existing;
-
-        const resolved = resolveEndpointInSheet(
-          currentProject,
-          activeSheetId,
-          endpoint,
-        );
-        const port = createSheetPortDraft(
-          resolved.name || "sig",
-          resolved.direction,
-          resolved.type,
-        );
-        if (childPortNames.has(port.name)) {
-          port.name = nextName(port.name, childPortNames);
-        }
-        childPortNames.add(port.name);
-        port.position = defaultPortPosition(child, port.side);
-        child.ports.push(port);
-        const result = { id: port.id };
-        childPortsByEndpointKey.set(key, result);
-        return result;
-      };
-
-      const subsheetEndpointForPort = (portId: string): SheetEndpointRef => ({
-        kind: "node-pin",
-        nodeId: subsheetNodeId,
-        pinKey: portId,
-      });
-
-      const isMovedEndpoint = (endpoint: SheetEndpointRef) =>
-        isNodeEndpointInSet(endpoint, movedNodeIdSet);
-
-      const parentConnectionsNext = [] as SheetDefinition["directConnections"];
-      const childConnectionsNext = [] as SheetDefinition["directConnections"];
-      const parentConnectionPairs = new Set<string>();
-
-      for (const conn of parentSheet.directConnections) {
-        const aMoved = isMovedEndpoint(conn.a);
-        const bMoved = isMovedEndpoint(conn.b);
-        if (aMoved && bMoved) {
-          childConnectionsNext.push({
-            id: conn.id,
-            a: cloneEndpoint(conn.a),
-            b: cloneEndpoint(conn.b),
-            ...(conn.signalName ? { signalName: conn.signalName } : {}),
-            ...(conn.waypoints
-              ? { waypoints: conn.waypoints.map((p) => ({ x: p.x, y: p.y })) }
-              : {}),
-          });
-          continue;
-        }
-        if (!aMoved && !bMoved) {
-          parentConnectionsNext.push({
-            id: conn.id,
-            a: cloneEndpoint(conn.a),
-            b: cloneEndpoint(conn.b),
-            ...(conn.signalName ? { signalName: conn.signalName } : {}),
-            ...(conn.waypoints
-              ? { waypoints: conn.waypoints.map((p) => ({ x: p.x, y: p.y })) }
-              : {}),
-          });
-          parentConnectionPairs.add(directConnectionPairKey(conn.a, conn.b));
-          continue;
-        }
-
-        const selectedEndpoint = aMoved ? conn.a : conn.b;
-        const port = ensureBoundaryPortForEndpoint(selectedEndpoint);
-        const subsheetEndpoint = subsheetEndpointForPort(port.id);
-
-        const parentConn = {
-          id: conn.id,
-          a: aMoved ? subsheetEndpoint : cloneEndpoint(conn.a),
-          b: bMoved ? subsheetEndpoint : cloneEndpoint(conn.b),
-          ...(conn.signalName ? { signalName: conn.signalName } : {}),
-        };
-        parentConnectionsNext.push(parentConn);
-        parentConnectionPairs.add(
-          directConnectionPairKey(parentConn.a, parentConn.b),
-        );
-
-        childConnectionsNext.push({
-          id: createId("conn"),
-          a: aMoved
-            ? cloneEndpoint(conn.a)
-            : ({ kind: "sheet-port", portId: port.id } as const),
-          b: bMoved
-            ? cloneEndpoint(conn.b)
-            : ({ kind: "sheet-port", portId: port.id } as const),
-          ...(conn.signalName ? { signalName: conn.signalName } : {}),
-        });
-      }
-
-      const ensureParentBoundaryConnection = (
-        externalEndpoint: SheetEndpointRef,
-        portId: string,
-      ) => {
-        const subsheetEndpoint = subsheetEndpointForPort(portId);
-        const pairKey = directConnectionPairKey(
-          externalEndpoint,
-          subsheetEndpoint,
-        );
-        if (parentConnectionPairs.has(pairKey)) return;
-        parentConnectionPairs.add(pairKey);
-        parentConnectionsNext.push({
-          id: createId("conn"),
-          a: cloneEndpoint(externalEndpoint),
-          b: subsheetEndpoint,
-        });
-      };
-
-      const parentAnchorsNext = [] as SheetDefinition["labelAnchors"];
-      const childAnchorsNext = [] as SheetDefinition["labelAnchors"];
-      for (const anchor of parentSheet.labelAnchors) {
-        const labelMoved = movedLabelIdSet.has(anchor.labelId);
-        const endpointMoved = isMovedEndpoint(anchor.endpoint);
-
-        if (labelMoved && endpointMoved) {
-          childAnchorsNext.push({
-            id: anchor.id,
-            labelId: anchor.labelId,
-            endpoint: cloneEndpoint(anchor.endpoint),
-          });
-          continue;
-        }
-
-        if (labelMoved && !endpointMoved) {
-          const port = ensureBoundaryPortForEndpoint(anchor.endpoint);
-          childAnchorsNext.push({
-            id: anchor.id,
-            labelId: anchor.labelId,
-            endpoint: { kind: "sheet-port", portId: port.id },
-          });
-          ensureParentBoundaryConnection(anchor.endpoint, port.id);
-          continue;
-        }
-
-        if (!labelMoved && endpointMoved) {
-          const port = ensureBoundaryPortForEndpoint(anchor.endpoint);
-          parentAnchorsNext.push({
-            id: anchor.id,
-            labelId: anchor.labelId,
-            endpoint: subsheetEndpointForPort(port.id),
-          });
-          continue;
-        }
-
-        parentAnchorsNext.push({
-          id: anchor.id,
-          labelId: anchor.labelId,
-          endpoint: cloneEndpoint(anchor.endpoint),
-        });
-      }
-
-      const originalParentQueue = parentSheet.hal?.addfQueue
-        ? [...parentSheet.hal.addfQueue]
-        : null;
-
-      parentSheet.nodes = parentSheet.nodes.filter(
-        (n) => !movedNodeIdSet.has(n.id),
-      );
-      parentSheet.nodes.push(subsheetNode);
-      parentSheet.labels = parentSheet.labels.filter(
-        (l) => !movedLabelIdSet.has(l.id),
-      );
-      parentSheet.directConnections = parentConnectionsNext;
-      parentSheet.labelAnchors = parentAnchorsNext;
-
-      if (originalParentQueue) {
-        const childQueue = originalParentQueue.filter((entry) => {
-          const nodeId = addfQueueEntryNodeId(entry);
-          return Boolean(nodeId && movedNodeIdSet.has(nodeId));
-        });
-        const firstMovedIndex = originalParentQueue.findIndex((entry) => {
-          const nodeId = addfQueueEntryNodeId(entry);
-          return Boolean(nodeId && movedNodeIdSet.has(nodeId));
-        });
-        const parentQueue = originalParentQueue.filter((entry) => {
-          const nodeId = addfQueueEntryNodeId(entry);
-          return !(nodeId && movedNodeIdSet.has(nodeId));
-        });
-        if (childQueue.length > 0) {
-          const insertAt =
-            firstMovedIndex < 0
-              ? parentQueue.length
-              : originalParentQueue
-                  .slice(0, firstMovedIndex)
-                  .filter((entry) => {
-                    const nodeId = addfQueueEntryNodeId(entry);
-                    return !(nodeId && movedNodeIdSet.has(nodeId));
-                  }).length;
-          parentQueue.splice(
-            insertAt,
-            0,
-            makeAddfQueueNodeEntry(subsheetNodeId),
-          );
-          if (!parentSheet.hal) parentSheet.hal = {};
-          parentSheet.hal.addfQueue = normalizeAddfQueueEntries(parentQueue);
-          child.hal = {
-            ...(child.hal ?? {}),
-            addfQueue: normalizeAddfQueueEntries(childQueue),
-          };
-        } else if (parentSheet.hal?.addfQueue) {
-          parentSheet.hal.addfQueue = normalizeAddfQueueEntries(parentQueue);
-          if (parentSheet.hal.addfQueue.length === 0)
-            delete parentSheet.hal.addfQueue;
-          if (parentSheet.hal && Object.keys(parentSheet.hal).length === 0) {
-            delete parentSheet.hal;
-          }
-        }
-      }
-
-      child.nodes = movedNodes;
-      child.labels = movedLabels;
-      child.directConnections = childConnectionsNext;
-      child.labelAnchors = childAnchorsNext;
       next.sheets[child.id] = child;
+      const moveResult = moveSelectionIntoSubsheet(next, {
+        parentSheetId: activeSheetId,
+        childSheetId: child.id,
+        subsheetNode,
+        movedNodeIds: [...movedNodeIdSet],
+        movedLabelIds: movedLabels.map((label) => label.id),
+      });
 
       syncProjectUi(next, activeSheetId);
       deps.pushUndoSnapshot();
@@ -472,7 +268,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       deps.clearPendingConnectionUi();
       deps.setStatusT("store.status.putSelectionIntoSubsheet", {
         name: childName,
-        ports: child.ports.length,
+        ports: moveResult.createdPortCount,
       });
     },
 
@@ -482,6 +278,10 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       if (!target) return;
       if (sheetId === project.rootSheetId) {
         deps.setStatusT("store.status.cannotDeleteRootSheet");
+        return;
+      }
+      if (isProtectedSystemSheet(project, sheetId)) {
+        deps.setStatusT("store.status.cannotDeleteSystemSheet");
         return;
       }
 

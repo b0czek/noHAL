@@ -15,6 +15,7 @@ import {
   sameInstanceConfigValues,
   sameSystemComponentDefinition,
 } from "../systemReconcile/shared";
+import { ensureSystemSheet, findSystemSheet } from "../systemSheet";
 import type {
   ComponentDefinition,
   ComponentNode,
@@ -186,11 +187,11 @@ function isManagedAsFamily(
 }
 
 function chooseFreePosition(
-  rootSheet: NoHALProject["sheets"][string],
+  sheet: NoHALProject["sheets"][string],
   preferred: { x: number; y: number },
 ): { x: number; y: number } {
   const used = new Set(
-    rootSheet.nodes.map(
+    sheet.nodes.map(
       (node) => `${Math.round(node.position.x)}:${Math.round(node.position.y)}`,
     ),
   );
@@ -250,7 +251,9 @@ function pruneUnusedImportedMotmodFamilyComponents(
 export function planMotmodReconcile(
   project: NoHALProject,
 ): MotmodReconcilePlan {
-  const rootSheet = project.sheets[project.rootSheetId];
+  // Planning must stay read-only; if the canonical System sheet is missing,
+  // treat the project as out of sync and let reconcile recreate it.
+  const targetSheet = findSystemSheet(project);
   const normalizedMotmod = normalizeMotmodConfig(project.motmod);
   const plan: MotmodReconcilePlan = {
     inSync: true,
@@ -263,7 +266,10 @@ export function planMotmodReconcile(
     adoptNodes: [],
     updateNodeConfigs: [],
   };
-  if (!rootSheet) return plan;
+  if (!targetSheet) {
+    plan.inSync = false;
+    return plan;
+  }
 
   const requiredByFamily = requiredMotmodInstancesByFamily(
     project.target.linuxcncVersion,
@@ -294,7 +300,7 @@ export function planMotmodReconcile(
       normalizedMotmod,
     );
 
-    for (const node of rootSheet.nodes) {
+    for (const node of targetSheet.nodes) {
       if (node.kind !== "component") continue;
       const nodeFamily = familyFromNode(project, node);
       if (nodeFamily !== family) continue;
@@ -376,7 +382,7 @@ export function planMotmodReconcile(
 
     const removedNodeIds = new Set(plan.removeNodes.map((item) => item.nodeId));
     for (const instanceName of requiredInstances) {
-      const exists = rootSheet.nodes.some((node) => {
+      const exists = targetSheet.nodes.some((node) => {
         if (removedNodeIds.has(node.id)) return false;
         if (node.kind !== "component") return false;
         if (node.instanceName !== instanceName) return false;
@@ -402,10 +408,10 @@ export function planMotmodReconcile(
 export function reconcileMotmodManagedNodes(
   project: NoHALProject,
 ): NoHALProject {
-  const rootSheet = project.sheets[project.rootSheetId];
+  const { systemSheet } = ensureSystemSheet(project);
   const plan = planMotmodReconcile(project);
   project.motmod = plan.normalizedMotmod;
-  if (!rootSheet) return project;
+  if (!systemSheet) return project;
 
   for (const action of plan.ensureComponents) {
     project.library.components[action.componentId] =
@@ -427,7 +433,7 @@ export function reconcileMotmodManagedNodes(
   }
 
   const adoptNodeIdSet = new Set(plan.adoptNodes.map((item) => item.nodeId));
-  for (const node of rootSheet.nodes) {
+  for (const node of systemSheet.nodes) {
     if (node.kind !== "component") continue;
     if (!adoptNodeIdSet.has(node.id)) continue;
     const family = familyFromNode(project, node);
@@ -435,7 +441,7 @@ export function reconcileMotmodManagedNodes(
     node.componentId = MOTMOD_SYSTEM_COMPONENT_IDS[family];
   }
 
-  for (const node of rootSheet.nodes) {
+  for (const node of systemSheet.nodes) {
     if (node.kind !== "component") continue;
     const family = familyFromNode(project, node);
     if (!family) continue;
@@ -446,7 +452,7 @@ export function reconcileMotmodManagedNodes(
 
   const removeNodeIdSet = new Set(plan.removeNodes.map((item) => item.nodeId));
   if (removeNodeIdSet.size > 0) {
-    rootSheet.nodes = rootSheet.nodes.filter(
+    systemSheet.nodes = systemSheet.nodes.filter(
       (node) => !removeNodeIdSet.has(node.id),
     );
   }
@@ -457,7 +463,7 @@ export function reconcileMotmodManagedNodes(
       item.instanceConfigValues ? { ...item.instanceConfigValues } : undefined,
     ]),
   );
-  for (const node of rootSheet.nodes) {
+  for (const node of systemSheet.nodes) {
     if (node.kind !== "component") continue;
     if (!updateNodeConfigById.has(node.id)) continue;
     const instanceConfigValues = updateNodeConfigById.get(node.id);
@@ -478,10 +484,10 @@ export function reconcileMotmodManagedNodes(
       plan.normalizedMotmod,
     );
     const position = chooseFreePosition(
-      rootSheet,
+      systemSheet,
       defaultPositionForMotmodFamily(action.family, index),
     );
-    rootSheet.nodes.push({
+    systemSheet.nodes.push({
       id: createId("node"),
       kind: "component",
       componentId: MOTMOD_SYSTEM_COMPONENT_IDS[action.family],

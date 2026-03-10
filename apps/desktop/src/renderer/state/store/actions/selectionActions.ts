@@ -1,5 +1,6 @@
 import { isSystemComponent } from "@nohal/core/src/componentSystem";
 import { getSheet } from "@nohal/core/src/graph";
+import { findSystemSheet } from "@nohal/core/src/systemSheet";
 import type { XY } from "@nohal/core/src/types";
 import {
   cloneProject,
@@ -28,6 +29,10 @@ export function createSelectionActions(
       node.componentId &&
       isSystemComponent(project.library.components[node.componentId])
     );
+  const isProtectedSystemSheet = (
+    project: EditorStoreActionContext["state"]["project"],
+    sheetId: string,
+  ): boolean => findSystemSheet(project)?.id === sheetId;
 
   return {
     select(sel: EditorSelection): void {
@@ -62,6 +67,10 @@ export function createSelectionActions(
           return;
         }
         if (node?.kind === "sheet") {
+          if (isProtectedSystemSheet(deps.state.project, node.sheetId)) {
+            deps.setStatusT("store.status.cannotDeleteSystemSheet");
+            return;
+          }
           links.deleteSheetDefinition(node.sheetId);
           return;
         }
@@ -79,6 +88,18 @@ export function createSelectionActions(
           deps.state.activeSheetId,
         );
         const selectedNodeIds = new Set(sel.nodeIds);
+        const protectedSheetNodeIds = new Set(
+          currentSheet.nodes
+            .filter(
+              (node) =>
+                node.kind === "sheet" &&
+                selectedNodeIds.has(node.id) &&
+                isProtectedSystemSheet(deps.state.project, node.sheetId),
+            )
+            .map((node) => node.id),
+        );
+        for (const nodeId of protectedSheetNodeIds)
+          selectedNodeIds.delete(nodeId);
         const protectedNodeIds = new Set(
           currentSheet.nodes
             .filter(

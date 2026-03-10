@@ -483,6 +483,7 @@ export const en = {
     "Cannot create recursive sheet hierarchy",
   "store.status.placedSubsheet": "Placed subsheet {name}",
   "store.status.cannotDeleteRootSheet": "Cannot delete the root sheet",
+  "store.status.cannotDeleteSystemSheet": "The System sheet cannot be deleted",
   "store.status.deletedSheet":
     "Deleted sheet {name} ({count} sheet definitions removed)",
   "store.status.addedLabel": "Added {scope} label",
@@ -492,6 +493,8 @@ export const en = {
     "Select at least one node or label to create a subsheet",
   "store.status.cannotSubsheetOnlyPortsSelection":
     "Sheet ports cannot be moved into a subsheet directly",
+  "store.status.cannotSubsheetSystemManagedComponent":
+    "System-managed components cannot be moved into subsheets",
   "store.status.putSelectionIntoSubsheet":
     "Put selection into subsheet {name} ({ports} ports created)",
   "store.status.removedSelection": "Removed selection",

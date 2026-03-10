@@ -1,5 +1,6 @@
 import { fixedInstanceNameForComponent } from "../componentSystem";
 import { createId } from "../id";
+import { ensureSystemSheet } from "../systemSheet";
 import type {
   ComponentDefinition,
   ComponentNode,
@@ -27,11 +28,11 @@ export interface ReconcileSystemSingletonOptions {
 }
 
 function chooseFreePosition(
-  rootSheet: NoHALProject["sheets"][string],
+  sheet: NoHALProject["sheets"][string],
   preferred: { x: number; y: number },
 ): { x: number; y: number } {
   const used = new Set(
-    rootSheet.nodes.map(
+    sheet.nodes.map(
       (node) => `${Math.round(node.position.x)}:${Math.round(node.position.y)}`,
     ),
   );
@@ -58,8 +59,7 @@ export function reconcileSystemSingleton(
     expectedInstanceConfigValues,
     fixedExportStage,
   } = options;
-  const rootSheet = project.sheets[project.rootSheetId];
-  if (!rootSheet) return project;
+  const { systemSheet } = ensureSystemSheet(project);
 
   const requiredInstanceName =
     fixedInstanceNameForComponent(expectedDefinition) ??
@@ -72,7 +72,7 @@ export function reconcileSystemSingleton(
   let managedNodeSeen = false;
   const removeNodeIds = new Set<string>();
 
-  for (const node of rootSheet.nodes) {
+  for (const node of systemSheet.nodes) {
     if (node.kind !== "component") continue;
     if (!isLikeNode(project, node)) continue;
 
@@ -126,14 +126,14 @@ export function reconcileSystemSingleton(
   }
 
   if (removeNodeIds.size > 0) {
-    rootSheet.nodes = rootSheet.nodes.filter(
+    systemSheet.nodes = systemSheet.nodes.filter(
       (node) => !removeNodeIds.has(node.id),
     );
   }
 
   if (!managedNodeSeen) {
-    const position = chooseFreePosition(rootSheet, defaultPosition);
-    rootSheet.nodes.push({
+    const position = chooseFreePosition(systemSheet, defaultPosition);
+    systemSheet.nodes.push({
       id: createId("node"),
       kind: "component",
       componentId: systemComponentId,

@@ -14,6 +14,10 @@ import {
   reconcileProject,
 } from "../project";
 import { getSheetThreadOutputs } from "../sheetThreads";
+import {
+  findSystemSheet,
+  moveRootSystemComponentsToSystemSheet,
+} from "../systemSheet";
 import type {
   ComponentDefinition,
   ComponentFunctionDefinition,
@@ -379,6 +383,7 @@ export function buildProjectFromHalImport(
   }
 
   const rootSheet = project.sheets[project.rootSheetId];
+  const systemSheet = findSystemSheet(project);
   rootSheet.name = "Top";
   rootSheet.nodes = [];
   rootSheet.labels = [];
@@ -386,6 +391,14 @@ export function buildProjectFromHalImport(
   rootSheet.directConnections = [];
   rootSheet.ports = [];
   delete rootSheet.hal;
+  if (systemSheet) {
+    systemSheet.nodes = [];
+    systemSheet.ports = [];
+    systemSheet.labels = [];
+    systemSheet.labelAnchors = [];
+    systemSheet.directConnections = [];
+    if (systemSheet.hal?.addfQueue) delete systemSheet.hal.addfQueue;
+  }
 
   const _groupById = new Map(
     draft.componentGroups.map((group) => [group.id, group]),
@@ -1739,6 +1752,7 @@ export function buildProjectFromHalImport(
     };
   }
 
+  moveRootSystemComponentsToSystemSheet(project);
   reconcileProject(project);
   return { project, warnings };
 }

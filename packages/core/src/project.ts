@@ -9,6 +9,7 @@ import {
   createDefaultSheetThreadOutputs,
   normalizeSheetThreadOutputs,
 } from "./sheetThreads";
+import { moveRootSystemComponentsToSystemSheet } from "./systemSheet";
 import type {
   ComponentDefinition,
   HalThreadDefinition,
@@ -255,6 +256,7 @@ export function parseNoHALProject(content: string): NoHALProject {
     const inferred = halThreadIdByName.get(output.name);
     if (inferred) output.halThreadId = inferred;
   }
+  moveRootSystemComponentsToSystemSheet(project);
   return reconcileProject(project);
 }
 
