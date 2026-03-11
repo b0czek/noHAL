@@ -121,7 +121,7 @@ export function motionInstanceConfigValues(
   return values;
 }
 
-function motionPins27(): ComponentPinDefinition[] {
+function motionPinsBase(): ComponentPinDefinition[] {
   return [
     { key: "enable", name: "enable", direction: "in", type: "bit" },
     {
@@ -187,9 +187,135 @@ function motionPins27(): ComponentPinDefinition[] {
   ];
 }
 
+function motionPins27(): ComponentPinDefinition[] {
+  return [
+    ...motionPinsBase(),
+    {
+      key: "spindle_index_enable",
+      name: "spindle-index-enable",
+      direction: "io",
+      type: "bit",
+    },
+    {
+      key: "spindle_on",
+      name: "spindle-on",
+      direction: "out",
+      type: "bit",
+    },
+    {
+      key: "spindle_forward",
+      name: "spindle-forward",
+      direction: "out",
+      type: "bit",
+    },
+    {
+      key: "spindle_reverse",
+      name: "spindle-reverse",
+      direction: "out",
+      type: "bit",
+    },
+    {
+      key: "spindle_brake",
+      name: "spindle-brake",
+      direction: "out",
+      type: "bit",
+    },
+    {
+      key: "spindle_speed_out",
+      name: "spindle-speed-out",
+      direction: "out",
+      type: "float",
+    },
+    {
+      key: "spindle_speed_out_abs",
+      name: "spindle-speed-out-abs",
+      direction: "out",
+      type: "float",
+    },
+    {
+      key: "spindle_speed_out_rps",
+      name: "spindle-speed-out-rps",
+      direction: "out",
+      type: "float",
+    },
+    {
+      key: "spindle_speed_out_rps_abs",
+      name: "spindle-speed-out-rps-abs",
+      direction: "out",
+      type: "float",
+    },
+    {
+      key: "spindle_speed_cmd_rps",
+      name: "spindle-speed-cmd-rps",
+      direction: "out",
+      type: "float",
+    },
+    {
+      key: "spindle_inhibit",
+      name: "spindle-inhibit",
+      direction: "in",
+      type: "bit",
+    },
+    {
+      key: "spindle_orient_angle",
+      name: "spindle-orient-angle",
+      direction: "out",
+      type: "float",
+    },
+    {
+      key: "spindle_orient_mode",
+      name: "spindle-orient-mode",
+      direction: "out",
+      type: "s32",
+    },
+    {
+      key: "spindle_orient",
+      name: "spindle-orient",
+      direction: "out",
+      type: "bit",
+    },
+    {
+      key: "spindle_locked",
+      name: "spindle-locked",
+      direction: "out",
+      type: "bit",
+    },
+    {
+      key: "spindle_is_oriented",
+      name: "spindle-is-oriented",
+      direction: "in",
+      type: "bit",
+    },
+    {
+      key: "spindle_orient_fault",
+      name: "spindle-orient-fault",
+      direction: "in",
+      type: "s32",
+    },
+    {
+      key: "spindle_revs",
+      name: "spindle-revs",
+      direction: "in",
+      type: "float",
+    },
+    {
+      key: "spindle_speed_in",
+      name: "spindle-speed-in",
+      direction: "in",
+      type: "float",
+    },
+    {
+      key: "spindle_at_speed",
+      name: "spindle-at-speed",
+      direction: "in",
+      type: "bit",
+    },
+  ];
+}
+
 function motionPins28(): ComponentPinDefinition[] {
   return [
-    ...motionPins27(),
+    ...motionPinsBase(),
     {
       key: "homing_inhibit",
       name: "homing-inhibit",
