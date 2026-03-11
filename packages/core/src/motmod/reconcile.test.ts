@@ -7,7 +7,7 @@ import {
   parseNoHALProject,
   stringifyNoHALProject,
 } from "../project";
-import { findSystemSheet } from "../systemSheet";
+import { findSystemSheet } from "../sheet";
 import {
   createMotmodSystemComponentDefinition,
   planMotmodReconcile,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeAddfQueueFunctionEntry } from "./addfQueue";
 import { exportProjectToHal } from "./halExport";
 import { createEmptyProject } from "./project";
-import { findSystemSheet, findSystemSheetNode } from "./systemSheet";
+import { findSystemSheet, findSystemSheetNode } from "./sheet";
 
 function makeConnectedProject(signalName?: string) {
   const project = createEmptyProject("Signal Name Test");

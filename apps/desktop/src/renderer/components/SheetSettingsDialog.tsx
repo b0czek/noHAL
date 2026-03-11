@@ -9,7 +9,7 @@ import { resolveAddfFunctionTarget } from "@nohal/core/src/componentFunctions";
 import {
   firstSheetThreadOutputId,
   getSheetThreadOutputs,
-} from "@nohal/core/src/sheetThreads";
+} from "@nohal/core/src/sheet";
 import type {
   NoHALProject,
   SheetAddfQueueStoredEntry,

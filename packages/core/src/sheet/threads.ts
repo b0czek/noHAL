@@ -1,5 +1,5 @@
-import { createId } from "./id";
-import type { SheetDefinition, SheetThreadOutputDefinition } from "./types";
+import { createId } from "../id";
+import type { SheetDefinition, SheetThreadOutputDefinition } from "../types";
 
 export function createDefaultSheetThreadOutputs(): SheetThreadOutputDefinition[] {
   return [{ id: createId("sheetthread"), name: "main" }];

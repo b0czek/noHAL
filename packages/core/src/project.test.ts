@@ -5,7 +5,7 @@ import {
   REQUIRED_HAL_THREAD_NAME,
   reconcileProject,
 } from "./project";
-import { findSystemSheet, findSystemSheetNode } from "./systemSheet";
+import { findSystemSheet, findSystemSheetNode } from "./sheet";
 
 describe("project defaults", () => {
   it("binds the top sheet default output to servo-thread", () => {

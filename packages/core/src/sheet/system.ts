@@ -1,18 +1,18 @@
-import { isSystemComponent } from "./componentSystem";
-import { getSheet } from "./graph";
-import { createId, slugify } from "./id";
-import {
-  createDefaultSheetThreadOutputs,
-  firstSheetThreadOutputId,
-  getSheetThreadOutputs,
-} from "./sheetThreads";
-import { moveSelectionIntoSubsheet } from "./subsheetMove";
+import { isSystemComponent } from "../componentSystem";
+import { getSheet } from "../graph";
+import { createId, slugify } from "../id";
 import type {
   ComponentDefinition,
   NoHALProject,
   SheetDefinition,
   SheetNode,
-} from "./types";
+} from "../types";
+import { moveSelectionIntoSubsheet } from "./subsheetMove";
+import {
+  createDefaultSheetThreadOutputs,
+  firstSheetThreadOutputId,
+  getSheetThreadOutputs,
+} from "./threads";
 
 export const SYSTEM_SHEET_NAME = "System";
 

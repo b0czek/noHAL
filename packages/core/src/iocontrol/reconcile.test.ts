@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { exportProjectToHal } from "../halExport";
 import { createEmptyProject } from "../project";
-import { findSystemSheet } from "../systemSheet";
+import { findSystemSheet } from "../sheet";
 import type { ComponentNode } from "../types";
 import {
   createIocontrolSystemComponentDefinition,

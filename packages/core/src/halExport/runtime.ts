@@ -9,10 +9,7 @@ import { resolveAddfFunctionTarget } from "../componentFunctions";
 import { getSheet } from "../graph";
 import { isValidHalName } from "../halNames";
 import { interpolateLoadrt, interpolateLoadrtByStrategy } from "../loadrt";
-import {
-  firstSheetThreadOutputId,
-  getSheetThreadOutputs,
-} from "../sheetThreads";
+import { firstSheetThreadOutputId, getSheetThreadOutputs } from "../sheet";
 import type {
   NoHALProject,
   SheetDefinition,

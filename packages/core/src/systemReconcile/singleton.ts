@@ -1,6 +1,6 @@
 import { fixedInstanceNameForComponent } from "../componentSystem";
 import { createId } from "../id";
-import { ensureSystemSheet } from "../systemSheet";
+import { ensureSystemSheet } from "../sheet";
 import type {
   ComponentDefinition,
   ComponentNode,

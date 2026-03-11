@@ -7,9 +7,9 @@ import { normalizeLinuxCncVersion } from "./linuxcncVersion";
 import { reconcileMotmodManagedNodes } from "./motmod";
 import {
   createDefaultSheetThreadOutputs,
+  moveRootSystemComponentsToSystemSheet,
   normalizeSheetThreadOutputs,
-} from "./sheetThreads";
-import { moveRootSystemComponentsToSystemSheet } from "./systemSheet";
+} from "./sheet";
 import type {
   ComponentDefinition,
   HalThreadDefinition,

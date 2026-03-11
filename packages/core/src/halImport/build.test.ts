@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyComponentStore } from "../componentStore";
 import { getNodePins } from "../graph";
-import { findSystemSheet, findSystemSheetNode } from "../systemSheet";
+import { findSystemSheet, findSystemSheetNode } from "../sheet";
 import type { ComponentDefinition } from "../types";
 import { buildProjectFromHalImport } from "./build";
 

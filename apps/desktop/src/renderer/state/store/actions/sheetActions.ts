@@ -3,9 +3,11 @@ import { isSystemComponent } from "@nohal/core/src/componentSystem";
 import { getSheet } from "@nohal/core/src/graph";
 import { createId } from "@nohal/core/src/id";
 import { createSheet } from "@nohal/core/src/project";
-import { normalizeSheetThreadOutputs } from "@nohal/core/src/sheetThreads";
-import { moveSelectionIntoSubsheet } from "@nohal/core/src/subsheetMove";
-import { findSystemSheet } from "@nohal/core/src/systemSheet";
+import {
+  findSystemSheet,
+  moveSelectionIntoSubsheet,
+  normalizeSheetThreadOutputs,
+} from "@nohal/core/src/sheet";
 import type {
   SheetAddfQueueStoredEntry,
   SheetNode,

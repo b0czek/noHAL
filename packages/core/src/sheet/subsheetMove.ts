@@ -2,21 +2,18 @@ import {
   addfQueueEntryNodeId,
   makeAddfQueueSubsheetOutputEntry,
   normalizeAddfQueueEntries,
-} from "./addfQueue";
-import { endpointKey, getSheet, resolveEndpointInSheet } from "./graph";
-import { createId } from "./id";
-import { createSheetPortDraft } from "./project";
-import {
-  firstSheetThreadOutputId,
-  getSheetThreadOutputs,
-} from "./sheetThreads";
+} from "../addfQueue";
+import { endpointKey, getSheet, resolveEndpointInSheet } from "../graph";
+import { createId } from "../id";
+import { createSheetPortDraft } from "../project";
 import type {
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
   SheetNode,
   SheetThreadOutputDefinition,
-} from "./types";
+} from "../types";
+import { firstSheetThreadOutputId, getSheetThreadOutputs } from "./threads";
 
 function cloneEndpoint(endpoint: SheetEndpointRef): SheetEndpointRef {
   return endpoint.kind === "node-pin"

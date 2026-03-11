@@ -13,11 +13,11 @@ import {
   createEmptyProject,
   reconcileProject,
 } from "../project";
-import { getSheetThreadOutputs } from "../sheetThreads";
 import {
   findSystemSheet,
+  getSheetThreadOutputs,
   moveRootSystemComponentsToSystemSheet,
-} from "../systemSheet";
+} from "../sheet";
 import type {
   ComponentDefinition,
   ComponentFunctionDefinition,

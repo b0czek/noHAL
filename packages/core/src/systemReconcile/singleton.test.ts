@@ -4,7 +4,7 @@ import { getNodePins } from "../graph";
 import { exportProjectToHal } from "../halExport";
 import { createId } from "../id";
 import { createEmptyProject } from "../project";
-import { findSystemSheet } from "../systemSheet";
+import { findSystemSheet } from "../sheet";
 import type {
   ComponentDefinition,
   ComponentNode,

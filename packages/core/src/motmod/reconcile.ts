@@ -9,13 +9,13 @@ import {
 } from "../componentStore/catalog/system/motmod";
 import { isManagedBySystemManager } from "../componentSystem";
 import { createId } from "../id";
+import { ensureSystemSheet, findSystemSheet } from "../sheet";
 import {
   buildSystemOverrideDefinition,
   sameComponentDefinition,
   sameInstanceConfigValues,
   sameSystemComponentDefinition,
 } from "../systemReconcile/shared";
-import { ensureSystemSheet, findSystemSheet } from "../systemSheet";
 import type {
   ComponentDefinition,
   ComponentNode,

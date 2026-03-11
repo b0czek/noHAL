@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createId } from "./id";
+import { createId } from "../id";
 import {
   createEmptyProject,
   createSheet,
   REQUIRED_HAL_THREAD_NAME,
-} from "./project";
+} from "../project";
+import type { SheetNode } from "../types";
 import { moveSelectionIntoSubsheet } from "./subsheetMove";
-import type { SheetNode } from "./types";
 
 describe("moveSelectionIntoSubsheet", () => {
   it("rewires parent/child connections and remaps addf queue entries", () => {

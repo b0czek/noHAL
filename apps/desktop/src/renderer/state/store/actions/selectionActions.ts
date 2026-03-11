@@ -1,6 +1,6 @@
 import { isSystemComponent } from "@nohal/core/src/componentSystem";
 import { getSheet } from "@nohal/core/src/graph";
-import { findSystemSheet } from "@nohal/core/src/systemSheet";
+import { findSystemSheet } from "@nohal/core/src/sheet";
 import type { XY } from "@nohal/core/src/types";
 import {
   cloneProject,
