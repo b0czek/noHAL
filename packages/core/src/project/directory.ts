@@ -1,5 +1,12 @@
-import corePackageJson from "../package.json";
-import { isSystemComponent } from "./componentSystem";
+import corePackageJson from "../../package.json";
+import { isSystemComponent } from "../componentSystem";
+import { slugify } from "../id";
+import type {
+  CoreIo,
+  NoHALProject,
+  ProjectLibrary,
+  SheetDefinition,
+} from "../types";
 import {
   NOHAL_PROJECT_DIR_FORMAT,
   NOHAL_PROJECT_DIR_VERSION,
@@ -7,15 +14,8 @@ import {
   NOHAL_PROJECT_LIBRARY_FILE_VERSION,
   NOHAL_PROJECT_SHEET_FILE_FORMAT,
   NOHAL_PROJECT_SHEET_FILE_VERSION,
-} from "./fileFormats";
-import { slugify } from "./id";
+} from "./formats";
 import { parseNoHALProject } from "./project";
-import type {
-  CoreIo,
-  NoHALProject,
-  ProjectLibrary,
-  SheetDefinition,
-} from "./types";
 
 const PROJECT_DIR_MANIFEST_FILENAME = "project.nohal.json";
 const CURRENT_PROJECT_DIR_VERSION = NOHAL_PROJECT_DIR_VERSION;

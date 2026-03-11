@@ -1,8 +1,8 @@
+import type { LinuxCncVersion } from "../linuxcncVersion";
 import type {
   NOHAL_PROJECT_FORMAT,
   NOHAL_PROJECT_VERSION,
-} from "../fileFormats";
-import type { LinuxCncVersion } from "../linuxcncVersion";
+} from "../project/formats";
 import type { ComponentDefinition } from "./components";
 import type { ProjectMachineConfig } from "./ini";
 import type { SheetDefinition } from "./sheet";

@@ -9,6 +9,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import corePackageJson from "@nohal/core/package.json";
+import { createEmptyProject, createSheet } from "@nohal/core/src/project";
 import {
   NOHAL_PROJECT_DIR_FORMAT,
   NOHAL_PROJECT_DIR_VERSION,
@@ -16,8 +17,7 @@ import {
   NOHAL_PROJECT_LIBRARY_FILE_VERSION,
   NOHAL_PROJECT_SHEET_FILE_FORMAT,
   NOHAL_PROJECT_SHEET_FILE_VERSION,
-} from "@nohal/core/src/fileFormats";
-import { createEmptyProject, createSheet } from "@nohal/core/src/project";
+} from "@nohal/core/src/project/formats";
 import type { NoHALProject } from "@nohal/core/src/types";
 import { afterEach, describe, expect, it } from "vitest";
 import { projectDirectory } from "./coreWrappers";

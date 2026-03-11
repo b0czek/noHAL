@@ -1,15 +1,14 @@
-import { fixedExportStageForComponent } from "./componentSystem";
-import { NOHAL_PROJECT_FORMAT, NOHAL_PROJECT_VERSION } from "./fileFormats";
-import { createId, slugify } from "./id";
-import { reconcileIniManagedNodes } from "./ini";
-import { reconcileIocontrolManagedNodes } from "./iocontrol";
-import { normalizeLinuxCncVersion } from "./linuxcncVersion";
-import { reconcileMotmodManagedNodes } from "./motmod";
+import { fixedExportStageForComponent } from "../componentSystem";
+import { createId, slugify } from "../id";
+import { reconcileIniManagedNodes } from "../ini";
+import { reconcileIocontrolManagedNodes } from "../iocontrol";
+import { normalizeLinuxCncVersion } from "../linuxcncVersion";
+import { reconcileMotmodManagedNodes } from "../motmod";
 import {
   createDefaultSheetThreadOutputs,
   moveRootSystemComponentsToSystemSheet,
   normalizeSheetThreadOutputs,
-} from "./sheet";
+} from "../sheet";
 import type {
   ComponentDefinition,
   HalThreadDefinition,
@@ -18,7 +17,8 @@ import type {
   ProjectMotmodConfig,
   SheetDefinition,
   SheetPort,
-} from "./types";
+} from "../types";
+import { NOHAL_PROJECT_FORMAT, NOHAL_PROJECT_VERSION } from "./formats";
 
 export const REQUIRED_HAL_THREAD_NAME = "servo-thread";
 

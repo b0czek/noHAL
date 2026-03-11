@@ -1,15 +1,15 @@
-import {
-  NOHAL_BUILD_MANIFEST_FORMAT,
-  NOHAL_BUILD_MANIFEST_VERSION,
-} from "./fileFormats";
-import { exportProjectToHal } from "./halExport";
-import { slugify } from "./id";
+import { exportProjectToHal } from "../halExport";
+import { slugify } from "../id";
 import type {
   CoreIo,
   LinuxCncIniDocument,
   LinuxCncIniEntry,
   NoHALProject,
-} from "./types";
+} from "../types";
+import {
+  NOHAL_BUILD_MANIFEST_FORMAT,
+  NOHAL_BUILD_MANIFEST_VERSION,
+} from "./formats";
 
 interface GeneratedBuildFile {
   relativePath: string;

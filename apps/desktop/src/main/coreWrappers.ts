@@ -1,6 +1,6 @@
 import { createMachineConfigImportApi } from "@nohal/core/src/machineConfigImport";
-import { createProjectBuildApi } from "@nohal/core/src/projectBuild";
-import { createProjectDirectoryApi } from "@nohal/core/src/projectDirectory";
+import { createProjectBuildApi } from "@nohal/core/src/project/build";
+import { createProjectDirectoryApi } from "@nohal/core/src/project/directory";
 import { nodeIo } from "./coreNodeIo";
 
 export const projectDirectory = createProjectDirectoryApi(nodeIo);

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { createMemoryIo } from "../testUtils/memoryIo";
+import type { NoHALProject } from "../types";
+import { buildProjectIntoDirectory as buildProjectIntoDirectoryWithIo } from "./build";
 import { createEmptyProject } from "./project";
-import { buildProjectIntoDirectory as buildProjectIntoDirectoryWithIo } from "./projectBuild";
-import { createMemoryIo } from "./testUtils/memoryIo";
-import type { NoHALProject } from "./types";
 
 function withImportedIni(project: NoHALProject): NoHALProject {
   return {

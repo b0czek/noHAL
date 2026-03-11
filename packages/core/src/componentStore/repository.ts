@@ -1,7 +1,7 @@
 import {
   NOHAL_COMPONENT_STORE_FORMAT,
   NOHAL_COMPONENT_STORE_VERSION,
-} from "../fileFormats";
+} from "../project/formats";
 import type { ComponentStore, CoreIo } from "../types";
 import { createEmptyComponentStore } from "./model";
 import {

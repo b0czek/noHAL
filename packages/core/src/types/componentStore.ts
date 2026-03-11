@@ -1,8 +1,8 @@
+import type { LinuxCncVersion } from "../linuxcncVersion";
 import type {
   NOHAL_COMPONENT_STORE_FORMAT,
   NOHAL_COMPONENT_STORE_VERSION,
-} from "../fileFormats";
-import type { LinuxCncVersion } from "../linuxcncVersion";
+} from "../project/formats";
 import type { ImportedComponentDefinition } from "./components";
 
 export interface ComponentStoreSourceRef {
