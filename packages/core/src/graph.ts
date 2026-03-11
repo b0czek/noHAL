@@ -70,7 +70,7 @@ export function getSheetNodePins(
     name: port.name,
     direction: port.direction,
     type: port.type,
-    side: port.side,
+    side: pinDirectionToSide(port.direction),
   }));
 }
 

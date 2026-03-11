@@ -41,8 +41,8 @@ Subsheet nodes expose the child sheet's ports as pins on the parent sheet.
 
 Conceptually:
 
-- child `in` port appears as an output on the parent-side subsheet pin
-- child `out` port appears as an input on the parent-side subsheet pin
+- child `in` port appears as an input on the parent-side subsheet pin
+- child `out` port appears as an output on the parent-side subsheet pin
 - child `io` remains bidirectional
 
 This allows direct wiring between parent components and subsheet boundaries.
@@ -107,4 +107,3 @@ When importing from a LinuxCNC machine config:
 - instances seen only in `POSTGUI_HALFILE` sources are auto-marked
   `exportStage=postgui`
 - instances also present in main `HALFILE` sources stay `main`
-
