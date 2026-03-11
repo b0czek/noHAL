@@ -304,7 +304,12 @@ function axisPins28Plus(): ComponentPinDefinition[] {
       direction: "in",
       type: "bit",
     },
-    { key: "kb_jog_active", name: "kb-jog-active", direction: "out", type: "bit" },
+    {
+      key: "kb_jog_active",
+      name: "kb-jog-active",
+      direction: "out",
+      type: "bit",
+    },
     {
       key: "wheel_jog_active",
       name: "wheel-jog-active",
