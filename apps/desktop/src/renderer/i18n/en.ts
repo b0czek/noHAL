@@ -135,10 +135,16 @@ export const en = {
 
   "projectSettings.ariaLabel": "Project Settings",
   "projectSettings.title": "Project Settings",
+  "projectSettings.tabGeneral": "General",
   "projectSettings.tabMotmod": "motmod",
   "projectSettings.tabThreads": "HAL Threads",
   "projectSettings.tabCustomComponents": "Custom Components",
   "projectSettings.tabIniEditor": "INI Editor",
+  "projectSettings.generalTitle": "General",
+  "projectSettings.generalHelp": "Edit the project name.",
+  "projectSettings.generalProjectName": "Project Name",
+  "projectSettings.generalProjectNameHelp":
+    "Used in the editor title and generated build file names.",
   "projectSettings.motmodTitle": "Motion Module (motmod)",
   "projectSettings.motmodHelp": "Configure common motmod settings.",
   "projectSettings.motmod.numJoints": "num_joints",
@@ -387,6 +393,7 @@ export const en = {
   "store.status.failedOpenProject": "Failed to open project: {error}",
   "store.status.savedProjectPath": "Saved project folder: {projectPath}",
   "store.status.failedSaveProject": "Failed to save project: {error}",
+  "store.status.updatedProjectName": "Updated project name to {name}",
   "store.status.builtProject":
     "Built project output ({count} files): {buildDir}",
   "store.status.failedBuildProject": "Build failed: {error}",

@@ -200,6 +200,18 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       );
     },
 
+    updateProjectName(name: string): void {
+      const normalized = name.trim();
+      if (!normalized || normalized === deps.state.project.name) return;
+
+      deps.withProject((project) => {
+        project.name = normalized;
+      });
+      deps.setStatusT("store.status.updatedProjectName", {
+        name: normalized,
+      });
+    },
+
     ensureMachineConfig(): void {
       if (deps.state.project.machineConfig) return;
       deps.withProject((project) => {

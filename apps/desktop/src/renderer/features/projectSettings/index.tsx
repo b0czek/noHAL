@@ -4,11 +4,17 @@ import SettingsDialogShell from "../../components/settings/SettingsDialogShell";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 import CustomComponentsTab from "./CustomComponentsTab";
+import GeneralTab from "./GeneralTab";
 import IniTab from "./IniTab";
 import MotmodTab from "./MotmodTab";
 import ThreadsTab from "./ThreadsTab";
 
-type ProjectSettingsTab = "motmod" | "threads" | "custom-components" | "ini";
+type ProjectSettingsTab =
+  | "general"
+  | "motmod"
+  | "threads"
+  | "custom-components"
+  | "ini";
 
 type ProjectSettingsDialogProps = OverlayDialogProps;
 
@@ -17,7 +23,7 @@ export default function ProjectSettingsDialog(
 ) {
   const { t } = useI18n();
   const { state } = useEditorStore();
-  const [tab, setTab] = createSignal<ProjectSettingsTab>("motmod");
+  const [tab, setTab] = createSignal<ProjectSettingsTab>("general");
 
   return (
     <SettingsDialogShell
@@ -27,6 +33,11 @@ export default function ProjectSettingsDialog(
       onChange={(value) => setTab(value as ProjectSettingsTab)}
       onClose={props.onClose}
       tabs={[
+        {
+          value: "general",
+          label: t("projectSettings.tabGeneral"),
+          content: <GeneralTab />,
+        },
         {
           value: "motmod",
           label: t("projectSettings.tabMotmod"),
