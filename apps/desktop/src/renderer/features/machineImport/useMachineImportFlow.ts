@@ -1,10 +1,10 @@
+import { customComponentDefinitionEdits } from "@nohal/core/src/customComponent";
 import {
   buildGeneratedLocalComponentsFromHalImport,
   buildProjectFromHalImport as buildImportedProject,
   isSystemHalImportComponentGroup,
   suggestHalImportLinks,
 } from "@nohal/core/src/halImport";
-import { safeKey } from "@nohal/core/src/id";
 import type {
   ComponentDefinition,
   HalImportDraft,
@@ -88,35 +88,6 @@ function makeMachineHalSelection(
   resolveIniSubstitutions = true,
 ): MachineConfigHalFileSelection {
   return { filePath, resolveIniSubstitutions };
-}
-
-function nextUniqueIdentifier(
-  base: string,
-  existing: ReadonlyArray<string>,
-  separator = "_",
-): string {
-  const normalized = base.trim() || "item";
-  if (!existing.includes(normalized)) return normalized;
-  let index = 2;
-  while (existing.includes(`${normalized}${separator}${index}`)) index += 1;
-  return `${normalized}${separator}${index}`;
-}
-
-function nextUniqueMemberKey(
-  preferredName: string,
-  existingKeys: ReadonlyArray<string>,
-  fallback: string,
-): string {
-  const baseKey = safeKey(preferredName) || fallback;
-  const used = new Set(existingKeys);
-  if (!used.has(baseKey)) return baseKey;
-  let index = 2;
-  let candidate = `${baseKey}_${index}`;
-  while (used.has(candidate)) {
-    index += 1;
-    candidate = `${baseKey}_${index}`;
-  }
-  return candidate;
 }
 
 function reduceMachineImportFlowState(
@@ -528,10 +499,7 @@ export function useMachineImportFlow({
     value: string,
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      const normalized = value.trim();
-      if (!normalized) return component;
-      component.halComponentName = normalized;
-      component.name = normalized;
+      customComponentDefinitionEdits.halComponentName.update(component, value);
       return component;
     });
 
@@ -540,10 +508,7 @@ export function useMachineImportFlow({
     value: "rt" | "userspace" | "unknown",
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      component.runtime = {
-        ...(component.runtime ?? { kind: value }),
-        kind: value,
-      };
+      customComponentDefinitionEdits.runtimeKind.update(component, value);
       return component;
     });
 
@@ -552,35 +517,19 @@ export function useMachineImportFlow({
     value: string,
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      const normalized = value.trim();
-      if (normalized) component.loadCommand = normalized;
-      else delete component.loadCommand;
+      customComponentDefinitionEdits.loadCommand.update(component, value);
       return component;
     });
 
   const addGeneratedLocalComponentPin = (groupId: string) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      const nextName = nextUniqueIdentifier(
-        "pin",
-        component.pins.map((pin) => pin.name),
-      );
-      const nextKey = nextUniqueMemberKey(
-        nextName,
-        component.pins.map((pin) => pin.key),
-        "pin",
-      );
-      component.pins.push({
-        key: nextKey,
-        name: nextName,
-        direction: "in",
-        type: "bit",
-      });
+      customComponentDefinitionEdits.pin.add(component);
       return component;
     });
 
   const removeGeneratedLocalComponentPin = (groupId: string, pinKey: string) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      component.pins = component.pins.filter((pin) => pin.key !== pinKey);
+      customComponentDefinitionEdits.pin.remove(component, pinKey);
       return component;
     });
 
@@ -590,10 +539,7 @@ export function useMachineImportFlow({
     value: string,
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      const normalized = value.trim();
-      if (!normalized) return component;
-      const pin = component.pins.find((item) => item.key === pinKey);
-      if (pin) pin.name = normalized;
+      customComponentDefinitionEdits.pin.name.update(component, pinKey, value);
       return component;
     });
 
@@ -603,8 +549,7 @@ export function useMachineImportFlow({
     value: HalValueType,
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      const pin = component.pins.find((item) => item.key === pinKey);
-      if (pin) pin.type = value;
+      customComponentDefinitionEdits.pin.type.update(component, pinKey, value);
       return component;
     });
 
@@ -614,28 +559,17 @@ export function useMachineImportFlow({
     value: "in" | "out" | "io",
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      const pin = component.pins.find((item) => item.key === pinKey);
-      if (pin) pin.direction = value;
+      customComponentDefinitionEdits.pin.direction.update(
+        component,
+        pinKey,
+        value,
+      );
       return component;
     });
 
   const addGeneratedLocalComponentParam = (groupId: string) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      const nextName = nextUniqueIdentifier(
-        "param",
-        component.params.map((param) => param.name),
-      );
-      const nextKey = nextUniqueMemberKey(
-        nextName,
-        component.params.map((param) => param.key),
-        "param",
-      );
-      component.params.push({
-        key: nextKey,
-        name: nextName,
-        direction: "rw",
-        type: "float",
-      });
+      customComponentDefinitionEdits.param.add(component);
       return component;
     });
 
@@ -644,9 +578,7 @@ export function useMachineImportFlow({
     paramKey: string,
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      component.params = component.params.filter(
-        (param) => param.key !== paramKey,
-      );
+      customComponentDefinitionEdits.param.remove(component, paramKey);
       return component;
     });
 
@@ -656,10 +588,11 @@ export function useMachineImportFlow({
     value: string,
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      const normalized = value.trim();
-      if (!normalized) return component;
-      const param = component.params.find((item) => item.key === paramKey);
-      if (param) param.name = normalized;
+      customComponentDefinitionEdits.param.name.update(
+        component,
+        paramKey,
+        value,
+      );
       return component;
     });
 
@@ -669,8 +602,11 @@ export function useMachineImportFlow({
     value: HalValueType,
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      const param = component.params.find((item) => item.key === paramKey);
-      if (param) param.type = value;
+      customComponentDefinitionEdits.param.type.update(
+        component,
+        paramKey,
+        value,
+      );
       return component;
     });
 
@@ -680,8 +616,11 @@ export function useMachineImportFlow({
     value: "r" | "rw",
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      const param = component.params.find((item) => item.key === paramKey);
-      if (param) param.direction = value;
+      customComponentDefinitionEdits.param.direction.update(
+        component,
+        paramKey,
+        value,
+      );
       return component;
     });
 
@@ -691,10 +630,11 @@ export function useMachineImportFlow({
     value: string,
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
-      const param = component.params.find((item) => item.key === paramKey);
-      if (!param) return component;
-      if (value.trim()) param.defaultValue = value;
-      else delete param.defaultValue;
+      customComponentDefinitionEdits.param.defaultValue.update(
+        component,
+        paramKey,
+        value,
+      );
       return component;
     });
 

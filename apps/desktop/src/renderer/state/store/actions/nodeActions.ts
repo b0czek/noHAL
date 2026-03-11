@@ -4,6 +4,7 @@ import {
   fixedInstanceNameForComponent,
 } from "@nohal/core/src/componentSystem";
 import { isComponentPlaceable } from "@nohal/core/src/componentVisibility";
+import { reconcileComponentNodesForDefinition } from "@nohal/core/src/customComponent";
 import { getSheet } from "@nohal/core/src/graph";
 import { isValidHalName } from "@nohal/core/src/halNames";
 import { createId } from "@nohal/core/src/id";
@@ -24,7 +25,6 @@ import {
   nextComponentInstanceName,
   nextName,
   normalizeRotationDegrees,
-  reconcileComponentNodesForDefinition,
   toErrorMessage,
 } from "../helpers";
 import type { EditorStoreActionContext } from "./types";

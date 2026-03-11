@@ -71,10 +71,10 @@ export interface EditorStoreActionContext {
     mutate: (componentStore: ComponentStore) => void,
   ) => void;
 
-  withProject: (
-    mutate: (project: NoHALProject) => void,
+  withProject: <T>(
+    mutate: (project: NoHALProject) => T,
     options?: WithProjectOptions,
-  ) => void;
+  ) => T;
   setProjectUiActiveSheetId: (sheetId: string) => void;
   clearSelectionIfWireConnection: (connectionId: string) => void;
   clearPendingConnectionUi: () => void;

@@ -118,8 +118,10 @@ export default function ComponentStoreTab(props: ComponentStoreTabProps) {
                   versionScopedEntries().filter(
                     (entry) => entry.sourceRef.sourceId === source.id,
                   ).length;
-                const sourcePath = () =>
-                  source.kind === "comp-dir" ? source.dirPath : source.filePath;
+                const sourcePath = () => {
+                  if (source.kind === "comp-dir") return source.dirPath;
+                  return source.filePath;
+                };
 
                 return (
                   <div
@@ -132,11 +134,7 @@ export default function ComponentStoreTab(props: ComponentStoreTabProps) {
                       </div>
                       <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <Badge variant="outline">
-                          {source.kind === "comp-dir"
-                            ? "dir"
-                            : source.kind === "comp-file"
-                              ? ".comp"
-                              : "builtin"}
+                          {source.kind === "comp-dir" ? "dir" : ".comp"}
                         </Badge>
                         <span>
                           {t("componentStore.sourceComponentsCount", {

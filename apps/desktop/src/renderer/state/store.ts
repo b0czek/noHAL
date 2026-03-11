@@ -140,18 +140,19 @@ export function createEditorStore(
     syncHistoryAvailability();
   };
 
-  const withProject = (
-    mutate: (project: NoHALProject) => void,
+  const withProject = <T>(
+    mutate: (project: NoHALProject) => T,
     options?: { recordHistory?: boolean; markDirty?: boolean },
-  ) => {
+  ): T => {
     const next = cloneProject(state.project);
-    mutate(next);
+    const result = mutate(next);
     syncProjectUi(next, state.activeSheetId);
     if (options?.recordHistory !== false) pushUndoSnapshot();
     setState("project", next);
     const shouldMarkDirty =
       options?.markDirty ?? options?.recordHistory !== false;
     if (shouldMarkDirty) markProjectChanged();
+    return result;
   };
 
   const withComponentStore = (

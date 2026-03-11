@@ -2,12 +2,12 @@ import {
   addfQueueEntryNodeId,
   normalizeAddfQueueEntries,
 } from "@nohal/core/src/addfQueue";
-import { resolveComponentPinsForInstance } from "@nohal/core/src/componentInstance";
 import {
   createEmptyComponentStore,
   isStoreEntryCompatibleWithLinuxCncVersion,
   listStoreEntriesForLinuxCncVersion,
 } from "@nohal/core/src/componentStore";
+import { reconcileComponentNodesForDefinition } from "@nohal/core/src/customComponent";
 import { endpointKey } from "@nohal/core/src/graph";
 import { slugify } from "@nohal/core/src/id";
 import type {
@@ -102,78 +102,6 @@ export function getComponentSourceDisplayPath(
   if (source.kind === "comp-dir") return source.dirPath;
   if (source.kind === "comp-file") return source.filePath;
   return `LinuxCNC ${source.linuxcncVersion} built-ins (${source.refName})`;
-}
-
-export function reconcileComponentNodesForDefinition(
-  project: NoHALProject,
-  componentId: string,
-  component: ComponentDefinition,
-): void {
-  const validParamKeys = new Set(component.params.map((param) => param.key));
-  const validInstanceConfigKeys = new Set(
-    (component.runtime?.instanceConfig?.fields ?? []).map((field) => field.key),
-  );
-  const defaultInstanceConfigValues = Object.fromEntries(
-    (component.runtime?.instanceConfig?.fields ?? [])
-      .filter((field) => field.defaultValue !== undefined)
-      .map((field) => [field.key, `${field.defaultValue ?? ""}`]),
-  );
-  const defaultParams = Object.fromEntries(
-    component.params
-      .filter((param) => param.defaultValue !== undefined)
-      .map((param) => [param.key, param.defaultValue ?? ""]),
-  );
-
-  for (const sheet of Object.values(project.sheets)) {
-    for (const node of sheet.nodes) {
-      if (node.kind !== "component" || node.componentId !== componentId)
-        continue;
-      const nextValues: Record<string, string> = {};
-      for (const [key, value] of Object.entries(node.paramValues)) {
-        if (validParamKeys.has(key)) nextValues[key] = value;
-      }
-      for (const [key, value] of Object.entries(defaultParams)) {
-        if (!(key in nextValues)) nextValues[key] = value;
-      }
-      node.paramValues = nextValues;
-
-      const nextInstanceConfigValues: Record<string, string> = {};
-      for (const [key, value] of Object.entries(
-        node.instanceConfigValues ?? {},
-      )) {
-        if (validInstanceConfigKeys.has(key))
-          nextInstanceConfigValues[key] = value;
-      }
-      for (const [key, value] of Object.entries(defaultInstanceConfigValues)) {
-        if (!(key in nextInstanceConfigValues))
-          nextInstanceConfigValues[key] = value;
-      }
-      if (Object.keys(nextInstanceConfigValues).length > 0) {
-        node.instanceConfigValues = nextInstanceConfigValues;
-      } else {
-        delete node.instanceConfigValues;
-      }
-
-      const validPinKeys = new Set(
-        resolveComponentPinsForInstance(
-          component,
-          node.instanceConfigValues,
-        ).map((pin) => pin.key),
-      );
-      const currentPinInitialValues = node.pinInitialValues ?? {};
-      const nextPinInitialValues: Record<string, string> = {};
-      for (const [key, value] of Object.entries(currentPinInitialValues)) {
-        if (!validPinKeys.has(key)) continue;
-        if (!value.trim()) continue;
-        nextPinInitialValues[key] = value;
-      }
-      if (Object.keys(nextPinInitialValues).length > 0) {
-        node.pinInitialValues = nextPinInitialValues;
-      } else {
-        delete node.pinInitialValues;
-      }
-    }
-  }
 }
 
 export function nextName(base: string, used: Set<string>): string {
