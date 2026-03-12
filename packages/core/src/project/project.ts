@@ -15,6 +15,8 @@ import type {
   NoHALProject,
   ProjectMachineConfig,
   ProjectMotmodConfig,
+  ProjectUiConfig,
+  ProjectWireStyle,
   SheetDefinition,
   SheetPort,
 } from "../types";
@@ -119,6 +121,14 @@ export function createDefaultMotmodConfig(): ProjectMotmodConfig {
   };
 }
 
+export function createDefaultProjectUi(activeSheetId: string): ProjectUiConfig {
+  return {
+    activeSheetId,
+    wireLayerPosition: "under-components",
+    wireStyle: "curved",
+  };
+}
+
 export function reconcileProject(project: NoHALProject): NoHALProject {
   reconcileMotmodManagedNodes(project);
   reconcileIniManagedNodes(project);
@@ -163,6 +173,32 @@ function normalizeMotmodConfig(value: unknown): ProjectMotmodConfig {
   };
 }
 
+function normalizeProjectUi(
+  value: unknown,
+  rootSheetId: string,
+  sheets: Readonly<Record<string, SheetDefinition>>,
+): ProjectUiConfig {
+  const raw = value && typeof value === "object" ? value : {};
+  const candidate = raw as Partial<ProjectUiConfig>;
+  const activeSheetId =
+    typeof candidate.activeSheetId === "string" &&
+    candidate.activeSheetId in sheets
+      ? candidate.activeSheetId
+      : rootSheetId;
+  const wireStyle: ProjectWireStyle =
+    candidate.wireStyle === "straight" || candidate.wireStyle === "curved"
+      ? candidate.wireStyle
+      : "curved";
+  return {
+    activeSheetId,
+    wireLayerPosition:
+      candidate.wireLayerPosition === "above-components"
+        ? "above-components"
+        : "under-components",
+    wireStyle,
+  };
+}
+
 export function createEmptyProject(name: string): NoHALProject {
   const top = createDefaultTopSheet();
   const halThreads = createDefaultHalThreads();
@@ -192,9 +228,7 @@ export function createEmptyProject(name: string): NoHALProject {
     halThreads,
     machineConfig: createEmptyMachineConfig(),
     motmod: createDefaultMotmodConfig(),
-    ui: {
-      activeSheetId: top.id,
-    },
+    ui: createDefaultProjectUi(top.id),
   };
 
   return reconcileProject(project);
@@ -231,6 +265,11 @@ export function parseNoHALProject(content: string): NoHALProject {
   project.target = normalizeProjectTarget(project.target);
   project.halThreads = normalizeHalThreads(project.halThreads);
   project.motmod = normalizeMotmodConfig(project.motmod);
+  project.ui = normalizeProjectUi(
+    project.ui,
+    project.rootSheetId,
+    project.sheets,
+  );
   for (const sheet of Object.values(project.sheets)) {
     if (!Array.isArray((sheet as Partial<SheetDefinition>).comments)) {
       (sheet as SheetDefinition).comments = [];

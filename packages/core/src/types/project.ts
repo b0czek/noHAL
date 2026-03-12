@@ -56,6 +56,15 @@ export interface ProjectMotmodConfig {
   trajPeriodNs: number;
 }
 
+export type ProjectWireLayerPosition = "under-components" | "above-components";
+export type ProjectWireStyle = "right-angle" | "straight" | "curved";
+
+export interface ProjectUiConfig {
+  activeSheetId: string;
+  wireLayerPosition: ProjectWireLayerPosition;
+  wireStyle: ProjectWireStyle;
+}
+
 export interface NoHALProject {
   format: typeof NOHAL_PROJECT_FORMAT;
   version: typeof NOHAL_PROJECT_VERSION;
@@ -71,7 +80,5 @@ export interface NoHALProject {
   machineConfig?: ProjectMachineConfig;
   motmod?: ProjectMotmodConfig;
   halExport?: HalExportConfig;
-  ui: {
-    activeSheetId: string;
-  };
+  ui: ProjectUiConfig;
 }

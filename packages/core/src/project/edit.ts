@@ -3,6 +3,8 @@ import type {
   LinuxCncIniSection,
   NoHALProject,
   ProjectMachineConfig,
+  ProjectWireLayerPosition,
+  ProjectWireStyle,
 } from "../types";
 import { createEmptyMachineConfig } from "./project";
 
@@ -23,6 +25,24 @@ export function updateProjectName(
   const normalized = name.trim();
   if (!normalized || normalized === project.name) return false;
   project.name = normalized;
+  return true;
+}
+
+export function updateProjectWireLayerPosition(
+  project: NoHALProject,
+  position: ProjectWireLayerPosition,
+): boolean {
+  if (project.ui.wireLayerPosition === position) return false;
+  project.ui.wireLayerPosition = position;
+  return true;
+}
+
+export function updateProjectWireStyle(
+  project: NoHALProject,
+  style: ProjectWireStyle,
+): boolean {
+  if (project.ui.wireStyle === style) return false;
+  project.ui.wireStyle = style;
   return true;
 }
 
@@ -141,6 +161,14 @@ export const projectEdits = {
   project: {
     name: {
       update: updateProjectName,
+    },
+    wire: {
+      visibility: {
+        update: updateProjectWireLayerPosition,
+      },
+      style: {
+        update: updateProjectWireStyle,
+      },
     },
   },
   machineConfig: {

@@ -1,5 +1,8 @@
 import { endpointKey } from "@nohal/core/src/graph";
-import type { SheetEndpointRef } from "@nohal/core/src/types";
+import type {
+  ProjectWireLayerPosition,
+  SheetEndpointRef,
+} from "@nohal/core/src/types";
 import Konva from "konva";
 import { SCENE_HEIGHT, SCENE_WIDTH } from "./constants";
 import {
@@ -427,6 +430,18 @@ export class KonvaSheetScene {
     this.wireLayer.batchDraw();
     this.mainLayer.batchDraw();
     this.callbacks.onCameraChange?.({ ...this.camera });
+  }
+
+  private syncLayerOrder(position: ProjectWireLayerPosition): void {
+    if (position === "above-components") {
+      this.mainLayer.zIndex(0);
+      this.wireLayer.zIndex(1);
+      this.uiLayer.zIndex(2);
+      return;
+    }
+    this.wireLayer.zIndex(0);
+    this.mainLayer.zIndex(1);
+    this.uiLayer.zIndex(2);
   }
 
   private viewportWorldRect(): Rect {
@@ -1302,6 +1317,7 @@ export class KonvaSheetScene {
     this.lastState = state;
     this.resetTransientPositions();
     this.mainWorld.destroyChildren();
+    this.syncLayerOrder(project.ui.wireLayerPosition);
 
     const { nodeLayouts } = buildSheetSceneLayout(project, sheet);
     this.nodeLayouts = nodeLayouts;

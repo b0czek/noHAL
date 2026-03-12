@@ -141,10 +141,21 @@ export const en = {
   "projectSettings.tabCustomComponents": "Custom Components",
   "projectSettings.tabIniEditor": "INI Editor",
   "projectSettings.generalTitle": "General",
-  "projectSettings.generalHelp": "Edit the project name.",
+  "projectSettings.generalHelp": "Adjust project-wide editor settings.",
   "projectSettings.generalProjectName": "Project Name",
   "projectSettings.generalProjectNameHelp":
     "Used in the editor title and generated build file names.",
+  "projectSettings.generalWireLayer": "Wire Visibility",
+  "projectSettings.generalWireLayerHelp":
+    "Choose whether wires stay behind components or show on top.",
+  "projectSettings.generalWireLayerUnder": "Default",
+  "projectSettings.generalWireLayerAbove": "Show On Top",
+  "projectSettings.generalWireStyle": "Wire Style",
+  "projectSettings.generalWireStyleHelp":
+    "Choose whether wires bend at corners, stay straight, or use smoother curves.",
+  "projectSettings.generalWireStyleRightAngle": "Right-angle",
+  "projectSettings.generalWireStyleStraight": "Straight",
+  "projectSettings.generalWireStyleCurved": "Curved",
   "projectSettings.motmodTitle": "Motion Module (motmod)",
   "projectSettings.motmodHelp": "Configure common motmod settings.",
   "projectSettings.motmod.numJoints": "num_joints",
@@ -394,6 +405,9 @@ export const en = {
   "store.status.savedProjectPath": "Saved project folder: {projectPath}",
   "store.status.failedSaveProject": "Failed to save project: {error}",
   "store.status.updatedProjectName": "Updated project name to {name}",
+  "store.status.updatedProjectWireLayerPosition":
+    "Updated wire visibility to {position}",
+  "store.status.updatedProjectWireStyle": "Updated wire style to {style}",
   "store.status.builtProject":
     "Built project output ({count} files): {buildDir}",
   "store.status.failedBuildProject": "Build failed: {error}",

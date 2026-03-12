@@ -15,6 +15,8 @@ import type {
   HalValueType,
   LinuxCncVersion,
   NoHALProject,
+  ProjectWireLayerPosition,
+  ProjectWireStyle,
 } from "@nohal/core/src/types";
 import type { TranslationKey } from "../../../i18n";
 import { toErrorMessage } from "../helpers";
@@ -48,6 +50,30 @@ function projectTransitionFromOpenedResult(
     projectPath: result.projectPath,
     status: openedProjectPathStatus(deps, result.projectPath),
   };
+}
+
+function wireVisibilityLabel(
+  deps: EditorStoreActionContext,
+  position: ProjectWireLayerPosition,
+): string {
+  return deps.t(
+    position === "above-components"
+      ? "projectSettings.generalWireLayerAbove"
+      : "projectSettings.generalWireLayerUnder",
+  );
+}
+
+function wireStyleLabel(
+  deps: EditorStoreActionContext,
+  style: ProjectWireStyle,
+): string {
+  if (style === "straight") {
+    return deps.t("projectSettings.generalWireStyleStraight");
+  }
+  if (style === "curved") {
+    return deps.t("projectSettings.generalWireStyleCurved");
+  }
+  return deps.t("projectSettings.generalWireStyleRightAngle");
 }
 
 async function runProjectTransition(
@@ -142,6 +168,26 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       });
       deps.setStatusT("store.status.updatedProjectName", {
         name: normalized,
+      });
+    },
+
+    updateProjectWireLayerPosition(position: ProjectWireLayerPosition): void {
+      if (deps.state.project.ui.wireLayerPosition === position) return;
+      deps.withProject((project) => {
+        projectEdits.project.wire.visibility.update(project, position);
+      });
+      deps.setStatusT("store.status.updatedProjectWireLayerPosition", {
+        position: wireVisibilityLabel(deps, position),
+      });
+    },
+
+    updateProjectWireStyle(style: ProjectWireStyle): void {
+      if (deps.state.project.ui.wireStyle === style) return;
+      deps.withProject((project) => {
+        projectEdits.project.wire.style.update(project, style);
+      });
+      deps.setStatusT("store.status.updatedProjectWireStyle", {
+        style: wireStyleLabel(deps, style),
       });
     },
 

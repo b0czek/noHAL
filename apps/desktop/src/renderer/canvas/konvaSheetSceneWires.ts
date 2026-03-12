@@ -1,6 +1,7 @@
 import { getNodePins } from "@nohal/core/src/graph";
 import type {
   NoHALProject,
+  ProjectWireStyle,
   SheetDefinition,
   SheetEndpointRef,
 } from "@nohal/core/src/types";
@@ -296,6 +297,62 @@ function makeBezierWire(a: Pt, b: Pt, attrs: WireAttrs): Konva.Line {
   });
 }
 
+function buildRightAngleWirePoints(points: Pt[]): Pt[] {
+  if (points.length < 2) return [...points];
+
+  const out: Pt[] = [];
+  const pushDistinct = (p: Pt) => {
+    const prev = out[out.length - 1];
+    if (
+      !prev ||
+      Math.abs(prev.x - p.x) > 0.01 ||
+      Math.abs(prev.y - p.y) > 0.01
+    ) {
+      out.push(p);
+    }
+  };
+
+  pushDistinct(points[0]);
+  for (let i = 1; i < points.length; i += 1) {
+    const next = points[i];
+    const prev = out[out.length - 1];
+    if (!prev) {
+      pushDistinct(next);
+      continue;
+    }
+    if (
+      Math.abs(prev.x - next.x) <= 0.01 ||
+      Math.abs(prev.y - next.y) <= 0.01
+    ) {
+      pushDistinct(next);
+      continue;
+    }
+
+    const prior = out[out.length - 2];
+    const elbow =
+      prior &&
+      Math.abs(prev.x - prior.x) > 0.01 &&
+      Math.abs(prev.y - prior.y) <= 0.01
+        ? { x: prev.x, y: next.y }
+        : prior &&
+            Math.abs(prev.y - prior.y) > 0.01 &&
+            Math.abs(prev.x - prior.x) <= 0.01
+          ? { x: next.x, y: prev.y }
+          : Math.abs(next.x - prev.x) >= Math.abs(next.y - prev.y)
+            ? { x: next.x, y: prev.y }
+            : { x: prev.x, y: next.y };
+
+    pushDistinct(elbow);
+    pushDistinct(next);
+  }
+  return out;
+}
+
+function buildWireShapePoints(points: Pt[], style: ProjectWireStyle): Pt[] {
+  if (style === "right-angle") return buildRightAngleWirePoints(points);
+  return points;
+}
+
 function boundsFromPoints(points: Pt[], pad = 0): CullBounds {
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
@@ -337,14 +394,19 @@ function drawWire(
   return line;
 }
 
-function updateWirePathShape(line: Konva.Line, points: Pt[]): void {
+function updateWirePathShape(
+  line: Konva.Line,
+  points: Pt[],
+  style: ProjectWireStyle,
+): void {
   if (points.length < 2) return;
+  const shapePoints = buildWireShapePoints(points, style);
   const rawHitStroke = line.hitStrokeWidth();
   const hitStroke = typeof rawHitStroke === "number" ? rawHitStroke : 0;
   const pad = Math.max(line.strokeWidth(), hitStroke) * 0.5 + 10;
-  setCullBounds(line, boundsFromPoints(points, pad));
-  if (points.length === 2) {
-    const bez = makeBezierWire(points[0], points[1], {
+  setCullBounds(line, boundsFromPoints(shapePoints, pad));
+  if (style === "curved" && shapePoints.length === 2) {
+    const bez = makeBezierWire(shapePoints[0], shapePoints[1], {
       stroke: line.stroke(),
       strokeWidth: line.strokeWidth(),
       dash: line.dash(),
@@ -360,27 +422,31 @@ function updateWirePathShape(line: Konva.Line, points: Pt[]): void {
   }
 
   const flatPoints: number[] = [];
-  for (const p of points) flatPoints.push(p.x, p.y);
+  for (const p of shapePoints) flatPoints.push(p.x, p.y);
   line.setAttrs({
     points: flatPoints,
     bezier: false,
-    tension: WIRE_PATH_TENSION,
+    tension: style === "curved" ? WIRE_PATH_TENSION : 0,
   });
 }
 
 function drawWirePath(
   ctx: KonvaSheetSceneWiresContext,
   points: Pt[],
+  style: ProjectWireStyle,
   attrs: WireAttrs,
 ): Konva.Line | null {
   if (points.length < 2) return null;
-  if (points.length === 2) return drawWire(ctx, points[0], points[1], attrs);
+  const shapePoints = buildWireShapePoints(points, style);
+  if (style === "curved" && shapePoints.length === 2) {
+    return drawWire(ctx, shapePoints[0], shapePoints[1], attrs);
+  }
 
   const flatPoints: number[] = [];
-  for (const p of points) flatPoints.push(p.x, p.y);
+  for (const p of shapePoints) flatPoints.push(p.x, p.y);
   const line = new Konva.Line({
     points: flatPoints,
-    tension: WIRE_PATH_TENSION,
+    tension: style === "curved" ? WIRE_PATH_TENSION : 0,
     stroke: attrs.stroke,
     strokeWidth: attrs.strokeWidth,
     dash: attrs.dash,
@@ -392,7 +458,7 @@ function drawWirePath(
   const hitStroke =
     typeof attrs.hitStrokeWidth === "number" ? attrs.hitStrokeWidth : 0;
   const pad = Math.max(attrs.strokeWidth, hitStroke) * 0.5 + 10;
-  setCullBounds(line, boundsFromPoints(points, pad));
+  setCullBounds(line, boundsFromPoints(shapePoints, pad));
   ctx.wireWorld.add(line);
   return line;
 }
@@ -575,6 +641,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
   if (!state) return;
 
   const { sheet, pendingEndpoint, pendingWirePoints } = state;
+  const wireStyle = state.project.ui.wireStyle;
   const lookup = getSheetLookup(state.project, sheet);
   const selectedConnectionId = ctx.getSelectedConnectionId();
   const selectedConn = selectedConnectionId
@@ -618,7 +685,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
       endEndpoint: conn.b,
     });
     const selected = activeSelectedConnectionId === conn.id;
-    const wire = drawWirePath(ctx, displayRoutePoints, {
+    const wire = drawWirePath(ctx, displayRoutePoints, wireStyle, {
       stroke: selected ? WIRE_SELECTED_STROKE : WIRE_DEFAULT_STROKE,
       strokeWidth: selected
         ? WIRE_SELECTED_STROKE_WIDTH
@@ -739,6 +806,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
               startEndpoint: conn.a,
               endEndpoint: conn.b,
             }),
+            wireStyle,
           );
           ctx.wireLayer.batchDraw();
         });
@@ -764,6 +832,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
               startEndpoint: conn.a,
               endEndpoint: conn.b,
             }),
+            wireStyle,
           );
           ctx.callbacks.onMoveConnectionWaypoints(
             conn.id,
@@ -812,7 +881,7 @@ export function redrawWires(ctx: KonvaSheetSceneWiresContext): void {
         startEndpoint: pendingEndpoint,
         endEndpoint: null,
       });
-      drawWirePath(ctx, pendingDisplayPoints, {
+      drawWirePath(ctx, pendingDisplayPoints, wireStyle, {
         stroke: WIRE_PENDING_STROKE,
         strokeWidth: WIRE_PENDING_STROKE_WIDTH,
         dash: WIRE_PENDING_DASH,
