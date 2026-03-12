@@ -255,12 +255,17 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           items: componentItems,
         };
       }
+      if (node.kind !== "sheet") return null;
       return {
         title: t("canvasContext.subsheet"),
         items: [
           {
             label: t("inspector.enterSubsheet"),
             onSelect: () => editorUi.openComponentEditorForNode(node.id),
+          },
+          {
+            label: t("sidebar.sheetSettings"),
+            onSelect: () => editorUi.openSheetSettings(node.sheetId),
           },
           {
             label: t("inspector.deleteSelection"),
