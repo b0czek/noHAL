@@ -1,9 +1,13 @@
 import {
   HiOutlineArchiveBoxArrowDown,
+  HiOutlineArrowsRightLeft,
   HiOutlineArrowUturnLeft,
   HiOutlineArrowUturnRight,
   HiOutlineChevronDown,
+  HiOutlineDocumentDuplicate,
+  HiOutlineDocumentText,
   HiOutlineFolderOpen,
+  HiOutlineTag,
 } from "solid-icons/hi";
 import { Button } from "../components/ui/button";
 import {
@@ -107,18 +111,22 @@ export default function EditorTopbar(props: EditorTopbarProps) {
         <Button
           variant="secondary"
           onClick={() => actions.addSheetDefinition()}
+          class="gap-2"
         >
+          <HiOutlineDocumentDuplicate size={16} aria-hidden="true" />
           {t("topbar.addSubsheet")}
         </Button>
-        <Button variant="secondary" onClick={actions.addComment}>
+        <Button variant="secondary" onClick={actions.addComment} class="gap-2">
+          <HiOutlineDocumentText size={16} aria-hidden="true" />
           {t("topbar.addText")}
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger
             as={Button<"button">}
             variant="secondary"
-            class="gap-1"
+            class="gap-2"
           >
+            <HiOutlineArrowsRightLeft size={16} aria-hidden="true" />
             {t("topbar.addPort")}
             <HiOutlineChevronDown size={16} aria-hidden="true" />
           </DropdownMenuTrigger>
@@ -126,17 +134,26 @@ export default function EditorTopbar(props: EditorTopbarProps) {
             <DropdownMenuItem
               onSelect={() => actions.addSheetPort("in", "bit")}
             >
-              {t("topbar.inPortBit")}
+              <span class="inline-flex items-center gap-2">
+                <HiOutlineArrowsRightLeft size={16} aria-hidden="true" />
+                {t("topbar.inPortBit")}
+              </span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={() => actions.addSheetPort("out", "bit")}
             >
-              {t("topbar.outPortBit")}
+              <span class="inline-flex items-center gap-2">
+                <HiOutlineArrowsRightLeft size={16} aria-hidden="true" />
+                {t("topbar.outPortBit")}
+              </span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onSelect={() => actions.addSheetPort("io", "float")}
             >
-              {t("topbar.ioPortFloat")}
+              <span class="inline-flex items-center gap-2">
+                <HiOutlineArrowsRightLeft size={16} aria-hidden="true" />
+                {t("topbar.ioPortFloat")}
+              </span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -144,17 +161,24 @@ export default function EditorTopbar(props: EditorTopbarProps) {
           <DropdownMenuTrigger
             as={Button<"button">}
             variant="secondary"
-            class="gap-1"
+            class="gap-2"
           >
+            <HiOutlineTag size={16} aria-hidden="true" />
             {t("topbar.addLabel")}
             <HiOutlineChevronDown size={16} aria-hidden="true" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onSelect={() => actions.addLabel("local")}>
-              {t("topbar.localLabel")}
+              <span class="inline-flex items-center gap-2">
+                <HiOutlineTag size={16} aria-hidden="true" />
+                {t("topbar.localLabel")}
+              </span>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => actions.addLabel("global")}>
-              {t("topbar.globalLabel")}
+              <span class="inline-flex items-center gap-2">
+                <HiOutlineTag size={16} aria-hidden="true" />
+                {t("topbar.globalLabel")}
+              </span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
