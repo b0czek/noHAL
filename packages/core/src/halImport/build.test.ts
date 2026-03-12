@@ -346,6 +346,32 @@ describe("buildProjectFromHalImport", () => {
     ).toBe(true);
   });
 
+  it("replaces the default top-sheet thread output with imported addf threads", () => {
+    const draft = parseHalImportDraft(`
+      loadrt threads name1=servo-thread period1=1000000
+      loadrt and2 names=logic
+      addf logic servo-thread
+    `);
+
+    const result = buildProjectFromHalImport({
+      draft,
+      componentStore: createEmptyComponentStore(),
+      linkSelections: {},
+      linuxcncVersion: "2.10",
+    });
+
+    const root = result.project.sheets[result.project.rootSheetId];
+    const threadOutputs = root.hal?.threadOutputs ?? [];
+    const servoThread = result.project.halThreads?.find(
+      (thread) => thread.name === "servo-thread",
+    );
+
+    expect(threadOutputs).toHaveLength(1);
+    expect(threadOutputs[0]?.name).toBe("servo-thread");
+    expect(threadOutputs[0]?.halThreadId).toBe(servoThread?.id);
+    expect(threadOutputs.some((output) => output.name === "main")).toBe(false);
+  });
+
   it("does not keep loadrt motmod as a project-local custom component", () => {
     const draft = parseHalImportDraft(`
       loadrt motmod base_period_nsec=0 servo_period_nsec=1000000 num_joints=3

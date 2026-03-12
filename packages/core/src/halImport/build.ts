@@ -1614,7 +1614,12 @@ export function buildProjectFromHalImport(
   const addfQueue: SheetAddfQueueStoredEntry[] = [];
   const seenQueueItems = new Set<string>();
   const warnedCollapsedAddfInstances = new Set<string>();
-  const sheetThreadOutputs = getSheetThreadOutputs(rootSheet);
+  const hasImportedThreadNames = draft.addfs.some((addf) =>
+    Boolean(addf.thread?.trim()),
+  );
+  const sheetThreadOutputs = hasImportedThreadNames
+    ? []
+    : getSheetThreadOutputs(rootSheet);
   if (!rootSheet.hal) rootSheet.hal = {};
   rootSheet.hal.threadOutputs = [...sheetThreadOutputs];
   const halThreads = project.halThreads ?? [];
