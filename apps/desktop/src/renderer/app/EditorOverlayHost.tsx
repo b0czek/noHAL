@@ -1,9 +1,9 @@
 import { Match, Switch } from "solid-js";
 import ComponentNodeDialog from "../components/ComponentNodeDialog";
 import ComponentSearchDialog from "../components/ComponentSearchDialog";
-import SheetSettingsDialog from "../components/SheetSettingsDialog";
 import GeneralSettingsDialog from "../features/generalSettings";
 import ProjectSettingsDialog from "../features/projectSettings";
+import SheetSettingsDialog from "../features/sheetSettings";
 import { type EditorOverlay, useEditorUi } from "../state/EditorUiProvider";
 
 type ComponentEditorOverlay = Extract<

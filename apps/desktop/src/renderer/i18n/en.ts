@@ -219,6 +219,8 @@ export const en = {
 
   "sheetSettings.ariaLabel": "Sheet Settings",
   "sheetSettings.title": "Sheet Settings",
+  "sheetSettings.tabThreadOutputs": "Thread Outputs",
+  "sheetSettings.tabAddfQueue": "addf Queue",
   "sheetSettings.threadOutputsTitle": "Sheet Thread Outputs",
   "sheetSettings.threadOutputsHelp":
     "Define this sheet's local scheduling outputs. Parent sheets map subsheet outputs into their own outputs.",
@@ -230,6 +232,8 @@ export const en = {
   "sheetSettings.addfQueueTitle": "addf Queue (Sheet Scope)",
   "sheetSettings.addfQueueHelp":
     "Order components and subsheets together. Subsheet entries expand using that subsheet's own queue during HAL export.",
+  "sheetSettings.addfQueueDragThreadHelp":
+    "Drag rows between thread-output lanes to choose which local thread output each component function or subsheet output runs on.",
   "sheetSettings.subsheetThreadMappingsTitle": "Subsheet Thread Mappings",
   "sheetSettings.subsheetThreadMappingsHelp":
     "Map each subsheet's declared thread outputs to this sheet's thread outputs. Auto inherits the subsheet row lane from the addf queue.",

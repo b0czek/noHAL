@@ -304,13 +304,13 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     },
 
     updateSheetNodeThreadMap(
+      sheetId: string,
       nodeId: string,
       childThreadOutputId: string,
       parentThreadOutputId: string | null,
     ): void {
-      const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
-        const sheet = getSheet(project, activeSheetId);
+        const sheet = getSheet(project, sheetId);
         const node = sheet.nodes.find((n) => n.id === nodeId);
         if (!node || node.kind !== "sheet") return;
         if (!node.hal) node.hal = {};
