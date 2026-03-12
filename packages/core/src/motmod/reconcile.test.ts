@@ -230,10 +230,10 @@ describe("motmod-managed obligatory components", () => {
     expect(motion29Pins).toContain("jog-stop");
     expect(motion29Pins).toContain("is-all-homed");
 
-    expect(joint28Pins).toContain("joint-vel-cmd");
-    expect(joint28Pins).not.toContain("vel-cmd");
+    expect(joint28Pins).toContain("vel-cmd");
+    expect(joint28Pins).not.toContain("posthome-cmd");
     expect(joint29Pins).toContain("vel-cmd");
-    expect(joint29Pins).not.toContain("joint-vel-cmd");
+    expect(joint29Pins).toContain("posthome-cmd");
   });
 
   it("expands motion dio/aio pins from instanceConfig values", () => {

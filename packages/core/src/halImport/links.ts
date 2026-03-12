@@ -5,6 +5,7 @@ import type {
   HalImportDraft,
   HalImportLinkSuggestion,
 } from "../types";
+import { isSystemHalImportComponentGroup } from "./system";
 
 function normalizeName(value: string): string {
   return value
@@ -25,6 +26,14 @@ export function suggestHalImportLinks(
       )
     : Object.values(componentStore.components);
   return draft.componentGroups.map((group) => {
+    if (isSystemHalImportComponentGroup(group)) {
+      return {
+        groupId: group.id,
+        selection: { groupId: group.id, mode: "project-local" },
+        reason: "system HAL namespace handled by importer",
+      };
+    }
+
     const exact = storeEntries
       .filter(
         (entry) =>
