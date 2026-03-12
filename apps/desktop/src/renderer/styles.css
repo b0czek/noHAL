@@ -190,18 +190,15 @@
   }
 
   .canvas-context-menu {
-    @apply absolute grid w-[min(22.5rem,calc(100%-1rem))] max-h-[min(28.75rem,calc(100%-1rem))] grid-rows-[auto_auto_1fr] gap-2 rounded-[1.35rem] border border-white/10 p-2.5 text-foreground shadow-2xl shadow-black/30 backdrop-blur-2xl;
-    background:
-      radial-gradient(
-        circle at top left,
-        hsl(var(--accent) / 0.08),
-        transparent 36%
-      ),
-      linear-gradient(180deg, rgba(11, 24, 31, 0.78), rgba(8, 17, 22, 0.64));
+    @apply absolute grid w-[min(22.5rem,calc(100%-1rem))] max-h-[min(28.75rem,calc(100%-1rem))] grid-rows-[auto_auto_1fr] gap-2 rounded-md border bg-popover p-2 text-popover-foreground shadow-md;
+  }
+
+  .canvas-context-actions-menu {
+    @apply z-[2147482900] grid min-w-[17.5rem] grid-rows-[auto_1fr] gap-2 overflow-hidden rounded-md border bg-popover p-2 text-popover-foreground shadow-md outline-none;
   }
 
   .canvas-context-title {
-    @apply px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground;
+    @apply px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground;
   }
 
   .canvas-context-list {
@@ -213,7 +210,7 @@
   }
 
   .canvas-context-item {
-    @apply focus-ring grid w-full gap-0.5 rounded-xl px-3 py-2.5 text-left text-foreground transition hover:bg-white/10 disabled:cursor-default disabled:opacity-45;
+    @apply focus-ring relative grid w-full gap-0.5 rounded-sm px-2.5 py-2 text-left text-foreground outline-none transition hover:bg-accent hover:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-45 disabled:cursor-default disabled:opacity-45;
   }
 
   .canvas-context-item-name {
@@ -222,5 +219,13 @@
 
   .canvas-context-item-meta {
     @apply text-[11px] text-muted-foreground;
+  }
+
+  .canvas-context-item-caret {
+    @apply absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground;
+  }
+
+  .canvas-context-submenu-surface {
+    @apply z-[2147482901] min-h-0 max-h-[min(24rem,calc(100%-1rem))] overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md;
   }
 }

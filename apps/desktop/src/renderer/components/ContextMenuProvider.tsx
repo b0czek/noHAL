@@ -11,6 +11,15 @@ import {
   useContext,
 } from "solid-js";
 import { Portal } from "solid-js/web";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from "./ui/dropdown-menu";
 
 export interface ContextMenuActionItem {
   label: string;
@@ -18,6 +27,7 @@ export interface ContextMenuActionItem {
   disabled?: boolean;
   meta?: string;
   closeOnSelect?: boolean;
+  children?: ContextMenuActionItem[];
 }
 
 type ContextMenuBase = {
@@ -54,6 +64,50 @@ const ContextMenuContext = createContext<ContextMenuContextValue>();
 
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(value, Math.max(min, max)));
+
+function ContextMenuActionNode(props: { item: ContextMenuActionItem }) {
+  if ((props.item.children?.length ?? 0) > 0) {
+    return (
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger
+          class="canvas-context-item"
+          disabled={props.item.disabled}
+        >
+          <span class="canvas-context-item-name">{props.item.label}</span>
+          <Show when={props.item.meta}>
+            {(meta) => <span class="canvas-context-item-meta">{meta()}</span>}
+          </Show>
+          <span class="canvas-context-item-caret" aria-hidden="true">
+            {">"}
+          </span>
+        </DropdownMenuSubTrigger>
+        <DropdownMenuPortal>
+          <DropdownMenuSubContent class="canvas-context-submenu-surface">
+            <div class="canvas-context-list canvas-context-list-compact">
+              <For each={props.item.children}>
+                {(child) => <ContextMenuActionNode item={child} />}
+              </For>
+            </div>
+          </DropdownMenuSubContent>
+        </DropdownMenuPortal>
+      </DropdownMenuSub>
+    );
+  }
+
+  return (
+    <DropdownMenuItem
+      class="canvas-context-item"
+      disabled={props.item.disabled}
+      closeOnSelect={props.item.closeOnSelect}
+      onSelect={() => props.item.onSelect()}
+    >
+      <span class="canvas-context-item-name">{props.item.label}</span>
+      <Show when={props.item.meta}>
+        {(meta) => <span class="canvas-context-item-meta">{meta()}</span>}
+      </Show>
+    </DropdownMenuItem>
+  );
+}
 
 function clampToViewport(spec: ContextMenuSpec): ContextMenuSpec {
   if (typeof window === "undefined") return spec;
@@ -100,79 +154,88 @@ export function ContextMenuProvider(props: ParentProps) {
   return (
     <ContextMenuContext.Provider value={value}>
       {props.children}
-      <Show when={menu()}>
-        {(current) => (
-          <Portal>
-            <div
-              class="app-context-menu-backdrop"
-              role="presentation"
-              onPointerDown={() => close()}
-            >
-              <div
-                class="canvas-context-menu app-context-menu-surface"
-                role="dialog"
-                aria-modal="false"
-                aria-label={current().ariaLabel}
-                style={(() => {
-                  const m = current();
-                  const style: JSX.CSSProperties = {
-                    left: `${m.x}px`,
-                    top: `${m.y}px`,
-                  };
-                  if (m.width != null) style.width = `${m.width}px`;
-                  if (m.maxHeight != null)
-                    style["max-height"] = `${m.maxHeight}px`;
-                  return style;
-                })()}
-                onPointerDown={(evt) => evt.stopPropagation()}
-                onContextMenu={(evt) => evt.preventDefault()}
+      {menu()?.kind === "actions"
+        ? (() => {
+            const current = () => menu() as ContextMenuActionsSpec;
+            return (
+              <DropdownMenu
+                open
+                modal={false}
+                placement="right-start"
+                gutter={0}
+                shift={0}
+                getAnchorRect={() => ({
+                  x: current().x,
+                  y: current().y,
+                  width: 0,
+                  height: 0,
+                })}
+                onOpenChange={(isOpen: boolean) => {
+                  if (!isOpen) close();
+                }}
               >
-                {(() => {
-                  const m = current();
-                  if (m.kind === "actions") {
-                    return (
-                      <>
-                        <Show when={m.title}>
-                          {(title) => (
-                            <div class="canvas-context-title">{title()}</div>
-                          )}
-                        </Show>
-                        <div class="canvas-context-list canvas-context-list-compact">
-                          <For each={m.items}>
-                            {(item) => (
-                              <button
-                                type="button"
-                                class="canvas-context-item"
-                                disabled={item.disabled}
-                                onClick={() => {
-                                  item.onSelect();
-                                  if (item.closeOnSelect !== false) close();
-                                }}
-                              >
-                                <span class="canvas-context-item-name">
-                                  {item.label}
-                                </span>
-                                <Show when={item.meta}>
-                                  {(meta) => (
-                                    <span class="canvas-context-item-meta">
-                                      {meta()}
-                                    </span>
-                                  )}
-                                </Show>
-                              </button>
-                            )}
-                          </For>
-                        </div>
-                      </>
-                    );
-                  }
-                  return m.content({ close });
-                })()}
-              </div>
-            </div>
-          </Portal>
-        )}
-      </Show>
+                <DropdownMenuContent
+                  class="canvas-context-actions-menu"
+                  aria-label={current().ariaLabel}
+                  style={{
+                    width: `${current().width ?? 280}px`,
+                    "max-height":
+                      current().maxHeight != null
+                        ? `${current().maxHeight}px`
+                        : undefined,
+                  }}
+                >
+                  <Show when={current().title}>
+                    {(title) => (
+                      <div class="canvas-context-title">{title()}</div>
+                    )}
+                  </Show>
+                  <div class="canvas-context-list canvas-context-list-compact">
+                    <For each={current().items}>
+                      {(item) => <ContextMenuActionNode item={item} />}
+                    </For>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          })()
+        : null}
+      {menu()?.kind === "custom"
+        ? (() => {
+            const current = () => menu() as ContextMenuCustomSpec;
+            return (
+              <Portal>
+                <div
+                  class="app-context-menu-backdrop"
+                  role="presentation"
+                  onPointerDown={() => close()}
+                >
+                  <div
+                    class="canvas-context-menu app-context-menu-surface"
+                    role="dialog"
+                    aria-modal="false"
+                    aria-label={current().ariaLabel}
+                    style={(() => {
+                      const m = current();
+                      const style: JSX.CSSProperties = {
+                        left: `${m.x}px`,
+                        top: `${m.y}px`,
+                      };
+                      if (m.width != null) style.width = `${m.width}px`;
+                      if (m.maxHeight != null)
+                        style["max-height"] = `${m.maxHeight}px`;
+                      return style;
+                    })()}
+                    onPointerDown={(evt) => evt.stopPropagation()}
+                    onContextMenu={(evt) => evt.preventDefault()}
+                  >
+                    {current().content({ close })}
+                  </div>
+                </div>
+              </Portal>
+            );
+          })()
+        : null}
     </ContextMenuContext.Provider>
   );
 }

@@ -65,6 +65,8 @@ export const en = {
   "canvasContext.sheetPort": "Sheet Port",
   "canvasContext.connection": "Connection",
   "canvasContext.waypoint": "Waypoint",
+  "canvasContext.move": "Move",
+  "canvasContext.newSheet": "New Sheet",
   "canvasContext.putEverythingIntoSubsheet": "Into Subsheet",
   "canvasContext.splitConnectionIntoLabels": "Split Into Labels",
   "canvasContext.removeConnection": "Remove Connection",
@@ -523,8 +525,12 @@ export const en = {
     "Sheet ports cannot be moved into a subsheet directly",
   "store.status.cannotSubsheetSystemManagedComponent":
     "System-managed components cannot be moved into subsheets",
+  "store.status.cannotMoveSelectionIntoSameSubsheet":
+    "The target subsheet cannot be part of the moved selection",
   "store.status.putSelectionIntoSubsheet":
     "Put selection into subsheet {name} ({ports} ports created)",
+  "store.status.movedSelectionIntoSubsheet":
+    "Moved selection into subsheet {name} ({ports} ports created)",
   "store.status.removedSelection": "Removed selection",
   "store.status.selectedEndpointDetailed":
     "Selected endpoint {name} ({direction} {type})",

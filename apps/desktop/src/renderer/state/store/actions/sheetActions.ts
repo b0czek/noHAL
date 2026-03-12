@@ -1,4 +1,3 @@
-import { normalizeAddfQueueEntries } from "@nohal/core/src/addfQueue";
 import { isSystemComponent } from "@nohal/core/src/componentSystem";
 import { getSheet } from "@nohal/core/src/graph";
 import { createId } from "@nohal/core/src/id";
@@ -6,7 +5,7 @@ import { createSheet } from "@nohal/core/src/project";
 import {
   findSystemSheet,
   moveSelectionIntoSubsheet,
-  normalizeSheetThreadOutputs,
+  sheetModelEdits,
 } from "@nohal/core/src/sheet";
 import type {
   SheetAddfQueueStoredEntry,
@@ -14,16 +13,13 @@ import type {
 } from "@nohal/core/src/types";
 import {
   cloneProject,
-  collectSheetSubtreeIds,
-  defaultNodePosition,
   ensureInstanceName,
   findNode,
   nextName,
-  removeSheetNodeReferencesForDeletedSheets,
   selectionBoundsForNodesAndLabels,
   syncProjectUi,
 } from "../helpers";
-import type { EditorStoreActionContext } from "./types";
+import type { EditorSelection, EditorStoreActionContext } from "./types";
 
 export function createSheetActions(deps: EditorStoreActionContext) {
   const isSystemManagedProtectedNode = (
@@ -47,21 +43,109 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     deps.clearSelectionAndPendingUi();
   };
 
+  const resolveSheetMoveSelection = (
+    selection: EditorSelection,
+  ): {
+    nodeIds: Set<string>;
+    labelIds: Set<string>;
+    portIds: Set<string>;
+  } | null => {
+    if (!selection) return null;
+    if (selection.kind === "node") {
+      return {
+        nodeIds: new Set([selection.id]),
+        labelIds: new Set(),
+        portIds: new Set(),
+      };
+    }
+    if (selection.kind === "label") {
+      return {
+        nodeIds: new Set(),
+        labelIds: new Set([selection.id]),
+        portIds: new Set(),
+      };
+    }
+    if (selection.kind === "sheet-port") {
+      return {
+        nodeIds: new Set(),
+        labelIds: new Set(),
+        portIds: new Set([selection.id]),
+      };
+    }
+    if (selection.kind !== "multi") return null;
+    return {
+      nodeIds: new Set(selection.nodeIds),
+      labelIds: new Set(selection.labelIds),
+      portIds: new Set(selection.portIds),
+    };
+  };
+
+  const prepareSelectionMove = (selection: EditorSelection) => {
+    const resolved = resolveSheetMoveSelection(selection);
+    if (!resolved) {
+      deps.setStatusT("store.status.cannotSubsheetEmptySelection");
+      return null;
+    }
+
+    const { nodeIds, labelIds, portIds } = resolved;
+    if (nodeIds.size === 0 && labelIds.size === 0 && portIds.size > 0) {
+      deps.setStatusT("store.status.cannotSubsheetOnlyPortsSelection");
+      return null;
+    }
+
+    const activeSheetId = deps.state.activeSheetId;
+    const currentProject = deps.state.project;
+    const next = cloneProject(currentProject);
+    const parentSheet = next.sheets[activeSheetId];
+    if (!parentSheet) return null;
+
+    const movedNodes = parentSheet.nodes.filter((node) => nodeIds.has(node.id));
+    const movedLabels = parentSheet.labels.filter((label) =>
+      labelIds.has(label.id),
+    );
+    if (
+      movedNodes.some((node) =>
+        isSystemManagedProtectedNode(currentProject, node),
+      )
+    ) {
+      deps.setStatusT("store.status.cannotSubsheetSystemManagedComponent");
+      return null;
+    }
+    if (movedNodes.length === 0 && movedLabels.length === 0) {
+      deps.setStatusT("store.status.cannotSubsheetEmptySelection");
+      return null;
+    }
+
+    return {
+      activeSheetId,
+      next,
+      parentSheet,
+      movedNodes,
+      movedLabels,
+      movedNodeIds: movedNodes.map((node) => node.id),
+      movedLabelIds: movedLabels.map((label) => label.id),
+      selectedNodeIds: nodeIds,
+    };
+  };
+
+  const commitSelectionMove = (
+    next: EditorStoreActionContext["state"]["project"],
+    activeSheetId: string,
+    selectedSubsheetNodeId: string,
+  ): void => {
+    syncProjectUi(next, activeSheetId);
+    deps.pushUndoSnapshot();
+    deps.setState("project", next);
+    deps.markProjectChanged();
+    deps.setState("selection", { kind: "node", id: selectedSubsheetNodeId });
+    deps.clearPendingConnectionUi();
+  };
+
   return {
     addSheetThreadOutput(sheetId: string): void {
       deps.withProject((project) => {
         const sheet = getSheet(project, sheetId);
-        if (!sheet.hal) sheet.hal = {};
-        const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
-        const usedNames = new Set(current.map((item) => item.name));
-        let name = "thread";
-        let idx = 2;
-        while (usedNames.has(name)) {
-          name = `thread-${idx}`;
-          idx += 1;
-        }
-        current.push({ id: createId("sheetthread"), name });
-        sheet.hal.threadOutputs = current;
+        sheetModelEdits.threadOutput.add(sheet);
       });
       deps.setStatusT("store.status.addedSheetThreadOutput");
     },
@@ -73,21 +157,15 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     ): void {
       const trimmed = name.trim();
       if (!trimmed) return;
-      deps.withProject((project) => {
+      const result = deps.withProject((project) => {
         const sheet = getSheet(project, sheetId);
-        if (!sheet.hal) sheet.hal = {};
-        const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
-        const target = current.find((item) => item.id === outputId);
-        if (!target) return;
-        if (target.name === trimmed) return;
-        if (
-          current.some((item) => item.id !== outputId && item.name === trimmed)
-        ) {
-          return;
-        }
-        target.name = trimmed;
-        sheet.hal.threadOutputs = current;
+        return sheetModelEdits.threadOutput.name.update(
+          sheet,
+          outputId,
+          trimmed,
+        );
       });
+      if (!result.ok) return;
       deps.setStatusT("store.status.updatedSheetThreadOutputName");
     },
 
@@ -96,57 +174,24 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       outputId: string,
       halThreadId: string | null,
     ): void {
-      deps.withProject((project) => {
+      const result = deps.withProject((project) => {
         const sheet = getSheet(project, sheetId);
-        if (!sheet.hal) sheet.hal = {};
-        const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
-        const target = current.find((item) => item.id === outputId);
-        if (!target) return;
-        const normalizedHalThreadId = halThreadId?.trim() || undefined;
-        if (target.halThreadId === normalizedHalThreadId) return;
-        if (normalizedHalThreadId) target.halThreadId = normalizedHalThreadId;
-        else delete target.halThreadId;
-        sheet.hal.threadOutputs = current;
+        return sheetModelEdits.threadOutput.halBinding.update(
+          sheet,
+          outputId,
+          halThreadId,
+        );
       });
+      if (!result.ok) return;
       deps.setStatusT("store.status.updatedSheetThreadOutputHalBinding");
     },
 
     removeSheetThreadOutput(sheetId: string, outputId: string): void {
-      deps.withProject((project) => {
+      const result = deps.withProject((project) => {
         const sheet = getSheet(project, sheetId);
-        if (!sheet.hal) sheet.hal = {};
-        const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
-        if (current.length <= 1) return;
-        const next = current.filter((item) => item.id !== outputId);
-        if (next.length === current.length || next.length === 0) return;
-        const fallbackId = next[0]?.id;
-        sheet.hal.threadOutputs = next;
-
-        if (sheet.hal.addfQueue && fallbackId) {
-          sheet.hal.addfQueue = normalizeAddfQueueEntries(
-            sheet.hal.addfQueue.map((entry) => {
-              if (typeof entry === "string") return entry;
-              if (entry.sheetThreadOutputId !== outputId) return entry;
-              return { ...entry, sheetThreadOutputId: fallbackId };
-            }),
-          );
-        }
-
-        for (const node of sheet.nodes) {
-          if (node.kind !== "sheet" || !node.hal?.threadMap) continue;
-          for (const [childOutputId, parentOutputId] of Object.entries(
-            node.hal.threadMap,
-          )) {
-            if (parentOutputId === outputId) {
-              delete node.hal.threadMap[childOutputId];
-            }
-          }
-          if (Object.keys(node.hal.threadMap).length === 0) {
-            delete node.hal.threadMap;
-          }
-          if (node.hal && Object.keys(node.hal).length === 0) delete node.hal;
-        }
+        return sheetModelEdits.threadOutput.remove(sheet, outputId);
       });
+      if (!result.ok) return;
       deps.setStatusT("store.status.removedSheetThreadOutput");
     },
 
@@ -154,13 +199,9 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       sheetId: string,
       nodeOrder: SheetAddfQueueStoredEntry[],
     ): void {
-      const normalized = normalizeAddfQueueEntries(nodeOrder);
-      deps.withProject((project) => {
+      const normalized = deps.withProject((project) => {
         const sheet = getSheet(project, sheetId);
-        if (!sheet.hal) sheet.hal = {};
-        if (normalized.length > 0) sheet.hal.addfQueue = normalized;
-        else delete sheet.hal?.addfQueue;
-        if (sheet.hal && Object.keys(sheet.hal).length === 0) delete sheet.hal;
+        return sheetModelEdits.addfQueue.set(sheet, nodeOrder);
       });
       deps.setStatusT("store.status.updatedSheetAddfQueue", {
         count: normalized.length,
@@ -170,106 +211,86 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     setActiveSheet,
 
     addSheetDefinition(): void {
-      const current = getSheet(deps.state.project, deps.state.activeSheetId);
-      const allNames = new Set(
-        Object.values(deps.state.project.sheets).map((s) => s.name),
+      const result = deps.withProject((project) =>
+        sheetModelEdits.definition.add(project, deps.state.activeSheetId),
       );
-      const name = nextName("Sheet", allNames);
-      const child = createSheet(name, current.id);
-      const activeSheetId = deps.state.activeSheetId;
-
-      deps.withProject((project) => {
-        project.sheets[child.id] = child;
-        const sheet = getSheet(project, activeSheetId);
-        const node: SheetNode = {
-          id: createId("node"),
-          kind: "sheet",
-          sheetId: child.id,
-          instanceName: ensureInstanceName(sheet, name),
-          position: defaultNodePosition(sheet),
-        };
-        sheet.nodes.push(node);
-      });
-
-      deps.setStatusT("store.status.createdSubsheet", { name });
+      if (!result) return;
+      deps.setStatusT("store.status.createdSubsheet", { name: result.name });
     },
 
     putSelectionIntoSubsheet(): void {
-      const selection = deps.state.selection;
-      if (!selection || selection.kind !== "multi") return;
+      const prepared = prepareSelectionMove(deps.state.selection);
+      if (!prepared) return;
 
-      const activeSheetId = deps.state.activeSheetId;
-      const currentProject = deps.state.project;
-      const selectedNodeIds = new Set(selection.nodeIds);
-      const selectedLabelIds = new Set(selection.labelIds);
-      const selectedPortIds = new Set(selection.portIds);
-      if (
-        selectedNodeIds.size === 0 &&
-        selectedLabelIds.size === 0 &&
-        selectedPortIds.size > 0
-      ) {
-        deps.setStatusT("store.status.cannotSubsheetOnlyPortsSelection");
-        return;
-      }
-
-      const next = cloneProject(currentProject);
-      const parentSheet = next.sheets[activeSheetId];
-      if (!parentSheet) return;
-
-      const movedNodes = parentSheet.nodes.filter((n) =>
-        selectedNodeIds.has(n.id),
+      const allNames = new Set(
+        Object.values(prepared.next.sheets).map((sheet) => sheet.name),
       );
-      const movedLabels = parentSheet.labels.filter((l) =>
-        selectedLabelIds.has(l.id),
-      );
-      if (
-        movedNodes.some((node) =>
-          isSystemManagedProtectedNode(currentProject, node),
-        )
-      ) {
-        deps.setStatusT("store.status.cannotSubsheetSystemManagedComponent");
-        return;
-      }
-      if (movedNodes.length === 0 && movedLabels.length === 0) {
-        deps.setStatusT("store.status.cannotSubsheetEmptySelection");
-        return;
-      }
-
-      const movedNodeIdSet = new Set(movedNodes.map((n) => n.id));
-
-      const allNames = new Set(Object.values(next.sheets).map((s) => s.name));
       const childName = nextName("Sheet", allNames);
-      const child = createSheet(childName, parentSheet.id);
+      const child = createSheet(childName, prepared.parentSheet.id);
 
       const childNodePosition = selectionBoundsForNodesAndLabels(
-        movedNodes,
-        movedLabels,
+        prepared.movedNodes,
+        prepared.movedLabels,
       );
       const subsheetNodeId = createId("node");
       const subsheetNode: SheetNode = {
         id: subsheetNodeId,
         kind: "sheet",
         sheetId: child.id,
-        instanceName: ensureInstanceName(parentSheet, childName),
+        instanceName: ensureInstanceName(prepared.parentSheet, childName),
         position: { x: childNodePosition.x, y: childNodePosition.y },
       };
-      next.sheets[child.id] = child;
-      const moveResult = moveSelectionIntoSubsheet(next, {
-        parentSheetId: activeSheetId,
+      prepared.next.sheets[child.id] = child;
+      const moveResult = moveSelectionIntoSubsheet(prepared.next, {
+        parentSheetId: prepared.activeSheetId,
         childSheetId: child.id,
         subsheetNode,
-        movedNodeIds: [...movedNodeIdSet],
-        movedLabelIds: movedLabels.map((label) => label.id),
+        movedNodeIds: prepared.movedNodeIds,
+        movedLabelIds: prepared.movedLabelIds,
       });
 
-      syncProjectUi(next, activeSheetId);
-      deps.pushUndoSnapshot();
-      deps.setState("project", next);
-      deps.markProjectChanged();
-      deps.setState("selection", { kind: "node", id: subsheetNodeId });
-      deps.clearPendingConnectionUi();
+      commitSelectionMove(
+        prepared.next,
+        prepared.activeSheetId,
+        subsheetNodeId,
+      );
       deps.setStatusT("store.status.putSelectionIntoSubsheet", {
         name: childName,
+        ports: moveResult.createdPortCount,
+      });
+    },
+
+    moveSelectionIntoSubsheetNode(subsheetNodeId: string): void {
+      const prepared = prepareSelectionMove(deps.state.selection);
+      if (!prepared) return;
+      if (prepared.selectedNodeIds.has(subsheetNodeId)) {
+        deps.setStatusT("store.status.cannotMoveSelectionIntoSameSubsheet");
+        return;
+      }
+
+      const subsheetNode = prepared.parentSheet.nodes.find(
+        (node): node is SheetNode =>
+          node.kind === "sheet" && node.id === subsheetNodeId,
+      );
+      if (!subsheetNode) return;
+      const child = prepared.next.sheets[subsheetNode.sheetId];
+      if (!child) return;
+
+      const moveResult = moveSelectionIntoSubsheet(prepared.next, {
+        parentSheetId: prepared.activeSheetId,
+        childSheetId: child.id,
+        subsheetNode,
+        movedNodeIds: prepared.movedNodeIds,
+        movedLabelIds: prepared.movedLabelIds,
+      });
+
+      commitSelectionMove(
+        prepared.next,
+        prepared.activeSheetId,
+        subsheetNodeId,
+      );
+      deps.setStatusT("store.status.movedSelectionIntoSubsheet", {
+        name: child.name,
         ports: moveResult.createdPortCount,
       });
     },
@@ -287,22 +308,15 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         return;
       }
 
-      const deletedSheetIds = collectSheetSubtreeIds(project, sheetId);
-      if (deletedSheetIds.size === 0) return;
-
       const next = cloneProject(project);
-      removeSheetNodeReferencesForDeletedSheets(next, deletedSheetIds);
-      for (const deletedSheetId of deletedSheetIds) {
-        delete next.sheets[deletedSheetId];
-      }
+      const result = sheetModelEdits.definition.remove(
+        next,
+        sheetId,
+        deps.state.activeSheetId,
+      );
+      if (!result.ok) return;
 
-      let nextActiveSheetId = deps.state.activeSheetId;
-      if (!next.sheets[nextActiveSheetId]) {
-        nextActiveSheetId =
-          target.parentSheetId && next.sheets[target.parentSheetId]
-            ? target.parentSheetId
-            : next.rootSheetId;
-      }
+      const nextActiveSheetId = result.nextActiveSheetId;
       syncProjectUi(next, nextActiveSheetId);
 
       deps.pushUndoSnapshot();
@@ -311,8 +325,8 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       deps.setState("activeSheetId", nextActiveSheetId);
       deps.clearSelectionAndPendingUi();
       deps.setStatusT("store.status.deletedSheet", {
-        name: target.name,
-        count: deletedSheetIds.size,
+        name: result.deletedSheetName,
+        count: result.deletedSheetIds.length,
       });
     },
 

@@ -15,6 +15,7 @@ import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 import type { Selection } from "../state/store";
 import CanvasComponentMenu from "./CanvasComponentMenu";
+import type { ContextMenuActionItem } from "./ContextMenuProvider";
 import { useContextMenu } from "./ContextMenuProvider";
 
 interface UseCanvasContextMenuArgs {
@@ -68,6 +69,74 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     return false;
   };
 
+  const actionSelectionForTarget = (
+    target: SceneContextMenuTarget | { kind: "group" },
+  ): Selection => {
+    if (target.kind === "group") return state.selection;
+    if (
+      (target.kind === "node" ||
+        target.kind === "label" ||
+        target.kind === "comment" ||
+        target.kind === "sheet-port") &&
+      selectionContainsContextTarget(state.selection, target)
+    ) {
+      return state.selection;
+    }
+    if (target.kind === "node") return { kind: "node", id: target.id };
+    if (target.kind === "label") return { kind: "label", id: target.id };
+    if (target.kind === "comment") return { kind: "comment", id: target.id };
+    if (target.kind === "sheet-port")
+      return { kind: "sheet-port", id: target.id };
+    if (target.kind === "wire-connection") {
+      return { kind: "wire-connection", id: target.connectionId };
+    }
+    return { kind: "wire-connection", id: target.connectionId };
+  };
+
+  const moveMenuItemsForSelection = (
+    selection: Selection,
+  ): ContextMenuActionItem[] => {
+    const sheet = currentSheet();
+    const selectedNodeIds =
+      selection?.kind === "node"
+        ? new Set([selection.id])
+        : selection?.kind === "multi"
+          ? new Set(selection.nodeIds)
+          : new Set<string>();
+    const existingSheetItems = sheet.nodes
+      .filter(
+        (
+          node,
+        ): node is Extract<(typeof sheet.nodes)[number], { kind: "sheet" }> =>
+          node.kind === "sheet" && !selectedNodeIds.has(node.id),
+      )
+      .map((node): ContextMenuActionItem => {
+        const childSheet = state.project.sheets[node.sheetId];
+        return {
+          label: childSheet?.name ?? node.instanceName,
+          meta:
+            childSheet && childSheet.name !== node.instanceName
+              ? node.instanceName
+              : undefined,
+          onSelect: () => {
+            actions.select(selection);
+            actions.moveSelectionIntoSubsheetNode(node.id);
+          },
+        };
+      });
+
+    return [
+      ...existingSheetItems,
+      {
+        label: t("canvasContext.newSheet"),
+        onSelect: () => {
+          actions.select(selection);
+          actions.putSelectionIntoSubsheet();
+        },
+      },
+    ];
+  };
+
   const openBackgroundMenu = (clientX: number, clientY: number) => {
     const pos = menuPosition(clientX, clientY, 360, 440);
     const world = args.getScene()?.clientToWorld(clientX, clientY) ?? {
@@ -116,20 +185,27 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     target: SceneContextMenuTarget | { kind: "group" },
   ): {
     title: string;
-    items: { label: string; onSelect: () => void }[];
+    items: ContextMenuActionItem[];
   } | null => {
     const sheet = currentSheet();
+    const actionSelection = actionSelectionForTarget(target);
+    const moveItem: ContextMenuActionItem = {
+      label: t("canvasContext.move"),
+      onSelect: () => undefined,
+      closeOnSelect: false,
+      children: moveMenuItemsForSelection(actionSelection),
+    };
     if (target.kind === "group") {
       return {
         title: t("canvasContext.selection"),
         items: [
-          {
-            label: t("canvasContext.putEverythingIntoSubsheet"),
-            onSelect: () => actions.putSelectionIntoSubsheet(),
-          },
+          moveItem,
           {
             label: t("inspector.deleteSelection"),
-            onSelect: () => actions.removeSelection(),
+            onSelect: () => {
+              actions.select(actionSelection);
+              actions.removeSelection();
+            },
           },
         ],
       };
@@ -148,6 +224,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           return entry.sourceRef.kind !== "linuxcnc-builtin";
         })();
         const componentItems = [
+          moveItem,
           {
             label: t("inspector.openComponentSettings"),
             onSelect: () => editorUi.openComponentEditorForNode(node.id),
@@ -167,7 +244,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
                 {
                   label: t("inspector.deleteSelection"),
                   onSelect: () => {
-                    actions.select({ kind: "node", id: node.id });
+                    actions.select(actionSelection);
                     actions.removeSelection();
                   },
                 },
@@ -188,7 +265,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           {
             label: t("inspector.deleteSelection"),
             onSelect: () => {
-              actions.select({ kind: "node", id: node.id });
+              actions.select(actionSelection);
               actions.removeSelection();
             },
           },
@@ -200,10 +277,11 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       return {
         title: t("canvasContext.label"),
         items: [
+          moveItem,
           {
             label: t("inspector.deleteSelection"),
             onSelect: () => {
-              actions.select({ kind: "label", id: target.id });
+              actions.select(actionSelection);
               actions.removeSelection();
             },
           },
@@ -218,7 +296,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           {
             label: t("inspector.deleteSelection"),
             onSelect: () => {
-              actions.select({ kind: "comment", id: target.id });
+              actions.select(actionSelection);
               actions.removeSelection();
             },
           },
@@ -233,7 +311,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           {
             label: t("inspector.deleteSelection"),
             onSelect: () => {
-              actions.select({ kind: "sheet-port", id: target.id });
+              actions.select(actionSelection);
               actions.removeSelection();
             },
           },
@@ -282,14 +360,16 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     clientY: number,
     target: SceneContextMenuTarget | { kind: "group" },
   ) => {
-    const pos = menuPosition(clientX, clientY, 280, 280);
     const spec = buildActionMenu(target);
     if (!spec) return;
+    const width = 280;
+    const maxHeight = 280;
+    const pos = menuPosition(clientX, clientY, width, maxHeight);
     contextMenu.openActions({
       x: pos.x,
       y: pos.y,
-      width: 280,
-      maxHeight: 280,
+      width,
+      maxHeight,
       ariaLabel: spec.title,
       title: spec.title,
       items: spec.items,
