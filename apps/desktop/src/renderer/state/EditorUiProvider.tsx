@@ -11,6 +11,10 @@ import type { GeneralSettingsTab } from "../features/generalSettings/types";
 import { useEditorStore } from "./EditorStoreProvider";
 
 export type ComponentSearchScope = "sheet" | "project";
+export type CanvasFocusTarget = {
+  kind: "node" | "label" | "comment" | "sheet-port";
+  id: string;
+};
 export type EditorOverlay =
   | { kind: "component-editor"; nodeId: string }
   | { kind: "general-settings"; initialTab?: GeneralSettingsTab }
@@ -18,18 +22,18 @@ export type EditorOverlay =
   | { kind: "sheet-settings"; sheetId: string }
   | { kind: "component-search"; scope: ComponentSearchScope };
 
-type NodeFocusRequest = {
+type CanvasFocusRequest = {
   requestId: number;
   sheetId: string;
-  nodeId: string;
+  target: CanvasFocusTarget;
 };
 
 function createEditorUiState() {
   const { state, actions } = useEditorStore();
   const [overlay, setOverlay] = createSignal<EditorOverlay | null>(null);
-  const [nodeFocusRequest, setNodeFocusRequest] =
-    createSignal<NodeFocusRequest | null>(null);
-  let nextNodeFocusRequestId = 1;
+  const [canvasFocusRequest, setCanvasFocusRequest] =
+    createSignal<CanvasFocusRequest | null>(null);
+  let nextCanvasFocusRequestId = 1;
 
   const currentSheet = createMemo(() =>
     getSheet(state.project, state.activeSheetId),
@@ -106,15 +110,15 @@ function createEditorUiState() {
       openOverlay({ kind: "sheet-settings", sheetId }),
     openComponentSearch: (scope: ComponentSearchScope) =>
       openOverlay({ kind: "component-search", scope }),
-    nodeFocusRequest,
-    requestNodeFocus: (sheetId: string, nodeId: string) =>
-      setNodeFocusRequest({
-        requestId: nextNodeFocusRequestId++,
+    canvasFocusRequest,
+    requestCanvasFocus: (sheetId: string, target: CanvasFocusTarget) =>
+      setCanvasFocusRequest({
+        requestId: nextCanvasFocusRequestId++,
         sheetId,
-        nodeId,
+        target,
       }),
-    consumeNodeFocusRequest: (requestId: number) =>
-      setNodeFocusRequest((current) =>
+    consumeCanvasFocusRequest: (requestId: number) =>
+      setCanvasFocusRequest((current) =>
         current?.requestId === requestId ? null : current,
       ),
   };

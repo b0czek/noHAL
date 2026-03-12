@@ -94,11 +94,11 @@ export default function Canvas() {
   });
 
   createEffect(() => {
-    const request = editorUi.nodeFocusRequest();
+    const request = editorUi.canvasFocusRequest();
     if (!request) return;
     if (request.sheetId !== state.activeSheetId) return;
-    if (!scene?.focusNode(request.nodeId)) return;
-    editorUi.consumeNodeFocusRequest(request.requestId);
+    if (!scene?.focusTarget(request.target)) return;
+    editorUi.consumeCanvasFocusRequest(request.requestId);
   });
 
   onCleanup(() => {

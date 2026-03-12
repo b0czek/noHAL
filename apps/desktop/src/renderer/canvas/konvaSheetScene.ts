@@ -297,21 +297,70 @@ export class KonvaSheetScene {
     return this.clampPos(this.screenToWorld(screen));
   }
 
-  focusNode(nodeId: string): boolean {
-    const node = this.nodeGroups.get(nodeId);
-    const layout = this.nodeLayouts.get(nodeId);
-    if (!node || !layout) return false;
+  focusTarget(target: {
+    kind: "node" | "label" | "comment" | "sheet-port";
+    id: string;
+  }): boolean {
+    let center: Pt | null = null;
 
-    const position = node.position();
-    const center = {
-      x: position.x + layout.width / 2,
-      y: position.y + layout.height / 2,
-    };
+    if (target.kind === "node") {
+      const node = this.nodeGroups.get(target.id);
+      const layout = this.nodeLayouts.get(target.id);
+      if (!node || !layout) return false;
+      const position = node.position();
+      center = {
+        x: position.x + layout.width / 2,
+        y: position.y + layout.height / 2,
+      };
+    } else if (target.kind === "label") {
+      center = this.focusCenterFromCullModel(
+        target.id,
+        this.labelGroups,
+        this.labelCullModels,
+      );
+    } else if (target.kind === "sheet-port") {
+      center = this.focusCenterFromCullModel(
+        target.id,
+        this.portGroups,
+        this.portCullModels,
+      );
+    } else {
+      center = this.focusCenterFromCullModel(
+        target.id,
+        this.commentGroups,
+        this.commentCullModels,
+      );
+    }
+
+    if (!center) return false;
     this.camera.x = this.stage.width() / 2 - center.x * this.camera.scale;
     this.camera.y = this.stage.height() / 2 - center.y * this.camera.scale;
     this.applyCamera();
     if (this.lastState?.pendingEndpoint) this.redrawWires();
     return true;
+  }
+
+  private focusCenterFromCullModel(
+    id: string,
+    groups: Map<string, Konva.Group>,
+    models: Map<string, CullModel>,
+  ): Pt | null {
+    const group = groups.get(id);
+    const model = models.get(id);
+    if (!group || !model) return null;
+
+    const position = group.position();
+    const localCenter = {
+      x: model.localRect.x + model.localRect.width / 2,
+      y: model.localRect.y + model.localRect.height / 2,
+    };
+    const rad = (model.rotationDeg * Math.PI) / 180;
+    const c = Math.cos(rad);
+    const s = Math.sin(rad);
+    return {
+      x: position.x + localCenter.x * c - localCenter.y * s,
+      y: position.y + localCenter.x * s + localCenter.y * c,
+    };
   }
 
   private clampPos(pos: { x: number; y: number }): { x: number; y: number } {

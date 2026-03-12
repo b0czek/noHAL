@@ -1,4 +1,10 @@
-import { getNodeTitle } from "@nohal/core/src/graph";
+import {
+  HiOutlineArrowsRightLeft,
+  HiOutlineCube,
+  HiOutlineDocumentDuplicate,
+  HiOutlineDocumentText,
+  HiOutlineTag,
+} from "solid-icons/hi";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { OverlayDialogProps } from "../app/types";
@@ -8,6 +14,11 @@ import {
   type ComponentSearchScope,
   useEditorUi,
 } from "../state/EditorUiProvider";
+import {
+  buildCanvasSearchResults,
+  type CanvasSearchResult,
+  normalizeSearchText,
+} from "./componentSearch";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -18,20 +29,8 @@ import {
 } from "./ui/dialog";
 import { Input } from "./ui/input";
 
-type ComponentSearchResult = {
-  nodeId: string;
-  sheetId: string;
-  sheetName: string;
-  title: string;
-  searchText: string;
-};
-
 interface ComponentSearchDialogProps extends OverlayDialogProps {
   scope: ComponentSearchScope;
-}
-
-function normalizeSearchText(value: string): string {
-  return value.trim().toLowerCase();
 }
 
 export default function ComponentSearchDialog(
@@ -45,47 +44,9 @@ export default function ComponentSearchDialog(
   const resultRowElements = new Map<string, HTMLButtonElement>();
   let queryInputEl: HTMLInputElement | undefined;
 
-  const results = createMemo<ComponentSearchResult[]>(() => {
-    const allSheets = Object.values(state.project.sheets);
-    const sourceSheets =
-      props.scope === "sheet"
-        ? allSheets.filter((sheet) => sheet.id === state.activeSheetId)
-        : allSheets;
-
-    const collected: ComponentSearchResult[] = [];
-    for (const sheet of sourceSheets) {
-      for (const node of sheet.nodes) {
-        if (node.kind !== "component") continue;
-        const component = state.project.library.components[node.componentId];
-        const componentName = component?.name ?? "";
-        const halComponentName = component?.halComponentName ?? "";
-        const title = getNodeTitle(state.project, node);
-        const searchText = normalizeSearchText(
-          `${node.instanceName} ${title} ${componentName} ${halComponentName} ${sheet.name}`,
-        );
-
-        collected.push({
-          nodeId: node.id,
-          sheetId: sheet.id,
-          sheetName: sheet.name,
-          title,
-          searchText,
-        });
-      }
-    }
-
-    if (props.scope === "project") {
-      collected.sort(
-        (a, b) =>
-          a.sheetName.localeCompare(b.sheetName) ||
-          a.title.localeCompare(b.title),
-      );
-    } else {
-      collected.sort((a, b) => a.title.localeCompare(b.title));
-    }
-
-    return collected;
-  });
+  const results = createMemo<CanvasSearchResult[]>(() =>
+    buildCanvasSearchResults(state.project, props.scope, state.activeSheetId),
+  );
 
   const filteredResults = createMemo(() => {
     const q = normalizeSearchText(query());
@@ -126,7 +87,6 @@ export default function ComponentSearchDialog(
   });
 
   createEffect(() => {
-    if (props.scope !== "project") return;
     const list = filteredResults();
     const count = list.length;
     if (count === 0) return;
@@ -136,22 +96,22 @@ export default function ComponentSearchDialog(
     const result = list[target];
     if (!result) return;
     queueMicrotask(() => {
-      resultRowElements.get(result.nodeId)?.scrollIntoView({
+      resultRowElements.get(result.key)?.scrollIntoView({
         block: "nearest",
       });
     });
   });
 
   const selectResult = (
-    result: ComponentSearchResult | undefined,
+    result: CanvasSearchResult | undefined,
     options?: { close?: boolean },
   ) => {
     if (!result) return;
     if (state.activeSheetId !== result.sheetId) {
       actions.setActiveSheet(result.sheetId);
     }
-    actions.select({ kind: "node", id: result.nodeId });
-    editorUi.requestNodeFocus(result.sheetId, result.nodeId);
+    actions.select(result.target);
+    editorUi.requestCanvasFocus(result.sheetId, result.target);
     if (options?.close) props.onClose();
   };
 
@@ -186,6 +146,91 @@ export default function ComponentSearchDialog(
     props.scope === "project"
       ? t("componentSearch.scope.project")
       : t("componentSearch.scope.sheet");
+  const titleLabel =
+    props.scope === "project"
+      ? t("componentSearch.title.project")
+      : t("componentSearch.title.sheet");
+  const kindLabel = (result: CanvasSearchResult) => {
+    switch (result.kind) {
+      case "component":
+        return t("componentSearch.kind.component");
+      case "subsheet":
+        return t("componentSearch.kind.subsheet");
+      case "label":
+        return t("componentSearch.kind.label");
+      case "port":
+        return t("componentSearch.kind.port");
+      default:
+        return t("componentSearch.kind.comment");
+    }
+  };
+  const resultIcon = (result: CanvasSearchResult) => {
+    switch (result.kind) {
+      case "component":
+        return <HiOutlineCube size={18} aria-hidden="true" />;
+      case "subsheet":
+        return <HiOutlineDocumentDuplicate size={18} aria-hidden="true" />;
+      case "label":
+        return <HiOutlineTag size={18} aria-hidden="true" />;
+      case "port":
+        return <HiOutlineArrowsRightLeft size={18} aria-hidden="true" />;
+      default:
+        return <HiOutlineDocumentText size={18} aria-hidden="true" />;
+    }
+  };
+  const resultChrome = (result: CanvasSearchResult, isActive: boolean) => {
+    if (result.kind === "component") {
+      return isActive
+        ? "border-sky-400/50 bg-sky-500/10 ring-1 ring-inset ring-sky-300/30"
+        : "border-sky-500/20 bg-sky-500/[0.06] hover:bg-sky-500/[0.1]";
+    }
+    if (result.kind === "subsheet") {
+      return isActive
+        ? "border-cyan-400/50 bg-cyan-500/10 ring-1 ring-inset ring-cyan-300/30"
+        : "border-cyan-500/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.1]";
+    }
+    if (result.kind === "label") {
+      return isActive
+        ? "border-amber-400/50 bg-amber-500/10 ring-1 ring-inset ring-amber-300/30"
+        : "border-amber-500/20 bg-amber-500/[0.06] hover:bg-amber-500/[0.1]";
+    }
+    if (result.kind === "port") {
+      return isActive
+        ? "border-violet-400/50 bg-violet-500/10 ring-1 ring-inset ring-violet-300/30"
+        : "border-violet-500/20 bg-violet-500/[0.06] hover:bg-violet-500/[0.1]";
+    }
+    return isActive
+      ? "border-emerald-400/50 bg-emerald-500/10 ring-1 ring-inset ring-emerald-300/30"
+      : "border-emerald-500/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.1]";
+  };
+  const resultBadgeClass = (result: CanvasSearchResult) => {
+    switch (result.kind) {
+      case "component":
+        return "border-sky-300/25 bg-sky-400/10 text-sky-100";
+      case "subsheet":
+        return "border-cyan-300/25 bg-cyan-400/10 text-cyan-100";
+      case "label":
+        return "border-amber-300/25 bg-amber-400/10 text-amber-100";
+      case "port":
+        return "border-violet-300/25 bg-violet-400/10 text-violet-100";
+      default:
+        return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
+    }
+  };
+  const resultTitleClass = (result: CanvasSearchResult) => {
+    switch (result.kind) {
+      case "label":
+        return "font-medium tracking-[0.08em] text-amber-50";
+      case "port":
+        return "mono text-violet-50";
+      case "subsheet":
+        return "mono text-cyan-50";
+      case "comment":
+        return "";
+      default:
+        return "mono";
+    }
+  };
 
   const content = (
     <>
@@ -289,22 +334,35 @@ export default function ComponentSearchDialog(
           {(result, index) => (
             <button
               ref={(el) => {
-                resultRowElements.set(result.nodeId, el);
+                resultRowElements.set(result.key, el);
               }}
               type="button"
-              class={`focus-ring w-full rounded-xl px-3 py-2 text-left transition ${
-                index() === activeIndex()
-                  ? "bg-accent/10 ring-1 ring-inset ring-accent/30"
-                  : "bg-black/20 hover:bg-white/[0.08]"
-              }`}
+              class={`focus-ring w-full rounded-xl border px-3 py-2 text-left transition ${resultChrome(
+                result,
+                index() === activeIndex(),
+              )}`}
               onMouseEnter={() => setActiveIndex(index())}
               onClick={() => selectResult(result, { close: true })}
             >
-              <div class="mono truncate">{result.title}</div>
-              <div class="mt-0.5 text-xs text-muted-foreground">
-                {t("componentSearch.sheetMeta", {
-                  sheet: result.sheetName,
-                })}
+              <div class="flex items-center gap-3">
+                <div
+                  class={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border ${resultBadgeClass(
+                    result,
+                  )}`}
+                >
+                  {resultIcon(result)}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class={`truncate ${resultTitleClass(result)}`}>
+                    {result.title}
+                  </div>
+                  <div class="mt-0.5 text-xs text-muted-foreground">
+                    {t("componentSearch.resultMeta", {
+                      kind: kindLabel(result),
+                      sheet: result.sheetName,
+                    })}
+                  </div>
+                </div>
               </div>
             </button>
           )}
@@ -328,7 +386,7 @@ export default function ComponentSearchDialog(
               class="pointer-events-auto grid w-[min(35rem,calc(100vw-1.75rem))] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-card/90 p-3 shadow-2xl shadow-black/30 backdrop-blur"
               role="dialog"
               aria-modal="true"
-              aria-label={t("componentSearch.ariaLabel")}
+              aria-label={titleLabel}
               onPointerDown={(evt) => evt.stopPropagation()}
               onContextMenu={(evt) => evt.preventDefault()}
             >
@@ -348,7 +406,7 @@ export default function ComponentSearchDialog(
             onContextMenu={(evt: MouseEvent) => evt.preventDefault()}
           >
             <DialogHeader class="bg-white/[0.04] px-4 py-3 text-left">
-              <DialogTitle>{t("componentSearch.title")}</DialogTitle>
+              <DialogTitle>{titleLabel}</DialogTitle>
               <DialogDescription>
                 {t("componentSearch.subtitle", { scope: scopeLabel })}
               </DialogDescription>
