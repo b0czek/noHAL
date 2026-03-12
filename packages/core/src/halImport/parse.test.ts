@@ -305,6 +305,23 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
     );
   });
 
+  it("captures motmod project config without generating a fake motmod component group", () => {
+    const { draft, groups } = groupByComponentName(`
+      loadrt motmod servo_period_nsec=1000000 num_joints=3 num_dio=4
+      net machine-is-on motion.motion-enabled => hm2.0.gpio.000.out
+    `);
+
+    expect(draft.motmod).toEqual({
+      numJoints: 3,
+      numDio: 4,
+    });
+    expect(groups.get("motmod")).toBeUndefined();
+    expect(groups.get("motion")).toMatchObject({
+      inferredHalComponentName: "motion",
+      runtimeHint: "unknown",
+    });
+  });
+
   it("uses `<=` / `<=>` arrows to infer direction hints for endpoints before the arrow token", () => {
     const { draft, groups } = groupByComponentName(`
       net home-x joint.0.home-sw-in <= parport.0.pin-11-in

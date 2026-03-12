@@ -4,6 +4,7 @@ import { getNodePins } from "../graph";
 import { findSystemSheet, findSystemSheetNode } from "../sheet";
 import type { ComponentDefinition } from "../types";
 import { buildProjectFromHalImport } from "./build";
+import { parseHalImportDraft } from "./parse";
 
 describe("buildProjectFromHalImport", () => {
   it("applies selected LinuxCNC version before motmod reconciliation", () => {
@@ -343,5 +344,31 @@ describe("buildProjectFromHalImport", () => {
         (node) => node.kind === "component" && node.instanceName === "motion",
       ),
     ).toBe(true);
+  });
+
+  it("does not keep loadrt motmod as a project-local custom component", () => {
+    const draft = parseHalImportDraft(`
+      loadrt motmod base_period_nsec=0 servo_period_nsec=1000000 num_joints=3
+      net machine-is-on motion.motion-enabled => hm2.0.gpio.000.out
+    `);
+
+    const result = buildProjectFromHalImport({
+      draft,
+      componentStore: createEmptyComponentStore(),
+      linkSelections: {},
+      linuxcncVersion: "2.10",
+    });
+
+    const systemSheet = findSystemSheet(result.project);
+    expect(
+      systemSheet?.nodes.some(
+        (node) => node.kind === "component" && node.instanceName === "motion",
+      ),
+    ).toBe(true);
+    expect(
+      Object.values(result.project.library.components).some(
+        (component) => component.halComponentName === "motmod",
+      ),
+    ).toBe(false);
   });
 });

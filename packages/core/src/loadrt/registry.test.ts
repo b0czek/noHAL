@@ -161,7 +161,7 @@ describe("loadrt strategy interpolation", () => {
     });
 
     expect(importResult.strategyId).toBe("motmod");
-    expect(importResult.instancePaths).toEqual(["motmod.0"]);
+    expect(importResult.instancePaths).toEqual([]);
     expect(importResult.events).toEqual([
       {
         topic: "project.motmod",

@@ -1,4 +1,3 @@
-import { namesOrCountLoadrtStrategy } from "./namesOrCountStrategy";
 import type {
   LoadrtContext,
   LoadrtImportContext,
@@ -67,7 +66,6 @@ function exportMotmod(context: LoadrtContext): LoadrtResult {
 }
 
 function importMotmod(context: LoadrtImportContext): LoadrtImportResult {
-  const result = namesOrCountLoadrtStrategy.import(context);
   const parseIntArg = (key: string): number | undefined => {
     const value = Number.parseInt(context.args[key] ?? "", 10);
     return Number.isFinite(value) ? value : undefined;
@@ -95,8 +93,7 @@ function importMotmod(context: LoadrtImportContext): LoadrtImportResult {
         }
       : undefined;
   return {
-    instancePaths: result.instancePaths,
-    ...(result.warnings?.length ? { warnings: result.warnings } : {}),
+    instancePaths: [],
     ...(motmod
       ? {
           events: [{ topic: "project.motmod", payload: motmod }],
