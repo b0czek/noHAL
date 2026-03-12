@@ -1,6 +1,6 @@
 import { getSheet, resolveEndpointInSheet } from "@nohal/core/src/graph";
 import { isValidHalName } from "@nohal/core/src/halNames";
-import { createId } from "@nohal/core/src/id";
+import { sheetEdits } from "@nohal/core/src/sheet";
 import type { SheetEndpointRef, XY } from "@nohal/core/src/types";
 import { validateDirectConnection } from "@nohal/core/src/validation";
 import type { EditorStoreActionContext } from "./types";
@@ -60,8 +60,7 @@ export function createWireActions(deps: EditorStoreActionContext) {
       const pendingWirePoints = deps.state.pendingWirePoints;
       deps.withProject((nextProject) => {
         const sheet = getSheet(nextProject, activeSheetId);
-        sheet.directConnections.push({
-          id: createId("conn"),
+        sheetEdits.connection.add(sheet, {
           a: pending,
           b: endpoint,
           ...(pendingWirePoints.length > 0
@@ -79,18 +78,7 @@ export function createWireActions(deps: EditorStoreActionContext) {
       const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
-        const exists = sheet.labelAnchors.some(
-          (a) =>
-            a.labelId === labelId &&
-            JSON.stringify(a.endpoint) === JSON.stringify(pending),
-        );
-        if (!exists) {
-          sheet.labelAnchors.push({
-            id: createId("anchor"),
-            labelId,
-            endpoint: pending,
-          });
-        }
+        sheetEdits.labelAnchor.add(sheet, labelId, pending);
       });
       clearPendingEndpoint();
       deps.setStatusT("store.status.attachedEndpointToLabel");
@@ -98,14 +86,44 @@ export function createWireActions(deps: EditorStoreActionContext) {
 
     removeDirectConnection(connectionId: string): void {
       const activeSheetId = deps.state.activeSheetId;
-      deps.withProject((project) => {
+      const removed = deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
-        sheet.directConnections = sheet.directConnections.filter(
-          (c) => c.id !== connectionId,
-        );
+        return sheetEdits.connection.remove(sheet, connectionId);
       });
+      if (!removed) return;
       deps.clearSelectionIfWireConnection(connectionId);
       deps.setStatusT("store.status.removedConnection");
+    },
+
+    splitDirectConnectionIntoLabels(
+      connectionId: string,
+      labelPositions?: {
+        firstLabelPosition: XY;
+        secondLabelPosition: XY;
+      },
+    ): void {
+      const activeSheetId = deps.state.activeSheetId;
+      const sheet = getSheet(deps.state.project, activeSheetId);
+      if (
+        !sheet.directConnections.some(
+          (connection) => connection.id === connectionId,
+        )
+      ) {
+        return;
+      }
+
+      const result = deps.withProject((project) =>
+        sheetEdits.connection.splitIntoLabels(
+          getSheet(project, activeSheetId),
+          connectionId,
+          labelPositions,
+        ),
+      );
+      if (!result) return;
+      deps.clearSelectionIfWireConnection(connectionId);
+      deps.setStatusT("store.status.splitConnectionIntoLabels", {
+        name: result.labelName,
+      });
     },
 
     updateDirectConnectionWaypoints(
@@ -113,13 +131,15 @@ export function createWireActions(deps: EditorStoreActionContext) {
       waypoints: XY[],
     ): void {
       const activeSheetId = deps.state.activeSheetId;
-      deps.withProject((project) => {
+      const updated = deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
-        const conn = sheet.directConnections.find((c) => c.id === connectionId);
-        if (!conn) return;
-        if (waypoints.length === 0) delete conn.waypoints;
-        else conn.waypoints = waypoints.map((p) => ({ x: p.x, y: p.y }));
+        return sheetEdits.connection.waypoints.update(
+          sheet,
+          connectionId,
+          waypoints,
+        );
       });
+      if (!updated) return;
       deps.setStatusT("store.status.updatedWireRoute");
     },
 
@@ -135,21 +155,21 @@ export function createWireActions(deps: EditorStoreActionContext) {
       }
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
-        const conn = sheet.directConnections.find((c) => c.id === connectionId);
-        if (!conn) return;
-        if (normalized.length > 0) conn.signalName = normalized;
-        else delete conn.signalName;
+        sheetEdits.connection.signalName.update(
+          sheet,
+          connectionId,
+          normalized,
+        );
       });
     },
 
     removeLabelAnchor(anchorId: string): void {
       const activeSheetId = deps.state.activeSheetId;
-      deps.withProject((project) => {
+      const removed = deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
-        sheet.labelAnchors = sheet.labelAnchors.filter(
-          (a) => a.id !== anchorId,
-        );
+        return sheetEdits.labelAnchor.remove(sheet, anchorId);
       });
+      if (!removed) return;
       deps.setStatusT("store.status.removedLabelAnchor");
     },
   };

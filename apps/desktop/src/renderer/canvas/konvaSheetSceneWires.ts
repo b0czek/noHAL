@@ -1,4 +1,5 @@
 import { getNodePins } from "@nohal/core/src/graph";
+import type { SplitConnectionLabelPositions } from "@nohal/core/src/sheet";
 import type {
   NoHALProject,
   ProjectWireStyle,
@@ -33,6 +34,13 @@ import {
 } from "./constants";
 import type { SceneCallbacks, SceneRenderState } from "./konvaSheetSceneTypes";
 import type { NodeLayout, Pt } from "./layout";
+import {
+  clamp,
+  computeSplitLabelPositions,
+  findNearestSegmentIndex,
+  normalForSide,
+  rotateVec,
+} from "./wireGeometry";
 
 type WireAttrs = {
   stroke: string | CanvasGradient;
@@ -117,32 +125,44 @@ function getPointerWorldPos(ctx: KonvaSheetSceneWiresContext): Pt | null {
   return ctx.clampPos(ctx.screenToWorld({ x: pos.x, y: pos.y }));
 }
 
-function distSqPointToSegment(p: Pt, a: Pt, b: Pt): number {
-  const abx = b.x - a.x;
-  const aby = b.y - a.y;
-  const apx = p.x - a.x;
-  const apy = p.y - a.y;
-  const abLenSq = abx * abx + aby * aby;
-  if (abLenSq <= 1e-9) return apx * apx + apy * apy;
-  const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLenSq));
-  const cx = a.x + abx * t;
-  const cy = a.y + aby * t;
-  const dx = p.x - cx;
-  const dy = p.y - cy;
-  return dx * dx + dy * dy;
-}
+export function getSplitLabelPositionsForConnection(
+  ctx: KonvaSheetSceneWiresContext,
+  connectionId: string,
+): SplitConnectionLabelPositions | null {
+  const state = ctx.getLastState();
+  if (!state) return null;
 
-function findNearestSegmentIndex(routePoints: Pt[], point: Pt): number {
-  let bestIndex = 0;
-  let bestDist = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < routePoints.length - 1; i += 1) {
-    const d = distSqPointToSegment(point, routePoints[i], routePoints[i + 1]);
-    if (d < bestDist) {
-      bestDist = d;
-      bestIndex = i;
-    }
-  }
-  return bestIndex;
+  const connection = state.sheet.directConnections.find(
+    (item) => item.id === connectionId,
+  );
+  if (!connection) return null;
+
+  const lookup = getSheetLookup(state.project, state.sheet);
+  const startEndpointPoint = getEndpointPoint(ctx, lookup, connection.a);
+  const endEndpointPoint = getEndpointPoint(ctx, lookup, connection.b);
+  if (!startEndpointPoint || !endEndpointPoint) return null;
+
+  const displayRoutePoints = buildDisplayWirePoints({
+    lookup,
+    rawPoints: [
+      startEndpointPoint,
+      ...(connection.waypoints ?? []).map((point) => ({
+        x: point.x,
+        y: point.y,
+      })),
+      endEndpointPoint,
+    ],
+    startEndpoint: connection.a,
+    endEndpoint: connection.b,
+  });
+
+  return computeSplitLabelPositions({
+    startEndpointPoint,
+    endEndpointPoint,
+    startEndpointNormal: getEndpointNormal(connection.a, lookup),
+    endEndpointNormal: getEndpointNormal(connection.b, lookup),
+    displayRoutePoints,
+  });
 }
 
 export function deleteSelectedWaypoint(
@@ -206,10 +226,7 @@ export function insertWaypointOnConnection(
 }
 
 function sideNormal(side: "left" | "right" | "top" | "bottom"): Pt {
-  if (side === "left") return { x: -1, y: 0 };
-  if (side === "right") return { x: 1, y: 0 };
-  if (side === "top") return { x: 0, y: -1 };
-  return { x: 0, y: 1 };
+  return normalForSide(side);
 }
 
 export function getEndpointNormal(
@@ -529,19 +546,6 @@ function getLabelBoxSize(label: SheetDefinition["labels"][number]): {
   const width = 16 + m.scopeW + 8 + m.nameW + 10;
   const height = 22;
   return { width, height };
-}
-
-function rotateVec(x: number, y: number, radians: number): Pt {
-  const c = Math.cos(radians);
-  const s = Math.sin(radians);
-  return {
-    x: x * c - y * s,
-    y: x * s + y * c,
-  };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
 
 function getLabelAnchorPoint(

@@ -14,6 +14,7 @@ import {
 import type { SceneCallbacks, SceneRenderState } from "./konvaSheetSceneTypes";
 import {
   deleteSelectedWaypoint as deleteWireSelectedWaypoint,
+  getSplitLabelPositionsForConnection,
   type KonvaSheetSceneWiresContext,
   redrawWires as redrawSceneWires,
 } from "./konvaSheetSceneWires";
@@ -1267,6 +1268,13 @@ export class KonvaSheetScene {
 
   private deleteSelectedWaypoint(): boolean {
     return deleteWireSelectedWaypoint(this.wireContext());
+  }
+
+  getSplitLabelPositionsForConnection(connectionId: string) {
+    return getSplitLabelPositionsForConnection(
+      this.wireContext(),
+      connectionId,
+    );
   }
 
   private redrawWires(immediate = false): void {

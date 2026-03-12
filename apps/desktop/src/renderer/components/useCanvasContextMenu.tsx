@@ -105,6 +105,13 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     );
   };
 
+  const splitConnectionIntoLabels = (connectionId: string) => {
+    const positions =
+      args.getScene()?.getSplitLabelPositionsForConnection(connectionId) ??
+      undefined;
+    actions.splitDirectConnectionIntoLabels(connectionId, positions);
+  };
+
   const buildActionMenu = (
     target: SceneContextMenuTarget | { kind: "group" },
   ): {
@@ -239,6 +246,10 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
         title: t("canvasContext.connection"),
         items: [
           {
+            label: t("canvasContext.splitConnectionIntoLabels"),
+            onSelect: () => splitConnectionIntoLabels(target.connectionId),
+          },
+          {
             label: t("canvasContext.removeConnection"),
             onSelect: () => actions.removeDirectConnection(target.connectionId),
           },
@@ -249,6 +260,10 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     return {
       title: t("canvasContext.waypoint"),
       items: [
+        {
+          label: t("canvasContext.splitConnectionIntoLabels"),
+          onSelect: () => splitConnectionIntoLabels(target.connectionId),
+        },
         {
           label: t("canvasContext.deleteWaypoint"),
           onSelect: () =>

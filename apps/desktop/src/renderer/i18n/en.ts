@@ -66,6 +66,7 @@ export const en = {
   "canvasContext.connection": "Connection",
   "canvasContext.waypoint": "Waypoint",
   "canvasContext.putEverythingIntoSubsheet": "Into Subsheet",
+  "canvasContext.splitConnectionIntoLabels": "Split Into Labels",
   "canvasContext.removeConnection": "Remove Connection",
   "canvasContext.deleteWaypoint": "Delete Waypoint",
 
@@ -526,6 +527,8 @@ export const en = {
   "store.status.connectedEndpoints": "Connected endpoints",
   "store.status.attachedEndpointToLabel": "Attached endpoint to label",
   "store.status.removedConnection": "Removed connection",
+  "store.status.splitConnectionIntoLabels":
+    "Split connection into labels ({name})",
   "store.status.updatedWireRoute": "Updated wire route",
   "store.status.removedLabelAnchor": "Removed label anchor",
   "store.warning.importError": "Import error {filePath}: {error}",
