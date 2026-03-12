@@ -21,6 +21,7 @@ export default function Canvas() {
   let resizeObserver: ResizeObserver | null = null;
   const [camera, setCamera] = createSignal({ x: 0, y: 0, scale: 1 });
   const sheet = createMemo(() => getSheet(state.project, state.activeSheetId));
+  const placementMode = createMemo(() => editorUi.placementMode());
 
   const wrapOffset = (value: number, spacing: number) => {
     if (spacing <= 0) return 0;
@@ -45,13 +46,20 @@ export default function Canvas() {
     getHostEl: () => hostEl,
     getScene: () => scene,
   });
+  const handleBackgroundClick = (point: { x: number; y: number }) => {
+    if (placementMode()) {
+      editorUi.placeAt(point);
+      return;
+    }
+    actions.addPendingWirePoint(point);
+  };
 
   onMount(() => {
     scene = new KonvaSheetScene(hostEl, {
       onSelect: actions.select,
       onOpenNode: editorUi.openComponentEditorForNode,
       onEndpointClick: actions.endpointClick,
-      onBackgroundClick: actions.addPendingWirePoint,
+      onBackgroundClick: handleBackgroundClick,
       onLabelClick: editorUi.labelClick,
       onCommentClick: editorUi.commentClick,
       onMoveNode: actions.moveNode,
@@ -75,6 +83,7 @@ export default function Canvas() {
       selection: state.selection,
       pendingEndpoint: state.pendingEndpoint,
       pendingWirePoints: state.pendingWirePoints,
+      placementActive: placementMode() !== null,
     });
   });
 
@@ -84,12 +93,14 @@ export default function Canvas() {
     state.selection;
     state.pendingEndpoint;
     state.pendingWirePoints;
+    placementMode();
     scene?.render({
       project: state.project,
       sheet: sheet(),
       selection: state.selection,
       pendingEndpoint: state.pendingEndpoint,
       pendingWirePoints: state.pendingWirePoints,
+      placementActive: placementMode() !== null,
     });
   });
 
@@ -115,7 +126,9 @@ export default function Canvas() {
           ref={(el) => {
             hostEl = el;
           }}
-          class="scene-konva-host"
+          class={`scene-konva-host ${
+            placementMode() ? "cursor-crosshair" : ""
+          }`}
           role="application"
           aria-label={t("canvas.ariaWorkspace")}
           onContextMenu={(evt) => {

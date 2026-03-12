@@ -198,7 +198,7 @@ export class KonvaSheetScene {
       const pos = this.stage.getPointerPosition();
       if (
         pos &&
-        this.lastState?.pendingEndpoint &&
+        (this.lastState?.pendingEndpoint || this.lastState?.placementActive) &&
         evt.evt instanceof MouseEvent &&
         evt.evt.button === 0 &&
         !this.spacePressed &&
@@ -239,6 +239,9 @@ export class KonvaSheetScene {
     });
     this.stage.on("click tap", (evt) => {
       if (!this.isBackgroundTarget(evt.target)) return;
+      if (this.lastState?.pendingEndpoint || this.lastState?.placementActive) {
+        return;
+      }
       this.callbacks.onSelect(null);
     });
     this.stage.on("wheel", (evt) => {

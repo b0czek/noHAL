@@ -30,6 +30,11 @@ export function useEditorShortcuts(): void {
           actions.clearPendingEndpoint();
           return;
         }
+        if (editorUi.placementMode() !== null) {
+          evt.preventDefault();
+          editorUi.cancelPlacementMode();
+          return;
+        }
         return;
       }
 

@@ -1,4 +1,5 @@
 import { getSheet } from "@nohal/core/src/graph";
+import type { LabelScope, XY } from "@nohal/core/src/types";
 import {
   createContext,
   createEffect,
@@ -15,6 +16,15 @@ export type CanvasFocusTarget = {
   kind: "node" | "label" | "comment" | "sheet-port";
   id: string;
 };
+export type CanvasPlacement =
+  | { kind: "subsheet" }
+  | { kind: "comment" }
+  | { kind: "label"; scope: LabelScope }
+  | {
+      kind: "sheet-port";
+      direction: "in" | "out" | "io";
+      type: "bit" | "float" | "s32" | "u32" | "s64" | "u64" | "port";
+    };
 export type EditorOverlay =
   | { kind: "component-editor"; nodeId: string }
   | { kind: "general-settings"; initialTab?: GeneralSettingsTab }
@@ -31,6 +41,8 @@ type CanvasFocusRequest = {
 function createEditorUiState() {
   const { state, actions } = useEditorStore();
   const [overlay, setOverlay] = createSignal<EditorOverlay | null>(null);
+  const [placementMode, setPlacementMode] =
+    createSignal<CanvasPlacement | null>(null);
   const [canvasFocusRequest, setCanvasFocusRequest] =
     createSignal<CanvasFocusRequest | null>(null);
   let nextCanvasFocusRequestId = 1;
@@ -50,6 +62,20 @@ function createEditorUiState() {
     return node && node.kind === "component" ? node : null;
   });
   const openOverlay = (next: EditorOverlay) => setOverlay(next);
+  const samePlacementMode = (
+    left: CanvasPlacement | null,
+    right: CanvasPlacement | null,
+  ) => {
+    if (!left || !right) return left === right;
+    if (left.kind !== right.kind) return false;
+    if (left.kind === "label" && right.kind === "label") {
+      return left.scope === right.scope;
+    }
+    if (left.kind === "sheet-port" && right.kind === "sheet-port") {
+      return left.direction === right.direction && left.type === right.type;
+    }
+    return true;
+  };
 
   const labelClick = (labelId: string) => {
     if (state.pendingEndpoint) {
@@ -95,8 +121,47 @@ function createEditorUiState() {
     }
   });
 
+  createEffect(() => {
+    if (state.pendingEndpoint !== null && placementMode() !== null) {
+      setPlacementMode(null);
+    }
+  });
+
+  const beginPlacementMode = (next: CanvasPlacement) => {
+    actions.clearPendingEndpoint();
+    setPlacementMode(next);
+  };
+
+  const togglePlacementMode = (next: CanvasPlacement) => {
+    if (samePlacementMode(placementMode(), next)) {
+      setPlacementMode(null);
+      return;
+    }
+    beginPlacementMode(next);
+  };
+
+  const placeAt = (point: XY) => {
+    const current = placementMode();
+    if (!current) return false;
+    switch (current.kind) {
+      case "subsheet":
+        actions.addSheetDefinition(point);
+        return true;
+      case "comment":
+        actions.addComment(point);
+        return true;
+      case "label":
+        actions.addLabel(current.scope, point);
+        return true;
+      case "sheet-port":
+        actions.addSheetPort(current.direction, current.type, point);
+        return true;
+    }
+  };
+
   return {
     activeOverlay: overlay,
+    placementMode,
     labelClick,
     commentClick,
     openOverlay,
@@ -110,6 +175,10 @@ function createEditorUiState() {
       openOverlay({ kind: "sheet-settings", sheetId }),
     openComponentSearch: (scope: ComponentSearchScope) =>
       openOverlay({ kind: "component-search", scope }),
+    beginPlacementMode,
+    togglePlacementMode,
+    cancelPlacementMode: () => setPlacementMode(null),
+    placeAt,
     canvasFocusRequest,
     requestCanvasFocus: (sheetId: string, target: CanvasFocusTarget) =>
       setCanvasFocusRequest({

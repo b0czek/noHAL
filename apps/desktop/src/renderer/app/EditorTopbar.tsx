@@ -19,7 +19,7 @@ import {
 import { Separator } from "../components/ui/separator";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
-import { useEditorUi } from "../state/EditorUiProvider";
+import { type CanvasPlacement, useEditorUi } from "../state/EditorUiProvider";
 
 interface EditorTopbarProps {
   onGoToLanding: () => void;
@@ -29,6 +29,20 @@ export default function EditorTopbar(props: EditorTopbarProps) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
   const editorUi = useEditorUi();
+  const placementModeMatches = (candidate: CanvasPlacement) => {
+    const current = editorUi.placementMode();
+    if (!current || current.kind !== candidate.kind) return false;
+    if (current.kind === "label" && candidate.kind === "label") {
+      return current.scope === candidate.scope;
+    }
+    if (current.kind === "sheet-port" && candidate.kind === "sheet-port") {
+      return (
+        current.direction === candidate.direction &&
+        current.type === candidate.type
+      );
+    }
+    return true;
+  };
 
   return (
     <header class="z-20 flex flex-wrap items-center gap-3 border-b border-white/8 bg-black/20 px-4 py-3 backdrop-blur">
@@ -110,13 +124,25 @@ export default function EditorTopbar(props: EditorTopbarProps) {
       <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
         <Button
           variant="secondary"
-          onClick={() => actions.addSheetDefinition()}
-          class="gap-2"
+          onClick={() => editorUi.togglePlacementMode({ kind: "subsheet" })}
+          class={`gap-2 ${
+            placementModeMatches({ kind: "subsheet" })
+              ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
+              : ""
+          }`}
         >
           <HiOutlineDocumentDuplicate size={16} aria-hidden="true" />
           {t("topbar.addSubsheet")}
         </Button>
-        <Button variant="secondary" onClick={actions.addComment} class="gap-2">
+        <Button
+          variant="secondary"
+          onClick={() => editorUi.togglePlacementMode({ kind: "comment" })}
+          class={`gap-2 ${
+            placementModeMatches({ kind: "comment" })
+              ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
+              : ""
+          }`}
+        >
           <HiOutlineDocumentText size={16} aria-hidden="true" />
           {t("topbar.addText")}
         </Button>
@@ -124,7 +150,11 @@ export default function EditorTopbar(props: EditorTopbarProps) {
           <DropdownMenuTrigger
             as={Button<"button">}
             variant="secondary"
-            class="gap-2"
+            class={`gap-2 ${
+              editorUi.placementMode()?.kind === "sheet-port"
+                ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
+                : ""
+            }`}
           >
             <HiOutlineArrowsRightLeft size={16} aria-hidden="true" />
             {t("topbar.addPort")}
@@ -132,7 +162,13 @@ export default function EditorTopbar(props: EditorTopbarProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
-              onSelect={() => actions.addSheetPort("in", "bit")}
+              onSelect={() =>
+                editorUi.beginPlacementMode({
+                  kind: "sheet-port",
+                  direction: "in",
+                  type: "bit",
+                })
+              }
             >
               <span class="inline-flex items-center gap-2">
                 <HiOutlineArrowsRightLeft size={16} aria-hidden="true" />
@@ -140,7 +176,13 @@ export default function EditorTopbar(props: EditorTopbarProps) {
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              onSelect={() => actions.addSheetPort("out", "bit")}
+              onSelect={() =>
+                editorUi.beginPlacementMode({
+                  kind: "sheet-port",
+                  direction: "out",
+                  type: "bit",
+                })
+              }
             >
               <span class="inline-flex items-center gap-2">
                 <HiOutlineArrowsRightLeft size={16} aria-hidden="true" />
@@ -148,7 +190,13 @@ export default function EditorTopbar(props: EditorTopbarProps) {
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem
-              onSelect={() => actions.addSheetPort("io", "float")}
+              onSelect={() =>
+                editorUi.beginPlacementMode({
+                  kind: "sheet-port",
+                  direction: "io",
+                  type: "float",
+                })
+              }
             >
               <span class="inline-flex items-center gap-2">
                 <HiOutlineArrowsRightLeft size={16} aria-hidden="true" />
@@ -161,20 +209,32 @@ export default function EditorTopbar(props: EditorTopbarProps) {
           <DropdownMenuTrigger
             as={Button<"button">}
             variant="secondary"
-            class="gap-2"
+            class={`gap-2 ${
+              editorUi.placementMode()?.kind === "label"
+                ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
+                : ""
+            }`}
           >
             <HiOutlineTag size={16} aria-hidden="true" />
             {t("topbar.addLabel")}
             <HiOutlineChevronDown size={16} aria-hidden="true" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <DropdownMenuItem onSelect={() => actions.addLabel("local")}>
+            <DropdownMenuItem
+              onSelect={() =>
+                editorUi.beginPlacementMode({ kind: "label", scope: "local" })
+              }
+            >
               <span class="inline-flex items-center gap-2">
                 <HiOutlineTag size={16} aria-hidden="true" />
                 {t("topbar.localLabel")}
               </span>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => actions.addLabel("global")}>
+            <DropdownMenuItem
+              onSelect={() =>
+                editorUi.beginPlacementMode({ kind: "label", scope: "global" })
+              }
+            >
               <span class="inline-flex items-center gap-2">
                 <HiOutlineTag size={16} aria-hidden="true" />
                 {t("topbar.globalLabel")}

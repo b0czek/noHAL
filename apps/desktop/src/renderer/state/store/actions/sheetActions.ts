@@ -10,6 +10,7 @@ import {
 import type {
   SheetAddfQueueStoredEntry,
   SheetNode,
+  XY,
 } from "@nohal/core/src/types";
 import {
   cloneProject,
@@ -210,10 +211,17 @@ export function createSheetActions(deps: EditorStoreActionContext) {
 
     setActiveSheet,
 
-    addSheetDefinition(): void {
-      const result = deps.withProject((project) =>
-        sheetModelEdits.definition.add(project, deps.state.activeSheetId),
-      );
+    addSheetDefinition(position?: XY): void {
+      const result = deps.withProject((project) => {
+        const added = sheetModelEdits.definition.add(
+          project,
+          deps.state.activeSheetId,
+        );
+        if (added && position) {
+          added.node.position = { ...position };
+        }
+        return added;
+      });
       if (!result) return;
       deps.setStatusT("store.status.createdSubsheet", { name: result.name });
     },

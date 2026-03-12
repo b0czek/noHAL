@@ -14,6 +14,7 @@ import type {
   HalValueType,
   LabelScope,
   SheetComment,
+  XY,
 } from "@nohal/core/src/types";
 import {
   componentUsesLockedCanonicalInstanceNames,
@@ -119,7 +120,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       });
     },
 
-    addLabel(scope: LabelScope): void {
+    addLabel(scope: LabelScope, position?: XY): void {
       const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
@@ -130,14 +131,14 @@ export function createNodeActions(deps: EditorStoreActionContext) {
           id: createId("label"),
           name,
           scope,
-          position: defaultLabelPosition(sheet),
+          position: position ?? defaultLabelPosition(sheet),
           rotation: 0,
         });
       });
       deps.setStatusT("store.status.addedLabel", { scope });
     },
 
-    addComment(): void {
+    addComment(position?: XY): void {
       let createdId: string | null = null;
       const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
@@ -145,7 +146,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         const comment: SheetComment = {
           id: createId("comment"),
           text: "Comment",
-          position: defaultCommentPosition(sheet),
+          position: position ?? defaultCommentPosition(sheet),
           rotation: 0,
         };
         createdId = comment.id;
@@ -159,6 +160,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     addSheetPort(
       direction: "in" | "out" | "io",
       type: "bit" | "float" | "s32" | "u32" | "s64" | "u64" | "port",
+      position?: XY,
     ): void {
       const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
@@ -172,7 +174,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
               : "io_sig";
         const name = nextName(base, used);
         const port = createSheetPortDraft(name, direction, type);
-        port.position = defaultPortPosition(sheet, port.side);
+        port.position = position ?? defaultPortPosition(sheet, port.side);
         sheet.ports.push(port);
       });
       deps.setStatusT("store.status.addedSheetPort");

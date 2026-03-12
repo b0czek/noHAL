@@ -55,4 +55,5 @@ export interface SceneRenderState {
   selection: SceneSelection;
   pendingEndpoint: SheetEndpointRef | null;
   pendingWirePoints: XY[];
+  placementActive: boolean;
 }
