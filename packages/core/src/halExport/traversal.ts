@@ -11,7 +11,11 @@ import {
   pushGlobalLabelMember,
   registerEndpoint,
 } from "./context";
-import { chooseBoundarySignalName, joinInstancePath } from "./naming";
+import {
+  chooseBoundarySignalName,
+  joinInstancePath,
+  resolveExportedInstancePath,
+} from "./naming";
 
 export interface TraversalResult {
   boundaryPortEndpointIds: Record<string, string>;
@@ -55,10 +59,11 @@ function createLocalEndpointIdMap(
       const localKey = `node:${node.id}:${pin.key}`;
       const id = endpointId(ctx, "ep");
       if (node.kind === "component") {
-        const instancePath = joinInstancePath([
-          ...pathParts,
+        const instancePath = resolveExportedInstancePath(
+          pathParts,
           node.instanceName,
-        ]);
+          component,
+        );
         registerEndpoint(ctx, {
           id,
           kind: "component-pin",
@@ -149,7 +154,11 @@ export function traverseSheetInstance(
           ctx.componentInstances.push({
             componentName: component.halComponentName,
             componentId: node.componentId,
-            instancePath: joinInstancePath([...pathParts, node.instanceName]),
+            instancePath: resolveExportedInstancePath(
+              pathParts,
+              node.instanceName,
+              component,
+            ),
             ...(node.instanceConfigValues
               ? { instanceConfigValues: { ...node.instanceConfigValues } }
               : {}),

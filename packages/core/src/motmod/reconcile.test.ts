@@ -461,7 +461,7 @@ describe("motmod-managed obligatory components", () => {
 
     const out = exportProjectToHal(project);
     expect(out.text).toContain(
-      "net motion_extra system.src.out system.motion.extra-fault",
+      "net motion_extra system.src.out motion.extra-fault",
     );
     expect(out.text).toContain("addf motion-controller servo-thread");
     expect(out.text).not.toContain("loadrt motion");

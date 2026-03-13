@@ -66,7 +66,7 @@ describe("iocontrol-managed system component", () => {
 
     const out = exportProjectToHal(project);
     expect(out.text).toContain(
-      "net machine_enable system.src.out system.iocontrol.0.emc-enable-in",
+      "net machine_enable system.src.out iocontrol.0.emc-enable-in",
     );
     expect(out.text).not.toContain("iocontrol: iocontrol.0");
     expect(out.text).not.toContain("loadusr iocontrol");

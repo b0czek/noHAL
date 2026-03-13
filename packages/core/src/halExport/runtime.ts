@@ -17,7 +17,7 @@ import type {
 } from "../types";
 import type { ExportContext } from "./context";
 import { pushFatal } from "./context";
-import { joinInstancePath } from "./naming";
+import { joinInstancePath, resolveExportedInstancePath } from "./naming";
 
 type RuntimeInstanceRecord = ExportContext["componentInstances"][number];
 
@@ -606,7 +606,11 @@ export function buildRuntimeSections(
           defaultThread;
         const item = {
           componentName,
-          instancePath: joinInstancePath([...pathParts, node.instanceName]),
+          instancePath: resolveExportedInstancePath(
+            pathParts,
+            node.instanceName,
+            component,
+          ),
           parentSheetPath: joinInstancePath(pathParts),
         };
         if (queueItem.functionKey) {

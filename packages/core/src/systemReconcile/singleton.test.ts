@@ -330,9 +330,9 @@ describe("systemReconcile singleton", () => {
     });
 
     const out = exportProjectToHal(project);
-    expect(out.text).not.toContain("testsys.aux-ready");
+    expect(out.text).not.toContain("net testsys_extra");
     expect(out.postguiText ?? "").toContain(
-      "net testsys_extra system.src.out system.testsys.aux-ready",
+      "net testsys_extra system.src.out testsys.aux-ready",
     );
   });
 

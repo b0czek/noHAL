@@ -5,6 +5,7 @@ import { isValidHalName } from "../halNames";
 import type { NoHALProject } from "../types";
 import type { ExportContext } from "./context";
 import { pushFatal } from "./context";
+import { resolveExportedInstancePath } from "./naming";
 
 export interface ParamLines {
   mainSetpLines: string[];
@@ -29,7 +30,11 @@ export function collectParamLines(
       if (node.kind === "component") {
         const component = project.library.components[node.componentId];
         if (!component) continue;
-        const instancePath = [...pathParts, node.instanceName].join(".");
+        const instancePath = resolveExportedInstancePath(
+          pathParts,
+          node.instanceName,
+          component,
+        );
         if (!isValidHalName(instancePath)) {
           pushFatal(
             ctx,
