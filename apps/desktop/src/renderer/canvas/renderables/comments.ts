@@ -6,7 +6,11 @@ import {
   SELECTED_BORDER,
   TEXT_PRIMARY,
 } from "../constants";
-import type { RenderCommentsArgs, RenderRuntimeContext } from "./shared";
+import {
+  bindDraggableRenderable,
+  type RenderCommentsArgs,
+  type RenderRuntimeContext,
+} from "./shared";
 
 export function renderComments(
   ctx: RenderRuntimeContext,
@@ -61,11 +65,19 @@ export function renderComments(
     );
     group.add(text);
 
-    group.on("dragstart", () => {
-      const pos = clampPos(group.position());
-      group.position(pos);
-      liveCommentPositions.set(comment.id, pos);
-      onSelectionDragStart({ kind: "comment", id: comment.id }, pos);
+    bindDraggableRenderable({
+      group,
+      target: { kind: "comment", id: comment.id },
+      clampPos,
+      setLivePosition: (pos) => {
+        liveCommentPositions.set(comment.id, pos);
+      },
+      onSelectionDragStart,
+      onSelectionDragMove,
+      onSelectionDragEnd,
+      persistMove: (pos) => {
+        callbacks.onMoveComment(comment.id, pos.x, pos.y);
+      },
     });
     group.on("click tap", (evt) => {
       evt.cancelBubble = true;
@@ -83,24 +95,6 @@ export function renderComments(
         });
       }
     });
-    group.on("dragend", () => {
-      const pos = clampPos(group.position());
-      group.position(pos);
-      if (onSelectionDragEnd({ kind: "comment", id: comment.id }, pos)) {
-        return;
-      }
-      liveCommentPositions.set(comment.id, pos);
-      callbacks.onMoveComment(comment.id, pos.x, pos.y);
-    });
-    group.on("dragmove", () => {
-      const pos = clampPos(group.position());
-      group.position(pos);
-      if (onSelectionDragMove({ kind: "comment", id: comment.id }, pos)) {
-        return;
-      }
-      liveCommentPositions.set(comment.id, pos);
-    });
-
     mainWorld.add(group);
   }
 }

@@ -21,6 +21,7 @@ import {
 } from "../constants";
 import {
   addPinDot,
+  bindDraggableRenderable,
   componentNodeTint,
   getNodePinSetpValue,
   type RenderNodesArgs,
@@ -426,11 +427,20 @@ export function renderNodes(
       }
     }
 
-    nodeGroup.on("dragstart", () => {
-      const pos = clampPos(nodeGroup.position());
-      nodeGroup.position(pos);
-      liveNodePositions.set(node.id, pos);
-      onSelectionDragStart({ kind: "node", id: node.id }, pos);
+    bindDraggableRenderable({
+      group: nodeGroup,
+      target: { kind: "node", id: node.id },
+      clampPos,
+      setLivePosition: (pos) => {
+        liveNodePositions.set(node.id, pos);
+      },
+      onSelectionDragStart,
+      onSelectionDragMove,
+      onSelectionDragEnd,
+      redrawWires,
+      persistMove: (pos) => {
+        callbacks.onMoveNode(node.id, pos.x, pos.y);
+      },
     });
     nodeGroup.on("click tap", () => {
       callbacks.onSelect({ kind: "node", id: node.id });
@@ -456,26 +466,6 @@ export function renderNodes(
       callbacks.onSelect({ kind: "node", id: node.id });
       callbacks.onOpenNode(node.id);
     });
-    nodeGroup.on("dragmove", () => {
-      const pos = clampPos(nodeGroup.position());
-      nodeGroup.position(pos);
-      if (onSelectionDragMove({ kind: "node", id: node.id }, pos)) {
-        return;
-      }
-      liveNodePositions.set(node.id, pos);
-      redrawWires();
-    });
-    nodeGroup.on("dragend", () => {
-      const pos = clampPos(nodeGroup.position());
-      nodeGroup.position(pos);
-      if (onSelectionDragEnd({ kind: "node", id: node.id }, pos)) {
-        return;
-      }
-      liveNodePositions.set(node.id, pos);
-      redrawWires();
-      callbacks.onMoveNode(node.id, pos.x, pos.y);
-    });
-
     mainWorld.add(nodeGroup);
   }
 }

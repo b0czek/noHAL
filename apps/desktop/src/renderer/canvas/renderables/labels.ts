@@ -9,7 +9,11 @@ import {
   TEXT_SOFT,
 } from "../constants";
 import { labelFill } from "../theme";
-import type { RenderLabelsArgs, RenderRuntimeContext } from "./shared";
+import {
+  bindDraggableRenderable,
+  type RenderLabelsArgs,
+  type RenderRuntimeContext,
+} from "./shared";
 
 export function renderLabels(
   ctx: RenderRuntimeContext,
@@ -88,11 +92,20 @@ export function renderLabels(
       }),
     );
 
-    group.on("dragstart", () => {
-      const pos = clampPos(group.position());
-      group.position(pos);
-      liveLabelPositions.set(label.id, pos);
-      onSelectionDragStart({ kind: "label", id: label.id }, pos);
+    bindDraggableRenderable({
+      group,
+      target: { kind: "label", id: label.id },
+      clampPos,
+      setLivePosition: (pos) => {
+        liveLabelPositions.set(label.id, pos);
+      },
+      onSelectionDragStart,
+      onSelectionDragMove,
+      onSelectionDragEnd,
+      redrawWires,
+      persistMove: (pos) => {
+        callbacks.onMoveLabel(label.id, pos.x, pos.y);
+      },
     });
     group.on("click tap", (evt) => {
       evt.cancelBubble = true;
@@ -110,26 +123,6 @@ export function renderLabels(
         });
       }
     });
-    group.on("dragend", () => {
-      const pos = clampPos(group.position());
-      group.position(pos);
-      if (onSelectionDragEnd({ kind: "label", id: label.id }, pos)) {
-        return;
-      }
-      liveLabelPositions.set(label.id, pos);
-      redrawWires();
-      callbacks.onMoveLabel(label.id, pos.x, pos.y);
-    });
-    group.on("dragmove", () => {
-      const pos = clampPos(group.position());
-      group.position(pos);
-      if (onSelectionDragMove({ kind: "label", id: label.id }, pos)) {
-        return;
-      }
-      liveLabelPositions.set(label.id, pos);
-      redrawWires();
-    });
-
     mainWorld.add(group);
   }
 }

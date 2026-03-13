@@ -75,6 +75,61 @@ export interface RenderCommentsArgs {
   commentGroups: Map<string, Konva.Group>;
 }
 
+export function bindDraggableRenderable(args: {
+  group: Konva.Group;
+  target: DragSelectionTarget;
+  clampPos: ClampPosFn;
+  setLivePosition: (pos: Pt) => void;
+  onSelectionDragStart: (target: DragSelectionTarget, pos: Pt) => boolean;
+  onSelectionDragMove: (target: DragSelectionTarget, pos: Pt) => boolean;
+  onSelectionDragEnd: (target: DragSelectionTarget, pos: Pt) => boolean;
+  redrawWires?: () => void;
+  persistMove: (pos: Pt) => void;
+}): void {
+  const {
+    group,
+    target,
+    clampPos,
+    setLivePosition,
+    onSelectionDragStart,
+    onSelectionDragMove,
+    onSelectionDragEnd,
+    redrawWires,
+    persistMove,
+  } = args;
+
+  const syncPosition = (): Pt => {
+    const pos = clampPos(group.position());
+    group.position(pos);
+    return pos;
+  };
+
+  group.on("dragstart", () => {
+    const pos = syncPosition();
+    setLivePosition(pos);
+    onSelectionDragStart(target, pos);
+  });
+
+  group.on("dragmove", () => {
+    const pos = syncPosition();
+    if (onSelectionDragMove(target, pos)) {
+      return;
+    }
+    setLivePosition(pos);
+    redrawWires?.();
+  });
+
+  group.on("dragend", () => {
+    const pos = syncPosition();
+    if (onSelectionDragEnd(target, pos)) {
+      return;
+    }
+    setLivePosition(pos);
+    redrawWires?.();
+    persistMove(pos);
+  });
+}
+
 export function addPinDot(args: {
   callbacks: SceneCallbacks;
   parent: Konva.Container;

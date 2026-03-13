@@ -13,6 +13,7 @@ import {
 } from "../constants";
 import {
   addPinDot,
+  bindDraggableRenderable,
   type RenderPortsArgs,
   type RenderRuntimeContext,
 } from "./shared";
@@ -94,11 +95,20 @@ export function renderPorts(
       }),
     );
 
-    portGroup.on("dragstart", () => {
-      const pos = clampPos(portGroup.position());
-      portGroup.position(pos);
-      livePortPositions.set(port.id, pos);
-      onSelectionDragStart({ kind: "sheet-port", id: port.id }, pos);
+    bindDraggableRenderable({
+      group: portGroup,
+      target: { kind: "sheet-port", id: port.id },
+      clampPos,
+      setLivePosition: (pos) => {
+        livePortPositions.set(port.id, pos);
+      },
+      onSelectionDragStart,
+      onSelectionDragMove,
+      onSelectionDragEnd,
+      redrawWires,
+      persistMove: (pos) => {
+        callbacks.onMoveSheetPort(port.id, pos.x, pos.y);
+      },
     });
     portGroup.on("click tap", (evt) => {
       evt.cancelBubble = true;
@@ -116,26 +126,6 @@ export function renderPorts(
         });
       }
     });
-    portGroup.on("dragend", () => {
-      const pos = clampPos(portGroup.position());
-      portGroup.position(pos);
-      if (onSelectionDragEnd({ kind: "sheet-port", id: port.id }, pos)) {
-        return;
-      }
-      livePortPositions.set(port.id, pos);
-      redrawWires();
-      callbacks.onMoveSheetPort(port.id, pos.x, pos.y);
-    });
-    portGroup.on("dragmove", () => {
-      const pos = clampPos(portGroup.position());
-      portGroup.position(pos);
-      if (onSelectionDragMove({ kind: "sheet-port", id: port.id }, pos)) {
-        return;
-      }
-      livePortPositions.set(port.id, pos);
-      redrawWires();
-    });
-
     addPinDot({
       callbacks,
       parent: portGroup,
