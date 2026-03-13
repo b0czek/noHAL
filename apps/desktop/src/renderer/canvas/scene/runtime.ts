@@ -93,6 +93,7 @@ export function createSceneRuntime(
       interaction: {
         isPanning: false,
         panLastScreenPos: null,
+        backgroundTapStartScreenPos: null,
         isMarqueeSelecting: false,
         marqueeStartScreenPos: null,
         marqueeCurrentScreenPos: null,
