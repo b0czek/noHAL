@@ -9,19 +9,23 @@ import {
   TEXT_SOFT,
 } from "../constants";
 import { labelFill } from "../theme";
-import type { RenderLabelsArgs } from "./shared";
+import type { RenderLabelsArgs, RenderRuntimeContext } from "./shared";
 
-export function renderLabels(args: RenderLabelsArgs): void {
+export function renderLabels(
+  ctx: RenderRuntimeContext,
+  args: RenderLabelsArgs,
+): void {
   const {
-    sheet,
-    selectedLabelIds,
     mainWorld,
     callbacks,
     clampPos,
     redrawWires,
-    liveLabelPositions,
-    labelGroups,
-  } = args;
+    onSelectionDragStart,
+    onSelectionDragMove,
+    onSelectionDragEnd,
+  } = ctx;
+
+  const { sheet, selectedLabelIds, liveLabelPositions, labelGroups } = args;
 
   for (const label of sheet.labels) {
     const group = new Konva.Group({
@@ -88,7 +92,7 @@ export function renderLabels(args: RenderLabelsArgs): void {
       const pos = clampPos(group.position());
       group.position(pos);
       liveLabelPositions.set(label.id, pos);
-      args.onSelectionDragStart({ kind: "label", id: label.id }, pos);
+      onSelectionDragStart({ kind: "label", id: label.id }, pos);
     });
     group.on("click tap", (evt) => {
       evt.cancelBubble = true;
@@ -109,7 +113,7 @@ export function renderLabels(args: RenderLabelsArgs): void {
     group.on("dragend", () => {
       const pos = clampPos(group.position());
       group.position(pos);
-      if (args.onSelectionDragEnd({ kind: "label", id: label.id }, pos)) {
+      if (onSelectionDragEnd({ kind: "label", id: label.id }, pos)) {
         return;
       }
       liveLabelPositions.set(label.id, pos);
@@ -119,7 +123,7 @@ export function renderLabels(args: RenderLabelsArgs): void {
     group.on("dragmove", () => {
       const pos = clampPos(group.position());
       group.position(pos);
-      if (args.onSelectionDragMove({ kind: "label", id: label.id }, pos)) {
+      if (onSelectionDragMove({ kind: "label", id: label.id }, pos)) {
         return;
       }
       liveLabelPositions.set(label.id, pos);

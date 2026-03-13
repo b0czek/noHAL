@@ -33,7 +33,7 @@ export type DragSelectionTarget = {
   id: string;
 };
 
-export interface RenderSharedArgs {
+export interface RenderRuntimeContext {
   mainWorld: Konva.Group;
   callbacks: SceneCallbacks;
   clampPos: ClampPosFn;
@@ -43,7 +43,7 @@ export interface RenderSharedArgs {
   onSelectionDragEnd: (target: DragSelectionTarget, pos: Pt) => boolean;
 }
 
-export interface RenderPortsArgs extends RenderSharedArgs {
+export interface RenderPortsArgs {
   sheet: SheetDefinition;
   pendingKey: string | null;
   selectedPortIds: ReadonlySet<string>;
@@ -51,7 +51,7 @@ export interface RenderPortsArgs extends RenderSharedArgs {
   portGroups: Map<string, Konva.Group>;
 }
 
-export interface RenderNodesArgs extends RenderSharedArgs {
+export interface RenderNodesArgs {
   project: NoHALProject;
   sheet: SheetDefinition;
   pendingKey: string | null;
@@ -61,14 +61,14 @@ export interface RenderNodesArgs extends RenderSharedArgs {
   nodeGroups: Map<string, Konva.Group>;
 }
 
-export interface RenderLabelsArgs extends RenderSharedArgs {
+export interface RenderLabelsArgs {
   sheet: SheetDefinition;
   selectedLabelIds: ReadonlySet<string>;
   liveLabelPositions: Map<string, Pt>;
   labelGroups: Map<string, Konva.Group>;
 }
 
-export interface RenderCommentsArgs extends RenderSharedArgs {
+export interface RenderCommentsArgs {
   sheet: SheetDefinition;
   selectedCommentIds: ReadonlySet<string>;
   liveCommentPositions: Map<string, Pt>;

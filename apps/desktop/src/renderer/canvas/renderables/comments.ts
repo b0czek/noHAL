@@ -6,18 +6,23 @@ import {
   SELECTED_BORDER,
   TEXT_PRIMARY,
 } from "../constants";
-import type { RenderCommentsArgs } from "./shared";
+import type { RenderCommentsArgs, RenderRuntimeContext } from "./shared";
 
-export function renderComments(args: RenderCommentsArgs): void {
+export function renderComments(
+  ctx: RenderRuntimeContext,
+  args: RenderCommentsArgs,
+): void {
   const {
-    sheet,
-    selectedCommentIds,
     mainWorld,
     callbacks,
     clampPos,
-    liveCommentPositions,
-    commentGroups,
-  } = args;
+    onSelectionDragStart,
+    onSelectionDragMove,
+    onSelectionDragEnd,
+  } = ctx;
+
+  const { sheet, selectedCommentIds, liveCommentPositions, commentGroups } =
+    args;
 
   for (const comment of sheet.comments) {
     const group = new Konva.Group({
@@ -60,7 +65,7 @@ export function renderComments(args: RenderCommentsArgs): void {
       const pos = clampPos(group.position());
       group.position(pos);
       liveCommentPositions.set(comment.id, pos);
-      args.onSelectionDragStart({ kind: "comment", id: comment.id }, pos);
+      onSelectionDragStart({ kind: "comment", id: comment.id }, pos);
     });
     group.on("click tap", (evt) => {
       evt.cancelBubble = true;
@@ -81,7 +86,7 @@ export function renderComments(args: RenderCommentsArgs): void {
     group.on("dragend", () => {
       const pos = clampPos(group.position());
       group.position(pos);
-      if (args.onSelectionDragEnd({ kind: "comment", id: comment.id }, pos)) {
+      if (onSelectionDragEnd({ kind: "comment", id: comment.id }, pos)) {
         return;
       }
       liveCommentPositions.set(comment.id, pos);
@@ -90,7 +95,7 @@ export function renderComments(args: RenderCommentsArgs): void {
     group.on("dragmove", () => {
       const pos = clampPos(group.position());
       group.position(pos);
-      if (args.onSelectionDragMove({ kind: "comment", id: comment.id }, pos)) {
+      if (onSelectionDragMove({ kind: "comment", id: comment.id }, pos)) {
         return;
       }
       liveCommentPositions.set(comment.id, pos);

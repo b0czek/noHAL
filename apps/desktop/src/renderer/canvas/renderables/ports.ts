@@ -11,20 +11,28 @@ import {
   SELECTED_BORDER,
   TEXT_PRIMARY,
 } from "../constants";
-import { addPinDot, type RenderPortsArgs } from "./shared";
+import {
+  addPinDot,
+  type RenderPortsArgs,
+  type RenderRuntimeContext,
+} from "./shared";
 
-export function renderPorts(args: RenderPortsArgs): void {
+export function renderPorts(
+  ctx: RenderRuntimeContext,
+  args: RenderPortsArgs,
+): void {
   const {
-    sheet,
-    pendingKey,
-    selectedPortIds,
     mainWorld,
     callbacks,
     clampPos,
     redrawWires,
-    livePortPositions,
-    portGroups,
-  } = args;
+    onSelectionDragStart,
+    onSelectionDragMove,
+    onSelectionDragEnd,
+  } = ctx;
+
+  const { sheet, pendingKey, selectedPortIds, livePortPositions, portGroups } =
+    args;
 
   for (const port of sheet.ports) {
     const endpoint: SheetEndpointRef = {
@@ -90,7 +98,7 @@ export function renderPorts(args: RenderPortsArgs): void {
       const pos = clampPos(portGroup.position());
       portGroup.position(pos);
       livePortPositions.set(port.id, pos);
-      args.onSelectionDragStart({ kind: "sheet-port", id: port.id }, pos);
+      onSelectionDragStart({ kind: "sheet-port", id: port.id }, pos);
     });
     portGroup.on("click tap", (evt) => {
       evt.cancelBubble = true;
@@ -111,7 +119,7 @@ export function renderPorts(args: RenderPortsArgs): void {
     portGroup.on("dragend", () => {
       const pos = clampPos(portGroup.position());
       portGroup.position(pos);
-      if (args.onSelectionDragEnd({ kind: "sheet-port", id: port.id }, pos)) {
+      if (onSelectionDragEnd({ kind: "sheet-port", id: port.id }, pos)) {
         return;
       }
       livePortPositions.set(port.id, pos);
@@ -121,7 +129,7 @@ export function renderPorts(args: RenderPortsArgs): void {
     portGroup.on("dragmove", () => {
       const pos = clampPos(portGroup.position());
       portGroup.position(pos);
-      if (args.onSelectionDragMove({ kind: "sheet-port", id: port.id }, pos)) {
+      if (onSelectionDragMove({ kind: "sheet-port", id: port.id }, pos)) {
         return;
       }
       livePortPositions.set(port.id, pos);

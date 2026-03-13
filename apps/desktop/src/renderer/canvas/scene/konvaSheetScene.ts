@@ -3,6 +3,7 @@ import type { ProjectWireLayerPosition } from "@nohal/core/src/types";
 import { buildSheetSceneLayout, type Pt } from "../layout";
 import {
   type DragSelectionTarget,
+  type RenderRuntimeContext,
   renderComments,
   renderLabels,
   renderNodes,
@@ -230,10 +231,7 @@ export function createKonvaSheetScene(
       applyCameraToRuntime();
       redrawWires(true);
 
-      renderPorts({
-        sheet,
-        pendingKey,
-        selectedPortIds,
+      const renderCtx: RenderRuntimeContext = {
         mainWorld: runtime.view.mainWorld,
         callbacks: runtime.callbacks,
         clampPos,
@@ -241,48 +239,33 @@ export function createKonvaSheetScene(
         onSelectionDragStart,
         onSelectionDragMove,
         onSelectionDragEnd,
+      };
+
+      renderPorts(renderCtx, {
+        sheet,
+        pendingKey,
+        selectedPortIds,
         livePortPositions: runtime.graph.livePortPositions,
         portGroups: runtime.graph.portGroups,
       });
-      renderNodes({
+      renderNodes(renderCtx, {
         project,
         sheet,
         pendingKey,
         selectedNodeIds,
         nodeLayouts,
-        mainWorld: runtime.view.mainWorld,
-        callbacks: runtime.callbacks,
-        clampPos,
-        redrawWires: () => redrawWires(),
-        onSelectionDragStart,
-        onSelectionDragMove,
-        onSelectionDragEnd,
         liveNodePositions: runtime.graph.liveNodePositions,
         nodeGroups: runtime.graph.nodeGroups,
       });
-      renderLabels({
+      renderLabels(renderCtx, {
         sheet,
         selectedLabelIds,
-        mainWorld: runtime.view.mainWorld,
-        callbacks: runtime.callbacks,
-        clampPos,
-        redrawWires: () => redrawWires(),
-        onSelectionDragStart,
-        onSelectionDragMove,
-        onSelectionDragEnd,
         liveLabelPositions: runtime.graph.liveLabelPositions,
         labelGroups: runtime.graph.labelGroups,
       });
-      renderComments({
+      renderComments(renderCtx, {
         sheet,
         selectedCommentIds,
-        mainWorld: runtime.view.mainWorld,
-        callbacks: runtime.callbacks,
-        clampPos,
-        redrawWires: () => redrawWires(),
-        onSelectionDragStart,
-        onSelectionDragMove,
-        onSelectionDragEnd,
         liveCommentPositions: runtime.graph.liveCommentPositions,
         commentGroups: runtime.graph.commentGroups,
       });

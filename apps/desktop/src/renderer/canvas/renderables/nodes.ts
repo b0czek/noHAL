@@ -24,19 +24,29 @@ import {
   componentNodeTint,
   getNodePinSetpValue,
   type RenderNodesArgs,
+  type RenderRuntimeContext,
 } from "./shared";
 
-export function renderNodes(args: RenderNodesArgs): void {
+export function renderNodes(
+  ctx: RenderRuntimeContext,
+  args: RenderNodesArgs,
+): void {
+  const {
+    mainWorld,
+    callbacks,
+    clampPos,
+    redrawWires,
+    onSelectionDragStart,
+    onSelectionDragMove,
+    onSelectionDragEnd,
+  } = ctx;
+
   const {
     project,
     sheet,
     pendingKey,
     selectedNodeIds,
     nodeLayouts,
-    mainWorld,
-    callbacks,
-    clampPos,
-    redrawWires,
     liveNodePositions,
     nodeGroups,
   } = args;
@@ -420,7 +430,7 @@ export function renderNodes(args: RenderNodesArgs): void {
       const pos = clampPos(nodeGroup.position());
       nodeGroup.position(pos);
       liveNodePositions.set(node.id, pos);
-      args.onSelectionDragStart({ kind: "node", id: node.id }, pos);
+      onSelectionDragStart({ kind: "node", id: node.id }, pos);
     });
     nodeGroup.on("click tap", () => {
       callbacks.onSelect({ kind: "node", id: node.id });
@@ -449,7 +459,7 @@ export function renderNodes(args: RenderNodesArgs): void {
     nodeGroup.on("dragmove", () => {
       const pos = clampPos(nodeGroup.position());
       nodeGroup.position(pos);
-      if (args.onSelectionDragMove({ kind: "node", id: node.id }, pos)) {
+      if (onSelectionDragMove({ kind: "node", id: node.id }, pos)) {
         return;
       }
       liveNodePositions.set(node.id, pos);
@@ -458,7 +468,7 @@ export function renderNodes(args: RenderNodesArgs): void {
     nodeGroup.on("dragend", () => {
       const pos = clampPos(nodeGroup.position());
       nodeGroup.position(pos);
-      if (args.onSelectionDragEnd({ kind: "node", id: node.id }, pos)) {
+      if (onSelectionDragEnd({ kind: "node", id: node.id }, pos)) {
         return;
       }
       liveNodePositions.set(node.id, pos);
