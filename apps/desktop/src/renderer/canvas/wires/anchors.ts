@@ -1,17 +1,18 @@
 import type { SplitConnectionLabelPositions } from "@nohal/core/src/sheet";
 import type { Pt } from "../layout";
 import { measureLabelBoxForLabel } from "../measurements";
+import type { SceneRuntime } from "../scene/types";
 import { getEndpointNormal, getEndpointPoint } from "./endpoints";
 import { clamp, computeSplitLabelPositions, rotateVec } from "./geometry";
 import { getSheetLookup } from "./lookup";
 import { buildDisplayWirePoints } from "./paths";
-import type { KonvaSheetSceneWiresContext, SheetLookup } from "./types";
+import type { SheetLookup } from "./types";
 
 export function getSplitLabelPositionsForConnection(
-  ctx: KonvaSheetSceneWiresContext,
+  runtime: SceneRuntime,
   connectionId: string,
 ): SplitConnectionLabelPositions | null {
-  const state = ctx.getLastState();
+  const state = runtime.state.lastState;
   if (!state) return null;
 
   const connection = state.sheet.directConnections.find(
@@ -20,8 +21,8 @@ export function getSplitLabelPositionsForConnection(
   if (!connection) return null;
 
   const lookup = getSheetLookup(state.project, state.sheet);
-  const startEndpointPoint = getEndpointPoint(ctx, lookup, connection.a);
-  const endEndpointPoint = getEndpointPoint(ctx, lookup, connection.b);
+  const startEndpointPoint = getEndpointPoint(runtime, lookup, connection.a);
+  const endEndpointPoint = getEndpointPoint(runtime, lookup, connection.b);
   if (!startEndpointPoint || !endEndpointPoint) return null;
 
   const displayRoutePoints = buildDisplayWirePoints({
@@ -48,12 +49,12 @@ export function getSplitLabelPositionsForConnection(
 }
 
 export function getLabelAnchorPoint(
-  ctx: KonvaSheetSceneWiresContext,
+  runtime: SceneRuntime,
   lookup: SheetLookup,
   labelId: string,
   toward: Pt,
 ): Pt | null {
-  const live = ctx.getLiveLabelPositions().get(labelId);
+  const live = runtime.graph.liveLabelPositions.get(labelId);
   const label = lookup.labelsById.get(labelId);
   if (!label) return null;
   const labelForBounds =

@@ -13,7 +13,6 @@ import type { SceneCallbacks, SceneRenderState } from "../types";
 import {
   deleteSelectedWaypoint as deleteWireSelectedWaypoint,
   getSplitLabelPositionsForConnection as getSplitLabelPositionsForWire,
-  type KonvaSheetSceneWiresContext,
   redraw as redrawSceneWires,
 } from "../wires";
 import { clampScenePos } from "./bounds";
@@ -194,7 +193,7 @@ export function createKonvaSheetScene(
     },
 
     getSplitLabelPositionsForConnection(connectionId: string) {
-      return getSplitLabelPositionsForWire(wireContext(), connectionId);
+      return getSplitLabelPositionsForWire(runtime, connectionId);
     },
 
     render(state: SceneRenderState): void {
@@ -434,39 +433,14 @@ export function createKonvaSheetScene(
     runtime.graph.portCullModels.clear();
   }
 
-  function wireContext(): KonvaSheetSceneWiresContext {
-    return {
-      stage: runtime.view.stage,
-      wireLayer: runtime.view.wireLayer,
-      wireWorld: runtime.view.wireWorld,
-      callbacks: runtime.callbacks,
-      clampPos: (pos) => clampScenePos(pos, runtime.state.sceneBounds),
-      screenToWorld: (pos) => screenToWorld(runtime.state.camera, pos),
-      getCursorPosCache: () => runtime.state.cursorPos,
-      getLastState: () => runtime.state.lastState,
-      getNodeLayouts: () => runtime.graph.nodeLayouts,
-      getLiveNodePositions: () => runtime.graph.liveNodePositions,
-      getLiveLabelPositions: () => runtime.graph.liveLabelPositions,
-      getLivePortPositions: () => runtime.graph.livePortPositions,
-      getSelectedConnectionId: () => runtime.state.selectedConnectionId,
-      setSelectedConnectionId: (id) => {
-        runtime.state.selectedConnectionId = id;
-      },
-      getSelectedWaypointIndex: () => runtime.state.selectedWaypointIndex,
-      setSelectedWaypointIndex: (index) => {
-        runtime.state.selectedWaypointIndex = index;
-      },
-    };
-  }
-
   function deleteSelectedWaypoint(): boolean {
-    return deleteWireSelectedWaypoint(wireContext());
+    return deleteWireSelectedWaypoint(runtime);
   }
 
   function redrawWires(immediate = false): void {
     const draw = () => {
       runtime.state.wireRedrawFrameId = null;
-      redrawSceneWires(wireContext());
+      redrawSceneWires(runtime);
       updateWireCullVisibilityForRuntime();
     };
 

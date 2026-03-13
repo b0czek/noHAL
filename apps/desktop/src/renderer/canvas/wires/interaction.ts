@@ -1,13 +1,10 @@
 import type { Pt } from "../layout";
+import type { SceneRuntime } from "../scene/types";
 import { findNearestSegmentIndex } from "./geometry";
-import type { KonvaSheetSceneWiresContext } from "./types";
 
-export function deleteSelectedWaypoint(
-  ctx: KonvaSheetSceneWiresContext,
-): boolean {
-  const state = ctx.getLastState();
-  const selectedConnectionId = ctx.getSelectedConnectionId();
-  const selectedWaypointIndex = ctx.getSelectedWaypointIndex();
+export function deleteSelectedWaypoint(runtime: SceneRuntime): boolean {
+  const state = runtime.state.lastState;
+  const { selectedConnectionId, selectedWaypointIndex } = runtime.state;
   if (!state || !selectedConnectionId || selectedWaypointIndex === null) {
     return false;
   }
@@ -27,12 +24,11 @@ export function deleteSelectedWaypoint(
   const nextWaypoints = conn.waypoints.filter(
     (_, i) => i !== selectedWaypointIndex,
   );
-  ctx.setSelectedWaypointIndex(
+  runtime.state.selectedWaypointIndex =
     nextWaypoints.length === 0
       ? null
-      : Math.min(selectedWaypointIndex, nextWaypoints.length - 1),
-  );
-  ctx.callbacks.onMoveConnectionWaypoints(
+      : Math.min(selectedWaypointIndex, nextWaypoints.length - 1);
+  runtime.callbacks.onMoveConnectionWaypoints(
     conn.id,
     nextWaypoints.map((p) => ({ x: p.x, y: p.y })),
   );
@@ -40,12 +36,12 @@ export function deleteSelectedWaypoint(
 }
 
 export function insertWaypointOnConnection(
-  ctx: KonvaSheetSceneWiresContext,
+  runtime: SceneRuntime,
   connectionId: string,
   routePoints: Pt[],
   point: Pt,
 ): void {
-  const state = ctx.getLastState();
+  const state = runtime.state.lastState;
   if (!state) return;
 
   const conn = state.sheet.directConnections.find((c) => c.id === connectionId);
@@ -57,7 +53,7 @@ export function insertWaypointOnConnection(
   }));
   const insertAt = findNearestSegmentIndex(routePoints, point);
   currentWaypoints.splice(insertAt, 0, { x: point.x, y: point.y });
-  ctx.setSelectedConnectionId(connectionId);
-  ctx.setSelectedWaypointIndex(insertAt);
-  ctx.callbacks.onMoveConnectionWaypoints(connectionId, currentWaypoints);
+  runtime.state.selectedConnectionId = connectionId;
+  runtime.state.selectedWaypointIndex = insertAt;
+  runtime.callbacks.onMoveConnectionWaypoints(connectionId, currentWaypoints);
 }

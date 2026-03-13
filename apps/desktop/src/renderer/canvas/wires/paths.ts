@@ -6,13 +6,9 @@ import {
   WIRE_PATH_TENSION,
 } from "../constants";
 import type { Pt } from "../layout";
+import type { SceneRuntime } from "../scene/types";
 import { getEndpointNormal } from "./endpoints";
-import type {
-  CullBounds,
-  KonvaSheetSceneWiresContext,
-  SheetLookup,
-  WireAttrs,
-} from "./types";
+import type { CullBounds, SheetLookup, WireAttrs } from "./types";
 
 export function buildDisplayWirePoints(args: {
   lookup: SheetLookup;
@@ -166,7 +162,7 @@ export function setCullBounds(node: Konva.Node, bounds: CullBounds): void {
 }
 
 function drawWire(
-  ctx: KonvaSheetSceneWiresContext,
+  runtime: SceneRuntime,
   a: Pt,
   b: Pt,
   attrs: WireAttrs,
@@ -176,7 +172,7 @@ function drawWire(
     typeof attrs.hitStrokeWidth === "number" ? attrs.hitStrokeWidth : 0;
   const pad = Math.max(attrs.strokeWidth, hitStroke) * 0.5 + 10;
   setCullBounds(line, boundsFromPoints([a, b], pad));
-  ctx.wireWorld.add(line);
+  runtime.view.wireWorld.add(line);
   return line;
 }
 
@@ -217,7 +213,7 @@ export function updateWirePathShape(
 }
 
 export function drawWirePath(
-  ctx: KonvaSheetSceneWiresContext,
+  runtime: SceneRuntime,
   points: Pt[],
   style: ProjectWireStyle,
   attrs: WireAttrs,
@@ -225,7 +221,7 @@ export function drawWirePath(
   if (points.length < 2) return null;
   const shapePoints = buildWireShapePoints(points, style);
   if (style === "curved" && shapePoints.length === 2) {
-    return drawWire(ctx, shapePoints[0], shapePoints[1], attrs);
+    return drawWire(runtime, shapePoints[0], shapePoints[1], attrs);
   }
 
   const flatPoints: number[] = [];
@@ -245,6 +241,6 @@ export function drawWirePath(
     typeof attrs.hitStrokeWidth === "number" ? attrs.hitStrokeWidth : 0;
   const pad = Math.max(attrs.strokeWidth, hitStroke) * 0.5 + 10;
   setCullBounds(line, boundsFromPoints(shapePoints, pad));
-  ctx.wireWorld.add(line);
+  runtime.view.wireWorld.add(line);
   return line;
 }

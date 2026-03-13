@@ -3,9 +3,6 @@ import type {
   SheetDefinition,
   SheetEndpointRef,
 } from "@nohal/core/src/types";
-import type Konva from "konva";
-import type { NodeLayout, Pt } from "../layout";
-import type { SceneCallbacks, SceneRenderState } from "../types";
 
 export type WireAttrs = {
   stroke: string | CanvasGradient;
@@ -30,28 +27,6 @@ export type SheetLookup = {
   labelsById: Map<string, SheetDefinition["labels"][number]>;
   nodePinSidesById: Map<string, Map<string, EndpointSide>>;
 };
-
-export interface KonvaSheetSceneWiresContext {
-  stage: Konva.Stage;
-  wireLayer: Konva.Layer;
-  wireWorld: Konva.Group;
-  callbacks: Pick<
-    SceneCallbacks,
-    "onMoveConnectionWaypoints" | "onContextMenuRequest" | "onSelect"
-  >;
-  clampPos: (pos: Pt) => Pt;
-  screenToWorld: (pos: Pt) => Pt;
-  getCursorPosCache: () => Pt | null;
-  getLastState: () => SceneRenderState | null;
-  getNodeLayouts: () => Map<string, NodeLayout>;
-  getLiveNodePositions: () => Map<string, Pt>;
-  getLiveLabelPositions: () => Map<string, Pt>;
-  getLivePortPositions: () => Map<string, Pt>;
-  getSelectedConnectionId: () => string | null;
-  setSelectedConnectionId: (id: string | null) => void;
-  getSelectedWaypointIndex: () => number | null;
-  setSelectedWaypointIndex: (index: number | null) => void;
-}
 
 export type WireStateProject = NoHALProject;
 export type WireStateSheet = SheetDefinition;

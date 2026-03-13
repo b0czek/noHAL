@@ -20,6 +20,8 @@ import {
   WIRE_SELECTED_STROKE_WIDTH,
 } from "../constants";
 import type { Pt } from "../layout";
+import { clampRuntimePos } from "../scene/bounds";
+import type { SceneRuntime } from "../scene/types";
 import { getLabelAnchorPoint } from "./anchors";
 import {
   getCursorPos,
@@ -36,43 +38,41 @@ import {
   setCullBounds,
   updateWirePathShape,
 } from "./paths";
-import type { KonvaSheetSceneWiresContext } from "./types";
 
-export function redraw(ctx: KonvaSheetSceneWiresContext): void {
-  const state = ctx.getLastState();
+export function redraw(runtime: SceneRuntime): void {
+  const state = runtime.state.lastState;
   if (!state) return;
 
   const { sheet, pendingEndpoint, pendingWirePoints } = state;
   const wireStyle = state.project.ui.wireStyle;
   const lookup = getSheetLookup(state.project, sheet);
-  const selectedConnectionId = ctx.getSelectedConnectionId();
+  const { selectedConnectionId } = runtime.state;
   const selectedConn = selectedConnectionId
     ? sheet.directConnections.find((c) => c.id === selectedConnectionId)
     : null;
 
   if (!selectedConn) {
-    ctx.setSelectedConnectionId(null);
-    ctx.setSelectedWaypointIndex(null);
+    runtime.state.selectedConnectionId = null;
+    runtime.state.selectedWaypointIndex = null;
   } else {
-    const selectedWaypointIndex = ctx.getSelectedWaypointIndex();
+    const { selectedWaypointIndex } = runtime.state;
     if (
       selectedWaypointIndex !== null &&
       (selectedConn.waypoints?.length ?? 0) <= selectedWaypointIndex
     ) {
       const waypointCount = selectedConn.waypoints?.length ?? 0;
-      ctx.setSelectedWaypointIndex(
-        waypointCount > 0 ? waypointCount - 1 : null,
-      );
+      runtime.state.selectedWaypointIndex =
+        waypointCount > 0 ? waypointCount - 1 : null;
     }
   }
 
-  const activeSelectedConnectionId = ctx.getSelectedConnectionId();
-  const activeSelectedWaypointIndex = ctx.getSelectedWaypointIndex();
-  ctx.wireWorld.destroyChildren();
+  const activeSelectedConnectionId = runtime.state.selectedConnectionId;
+  const activeSelectedWaypointIndex = runtime.state.selectedWaypointIndex;
+  runtime.view.wireWorld.destroyChildren();
 
   for (const conn of sheet.directConnections) {
-    const a = getEndpointPoint(ctx, lookup, conn.a);
-    const b = getEndpointPoint(ctx, lookup, conn.b);
+    const a = getEndpointPoint(runtime, lookup, conn.a);
+    const b = getEndpointPoint(runtime, lookup, conn.b);
     if (!a || !b) continue;
 
     const routePoints: Pt[] = [
@@ -87,7 +87,7 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
       endEndpoint: conn.b,
     });
     const selected = activeSelectedConnectionId === conn.id;
-    const wire = drawWirePath(ctx, displayRoutePoints, wireStyle, {
+    const wire = drawWirePath(runtime, displayRoutePoints, wireStyle, {
       stroke: selected ? WIRE_SELECTED_STROKE : WIRE_DEFAULT_STROKE,
       strokeWidth: selected
         ? WIRE_SELECTED_STROKE_WIDTH
@@ -99,33 +99,33 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
     wire?.on("click tap", (evt) => {
       evt.cancelBubble = true;
       if (evt.evt instanceof MouseEvent && evt.evt.detail >= 2) {
-        const point = getPointerWorldPos(ctx);
+        const point = getPointerWorldPos(runtime);
         if (!point) return;
-        insertWaypointOnConnection(ctx, conn.id, routePoints, point);
+        insertWaypointOnConnection(runtime, conn.id, routePoints, point);
         return;
       }
-      ctx.callbacks.onSelect?.({ kind: "wire-connection", id: conn.id });
-      ctx.setSelectedConnectionId(conn.id);
-      ctx.setSelectedWaypointIndex(null);
-      redraw(ctx);
+      runtime.callbacks.onSelect?.({ kind: "wire-connection", id: conn.id });
+      runtime.state.selectedConnectionId = conn.id;
+      runtime.state.selectedWaypointIndex = null;
+      redraw(runtime);
     });
 
     wire?.on("dbltap", (evt) => {
       evt.cancelBubble = true;
-      const point = getPointerWorldPos(ctx);
+      const point = getPointerWorldPos(runtime);
       if (!point) return;
-      insertWaypointOnConnection(ctx, conn.id, routePoints, point);
+      insertWaypointOnConnection(runtime, conn.id, routePoints, point);
     });
 
     wire?.on("contextmenu", (evt) => {
       evt.cancelBubble = true;
       if ("preventDefault" in evt.evt) evt.evt.preventDefault();
       if ("stopPropagation" in evt.evt) evt.evt.stopPropagation();
-      ctx.setSelectedConnectionId(conn.id);
-      ctx.setSelectedWaypointIndex(null);
-      redraw(ctx);
+      runtime.state.selectedConnectionId = conn.id;
+      runtime.state.selectedWaypointIndex = null;
+      redraw(runtime);
       if (evt.evt instanceof MouseEvent) {
-        ctx.callbacks.onContextMenuRequest?.({
+        runtime.callbacks.onContextMenuRequest?.({
           clientX: evt.evt.clientX,
           clientY: evt.evt.clientY,
           target: { kind: "wire-connection", connectionId: conn.id },
@@ -152,7 +152,7 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
           strokeWidth: WAYPOINT_HANDLE_STROKE_WIDTH,
           draggable: true,
           hitStrokeWidth: WAYPOINT_HANDLE_HIT_STROKE_WIDTH,
-          dragBoundFunc: (pos) => ctx.clampPos(pos),
+          dragBoundFunc: (pos) => clampRuntimePos(runtime, pos),
         });
         setCullBounds(
           handle,
@@ -161,21 +161,24 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
 
         handle.on("click tap", (evt) => {
           evt.cancelBubble = true;
-          ctx.callbacks.onSelect?.({ kind: "wire-connection", id: conn.id });
-          ctx.setSelectedConnectionId(conn.id);
-          ctx.setSelectedWaypointIndex(i);
-          redraw(ctx);
+          runtime.callbacks.onSelect?.({
+            kind: "wire-connection",
+            id: conn.id,
+          });
+          runtime.state.selectedConnectionId = conn.id;
+          runtime.state.selectedWaypointIndex = i;
+          redraw(runtime);
         });
 
         handle.on("contextmenu", (evt) => {
           evt.cancelBubble = true;
           if ("preventDefault" in evt.evt) evt.evt.preventDefault();
           if ("stopPropagation" in evt.evt) evt.evt.stopPropagation();
-          ctx.setSelectedConnectionId(conn.id);
-          ctx.setSelectedWaypointIndex(i);
-          redraw(ctx);
+          runtime.state.selectedConnectionId = conn.id;
+          runtime.state.selectedWaypointIndex = i;
+          redraw(runtime);
           if (evt.evt instanceof MouseEvent) {
-            ctx.callbacks.onContextMenuRequest?.({
+            runtime.callbacks.onContextMenuRequest?.({
               clientX: evt.evt.clientX,
               clientY: evt.evt.clientY,
               target: {
@@ -188,7 +191,7 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
         });
 
         handle.on("dragmove", () => {
-          const pos = ctx.clampPos(handle.position());
+          const pos = clampRuntimePos(runtime, handle.position());
           handle.position(pos);
           setCullBounds(
             handle,
@@ -197,8 +200,8 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
               WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12,
             ),
           );
-          ctx.setSelectedConnectionId(conn.id);
-          ctx.setSelectedWaypointIndex(i);
+          runtime.state.selectedConnectionId = conn.id;
+          runtime.state.selectedWaypointIndex = i;
           routePoints[waypointIndex] = pos;
           updateWirePathShape(
             wire,
@@ -210,11 +213,11 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
             }),
             wireStyle,
           );
-          ctx.wireLayer.batchDraw();
+          runtime.view.wireLayer.batchDraw();
         });
 
         handle.on("dragend", () => {
-          const pos = ctx.clampPos(handle.position());
+          const pos = clampRuntimePos(runtime, handle.position());
           handle.position(pos);
           setCullBounds(
             handle,
@@ -223,8 +226,8 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
               WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12,
             ),
           );
-          ctx.setSelectedConnectionId(conn.id);
-          ctx.setSelectedWaypointIndex(i);
+          runtime.state.selectedConnectionId = conn.id;
+          runtime.state.selectedWaypointIndex = i;
           routePoints[waypointIndex] = pos;
           updateWirePathShape(
             wire,
@@ -236,25 +239,25 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
             }),
             wireStyle,
           );
-          ctx.callbacks.onMoveConnectionWaypoints(
+          runtime.callbacks.onMoveConnectionWaypoints(
             conn.id,
             routePoints.slice(1, -1).map((pt) => ({ x: pt.x, y: pt.y })),
           );
-          ctx.wireLayer.batchDraw();
+          runtime.view.wireLayer.batchDraw();
         });
 
-        ctx.wireWorld.add(handle);
+        runtime.view.wireWorld.add(handle);
       }
     }
   }
 
   for (const anchor of sheet.labelAnchors) {
-    const ep = getEndpointPoint(ctx, lookup, anchor.endpoint);
+    const ep = getEndpointPoint(runtime, lookup, anchor.endpoint);
     const labelPos = ep
-      ? getLabelAnchorPoint(ctx, lookup, anchor.labelId, ep)
-      : getLabelPosition(ctx, lookup, anchor.labelId);
+      ? getLabelAnchorPoint(runtime, lookup, anchor.labelId, ep)
+      : getLabelPosition(runtime, lookup, anchor.labelId);
     if (!ep || !labelPos) continue;
-    ctx.wireWorld.add(
+    runtime.view.wireWorld.add(
       (() => {
         const line = new Konva.Line({
           points: [ep.x, ep.y, labelPos.x, labelPos.y],
@@ -273,8 +276,8 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
   }
 
   if (pendingEndpoint) {
-    const a = getEndpointPoint(ctx, lookup, pendingEndpoint);
-    const cursor = getCursorPos(ctx);
+    const a = getEndpointPoint(runtime, lookup, pendingEndpoint);
+    const cursor = getCursorPos(runtime);
     if (a && cursor) {
       const pendingRawPoints = [a, ...pendingWirePoints, cursor];
       const pendingDisplayPoints = buildDisplayWirePoints({
@@ -283,7 +286,7 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
         startEndpoint: pendingEndpoint,
         endEndpoint: null,
       });
-      drawWirePath(ctx, pendingDisplayPoints, wireStyle, {
+      drawWirePath(runtime, pendingDisplayPoints, wireStyle, {
         stroke: WIRE_PENDING_STROKE,
         strokeWidth: WIRE_PENDING_STROKE_WIDTH,
         dash: WIRE_PENDING_DASH,
@@ -292,5 +295,5 @@ export function redraw(ctx: KonvaSheetSceneWiresContext): void {
     }
   }
 
-  ctx.wireLayer.batchDraw();
+  runtime.view.wireLayer.batchDraw();
 }
