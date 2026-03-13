@@ -6,6 +6,8 @@ It is aimed at people who currently build and maintain LinuxCNC setups by hand i
 
 The editor is inspired by Blender's node editor for graph editing and KiCad's sheet-based hierarchy for organizing larger designs.
 
+![NoHAL editor screenshot](./docs/imgs/editor.png)
+
 ## What You Can Do Today
 
 - Build and edit HAL networks visually instead of managing every connection as raw text
