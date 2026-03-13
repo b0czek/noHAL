@@ -8,5 +8,5 @@ export type {
   RenderLabelsArgs,
   RenderNodesArgs,
   RenderPortsArgs,
-  RenderRuntimeContext,
+  RenderSceneContext,
 } from "./shared";

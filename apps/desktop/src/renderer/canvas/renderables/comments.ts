@@ -9,24 +9,17 @@ import {
 import {
   bindDraggableRenderable,
   type RenderCommentsArgs,
-  type RenderRuntimeContext,
+  type RenderSceneContext,
 } from "./shared";
 
 export function renderComments(
-  ctx: RenderRuntimeContext,
+  ctx: RenderSceneContext,
   args: RenderCommentsArgs,
 ): void {
-  const {
-    mainWorld,
-    callbacks,
-    clampPos,
-    onSelectionDragStart,
-    onSelectionDragMove,
-    onSelectionDragEnd,
-  } = ctx;
-
+  const { mainWorld, clampPos, dragSelection } = ctx;
   const { sheet, selectedCommentIds, liveCommentPositions, commentGroups } =
     args;
+  const { callbacks } = args;
 
   for (const comment of sheet.comments) {
     const group = new Konva.Group({
@@ -72,9 +65,7 @@ export function renderComments(
       setLivePosition: (pos) => {
         liveCommentPositions.set(comment.id, pos);
       },
-      onSelectionDragStart,
-      onSelectionDragMove,
-      onSelectionDragEnd,
+      dragSelection,
       persistMove: (pos) => {
         callbacks.onMoveComment(comment.id, pos.x, pos.y);
       },

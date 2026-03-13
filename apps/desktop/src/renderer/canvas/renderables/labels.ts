@@ -12,24 +12,21 @@ import { labelFill } from "../theme";
 import {
   bindDraggableRenderable,
   type RenderLabelsArgs,
-  type RenderRuntimeContext,
+  type RenderSceneContext,
 } from "./shared";
 
 export function renderLabels(
-  ctx: RenderRuntimeContext,
+  ctx: RenderSceneContext,
   args: RenderLabelsArgs,
 ): void {
+  const { mainWorld, clampPos, redrawWires, dragSelection } = ctx;
   const {
-    mainWorld,
     callbacks,
-    clampPos,
-    redrawWires,
-    onSelectionDragStart,
-    onSelectionDragMove,
-    onSelectionDragEnd,
-  } = ctx;
-
-  const { sheet, selectedLabelIds, liveLabelPositions, labelGroups } = args;
+    sheet,
+    selectedLabelIds,
+    liveLabelPositions,
+    labelGroups,
+  } = args;
 
   for (const label of sheet.labels) {
     const group = new Konva.Group({
@@ -99,9 +96,7 @@ export function renderLabels(
       setLivePosition: (pos) => {
         liveLabelPositions.set(label.id, pos);
       },
-      onSelectionDragStart,
-      onSelectionDragMove,
-      onSelectionDragEnd,
+      dragSelection,
       redrawWires,
       persistMove: (pos) => {
         callbacks.onMoveLabel(label.id, pos.x, pos.y);

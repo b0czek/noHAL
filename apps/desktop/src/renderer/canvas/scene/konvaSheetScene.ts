@@ -3,7 +3,7 @@ import type { ProjectWireLayerPosition } from "@nohal/core/src/types";
 import { buildSheetSceneLayout, type Pt } from "../layout";
 import {
   type DragSelectionTarget,
-  type RenderRuntimeContext,
+  type RenderSceneContext,
   renderComments,
   renderLabels,
   renderNodes,
@@ -226,17 +226,19 @@ export function createKonvaSheetScene(
       applyCameraToRuntime();
       redrawWires(true);
 
-      const renderCtx: RenderRuntimeContext = {
+      const renderCtx: RenderSceneContext = {
         mainWorld: runtime.view.mainWorld,
-        callbacks: runtime.callbacks,
         clampPos,
         redrawWires: () => redrawWires(),
-        onSelectionDragStart,
-        onSelectionDragMove,
-        onSelectionDragEnd,
+        dragSelection: {
+          onSelectionDragStart,
+          onSelectionDragMove,
+          onSelectionDragEnd,
+        },
       };
 
       renderPorts(renderCtx, {
+        callbacks: runtime.callbacks,
         sheet,
         pendingKey,
         selectedPortIds,
@@ -244,6 +246,7 @@ export function createKonvaSheetScene(
         portGroups: runtime.graph.portGroups,
       });
       renderNodes(renderCtx, {
+        callbacks: runtime.callbacks,
         project,
         sheet,
         pendingKey,
@@ -253,12 +256,14 @@ export function createKonvaSheetScene(
         nodeGroups: runtime.graph.nodeGroups,
       });
       renderLabels(renderCtx, {
+        callbacks: runtime.callbacks,
         sheet,
         selectedLabelIds,
         liveLabelPositions: runtime.graph.liveLabelPositions,
         labelGroups: runtime.graph.labelGroups,
       });
       renderComments(renderCtx, {
+        callbacks: runtime.callbacks,
         sheet,
         selectedCommentIds,
         liveCommentPositions: runtime.graph.liveCommentPositions,

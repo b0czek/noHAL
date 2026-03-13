@@ -33,17 +33,24 @@ export type DragSelectionTarget = {
   id: string;
 };
 
-export interface RenderRuntimeContext {
-  mainWorld: Konva.Group;
-  callbacks: SceneCallbacks;
-  clampPos: ClampPosFn;
-  redrawWires: () => void;
+export interface RenderDragSelectionOps {
   onSelectionDragStart: (target: DragSelectionTarget, pos: Pt) => boolean;
   onSelectionDragMove: (target: DragSelectionTarget, pos: Pt) => boolean;
   onSelectionDragEnd: (target: DragSelectionTarget, pos: Pt) => boolean;
 }
 
+export interface RenderSceneContext {
+  mainWorld: Konva.Group;
+  clampPos: ClampPosFn;
+  redrawWires: () => void;
+  dragSelection: RenderDragSelectionOps;
+}
+
 export interface RenderPortsArgs {
+  callbacks: Pick<
+    SceneCallbacks,
+    "onContextMenuRequest" | "onEndpointClick" | "onMoveSheetPort" | "onSelect"
+  >;
   sheet: SheetDefinition;
   pendingKey: string | null;
   selectedPortIds: ReadonlySet<string>;
@@ -52,6 +59,14 @@ export interface RenderPortsArgs {
 }
 
 export interface RenderNodesArgs {
+  callbacks: Pick<
+    SceneCallbacks,
+    | "onContextMenuRequest"
+    | "onEndpointClick"
+    | "onMoveNode"
+    | "onOpenNode"
+    | "onSelect"
+  >;
   project: NoHALProject;
   sheet: SheetDefinition;
   pendingKey: string | null;
@@ -62,6 +77,10 @@ export interface RenderNodesArgs {
 }
 
 export interface RenderLabelsArgs {
+  callbacks: Pick<
+    SceneCallbacks,
+    "onContextMenuRequest" | "onLabelClick" | "onMoveLabel"
+  >;
   sheet: SheetDefinition;
   selectedLabelIds: ReadonlySet<string>;
   liveLabelPositions: Map<string, Pt>;
@@ -69,6 +88,10 @@ export interface RenderLabelsArgs {
 }
 
 export interface RenderCommentsArgs {
+  callbacks: Pick<
+    SceneCallbacks,
+    "onCommentClick" | "onContextMenuRequest" | "onMoveComment"
+  >;
   sheet: SheetDefinition;
   selectedCommentIds: ReadonlySet<string>;
   liveCommentPositions: Map<string, Pt>;
@@ -80,9 +103,7 @@ export function bindDraggableRenderable(args: {
   target: DragSelectionTarget;
   clampPos: ClampPosFn;
   setLivePosition: (pos: Pt) => void;
-  onSelectionDragStart: (target: DragSelectionTarget, pos: Pt) => boolean;
-  onSelectionDragMove: (target: DragSelectionTarget, pos: Pt) => boolean;
-  onSelectionDragEnd: (target: DragSelectionTarget, pos: Pt) => boolean;
+  dragSelection: RenderDragSelectionOps;
   redrawWires?: () => void;
   persistMove: (pos: Pt) => void;
 }): void {
@@ -91,9 +112,7 @@ export function bindDraggableRenderable(args: {
     target,
     clampPos,
     setLivePosition,
-    onSelectionDragStart,
-    onSelectionDragMove,
-    onSelectionDragEnd,
+    dragSelection,
     redrawWires,
     persistMove,
   } = args;
@@ -107,12 +126,12 @@ export function bindDraggableRenderable(args: {
   group.on("dragstart", () => {
     const pos = syncPosition();
     setLivePosition(pos);
-    onSelectionDragStart(target, pos);
+    dragSelection.onSelectionDragStart(target, pos);
   });
 
   group.on("dragmove", () => {
     const pos = syncPosition();
-    if (onSelectionDragMove(target, pos)) {
+    if (dragSelection.onSelectionDragMove(target, pos)) {
       return;
     }
     setLivePosition(pos);
@@ -121,7 +140,7 @@ export function bindDraggableRenderable(args: {
 
   group.on("dragend", () => {
     const pos = syncPosition();
-    if (onSelectionDragEnd(target, pos)) {
+    if (dragSelection.onSelectionDragEnd(target, pos)) {
       return;
     }
     setLivePosition(pos);
@@ -131,7 +150,7 @@ export function bindDraggableRenderable(args: {
 }
 
 export function addPinDot(args: {
-  callbacks: SceneCallbacks;
+  callbacks: Pick<SceneCallbacks, "onEndpointClick">;
   parent: Konva.Container;
   x: number;
   y: number;

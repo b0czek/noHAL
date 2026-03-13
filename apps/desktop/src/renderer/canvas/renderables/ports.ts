@@ -15,25 +15,22 @@ import {
   addPinDot,
   bindDraggableRenderable,
   type RenderPortsArgs,
-  type RenderRuntimeContext,
+  type RenderSceneContext,
 } from "./shared";
 
 export function renderPorts(
-  ctx: RenderRuntimeContext,
+  ctx: RenderSceneContext,
   args: RenderPortsArgs,
 ): void {
+  const { mainWorld, clampPos, redrawWires, dragSelection } = ctx;
   const {
-    mainWorld,
     callbacks,
-    clampPos,
-    redrawWires,
-    onSelectionDragStart,
-    onSelectionDragMove,
-    onSelectionDragEnd,
-  } = ctx;
-
-  const { sheet, pendingKey, selectedPortIds, livePortPositions, portGroups } =
-    args;
+    sheet,
+    pendingKey,
+    selectedPortIds,
+    livePortPositions,
+    portGroups,
+  } = args;
 
   for (const port of sheet.ports) {
     const endpoint: SheetEndpointRef = {
@@ -102,9 +99,7 @@ export function renderPorts(
       setLivePosition: (pos) => {
         livePortPositions.set(port.id, pos);
       },
-      onSelectionDragStart,
-      onSelectionDragMove,
-      onSelectionDragEnd,
+      dragSelection,
       redrawWires,
       persistMove: (pos) => {
         callbacks.onMoveSheetPort(port.id, pos.x, pos.y);

@@ -25,24 +25,17 @@ import {
   componentNodeTint,
   getNodePinSetpValue,
   type RenderNodesArgs,
-  type RenderRuntimeContext,
+  type RenderSceneContext,
 } from "./shared";
 
 export function renderNodes(
-  ctx: RenderRuntimeContext,
+  ctx: RenderSceneContext,
   args: RenderNodesArgs,
 ): void {
-  const {
-    mainWorld,
-    callbacks,
-    clampPos,
-    redrawWires,
-    onSelectionDragStart,
-    onSelectionDragMove,
-    onSelectionDragEnd,
-  } = ctx;
+  const { mainWorld, clampPos, redrawWires, dragSelection } = ctx;
 
   const {
+    callbacks,
     project,
     sheet,
     pendingKey,
@@ -434,9 +427,7 @@ export function renderNodes(
       setLivePosition: (pos) => {
         liveNodePositions.set(node.id, pos);
       },
-      onSelectionDragStart,
-      onSelectionDragMove,
-      onSelectionDragEnd,
+      dragSelection,
       redrawWires,
       persistMove: (pos) => {
         callbacks.onMoveNode(node.id, pos.x, pos.y);
