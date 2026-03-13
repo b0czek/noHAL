@@ -6,9 +6,9 @@ import {
 import { getSheet } from "@nohal/core/src/graph";
 import { createMemo } from "solid-js";
 import type {
-  KonvaSheetScene,
   SceneContextMenuRequest,
   SceneContextMenuTarget,
+  SheetScene,
 } from "../canvas";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
@@ -20,7 +20,7 @@ import { useContextMenu } from "./ContextMenuProvider";
 
 interface UseCanvasContextMenuArgs {
   getHostEl: () => HTMLDivElement;
-  getScene: () => KonvaSheetScene | null;
+  getScene: () => SheetScene | null;
 }
 
 export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {

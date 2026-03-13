@@ -1,18 +1,12 @@
 import type Konva from "konva";
 import type { Pt } from "../layout";
-import type { SceneCallbacks, SceneRenderState } from "../types";
+import type { SceneRenderState } from "../types";
 import { isZoomInShortcut, isZoomOutShortcut, panCamera } from "./camera";
-import type { CameraState } from "./types";
+import type { SceneRuntime } from "./types";
 
 const EVENT_NS = ".sceneInteraction";
 
-type SceneInteractionArgs = {
-  stage: Konva.Stage;
-  container: HTMLDivElement;
-  placementHitRect: Konva.Rect;
-  callbacks: SceneCallbacks;
-  getLastState: () => SceneRenderState | null;
-  getCamera: () => CameraState;
+type SceneInteractionOps = {
   clampPos: (pos: Pt) => Pt;
   screenToWorld: (pos: Pt) => Pt;
   syncPlacementPreview: () => void;
@@ -20,29 +14,17 @@ type SceneInteractionArgs = {
   redrawWires: () => void;
   zoomByFactor: (zoomFactor: number, pointer?: Pt) => void;
   deleteSelectedWaypoint: () => boolean;
-  getSpacePressed: () => boolean;
-  setSpacePressed: (value: boolean) => void;
-  getIsPanning: () => boolean;
-  setIsPanning: (value: boolean) => void;
-  getPanLastScreenPos: () => Pt | null;
-  setPanLastScreenPos: (value: Pt | null) => void;
-  getIsMarqueeSelecting: () => boolean;
-  setMarqueeCurrentScreenPos: (value: Pt | null) => void;
   startMarqueeSelection: (screenPos: Pt) => void;
   cancelMarqueeSelection: () => void;
   finishMarqueeSelection: () => void;
   updateMarqueeRect: () => void;
-  setCursorPos: (pos: Pt | null) => void;
 };
 
-export function bindSceneInteractions(args: SceneInteractionArgs): () => void {
+export function bindSceneInteractions(
+  runtime: SceneRuntime,
+  ops: SceneInteractionOps,
+): () => void {
   const {
-    stage,
-    container,
-    placementHitRect,
-    callbacks,
-    getLastState,
-    getCamera,
     clampPos,
     screenToWorld,
     syncPlacementPreview,
@@ -50,23 +32,15 @@ export function bindSceneInteractions(args: SceneInteractionArgs): () => void {
     redrawWires,
     zoomByFactor,
     deleteSelectedWaypoint,
-    getSpacePressed,
-    setSpacePressed,
-    getIsPanning,
-    setIsPanning,
-    getPanLastScreenPos,
-    setPanLastScreenPos,
-    getIsMarqueeSelecting,
-    setMarqueeCurrentScreenPos,
     startMarqueeSelection,
     cancelMarqueeSelection,
     finishMarqueeSelection,
     updateMarqueeRect,
-    setCursorPos,
-  } = args;
+  } = ops;
+  const { stage, container, placementHitRect } = runtime.view;
 
   const onKeyDown = (evt: KeyboardEvent) => {
-    if (evt.code === "Space") setSpacePressed(true);
+    if (evt.code === "Space") runtime.state.interaction.spacePressed = true;
     const primaryModifier = evt.ctrlKey || evt.metaKey;
     if (
       primaryModifier &&
@@ -96,19 +70,19 @@ export function bindSceneInteractions(args: SceneInteractionArgs): () => void {
   };
 
   const onKeyUp = (evt: KeyboardEvent) => {
-    if (evt.code === "Space") setSpacePressed(false);
+    if (evt.code === "Space") runtime.state.interaction.spacePressed = false;
   };
 
   window.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("keyup", onKeyUp);
 
   placementHitRect.on(`mousedown${EVENT_NS} touchstart${EVENT_NS}`, (evt) => {
-    if (!getLastState()?.placement) return;
+    if (!runtime.state.lastState?.placement) return;
     const pos = stage.getPointerPosition();
     if (!pos) return;
     evt.cancelBubble = true;
     if ("preventDefault" in evt.evt) evt.evt.preventDefault();
-    callbacks.onBackgroundClick?.(
+    runtime.callbacks.onBackgroundClick?.(
       clampPos(screenToWorld({ x: pos.x, y: pos.y })),
     );
   });
@@ -121,57 +95,65 @@ export function bindSceneInteractions(args: SceneInteractionArgs): () => void {
   stage.on(`mousemove${EVENT_NS} touchmove${EVENT_NS}`, () => {
     const pos = stage.getPointerPosition();
     const screenPos = pos ? { x: pos.x, y: pos.y } : null;
-    setCursorPos(screenPos ? clampPos(screenToWorld(screenPos)) : null);
+    runtime.state.cursorPos = screenPos
+      ? clampPos(screenToWorld(screenPos))
+      : null;
     syncPlacementPreview();
 
-    const panLastScreenPos = getPanLastScreenPos();
-    if (getIsPanning() && screenPos && panLastScreenPos) {
-      const camera = getCamera();
+    const { interaction } = runtime.state;
+    if (interaction.isPanning && screenPos && interaction.panLastScreenPos) {
       panCamera(
-        camera,
-        screenPos.x - panLastScreenPos.x,
-        screenPos.y - panLastScreenPos.y,
+        runtime.state.camera,
+        screenPos.x - interaction.panLastScreenPos.x,
+        screenPos.y - interaction.panLastScreenPos.y,
       );
-      setPanLastScreenPos(screenPos);
+      interaction.panLastScreenPos = screenPos;
       applyCamera();
     }
 
-    if (getIsMarqueeSelecting() && screenPos) {
-      setMarqueeCurrentScreenPos(screenPos);
+    if (interaction.isMarqueeSelecting && screenPos) {
+      interaction.marqueeCurrentScreenPos = screenPos;
       updateMarqueeRect();
     }
 
-    if (getLastState()?.pendingEndpoint) redrawWires();
+    if (runtime.state.lastState?.pendingEndpoint) redrawWires();
   });
 
   stage.on(`mouseleave${EVENT_NS}`, () => {
-    setIsPanning(false);
-    setPanLastScreenPos(null);
+    runtime.state.interaction.isPanning = false;
+    runtime.state.interaction.panLastScreenPos = null;
     cancelMarqueeSelection();
-    setCursorPos(null);
+    runtime.state.cursorPos = null;
     syncPlacementPreview();
-    if (getLastState()?.pendingEndpoint) redrawWires();
+    if (runtime.state.lastState?.pendingEndpoint) redrawWires();
   });
 
   stage.on(`mousedown${EVENT_NS} touchstart${EVENT_NS}`, (evt) => {
     const pos = stage.getPointerPosition();
     if (
       pos &&
-      getLastState()?.pendingEndpoint &&
+      runtime.state.lastState?.pendingEndpoint &&
       evt.evt instanceof MouseEvent &&
       evt.evt.button === 0 &&
-      !getSpacePressed() &&
+      !runtime.state.interaction.spacePressed &&
       isBackgroundTarget(stage, evt.target)
     ) {
       evt.cancelBubble = true;
       evt.evt.preventDefault();
-      callbacks.onBackgroundClick?.(
+      runtime.callbacks.onBackgroundClick?.(
         clampPos(screenToWorld({ x: pos.x, y: pos.y })),
       );
       return;
     }
 
-    if (shouldStartMarquee(stage, evt, getLastState(), getSpacePressed())) {
+    if (
+      shouldStartMarquee(
+        stage,
+        evt,
+        runtime.state.lastState,
+        runtime.state.interaction.spacePressed,
+      )
+    ) {
       if (!pos) return;
       evt.cancelBubble = true;
       startMarqueeSelection({ x: pos.x, y: pos.y });
@@ -179,29 +161,36 @@ export function bindSceneInteractions(args: SceneInteractionArgs): () => void {
       return;
     }
 
-    if (!shouldStartPan(stage, evt, getSpacePressed())) return;
+    if (!shouldStartPan(stage, evt, runtime.state.interaction.spacePressed)) {
+      return;
+    }
     if (!pos) return;
     evt.cancelBubble = true;
-    setIsPanning(true);
-    setPanLastScreenPos({ x: pos.x, y: pos.y });
+    runtime.state.interaction.isPanning = true;
+    runtime.state.interaction.panLastScreenPos = { x: pos.x, y: pos.y };
     container.style.cursor = "grabbing";
     if ("preventDefault" in evt.evt) evt.evt.preventDefault();
   });
 
   stage.on(`mouseup${EVENT_NS} touchend${EVENT_NS}`, () => {
-    if (getIsMarqueeSelecting()) {
+    if (runtime.state.interaction.isMarqueeSelecting) {
       finishMarqueeSelection();
       return;
     }
-    setIsPanning(false);
-    setPanLastScreenPos(null);
+    runtime.state.interaction.isPanning = false;
+    runtime.state.interaction.panLastScreenPos = null;
     container.style.cursor = "";
   });
 
   stage.on(`click${EVENT_NS} tap${EVENT_NS}`, (evt) => {
     if (!isBackgroundTarget(stage, evt.target)) return;
-    if (getLastState()?.pendingEndpoint || getLastState()?.placement) return;
-    callbacks.onSelect(null);
+    if (
+      runtime.state.lastState?.pendingEndpoint ||
+      runtime.state.lastState?.placement
+    ) {
+      return;
+    }
+    runtime.callbacks.onSelect(null);
   });
 
   stage.on(`wheel${EVENT_NS}`, (evt) => {
@@ -216,12 +205,12 @@ export function bindSceneInteractions(args: SceneInteractionArgs): () => void {
             ? stage.height()
             : 1;
       panCamera(
-        getCamera(),
+        runtime.state.camera,
         -wheelEvt.deltaX * deltaScale,
         -wheelEvt.deltaY * deltaScale,
       );
       applyCamera();
-      if (getLastState()?.pendingEndpoint) redrawWires();
+      if (runtime.state.lastState?.pendingEndpoint) redrawWires();
       return;
     }
 

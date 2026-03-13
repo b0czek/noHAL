@@ -1,63 +1,35 @@
-import type Konva from "konva";
 import type { Pt } from "../layout";
 import { normalizedRect } from "./geometry";
-import type { Rect } from "./types";
+import type { Rect, SceneRuntime } from "./types";
 
 export function startMarqueeSelection(args: {
+  runtime: SceneRuntime;
   screenPos: Pt;
-  container: HTMLDivElement;
-  setIsMarqueeSelecting: (value: boolean) => void;
-  setMarqueeStartScreenPos: (value: Pt | null) => void;
-  setMarqueeCurrentScreenPos: (value: Pt | null) => void;
   updateMarqueeRect: () => void;
 }): void {
-  const {
-    screenPos,
-    container,
-    setIsMarqueeSelecting,
-    setMarqueeStartScreenPos,
-    setMarqueeCurrentScreenPos,
-    updateMarqueeRect,
-  } = args;
-  setIsMarqueeSelecting(true);
-  setMarqueeStartScreenPos(screenPos);
-  setMarqueeCurrentScreenPos(screenPos);
-  container.style.cursor = "crosshair";
+  const { runtime, screenPos, updateMarqueeRect } = args;
+  runtime.state.interaction.isMarqueeSelecting = true;
+  runtime.state.interaction.marqueeStartScreenPos = screenPos;
+  runtime.state.interaction.marqueeCurrentScreenPos = screenPos;
+  runtime.view.container.style.cursor = "crosshair";
   updateMarqueeRect();
 }
 
-export function cancelMarqueeSelection(args: {
-  isMarqueeSelecting: boolean;
-  marqueeRect: Konva.Rect;
-  uiLayer: Konva.Layer;
-  isPanning: boolean;
-  container: HTMLDivElement;
-  setIsMarqueeSelecting: (value: boolean) => void;
-  setMarqueeStartScreenPos: (value: Pt | null) => void;
-  setMarqueeCurrentScreenPos: (value: Pt | null) => void;
-}): void {
-  const {
-    isMarqueeSelecting,
-    marqueeRect,
-    uiLayer,
-    isPanning,
-    container,
-    setIsMarqueeSelecting,
-    setMarqueeStartScreenPos,
-    setMarqueeCurrentScreenPos,
-  } = args;
-  if (!isMarqueeSelecting && !marqueeRect.visible()) return;
-  setIsMarqueeSelecting(false);
-  setMarqueeStartScreenPos(null);
-  setMarqueeCurrentScreenPos(null);
-  marqueeRect.hide();
-  uiLayer.batchDraw();
-  if (!isPanning) container.style.cursor = "";
+export function cancelMarqueeSelection(runtime: SceneRuntime): void {
+  const { interaction } = runtime.state;
+  if (!interaction.isMarqueeSelecting && !runtime.view.marqueeRect.visible()) {
+    return;
+  }
+  interaction.isMarqueeSelecting = false;
+  interaction.marqueeStartScreenPos = null;
+  interaction.marqueeCurrentScreenPos = null;
+  runtime.view.marqueeRect.hide();
+  runtime.view.uiLayer.batchDraw();
+  if (!interaction.isPanning) runtime.view.container.style.cursor = "";
 }
 
 export function finishMarqueeSelection(args: {
-  start: Pt | null;
-  end: Pt | null;
+  runtime: SceneRuntime;
   thresholdPx: number;
   clampPos: (pos: Pt) => Pt;
   screenToWorld: (pos: Pt) => Pt;
@@ -66,8 +38,7 @@ export function finishMarqueeSelection(args: {
   onSelectWorldRect: (rect: Rect) => void;
 }): void {
   const {
-    start,
-    end,
+    runtime,
     thresholdPx,
     clampPos,
     screenToWorld,
@@ -75,6 +46,8 @@ export function finishMarqueeSelection(args: {
     onClearSelection,
     onSelectWorldRect,
   } = args;
+  const start = runtime.state.interaction.marqueeStartScreenPos;
+  const end = runtime.state.interaction.marqueeCurrentScreenPos;
   const resolvedEnd = end ?? start;
   cancelMarqueeSelection();
   if (!start || !resolvedEnd) return;
@@ -97,21 +70,19 @@ export function finishMarqueeSelection(args: {
   onSelectWorldRect(worldRect);
 }
 
-export function updateMarqueeRect(args: {
-  start: Pt | null;
-  end: Pt | null;
-  marqueeRect: Konva.Rect;
-  uiLayer: Konva.Layer;
-}): void {
-  const { start, end, marqueeRect, uiLayer } = args;
+export function updateMarqueeRect(runtime: SceneRuntime): void {
+  const { start, end } = {
+    start: runtime.state.interaction.marqueeStartScreenPos,
+    end: runtime.state.interaction.marqueeCurrentScreenPos,
+  };
   if (!start || !end) return;
   const rect = normalizedRect(start, end);
-  marqueeRect.setAttrs({
+  runtime.view.marqueeRect.setAttrs({
     x: rect.x,
     y: rect.y,
     width: rect.width,
     height: rect.height,
     visible: true,
   });
-  uiLayer.batchDraw();
+  runtime.view.uiLayer.batchDraw();
 }

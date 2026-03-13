@@ -6,7 +6,7 @@ import {
   onCleanup,
   onMount,
 } from "solid-js";
-import { KonvaSheetScene } from "../canvas";
+import { createKonvaSheetScene, type SheetScene } from "../canvas";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
@@ -17,7 +17,7 @@ export default function Canvas() {
   const { state, actions } = useEditorStore();
   const editorUi = useEditorUi();
   let hostEl!: HTMLDivElement;
-  let scene: KonvaSheetScene | null = null;
+  let scene: SheetScene | null = null;
   let resizeObserver: ResizeObserver | null = null;
   const [camera, setCamera] = createSignal({ x: 0, y: 0, scale: 1 });
   const sheet = createMemo(() => getSheet(state.project, state.activeSheetId));
@@ -55,7 +55,7 @@ export default function Canvas() {
   };
 
   onMount(() => {
-    scene = new KonvaSheetScene(hostEl, {
+    scene = createKonvaSheetScene(hostEl, {
       onSelect: actions.select,
       onOpenNode: editorUi.openComponentEditorForNode,
       onEndpointClick: actions.endpointClick,

@@ -1,21 +1,18 @@
-import type Konva from "konva";
 import type { Pt } from "../layout";
-import type { CameraState, SceneBounds } from "./types";
+import type { CameraState, SceneBounds, SceneRuntime } from "./types";
 
 const CAMERA_OVERSCROLL_PX = 220;
 const SCENE_POSITION_PADDING = 2400;
 
-export function clientToWorld(args: {
-  clientX: number;
-  clientY: number;
-  container: HTMLDivElement;
-  camera: CameraState;
-  clampPos: (pos: Pt) => Pt;
-}): Pt {
-  const { clientX, clientY, container, camera, clampPos } = args;
-  const rect = container.getBoundingClientRect();
+export function clientToWorld(
+  runtime: SceneRuntime,
+  clientX: number,
+  clientY: number,
+  clampPos: (pos: Pt) => Pt,
+): Pt {
+  const rect = runtime.view.container.getBoundingClientRect();
   return clampPos(
-    screenToWorld(camera, {
+    screenToWorld(runtime.state.camera, {
       x: clientX - rect.left,
       y: clientY - rect.top,
     }),
@@ -105,31 +102,20 @@ export function zoomCameraByFactor(args: {
 }
 
 export function applyCamera(args: {
-  camera: CameraState;
-  sceneBounds: SceneBounds;
-  stage: Pick<Konva.Stage, "width" | "height">;
-  wireWorld: Konva.Group;
-  mainWorld: Konva.Group;
-  previewWorld: Konva.Group;
-  wireLayer: Konva.Layer;
-  mainLayer: Konva.Layer;
+  runtime: SceneRuntime;
   updateCullVisibility: () => void;
   syncPlacementPreview: () => void;
   onCameraChange?: (camera: CameraState) => void;
 }): void {
   const {
-    camera,
-    sceneBounds,
-    stage,
-    wireWorld,
-    mainWorld,
-    previewWorld,
-    wireLayer,
-    mainLayer,
+    runtime,
     updateCullVisibility,
     syncPlacementPreview,
     onCameraChange,
   } = args;
+  const { camera, sceneBounds } = runtime.state;
+  const { stage, wireWorld, mainWorld, previewWorld, wireLayer, mainLayer } =
+    runtime.view;
 
   clampCamera(camera, {
     stageWidth: stage.width(),

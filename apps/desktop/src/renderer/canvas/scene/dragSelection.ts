@@ -1,61 +1,39 @@
-import type Konva from "konva";
 import type { Pt } from "../layout";
 import type { DragSelectionTarget } from "../renderables";
-import type { SceneCallbacks, SceneRenderState } from "../types";
 import {
   buildGroupDragSession,
   collectGroupDragUpdates,
   constrainGroupDragDelta,
 } from "./selection";
-import type { GroupDragSession } from "./types";
+import type { GroupDragSession, SceneRuntime } from "./types";
 
-type DragSelectionMaps = {
-  nodeGroups: Map<string, Konva.Group>;
-  labelGroups: Map<string, Konva.Group>;
-  commentGroups: Map<string, Konva.Group>;
-  portGroups: Map<string, Konva.Group>;
-  liveNodePositions: Map<string, Pt>;
-  liveLabelPositions: Map<string, Pt>;
-  liveCommentPositions: Map<string, Pt>;
-  livePortPositions: Map<string, Pt>;
+type DragSelectionOps = {
+  clampPos: (pos: Pt) => Pt;
+  redrawWires: () => void;
 };
 
-export function startDragSelection(args: {
-  target: DragSelectionTarget;
-  pos: Pt;
-  state: SceneRenderState | null;
-  liveNodePositions: Map<string, Pt>;
-  liveLabelPositions: Map<string, Pt>;
-  livePortPositions: Map<string, Pt>;
-}): GroupDragSession | null {
-  const {
-    target,
-    pos,
-    state,
-    liveNodePositions,
-    liveLabelPositions,
-    livePortPositions,
-  } = args;
+export function startDragSelection(
+  runtime: SceneRuntime,
+  target: DragSelectionTarget,
+  pos: Pt,
+): GroupDragSession | null {
   return buildGroupDragSession({
     target,
     anchorPos: pos,
-    state,
-    liveNodePositions,
-    liveLabelPositions,
-    livePortPositions,
+    state: runtime.state.lastState,
+    liveNodePositions: runtime.graph.liveNodePositions,
+    liveLabelPositions: runtime.graph.liveLabelPositions,
+    livePortPositions: runtime.graph.livePortPositions,
   });
 }
 
 export function moveDragSelection(
-  args: {
-    target: DragSelectionTarget;
-    pos: Pt;
-    session: GroupDragSession | null;
-    clampPos: (pos: Pt) => Pt;
-    redrawWires: () => void;
-  } & DragSelectionMaps,
+  runtime: SceneRuntime,
+  target: DragSelectionTarget,
+  pos: Pt,
+  ops: DragSelectionOps,
 ): boolean {
-  const { target, pos, session, clampPos, redrawWires, ...maps } = args;
+  const session = runtime.state.interaction.groupDragSession;
   if (!session) return false;
   if (session.anchor.kind !== target.kind || session.anchor.id !== target.id) {
     return false;
@@ -65,49 +43,37 @@ export function moveDragSelection(
     session,
     dx: pos.x - session.anchorStartPos.x,
     dy: pos.y - session.anchorStartPos.y,
-    clampPos,
+    clampPos: ops.clampPos,
   });
   session.appliedDx = constrained.x;
   session.appliedDy = constrained.y;
-  applyGroupDragSessionPositions({ session, clampPos, ...maps });
-  redrawWires();
+  applyGroupDragSessionPositions(runtime, session, ops.clampPos);
+  ops.redrawWires();
   return true;
 }
 
 export function endDragSelection(
-  args: {
-    target: DragSelectionTarget;
-    pos: Pt;
-    session: GroupDragSession | null;
-    clampPos: (pos: Pt) => Pt;
-    redrawWires: () => void;
-    callbacks: SceneCallbacks;
-  } & DragSelectionMaps,
+  runtime: SceneRuntime,
+  target: DragSelectionTarget,
+  pos: Pt,
+  ops: DragSelectionOps,
 ): boolean {
-  const { target, pos, session, clampPos, redrawWires, callbacks, ...maps } =
-    args;
+  const session = runtime.state.interaction.groupDragSession;
   if (!session) return false;
   if (session.anchor.kind !== target.kind || session.anchor.id !== target.id) {
     return false;
   }
 
-  moveDragSelection({
-    target,
-    pos,
-    session,
-    clampPos,
-    redrawWires,
-    ...maps,
-  });
+  moveDragSelection(runtime, target, pos, ops);
 
   const { nodePositions, labelPositions, portPositions } =
     collectGroupDragUpdates({
       session,
-      clampPos,
+      clampPos: ops.clampPos,
     });
 
-  if (callbacks.onMoveSelectionGroup) {
-    callbacks.onMoveSelectionGroup({
+  if (runtime.callbacks.onMoveSelectionGroup) {
+    runtime.callbacks.onMoveSelectionGroup({
       nodePositions,
       labelPositions,
       portPositions,
@@ -116,24 +82,22 @@ export function endDragSelection(
   }
 
   for (const entry of nodePositions) {
-    callbacks.onMoveNode(entry.id, entry.x, entry.y);
+    runtime.callbacks.onMoveNode(entry.id, entry.x, entry.y);
   }
   for (const entry of labelPositions) {
-    callbacks.onMoveLabel(entry.id, entry.x, entry.y);
+    runtime.callbacks.onMoveLabel(entry.id, entry.x, entry.y);
   }
   for (const entry of portPositions) {
-    callbacks.onMoveSheetPort(entry.id, entry.x, entry.y);
+    runtime.callbacks.onMoveSheetPort(entry.id, entry.x, entry.y);
   }
   return true;
 }
 
 function applyGroupDragSessionPositions(
-  args: {
-    session: GroupDragSession;
-    clampPos: (pos: Pt) => Pt;
-  } & DragSelectionMaps,
+  runtime: SceneRuntime,
+  session: GroupDragSession,
+  clampPos: (pos: Pt) => Pt,
 ): void {
-  const { session, clampPos, ...maps } = args;
   const moveAll = (
     entries: IterableIterator<[string, Pt]>,
     kind: DragSelectionTarget["kind"],
@@ -143,8 +107,8 @@ function applyGroupDragSessionPositions(
         x: start.x + session.appliedDx,
         y: start.y + session.appliedDy,
       });
-      setRenderedGroupPosition(maps, { kind, id }, next);
-      setLiveGroupPosition(maps, { kind, id }, next);
+      setRenderedGroupPosition(runtime, { kind, id }, next);
+      setLiveGroupPosition(runtime, { kind, id }, next);
     }
   };
 
@@ -154,37 +118,37 @@ function applyGroupDragSessionPositions(
 }
 
 function setRenderedGroupPosition(
-  maps: DragSelectionMaps,
+  runtime: SceneRuntime,
   target: DragSelectionTarget,
   pos: Pt,
 ): void {
   const group =
     target.kind === "node"
-      ? maps.nodeGroups.get(target.id)
+      ? runtime.graph.nodeGroups.get(target.id)
       : target.kind === "label"
-        ? maps.labelGroups.get(target.id)
+        ? runtime.graph.labelGroups.get(target.id)
         : target.kind === "comment"
-          ? maps.commentGroups.get(target.id)
-          : maps.portGroups.get(target.id);
+          ? runtime.graph.commentGroups.get(target.id)
+          : runtime.graph.portGroups.get(target.id);
   if (group) group.position(pos);
 }
 
 function setLiveGroupPosition(
-  maps: DragSelectionMaps,
+  runtime: SceneRuntime,
   target: DragSelectionTarget,
   pos: Pt,
 ): void {
   if (target.kind === "node") {
-    maps.liveNodePositions.set(target.id, pos);
+    runtime.graph.liveNodePositions.set(target.id, pos);
     return;
   }
   if (target.kind === "label") {
-    maps.liveLabelPositions.set(target.id, pos);
+    runtime.graph.liveLabelPositions.set(target.id, pos);
     return;
   }
   if (target.kind === "comment") {
-    maps.liveCommentPositions.set(target.id, pos);
+    runtime.graph.liveCommentPositions.set(target.id, pos);
     return;
   }
-  maps.livePortPositions.set(target.id, pos);
+  runtime.graph.livePortPositions.set(target.id, pos);
 }

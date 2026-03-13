@@ -1,6 +1,7 @@
 import type Konva from "konva";
-import type { Pt } from "../layout";
+import type { NodeLayout, Pt } from "../layout";
 import type { DragSelectionTarget } from "../renderables";
+import type { SceneCallbacks, SceneRenderState } from "../types";
 
 export type Rect = {
   x: number;
@@ -51,3 +52,60 @@ export type SelectionSets = {
 };
 
 export type CullGroupMap = Map<string, Konva.Group>;
+
+export type SceneView = {
+  container: HTMLDivElement;
+  stage: Konva.Stage;
+  wireLayer: Konva.Layer;
+  mainLayer: Konva.Layer;
+  uiLayer: Konva.Layer;
+  placementHitRect: Konva.Rect;
+  previewWorld: Konva.Group;
+  wireWorld: Konva.Group;
+  mainWorld: Konva.Group;
+  marqueeRect: Konva.Rect;
+};
+
+export type SceneInteractionState = {
+  isPanning: boolean;
+  panLastScreenPos: Pt | null;
+  isMarqueeSelecting: boolean;
+  marqueeStartScreenPos: Pt | null;
+  marqueeCurrentScreenPos: Pt | null;
+  groupDragSession: GroupDragSession | null;
+  spacePressed: boolean;
+};
+
+export type SceneGraphState = {
+  nodeLayouts: Map<string, NodeLayout>;
+  liveNodePositions: Map<string, Pt>;
+  liveLabelPositions: Map<string, Pt>;
+  liveCommentPositions: Map<string, Pt>;
+  livePortPositions: Map<string, Pt>;
+  nodeGroups: Map<string, Konva.Group>;
+  labelGroups: Map<string, Konva.Group>;
+  commentGroups: Map<string, Konva.Group>;
+  portGroups: Map<string, Konva.Group>;
+  labelCullModels: Map<string, CullModel>;
+  commentCullModels: Map<string, CullModel>;
+  portCullModels: Map<string, CullModel>;
+};
+
+export type SceneState = {
+  lastState: SceneRenderState | null;
+  cursorPos: Pt | null;
+  camera: CameraState;
+  selectedConnectionId: string | null;
+  selectedWaypointIndex: number | null;
+  wireRedrawFrameId: number | null;
+  sceneBounds: SceneBounds;
+  interactionCleanup: (() => void) | null;
+  interaction: SceneInteractionState;
+};
+
+export type SceneRuntime = {
+  callbacks: SceneCallbacks;
+  view: SceneView;
+  graph: SceneGraphState;
+  state: SceneState;
+};

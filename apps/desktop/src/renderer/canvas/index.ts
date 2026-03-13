@@ -1,4 +1,5 @@
-export { KonvaSheetScene } from "./scene";
+export type { SheetScene } from "./scene";
+export { createKonvaSheetScene } from "./scene";
 export type {
   SceneCallbacks,
   SceneContextMenuRequest,
