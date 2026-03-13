@@ -345,14 +345,7 @@ export function createKonvaSheetScene(
   function updateMainCullVisibilityForRuntime(): void {
     updateMainCullVisibility({
       view: viewportWorldRectForRuntime(),
-      nodeGroups: runtime.graph.nodeGroups,
-      nodeLayouts: runtime.graph.nodeLayouts,
-      labelGroups: runtime.graph.labelGroups,
-      labelCullModels: runtime.graph.labelCullModels,
-      commentGroups: runtime.graph.commentGroups,
-      commentCullModels: runtime.graph.commentCullModels,
-      portGroups: runtime.graph.portGroups,
-      portCullModels: runtime.graph.portCullModels,
+      graph: runtime.graph,
     });
   }
 

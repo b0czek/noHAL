@@ -12,7 +12,13 @@ import {
   rectIntersects,
   worldBoundsFromLocalRect,
 } from "./geometry";
-import type { CullGroupMap, CullModel, Rect, SceneBounds } from "./types";
+import type {
+  CullGroupMap,
+  CullModel,
+  Rect,
+  SceneBounds,
+  SceneGraphState,
+} from "./types";
 
 export function focusCenterFromCullModel(
   id: string,
@@ -39,29 +45,12 @@ export function focusCenterFromCullModel(
 
 export function updateMainCullVisibility(args: {
   view: Rect;
-  nodeGroups: Map<string, Konva.Group>;
-  nodeLayouts: Map<string, NodeLayout>;
-  labelGroups: CullGroupMap;
-  labelCullModels: Map<string, CullModel>;
-  commentGroups: CullGroupMap;
-  commentCullModels: Map<string, CullModel>;
-  portGroups: CullGroupMap;
-  portCullModels: Map<string, CullModel>;
+  graph: SceneGraphState;
 }): void {
-  const {
-    view,
-    nodeGroups,
-    nodeLayouts,
-    labelGroups,
-    labelCullModels,
-    commentGroups,
-    commentCullModels,
-    portGroups,
-    portCullModels,
-  } = args;
+  const { view, graph } = args;
 
-  for (const [id, group] of nodeGroups) {
-    const layout = nodeLayouts.get(id);
+  for (const [id, group] of graph.nodeGroups) {
+    const layout = graph.nodeLayouts.get(id);
     if (!layout) continue;
     const pos = group.position();
     group.visible(
@@ -74,24 +63,24 @@ export function updateMainCullVisibility(args: {
     );
   }
 
-  for (const [id, group] of labelGroups) {
-    const model = labelCullModels.get(id);
+  for (const [id, group] of graph.labelGroups) {
+    const model = graph.labelCullModels.get(id);
     if (!model) continue;
     group.visible(
       rectIntersects(view, worldBoundsFromLocalRect(group.position(), model)),
     );
   }
 
-  for (const [id, group] of commentGroups) {
-    const model = commentCullModels.get(id);
+  for (const [id, group] of graph.commentGroups) {
+    const model = graph.commentCullModels.get(id);
     if (!model) continue;
     group.visible(
       rectIntersects(view, worldBoundsFromLocalRect(group.position(), model)),
     );
   }
 
-  for (const [id, group] of portGroups) {
-    const model = portCullModels.get(id);
+  for (const [id, group] of graph.portGroups) {
+    const model = graph.portCullModels.get(id);
     if (!model) continue;
     group.visible(
       rectIntersects(view, worldBoundsFromLocalRect(group.position(), model)),
