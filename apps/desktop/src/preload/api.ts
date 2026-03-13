@@ -21,7 +21,7 @@ export interface NoHALApi {
   updateAppSettings(patch: AppSettingsPatch): Promise<AppSettings>;
   newProject(
     linuxcncVersion?: LinuxCncVersion,
-  ): Promise<{ project: NoHALProject; projectPath: string } | null>;
+  ): Promise<{ project: NoHALProject } | null>;
   getRecentProjects(): Promise<RecentProjectEntry[]>;
   openProject(): Promise<{ project: NoHALProject; projectPath: string } | null>;
   openProjectAt(

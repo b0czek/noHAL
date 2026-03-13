@@ -108,7 +108,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
           if (!result) return null;
           return {
             project: result.project,
-            projectPath: result.projectPath,
+            projectPath: null,
             status: deps.t("store.status.createdNewProject"),
           };
         },

@@ -44,7 +44,6 @@ const api: NoHALApi = {
   newProject: (linuxcncVersion?: LinuxCncVersion) =>
     ipcRenderer.invoke("nohal:new-project", linuxcncVersion) as Promise<{
       project: NoHALProject;
-      projectPath: string;
     } | null>,
   getRecentProjects: () =>
     ipcRenderer.invoke("nohal:get-recent-projects") as Promise<

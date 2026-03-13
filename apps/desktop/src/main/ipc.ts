@@ -62,17 +62,7 @@ export function registerIpcHandlers(): void {
       project.target.linuxcncVersion =
         normalizeLinuxCncVersion(linuxcncVersion);
       reconcileProject(project);
-      const res = await dialog.showOpenDialog({
-        title: "Select New NoHAL Project Folder",
-        properties: ["openDirectory", "createDirectory"],
-      });
-      if (res.canceled || res.filePaths.length === 0) return null;
-      const projectPath = await projectDirectory.writeProjectDirectory(
-        project,
-        res.filePaths[0],
-      );
-      await touchRecentProject(projectPath, project.name);
-      return { project, projectPath };
+      return { project };
     },
   );
 
