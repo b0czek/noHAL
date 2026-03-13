@@ -1,14 +1,21 @@
 import {
+  isComponentPlaceable,
+  isComponentSearchable,
+} from "@nohal/core/src/componentVisibility";
+import {
   HiOutlineArchiveBoxArrowDown,
   HiOutlineArrowsRightLeft,
   HiOutlineArrowUturnLeft,
   HiOutlineArrowUturnRight,
   HiOutlineChevronDown,
+  HiOutlineCube,
   HiOutlineDocumentDuplicate,
   HiOutlineDocumentText,
   HiOutlineFolderOpen,
   HiOutlineTag,
 } from "solid-icons/hi";
+import { createMemo, createSignal } from "solid-js";
+import CanvasComponentMenu from "../components/CanvasComponentMenu";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
@@ -29,9 +36,36 @@ export default function EditorTopbar(props: EditorTopbarProps) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
   const editorUi = useEditorUi();
+  const [componentMenuOpen, setComponentMenuOpen] = createSignal(false);
+  const componentChoices = createMemo(() =>
+    Object.values(state.project.library.components)
+      .filter(
+        (component) =>
+          isComponentPlaceable(component) && isComponentSearchable(component),
+      )
+      .sort((a, b) => a.halComponentName.localeCompare(b.halComponentName)),
+  );
+  const activeComponentPlacement = createMemo(() => {
+    const current = editorUi.placementMode();
+    return current?.kind === "component" ? current : null;
+  });
+  const activeComponentLabel = createMemo(() => {
+    const active = activeComponentPlacement();
+    if (!active) return t("topbar.addComponent");
+    return (
+      state.project.library.components[active.componentId]?.halComponentName ??
+      t("topbar.addComponent")
+    );
+  });
+  const toggleComponentPlacement = (componentId: string) => {
+    editorUi.togglePlacementMode({ kind: "component", componentId });
+  };
   const placementModeMatches = (candidate: CanvasPlacement) => {
     const current = editorUi.placementMode();
     if (!current || current.kind !== candidate.kind) return false;
+    if (current.kind === "component" && candidate.kind === "component") {
+      return current.componentId === candidate.componentId;
+    }
     if (current.kind === "label" && candidate.kind === "label") {
       return current.scope === candidate.scope;
     }
@@ -122,6 +156,36 @@ export default function EditorTopbar(props: EditorTopbarProps) {
       </div>
 
       <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
+        <DropdownMenu
+          open={componentMenuOpen()}
+          onOpenChange={setComponentMenuOpen}
+        >
+          <DropdownMenuTrigger
+            as={Button<"button">}
+            variant="secondary"
+            class={`gap-2 ${
+              activeComponentPlacement()
+                ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
+                : ""
+            }`}
+            title={activeComponentLabel()}
+          >
+            <HiOutlineCube size={16} aria-hidden="true" />
+            <span class="max-w-52 truncate">{activeComponentLabel()}</span>
+            <HiOutlineChevronDown size={16} aria-hidden="true" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent class="w-[360px] max-h-[26rem] overflow-hidden p-3">
+            <CanvasComponentMenu
+              components={componentChoices()}
+              onAddComponent={(componentId) => {
+                toggleComponentPlacement(componentId);
+                setComponentMenuOpen(false);
+              }}
+              onClose={() => setComponentMenuOpen(false)}
+              listClass="max-h-[18rem] overflow-y-auto"
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="secondary"
           onClick={() => editorUi.togglePlacementMode({ kind: "subsheet" })}

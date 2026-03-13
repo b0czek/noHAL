@@ -10,6 +10,7 @@ import {
   FONT_MONO,
   FONT_SANS,
   HEADER_H,
+  NODE_FILL,
   NODE_WIDTH,
   PIN_HALO_FILL,
   PIN_HALO_RADIUS_PAD,
@@ -571,6 +572,61 @@ export class KonvaSheetScene {
       listening: false,
       opacity: 0.84,
     });
+
+    if (placement.kind === "component") {
+      const component =
+        this.lastState?.project.library.components[placement.componentId];
+      const width = NODE_WIDTH;
+      const height = HEADER_H + SIDE_ROW_H + 12;
+      group.add(
+        new Konva.Rect({
+          x: 0,
+          y: 0,
+          width,
+          height,
+          cornerRadius: 14,
+          fill: NODE_FILL,
+          stroke: SELECTED_BORDER,
+          strokeWidth: 2,
+          dash: [8, 6],
+        }),
+      );
+      group.add(
+        new Konva.Text({
+          x: 10,
+          y: 8,
+          width: width - 58,
+          text: component?.halComponentName ?? "Component",
+          fontFamily: FONT_SANS,
+          fontSize: 12,
+          fill: TEXT_PRIMARY,
+        }),
+      );
+      group.add(
+        new Konva.Text({
+          x: width - 46,
+          y: 8,
+          width: 40,
+          align: "right",
+          text: "comp",
+          fontFamily: FONT_SANS,
+          fontSize: 11,
+          fill: TEXT_MUTED,
+        }),
+      );
+      group.add(
+        new Konva.Text({
+          x: 10,
+          y: HEADER_H + 8,
+          width: width - 20,
+          text: component?.source ?? "component",
+          fontFamily: FONT_MONO,
+          fontSize: 11,
+          fill: TEXT_SOFT,
+        }),
+      );
+      return group;
+    }
 
     if (placement.kind === "subsheet") {
       const width = NODE_WIDTH;

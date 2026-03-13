@@ -15,6 +15,7 @@ export type SceneSelection =
   | null;
 
 export type ScenePlacement =
+  | { kind: "component"; componentId: string }
   | { kind: "subsheet" }
   | { kind: "comment" }
   | { kind: "label"; scope: "local" | "global" }

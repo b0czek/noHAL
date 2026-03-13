@@ -17,6 +17,7 @@ export type CanvasFocusTarget = {
   id: string;
 };
 export type CanvasPlacement =
+  | { kind: "component"; componentId: string }
   | { kind: "subsheet" }
   | { kind: "comment" }
   | { kind: "label"; scope: LabelScope }
@@ -68,6 +69,9 @@ function createEditorUiState() {
   ) => {
     if (!left || !right) return left === right;
     if (left.kind !== right.kind) return false;
+    if (left.kind === "component" && right.kind === "component") {
+      return left.componentId === right.componentId;
+    }
     if (left.kind === "label" && right.kind === "label") {
       return left.scope === right.scope;
     }
@@ -144,6 +148,9 @@ function createEditorUiState() {
     const current = placementMode();
     if (!current) return false;
     switch (current.kind) {
+      case "component":
+        actions.addComponentNode(current.componentId, point);
+        return true;
       case "subsheet":
         actions.addSheetDefinition(point);
         return true;

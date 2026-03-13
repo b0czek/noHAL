@@ -7,6 +7,7 @@ interface CanvasComponentMenuProps {
   components: ComponentDefinition[];
   onAddComponent: (componentId: string) => void;
   onClose: () => void;
+  listClass?: string;
 }
 
 export default function CanvasComponentMenu(props: CanvasComponentMenuProps) {
@@ -25,9 +26,6 @@ export default function CanvasComponentMenu(props: CanvasComponentMenuProps) {
 
   return (
     <>
-      <div class="canvas-context-title" aria-hidden="true">
-        {t("canvasComponentMenu.title")}
-      </div>
       <Input
         type="text"
         class="bg-black/10"
@@ -35,7 +33,7 @@ export default function CanvasComponentMenu(props: CanvasComponentMenuProps) {
         value={query()}
         onInput={(evt) => setQuery(evt.currentTarget.value)}
       />
-      <div class="canvas-context-list">
+      <div class={`canvas-context-list ${props.listClass ?? ""}`}>
         <Show
           when={filtered().length > 0}
           fallback={

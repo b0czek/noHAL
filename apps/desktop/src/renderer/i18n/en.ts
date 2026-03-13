@@ -46,6 +46,7 @@ export const en = {
   "topbar.projectSettings": "Project Settings",
   "topbar.generalSettings": "General Settings",
   "topbar.componentStore": "Component Store",
+  "topbar.addComponent": "Component",
   "topbar.addSubsheet": "Subsheet",
   "topbar.addText": "Text",
   "topbar.addPort": "Port",
@@ -72,8 +73,7 @@ export const en = {
   "canvasContext.removeConnection": "Remove Connection",
   "canvasContext.deleteWaypoint": "Delete Waypoint",
 
-  "canvasComponentMenu.ariaLabel": "Add Component",
-  "canvasComponentMenu.title": "Add Component",
+  "canvasComponentMenu.ariaLabel": "Place Component",
   "canvasComponentMenu.filterPlaceholder": "Filter components...",
   "canvasComponentMenu.empty": "No matching components",
   "canvasComponentMenu.itemTitle": "{name} ({pins} pins)",

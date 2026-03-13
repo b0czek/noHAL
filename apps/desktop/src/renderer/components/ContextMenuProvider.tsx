@@ -28,6 +28,8 @@ export interface ContextMenuActionItem {
   meta?: string;
   closeOnSelect?: boolean;
   children?: ContextMenuActionItem[];
+  childrenClass?: string;
+  renderChildren?: (api: { close: () => void }) => JSX.Element;
 }
 
 type ContextMenuBase = {
@@ -65,8 +67,14 @@ const ContextMenuContext = createContext<ContextMenuContextValue>();
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(value, Math.max(min, max)));
 
-function ContextMenuActionNode(props: { item: ContextMenuActionItem }) {
-  if ((props.item.children?.length ?? 0) > 0) {
+function ContextMenuActionNode(props: {
+  item: ContextMenuActionItem;
+  close: () => void;
+}) {
+  if (
+    (props.item.children?.length ?? 0) > 0 ||
+    props.item.renderChildren !== undefined
+  ) {
     return (
       <DropdownMenuSub>
         <DropdownMenuSubTrigger
@@ -82,12 +90,25 @@ function ContextMenuActionNode(props: { item: ContextMenuActionItem }) {
           </span>
         </DropdownMenuSubTrigger>
         <DropdownMenuPortal>
-          <DropdownMenuSubContent class="canvas-context-submenu-surface">
-            <div class="canvas-context-list canvas-context-list-compact">
-              <For each={props.item.children}>
-                {(child) => <ContextMenuActionNode item={child} />}
-              </For>
-            </div>
+          <DropdownMenuSubContent
+            class={`canvas-context-submenu-surface ${
+              props.item.childrenClass ?? ""
+            }`}
+          >
+            <Show
+              when={props.item.renderChildren}
+              fallback={
+                <div class="canvas-context-list canvas-context-list-compact">
+                  <For each={props.item.children}>
+                    {(child) => (
+                      <ContextMenuActionNode item={child} close={props.close} />
+                    )}
+                  </For>
+                </div>
+              }
+            >
+              {(renderChildren) => renderChildren()({ close: props.close })}
+            </Show>
           </DropdownMenuSubContent>
         </DropdownMenuPortal>
       </DropdownMenuSub>
@@ -192,7 +213,9 @@ export function ContextMenuProvider(props: ParentProps) {
                   </Show>
                   <div class="canvas-context-list canvas-context-list-compact">
                     <For each={current().items}>
-                      {(item) => <ContextMenuActionNode item={item} />}
+                      {(item) => (
+                        <ContextMenuActionNode item={item} close={close} />
+                      )}
                     </For>
                   </div>
                 </DropdownMenuContent>

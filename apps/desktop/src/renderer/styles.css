@@ -210,7 +210,7 @@
   }
 
   .canvas-context-item {
-    @apply focus-ring relative grid w-full gap-0.5 rounded-sm px-2.5 py-2 text-left text-foreground outline-none transition hover:bg-accent hover:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-45 disabled:cursor-default disabled:opacity-45;
+    @apply focus-ring relative grid w-full appearance-none gap-0.5 rounded-sm border-0 bg-transparent px-2.5 py-2 text-left text-foreground outline-none transition hover:bg-accent hover:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-45 disabled:cursor-default disabled:opacity-45;
   }
 
   .canvas-context-item-name {

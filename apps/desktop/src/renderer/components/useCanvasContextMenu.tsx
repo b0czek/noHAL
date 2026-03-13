@@ -38,6 +38,66 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       )
       .sort((a, b) => a.halComponentName.localeCompare(b.halComponentName)),
   );
+  const backgroundMenuItems = (point: {
+    x: number;
+    y: number;
+  }): ContextMenuActionItem[] => [
+    {
+      label: t("topbar.addComponent"),
+      onSelect: () => undefined,
+      childrenClass: "w-[22rem] overflow-hidden p-3",
+      renderChildren: ({ close }) => (
+        <CanvasComponentMenu
+          components={componentChoices()}
+          onAddComponent={(componentId) =>
+            actions.addComponentNode(componentId, point)
+          }
+          onClose={close}
+          listClass="max-h-[16rem] overflow-y-auto"
+        />
+      ),
+    },
+    {
+      label: t("topbar.addSubsheet"),
+      onSelect: () => actions.addSheetDefinition(point),
+    },
+    {
+      label: t("topbar.addPort"),
+      onSelect: () => undefined,
+      children: [
+        {
+          label: t("topbar.inPortBit"),
+          onSelect: () => actions.addSheetPort("in", "bit", point),
+        },
+        {
+          label: t("topbar.outPortBit"),
+          onSelect: () => actions.addSheetPort("out", "bit", point),
+        },
+        {
+          label: t("topbar.ioPortFloat"),
+          onSelect: () => actions.addSheetPort("io", "float", point),
+        },
+      ],
+    },
+    {
+      label: t("topbar.addText"),
+      onSelect: () => actions.addComment(point),
+    },
+    {
+      label: t("topbar.addLabel"),
+      onSelect: () => undefined,
+      children: [
+        {
+          label: t("topbar.localLabel"),
+          onSelect: () => actions.addLabel("local", point),
+        },
+        {
+          label: t("topbar.globalLabel"),
+          onSelect: () => actions.addLabel("global", point),
+        },
+      ],
+    },
+  ];
 
   const menuPosition = (
     clientX: number,
@@ -138,26 +198,20 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   };
 
   const openBackgroundMenu = (clientX: number, clientY: number) => {
-    const pos = menuPosition(clientX, clientY, 360, 440);
-    const world = args.getScene()?.clientToWorld(clientX, clientY) ?? {
+    const width = 280;
+    const maxHeight = 320;
+    const pos = menuPosition(clientX, clientY, width, maxHeight);
+    const point = args.getScene()?.clientToWorld(clientX, clientY) ?? {
       x: 120,
       y: 120,
     };
-    contextMenu.openCustom({
+    contextMenu.openActions({
       x: pos.x,
       y: pos.y,
-      width: 360,
-      maxHeight: 460,
+      width,
+      maxHeight,
       ariaLabel: t("canvasComponentMenu.ariaLabel"),
-      content: ({ close }) => (
-        <CanvasComponentMenu
-          components={componentChoices()}
-          onAddComponent={(componentId) =>
-            actions.addComponentNode(componentId, { x: world.x, y: world.y })
-          }
-          onClose={close}
-        />
-      ),
+      items: backgroundMenuItems(point),
     });
   };
 
