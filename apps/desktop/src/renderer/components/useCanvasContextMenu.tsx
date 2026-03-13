@@ -5,11 +5,11 @@ import {
 } from "@nohal/core/src/componentVisibility";
 import { getSheet } from "@nohal/core/src/graph";
 import { createMemo } from "solid-js";
-import type { KonvaSheetScene } from "../canvas/konvaSheetScene";
 import type {
+  KonvaSheetScene,
   SceneContextMenuRequest,
   SceneContextMenuTarget,
-} from "../canvas/konvaSheetSceneTypes";
+} from "../canvas";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";

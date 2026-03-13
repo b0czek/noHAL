@@ -6,7 +6,7 @@ import {
   onCleanup,
   onMount,
 } from "solid-js";
-import { KonvaSheetScene } from "../canvas/konvaSheetScene";
+import { KonvaSheetScene } from "../canvas";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";

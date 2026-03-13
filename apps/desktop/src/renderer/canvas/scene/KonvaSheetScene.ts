@@ -4,85 +4,50 @@ import type {
   SheetEndpointRef,
 } from "@nohal/core/src/types";
 import Konva from "konva";
-import {
-  BASE_STROKE_WIDTH,
-  CORNER_RADIUS_MD,
-  FONT_MONO,
-  FONT_SANS,
-  HEADER_H,
-  NODE_FILL,
-  NODE_WIDTH,
-  PIN_HALO_FILL,
-  PIN_HALO_RADIUS_PAD,
-  PIN_R,
-  PIN_STROKE,
-  PORT_LABEL_H,
-  PORT_PANEL_FILL,
-  SCENE_HEIGHT,
-  SCENE_WIDTH,
-  SELECTED_BORDER,
-  SELECTED_LABEL_BORDER,
-  SHEET_NODE_FILL,
-  SIDE_ROW_H,
-  TEXT_MUTED,
-  TEXT_PRIMARY,
-  TEXT_SOFT,
-} from "./constants";
+import { SCENE_HEIGHT, SCENE_WIDTH } from "../constants";
+import { buildSheetSceneLayout, type NodeLayout, type Pt } from "../layout";
+import type { DragSelectionTarget } from "../renderables";
 import {
   renderComments,
   renderLabels,
   renderNodes,
   renderPorts,
-} from "./konvaSheetSceneRenderables";
-import type {
-  SceneCallbacks,
-  ScenePlacement,
-  SceneRenderState,
-} from "./konvaSheetSceneTypes";
+} from "../renderables";
+import type { SceneCallbacks, SceneRenderState } from "../types";
 import {
   deleteSelectedWaypoint as deleteWireSelectedWaypoint,
   getSplitLabelPositionsForConnection,
   type KonvaSheetSceneWiresContext,
-  redrawWires as redrawSceneWires,
-} from "./konvaSheetSceneWires";
-import { buildSheetSceneLayout, type NodeLayout, type Pt } from "./layout";
-import { dirStroke, labelFill, typeFill } from "./theme";
-
-export type { SceneRenderState } from "./konvaSheetSceneTypes";
+  redraw as redrawSceneWires,
+} from "../wires";
+import {
+  computeSceneBounds,
+  focusCenterFromCullModel,
+  rebuildCullModels,
+  updateMainCullVisibility,
+  updateWireCullVisibility,
+} from "./culling";
+import { normalizedRect, viewportWorldRect } from "./geometry";
+import { buildPlacementPreview } from "./placementPreview";
+import {
+  buildGroupDragSession,
+  buildSelectionSets,
+  collectGroupDragUpdates,
+  constrainGroupDragDelta,
+  selectItemsInWorldRect,
+} from "./selection";
+import type {
+  CullModel,
+  FocusTarget,
+  GroupDragSession,
+  Rect,
+  SceneBounds,
+} from "./types";
 
 const SCENE_POSITION_PADDING = 2400;
 const CAMERA_OVERSCROLL_PX = 220;
 const MARQUEE_SELECT_THRESHOLD_PX = 4;
 const CULL_SCREEN_MARGIN_PX = 180;
-
-type SelectionDragTarget = {
-  kind: "node" | "label" | "comment" | "sheet-port";
-  id: string;
-};
-
-type GroupDragSession = {
-  anchor: SelectionDragTarget;
-  nodeStartPositions: Map<string, Pt>;
-  labelStartPositions: Map<string, Pt>;
-  portStartPositions: Map<string, Pt>;
-  anchorStartPos: Pt;
-  appliedDx: number;
-  appliedDy: number;
-};
-
-type Rect = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-type CullModel = {
-  localRect: Rect;
-  rotationDeg: number;
-};
-
-type SceneSheetPortPlacement = Extract<ScenePlacement, { kind: "sheet-port" }>;
 
 export class KonvaSheetScene {
   private container: HTMLDivElement;
@@ -121,7 +86,7 @@ export class KonvaSheetScene {
   private marqueeCurrentScreenPos: Pt | null = null;
   private groupDragSession: GroupDragSession | null = null;
   private spacePressed = false;
-  private sceneBounds = {
+  private sceneBounds: SceneBounds = {
     minX: 0,
     minY: 0,
     maxX: SCENE_WIDTH,
@@ -364,10 +329,7 @@ export class KonvaSheetScene {
     return this.clampPos(this.screenToWorld(screen));
   }
 
-  focusTarget(target: {
-    kind: "node" | "label" | "comment" | "sheet-port";
-    id: string;
-  }): boolean {
+  focusTarget(target: FocusTarget): boolean {
     let center: Pt | null = null;
 
     if (target.kind === "node") {
@@ -380,19 +342,19 @@ export class KonvaSheetScene {
         y: position.y + layout.height / 2,
       };
     } else if (target.kind === "label") {
-      center = this.focusCenterFromCullModel(
+      center = focusCenterFromCullModel(
         target.id,
         this.labelGroups,
         this.labelCullModels,
       );
     } else if (target.kind === "sheet-port") {
-      center = this.focusCenterFromCullModel(
+      center = focusCenterFromCullModel(
         target.id,
         this.portGroups,
         this.portCullModels,
       );
     } else {
-      center = this.focusCenterFromCullModel(
+      center = focusCenterFromCullModel(
         target.id,
         this.commentGroups,
         this.commentCullModels,
@@ -405,29 +367,6 @@ export class KonvaSheetScene {
     this.applyCamera();
     if (this.lastState?.pendingEndpoint) this.redrawWires();
     return true;
-  }
-
-  private focusCenterFromCullModel(
-    id: string,
-    groups: Map<string, Konva.Group>,
-    models: Map<string, CullModel>,
-  ): Pt | null {
-    const group = groups.get(id);
-    const model = models.get(id);
-    if (!group || !model) return null;
-
-    const position = group.position();
-    const localCenter = {
-      x: model.localRect.x + model.localRect.width / 2,
-      y: model.localRect.y + model.localRect.height / 2,
-    };
-    const rad = (model.rotationDeg * Math.PI) / 180;
-    const c = Math.cos(rad);
-    const s = Math.sin(rad);
-    return {
-      x: position.x + localCenter.x * c - localCenter.y * s,
-      y: position.y + localCenter.x * s + localCenter.y * c,
-    };
   }
 
   private clampPos(pos: { x: number; y: number }): { x: number; y: number } {
@@ -551,256 +490,6 @@ export class KonvaSheetScene {
     this.callbacks.onCameraChange?.({ ...this.camera });
   }
 
-  private previewPortName(
-    direction: SceneSheetPortPlacement["direction"],
-  ): string {
-    if (direction === "in") return "in_sig";
-    if (direction === "out") return "out_sig";
-    return "io_sig";
-  }
-
-  private previewPortSide(
-    direction: SceneSheetPortPlacement["direction"],
-  ): "left" | "right" | "top" {
-    if (direction === "in") return "right";
-    if (direction === "out") return "left";
-    return "top";
-  }
-
-  private buildPlacementPreview(placement: ScenePlacement): Konva.Group {
-    const group = new Konva.Group({
-      listening: false,
-      opacity: 0.84,
-    });
-
-    if (placement.kind === "component") {
-      const component =
-        this.lastState?.project.library.components[placement.componentId];
-      const width = NODE_WIDTH;
-      const height = HEADER_H + SIDE_ROW_H + 12;
-      group.add(
-        new Konva.Rect({
-          x: 0,
-          y: 0,
-          width,
-          height,
-          cornerRadius: 14,
-          fill: NODE_FILL,
-          stroke: SELECTED_BORDER,
-          strokeWidth: 2,
-          dash: [8, 6],
-        }),
-      );
-      group.add(
-        new Konva.Text({
-          x: 10,
-          y: 8,
-          width: width - 58,
-          text: component?.halComponentName ?? "Component",
-          fontFamily: FONT_SANS,
-          fontSize: 12,
-          fill: TEXT_PRIMARY,
-        }),
-      );
-      group.add(
-        new Konva.Text({
-          x: width - 46,
-          y: 8,
-          width: 40,
-          align: "right",
-          text: "comp",
-          fontFamily: FONT_SANS,
-          fontSize: 11,
-          fill: TEXT_MUTED,
-        }),
-      );
-      group.add(
-        new Konva.Text({
-          x: 10,
-          y: HEADER_H + 8,
-          width: width - 20,
-          text: component?.source ?? "component",
-          fontFamily: FONT_MONO,
-          fontSize: 11,
-          fill: TEXT_SOFT,
-        }),
-      );
-      return group;
-    }
-
-    if (placement.kind === "subsheet") {
-      const width = NODE_WIDTH;
-      const height = HEADER_H + SIDE_ROW_H + 12;
-      group.add(
-        new Konva.Rect({
-          x: 0,
-          y: 0,
-          width,
-          height,
-          cornerRadius: 14,
-          fill: SHEET_NODE_FILL,
-          stroke: SELECTED_BORDER,
-          strokeWidth: 2,
-          dash: [8, 6],
-        }),
-      );
-      group.add(
-        new Konva.Text({
-          x: 10,
-          y: 8,
-          width: width - 58,
-          text: "Sheet",
-          fontFamily: FONT_SANS,
-          fontSize: 12,
-          fill: TEXT_PRIMARY,
-        }),
-      );
-      group.add(
-        new Konva.Text({
-          x: width - 46,
-          y: 8,
-          width: 40,
-          align: "right",
-          text: "sheet",
-          fontFamily: FONT_SANS,
-          fontSize: 11,
-          fill: TEXT_MUTED,
-        }),
-      );
-      return group;
-    }
-
-    if (placement.kind === "comment") {
-      const content = "Comment";
-      const size = this.estimateCommentSize(content);
-      group.add(
-        new Konva.Rect({
-          x: 0,
-          y: 0,
-          width: size.width,
-          height: size.height,
-          cornerRadius: CORNER_RADIUS_MD,
-          fill: "rgba(12, 24, 28, 0.72)",
-          stroke: SELECTED_BORDER,
-          strokeWidth: 2,
-          dash: [8, 6],
-        }),
-      );
-      group.add(
-        new Konva.Text({
-          x: 0,
-          y: 0,
-          text: content,
-          fontFamily: FONT_SANS,
-          fontSize: 14,
-          lineHeight: 1.25,
-          fill: TEXT_PRIMARY,
-          padding: 10,
-          listening: false,
-        }),
-      );
-      return group;
-    }
-
-    if (placement.kind === "label") {
-      const name = placement.scope === "global" ? "global_sig" : "sig";
-      const size = this.estimateLabelSize(placement.scope, name);
-      const scopeW = Math.ceil(placement.scope.length * 5.8);
-      group.add(
-        new Konva.Rect({
-          x: 0,
-          y: -size.height / 2,
-          width: size.width,
-          height: size.height,
-          cornerRadius: CORNER_RADIUS_MD,
-          fill: labelFill(placement.scope),
-          stroke: SELECTED_LABEL_BORDER,
-          strokeWidth: 2,
-          dash: [8, 6],
-        }),
-      );
-      group.add(
-        new Konva.Text({
-          x: 8,
-          y: -4,
-          text: placement.scope,
-          fontFamily: FONT_SANS,
-          fontSize: 10,
-          fill: TEXT_SOFT,
-          listening: false,
-        }),
-      );
-      group.add(
-        new Konva.Text({
-          x: 14 + scopeW + 6,
-          y: -2,
-          text: name,
-          fontFamily: FONT_MONO,
-          fontSize: 12,
-          fill: TEXT_PRIMARY,
-          listening: false,
-        }),
-      );
-      return group;
-    }
-
-    const name = this.previewPortName(placement.direction);
-    const width = Math.ceil(name.length * 7.2) + 20;
-    const side = this.previewPortSide(placement.direction);
-    let labelRectX = 12;
-    let labelRectY = -PORT_LABEL_H / 2;
-    if (side === "right") labelRectX = -width - 12;
-    if (side === "top") {
-      labelRectX = -width / 2;
-      labelRectY = 12;
-    }
-    group.add(
-      new Konva.Rect({
-        x: labelRectX,
-        y: labelRectY,
-        width,
-        height: PORT_LABEL_H,
-        cornerRadius: CORNER_RADIUS_MD,
-        fill: PORT_PANEL_FILL,
-        stroke: dirStroke(placement.direction),
-        strokeWidth: 2,
-        dash: [8, 6],
-      }),
-    );
-    group.add(
-      new Konva.Text({
-        x: labelRectX + 9,
-        y: labelRectY + 5,
-        text: name,
-        fontFamily: FONT_MONO,
-        fontSize: 12,
-        fill: TEXT_PRIMARY,
-        listening: false,
-      }),
-    );
-    group.add(
-      new Konva.Circle({
-        x: 0,
-        y: 0,
-        radius: PIN_R + PIN_HALO_RADIUS_PAD,
-        fill: PIN_HALO_FILL,
-        listening: false,
-      }),
-    );
-    group.add(
-      new Konva.Circle({
-        x: 0,
-        y: 0,
-        radius: PIN_R,
-        fill: typeFill(placement.type),
-        stroke: PIN_STROKE,
-        strokeWidth: BASE_STROKE_WIDTH,
-        listening: false,
-      }),
-    );
-    return group;
-  }
-
   private syncPlacementPreview(): void {
     const placement = this.lastState?.placement ?? null;
     const hadHitRect = this.placementHitRect.visible();
@@ -817,7 +506,10 @@ export class KonvaSheetScene {
 
     this.previewWorld.visible(true);
     this.previewWorld.destroyChildren();
-    const preview = this.buildPlacementPreview(placement);
+    const preview = buildPlacementPreview({
+      placement,
+      state: this.lastState,
+    });
     preview.position(this.cursorPos);
     this.previewWorld.add(preview);
     this.uiLayer.batchDraw();
@@ -836,97 +528,30 @@ export class KonvaSheetScene {
   }
 
   private viewportWorldRect(): Rect {
-    const margin = CULL_SCREEN_MARGIN_PX;
-    return this.normalizedRect(
-      this.screenToWorld({ x: -margin, y: -margin }),
-      this.screenToWorld({
-        x: this.stage.width() + margin,
-        y: this.stage.height() + margin,
-      }),
-    );
-  }
-
-  private rectIntersects(a: Rect, b: Rect): boolean {
-    return (
-      a.x < b.x + b.width &&
-      a.x + a.width > b.x &&
-      a.y < b.y + b.height &&
-      a.y + a.height > b.y
-    );
-  }
-
-  private worldBoundsFromLocalRect(pos: Pt, model: CullModel): Rect {
-    const worldRect = {
-      x: pos.x + model.localRect.x,
-      y: pos.y + model.localRect.y,
-      width: model.localRect.width,
-      height: model.localRect.height,
-    };
-    if (Math.abs(model.rotationDeg) < 1e-6) return worldRect;
-    return this.rotatedRectBounds(worldRect, model.rotationDeg, pos);
+    return viewportWorldRect({
+      width: this.stage.width(),
+      height: this.stage.height(),
+      margin: CULL_SCREEN_MARGIN_PX,
+      screenToWorld: (pos) => this.screenToWorld(pos),
+    });
   }
 
   private updateMainCullVisibility(): void {
-    const view = this.viewportWorldRect();
-
-    for (const [id, group] of this.nodeGroups) {
-      const layout = this.nodeLayouts.get(id);
-      if (!layout) continue;
-      const pos = group.position();
-      group.visible(
-        this.rectIntersects(view, {
-          x: pos.x,
-          y: pos.y,
-          width: layout.width,
-          height: layout.height,
-        }),
-      );
-    }
-
-    for (const [id, group] of this.labelGroups) {
-      const model = this.labelCullModels.get(id);
-      if (!model) continue;
-      group.visible(
-        this.rectIntersects(
-          view,
-          this.worldBoundsFromLocalRect(group.position(), model),
-        ),
-      );
-    }
-
-    for (const [id, group] of this.commentGroups) {
-      const model = this.commentCullModels.get(id);
-      if (!model) continue;
-      group.visible(
-        this.rectIntersects(
-          view,
-          this.worldBoundsFromLocalRect(group.position(), model),
-        ),
-      );
-    }
-
-    for (const [id, group] of this.portGroups) {
-      const model = this.portCullModels.get(id);
-      if (!model) continue;
-      group.visible(
-        this.rectIntersects(
-          view,
-          this.worldBoundsFromLocalRect(group.position(), model),
-        ),
-      );
-    }
+    updateMainCullVisibility({
+      view: this.viewportWorldRect(),
+      nodeGroups: this.nodeGroups,
+      nodeLayouts: this.nodeLayouts,
+      labelGroups: this.labelGroups,
+      labelCullModels: this.labelCullModels,
+      commentGroups: this.commentGroups,
+      commentCullModels: this.commentCullModels,
+      portGroups: this.portGroups,
+      portCullModels: this.portCullModels,
+    });
   }
 
   private updateWireCullVisibility(): void {
-    const view = this.viewportWorldRect();
-    for (const child of this.wireWorld.getChildren()) {
-      const bounds = child.getAttr("cullBounds") as Rect | undefined;
-      if (!bounds) {
-        child.visible(true);
-        continue;
-      }
-      child.visible(this.rectIntersects(view, bounds));
-    }
+    updateWireCullVisibility(this.wireWorld, this.viewportWorldRect());
   }
 
   private updateCullVisibility(): void {
@@ -935,220 +560,10 @@ export class KonvaSheetScene {
   }
 
   private rebuildCullModels(state: SceneRenderState): void {
-    this.labelCullModels.clear();
-    this.commentCullModels.clear();
-    this.portCullModels.clear();
-
-    for (const label of state.sheet.labels) {
-      const size = this.estimateLabelSize(label.scope, label.name);
-      this.labelCullModels.set(label.id, {
-        localRect: {
-          x: 0,
-          y: -size.height / 2,
-          width: size.width,
-          height: size.height,
-        },
-        rotationDeg: label.rotation ?? 0,
-      });
-    }
-
-    for (const comment of state.sheet.comments) {
-      const size = this.estimateCommentSize(comment.text);
-      this.commentCullModels.set(comment.id, {
-        localRect: { x: 0, y: 0, width: size.width, height: size.height },
-        rotationDeg: comment.rotation ?? 0,
-      });
-    }
-
-    for (const port of state.sheet.ports) {
-      const rect = this.estimatePortBox(port, { x: 0, y: 0 });
-      this.portCullModels.set(port.id, {
-        localRect: rect,
-        rotationDeg: port.rotation ?? 0,
-      });
-    }
-  }
-
-  private estimateLabelSize(
-    scope: string,
-    name: string,
-  ): { width: number; height: number } {
-    // Cheap estimate for bounds expansion; exact rendering uses Konva text measurement.
-    const scopeW = Math.ceil(scope.length * 5.8);
-    const nameW = Math.ceil(name.length * 7.2);
-    return {
-      width: 16 + scopeW + 8 + nameW + 10,
-      height: 22,
-    };
-  }
-
-  private estimateCommentSize(text: string): { width: number; height: number } {
-    const lines = text.replace(/\r/g, "").split("\n");
-    const maxLineLength = Math.max(1, ...lines.map((line) => line.length));
-    const lineCount = Math.max(1, lines.length);
-    return {
-      width: Math.max(48, Math.ceil(maxLineLength * 8.1) + 20),
-      height: Math.max(28, Math.ceil(lineCount * 17.5) + 8),
-    };
-  }
-
-  private estimatePortBox(
-    port: SceneRenderState["sheet"]["ports"][number],
-    position?: Pt,
-  ): {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } {
-    const pos = position ?? port.position;
-    const width = Math.ceil(port.name.length * 7.2) + 20;
-    const height = 24;
-    let x = pos.x + 12;
-    let y = pos.y - height / 2;
-    if (port.side === "right") x = pos.x - width - 12;
-    if (port.side === "top") {
-      x = pos.x - width / 2;
-      y = pos.y + 12;
-    }
-    if (port.side === "bottom") {
-      x = pos.x - width / 2;
-      y = pos.y - height - 12;
-    }
-    return { x, y, width, height };
-  }
-
-  private expandBoundsWithRotatedRect(
-    bounds: { minX: number; minY: number; maxX: number; maxY: number },
-    rect: { x: number; y: number; width: number; height: number },
-    rotationDeg: number,
-    pivot: Pt,
-  ): void {
-    const rad = (rotationDeg * Math.PI) / 180;
-    const c = Math.cos(rad);
-    const s = Math.sin(rad);
-    const corners: Pt[] = [
-      { x: rect.x, y: rect.y },
-      { x: rect.x + rect.width, y: rect.y },
-      { x: rect.x + rect.width, y: rect.y + rect.height },
-      { x: rect.x, y: rect.y + rect.height },
-    ];
-    for (const p of corners) {
-      const dx = p.x - pivot.x;
-      const dy = p.y - pivot.y;
-      const x = pivot.x + dx * c - dy * s;
-      const y = pivot.y + dx * s + dy * c;
-      bounds.minX = Math.min(bounds.minX, x);
-      bounds.minY = Math.min(bounds.minY, y);
-      bounds.maxX = Math.max(bounds.maxX, x);
-      bounds.maxY = Math.max(bounds.maxY, y);
-    }
-  }
-
-  private computeSceneBounds(state: SceneRenderState): {
-    minX: number;
-    minY: number;
-    maxX: number;
-    maxY: number;
-  } {
-    const bounds = {
-      minX: 0,
-      minY: 0,
-      maxX: SCENE_WIDTH,
-      maxY: SCENE_HEIGHT,
-    };
-    const margin = 160;
-
-    for (const node of state.sheet.nodes) {
-      const layout = this.nodeLayouts.get(node.id);
-      if (!layout) continue;
-      bounds.minX = Math.min(bounds.minX, node.position.x - margin);
-      bounds.minY = Math.min(bounds.minY, node.position.y - margin);
-      bounds.maxX = Math.max(
-        bounds.maxX,
-        node.position.x + layout.width + margin,
-      );
-      bounds.maxY = Math.max(
-        bounds.maxY,
-        node.position.y + layout.height + margin,
-      );
-    }
-
-    for (const label of state.sheet.labels) {
-      const size = this.estimateLabelSize(label.scope, label.name);
-      this.expandBoundsWithRotatedRect(
-        bounds,
-        {
-          x: label.position.x,
-          y: label.position.y - size.height / 2,
-          width: size.width,
-          height: size.height,
-        },
-        label.rotation ?? 0,
-        { x: label.position.x, y: label.position.y },
-      );
-      bounds.minX = Math.min(bounds.minX, label.position.x - margin);
-      bounds.minY = Math.min(bounds.minY, label.position.y - margin);
-      bounds.maxX = Math.max(bounds.maxX, label.position.x + margin);
-      bounds.maxY = Math.max(bounds.maxY, label.position.y + margin);
-    }
-
-    for (const comment of state.sheet.comments) {
-      const size = this.estimateCommentSize(comment.text);
-      this.expandBoundsWithRotatedRect(
-        bounds,
-        {
-          x: comment.position.x,
-          y: comment.position.y,
-          width: size.width,
-          height: size.height,
-        },
-        comment.rotation ?? 0,
-        comment.position,
-      );
-      bounds.minX = Math.min(bounds.minX, comment.position.x - margin);
-      bounds.minY = Math.min(bounds.minY, comment.position.y - margin);
-      bounds.maxX = Math.max(
-        bounds.maxX,
-        comment.position.x + size.width + margin,
-      );
-      bounds.maxY = Math.max(
-        bounds.maxY,
-        comment.position.y + size.height + margin,
-      );
-    }
-
-    for (const port of state.sheet.ports) {
-      const rect = this.estimatePortBox(port);
-      this.expandBoundsWithRotatedRect(
-        bounds,
-        rect,
-        port.rotation ?? 0,
-        port.position,
-      );
-      bounds.minX = Math.min(bounds.minX, port.position.x - margin);
-      bounds.minY = Math.min(bounds.minY, port.position.y - margin);
-      bounds.maxX = Math.max(bounds.maxX, port.position.x + margin);
-      bounds.maxY = Math.max(bounds.maxY, port.position.y + margin);
-    }
-
-    for (const conn of state.sheet.directConnections) {
-      for (const wp of conn.waypoints ?? []) {
-        bounds.minX = Math.min(bounds.minX, wp.x - margin);
-        bounds.minY = Math.min(bounds.minY, wp.y - margin);
-        bounds.maxX = Math.max(bounds.maxX, wp.x + margin);
-        bounds.maxY = Math.max(bounds.maxY, wp.y + margin);
-      }
-    }
-
-    for (const wp of state.pendingWirePoints) {
-      bounds.minX = Math.min(bounds.minX, wp.x - margin);
-      bounds.minY = Math.min(bounds.minY, wp.y - margin);
-      bounds.maxX = Math.max(bounds.maxX, wp.x + margin);
-      bounds.maxY = Math.max(bounds.maxY, wp.y + margin);
-    }
-
-    return bounds;
+    const models = rebuildCullModels(state);
+    this.labelCullModels = models.labelCullModels;
+    this.commentCullModels = models.commentCullModels;
+    this.portCullModels = models.portCullModels;
   }
 
   private screenToWorld(pos: Pt): Pt {
@@ -1182,7 +597,7 @@ export class KonvaSheetScene {
     this.cancelMarqueeSelection();
     if (!start || !end) return;
 
-    const screenRect = this.normalizedRect(start, end);
+    const screenRect = normalizedRect(start, end);
     if (
       screenRect.width < MARQUEE_SELECT_THRESHOLD_PX &&
       screenRect.height < MARQUEE_SELECT_THRESHOLD_PX
@@ -1200,7 +615,7 @@ export class KonvaSheetScene {
         y: screenRect.y + screenRect.height,
       }),
     );
-    const worldRect = this.normalizedRect(worldA, worldB);
+    const worldRect = normalizedRect(worldA, worldB);
     this.selectItemsInWorldRect(worldRect);
   }
 
@@ -1208,7 +623,7 @@ export class KonvaSheetScene {
     const start = this.marqueeStartScreenPos;
     const end = this.marqueeCurrentScreenPos;
     if (!start || !end) return;
-    const rect = this.normalizedRect(start, end);
+    const rect = normalizedRect(start, end);
     this.marqueeRect.setAttrs({
       x: rect.x,
       y: rect.y,
@@ -1219,46 +634,6 @@ export class KonvaSheetScene {
     this.uiLayer.batchDraw();
   }
 
-  private normalizedRect(a: Pt, b: Pt): Rect {
-    const x1 = Math.min(a.x, b.x);
-    const y1 = Math.min(a.y, b.y);
-    const x2 = Math.max(a.x, b.x);
-    const y2 = Math.max(a.y, b.y);
-    return { x: x1, y: y1, width: x2 - x1, height: y2 - y1 };
-  }
-
-  private rectContainsRect(
-    outer: { x: number; y: number; width: number; height: number },
-    inner: { x: number; y: number; width: number; height: number },
-  ): boolean {
-    return (
-      inner.x >= outer.x &&
-      inner.y >= outer.y &&
-      inner.x + inner.width <= outer.x + outer.width &&
-      inner.y + inner.height <= outer.y + outer.height
-    );
-  }
-
-  private rotatedRectBounds(
-    rect: { x: number; y: number; width: number; height: number },
-    rotationDeg: number,
-    pivot: Pt,
-  ): { x: number; y: number; width: number; height: number } {
-    const bounds = {
-      minX: Number.POSITIVE_INFINITY,
-      minY: Number.POSITIVE_INFINITY,
-      maxX: Number.NEGATIVE_INFINITY,
-      maxY: Number.NEGATIVE_INFINITY,
-    };
-    this.expandBoundsWithRotatedRect(bounds, rect, rotationDeg, pivot);
-    return {
-      x: bounds.minX,
-      y: bounds.minY,
-      width: bounds.maxX - bounds.minX,
-      height: bounds.maxY - bounds.minY,
-    };
-  }
-
   private selectItemsInWorldRect(rect: {
     x: number;
     y: number;
@@ -1267,69 +642,16 @@ export class KonvaSheetScene {
   }): void {
     const state = this.lastState;
     if (!state) return;
-
-    const nodeIds: string[] = [];
-    const labelIds: string[] = [];
-    const portIds: string[] = [];
-
-    for (const node of state.sheet.nodes) {
-      const layout = this.nodeLayouts.get(node.id);
-      if (!layout) continue;
-      const pos = this.liveNodePositions.get(node.id) ?? node.position;
-      const nodeRect = {
-        x: pos.x,
-        y: pos.y,
-        width: layout.width,
-        height: layout.height,
-      };
-      if (this.rectContainsRect(rect, nodeRect)) nodeIds.push(node.id);
-    }
-
-    for (const label of state.sheet.labels) {
-      const pos = this.liveLabelPositions.get(label.id) ?? label.position;
-      const size = this.estimateLabelSize(label.scope, label.name);
-      const labelRect = this.rotatedRectBounds(
-        {
-          x: pos.x,
-          y: pos.y - size.height / 2,
-          width: size.width,
-          height: size.height,
-        },
-        label.rotation ?? 0,
-        pos,
-      );
-      if (this.rectContainsRect(rect, labelRect)) labelIds.push(label.id);
-    }
-
-    for (const port of state.sheet.ports) {
-      const pos = this.livePortPositions.get(port.id) ?? port.position;
-      const portRect = this.rotatedRectBounds(
-        this.estimatePortBox(port, pos),
-        port.rotation ?? 0,
-        pos,
-      );
-      if (this.rectContainsRect(rect, portRect)) portIds.push(port.id);
-    }
-
-    const total = nodeIds.length + labelIds.length + portIds.length;
-    if (total === 0) {
-      this.callbacks.onSelect(null);
-      return;
-    }
-    if (total === 1) {
-      if (nodeIds.length === 1)
-        this.callbacks.onSelect({ kind: "node", id: nodeIds[0] });
-      else if (labelIds.length === 1)
-        this.callbacks.onSelect({ kind: "label", id: labelIds[0] });
-      else this.callbacks.onSelect({ kind: "sheet-port", id: portIds[0] });
-      return;
-    }
-    this.callbacks.onSelect({
-      kind: "multi",
-      nodeIds,
-      labelIds,
-      portIds,
-    });
+    this.callbacks.onSelect(
+      selectItemsInWorldRect({
+        rect,
+        state,
+        nodeLayouts: this.nodeLayouts,
+        liveNodePositions: this.liveNodePositions,
+        liveLabelPositions: this.liveLabelPositions,
+        livePortPositions: this.livePortPositions,
+      }),
+    );
   }
 
   private shouldStartMarquee(
@@ -1344,84 +666,7 @@ export class KonvaSheetScene {
     );
   }
 
-  private selectionContainsTarget(
-    selection: SceneRenderState["selection"],
-    target: SelectionDragTarget,
-  ): boolean {
-    if (!selection) return false;
-    if (selection.kind === target.kind) return selection.id === target.id;
-    if (selection.kind !== "multi") return false;
-    if (target.kind === "node") return selection.nodeIds.includes(target.id);
-    if (target.kind === "label") return selection.labelIds.includes(target.id);
-    if (target.kind === "comment") return false;
-    return selection.portIds.includes(target.id);
-  }
-
-  private buildGroupDragSession(
-    target: SelectionDragTarget,
-    anchorPos: Pt,
-  ): GroupDragSession | null {
-    const selection = this.lastState?.selection;
-    const state = this.lastState;
-    if (!state || !selection || selection.kind !== "multi") return null;
-    if (!this.selectionContainsTarget(selection, target)) return null;
-
-    const total =
-      selection.nodeIds.length +
-      selection.labelIds.length +
-      selection.portIds.length;
-    if (total <= 1) return null;
-
-    const nodeStartPositions = new Map<string, Pt>();
-    const labelStartPositions = new Map<string, Pt>();
-    const portStartPositions = new Map<string, Pt>();
-
-    for (const nodeId of selection.nodeIds) {
-      const node = state.sheet.nodes.find((n) => n.id === nodeId);
-      if (!node) continue;
-      nodeStartPositions.set(
-        nodeId,
-        this.liveNodePositions.get(nodeId) ?? node.position,
-      );
-    }
-    for (const labelId of selection.labelIds) {
-      const label = state.sheet.labels.find((l) => l.id === labelId);
-      if (!label) continue;
-      labelStartPositions.set(
-        labelId,
-        this.liveLabelPositions.get(labelId) ?? label.position,
-      );
-    }
-    for (const portId of selection.portIds) {
-      const port = state.sheet.ports.find((p) => p.id === portId);
-      if (!port) continue;
-      portStartPositions.set(
-        portId,
-        this.livePortPositions.get(portId) ?? port.position,
-      );
-    }
-
-    if (
-      nodeStartPositions.size +
-        labelStartPositions.size +
-        portStartPositions.size <=
-      1
-    ) {
-      return null;
-    }
-
-    return {
-      anchor: target,
-      nodeStartPositions,
-      labelStartPositions,
-      portStartPositions,
-      anchorStartPos: { x: anchorPos.x, y: anchorPos.y },
-      appliedDx: 0,
-      appliedDy: 0,
-    };
-  }
-
-  private setRenderedGroupPosition(target: SelectionDragTarget, pos: Pt): void {
+  private setRenderedGroupPosition(target: DragSelectionTarget, pos: Pt): void {
     const group =
       target.kind === "node"
         ? this.nodeGroups.get(target.id)
@@ -1434,7 +679,7 @@ export class KonvaSheetScene {
   }
 
   private applyGroupDragLivePosition(
-    target: SelectionDragTarget,
+    target: DragSelectionTarget,
     pos: Pt,
   ): void {
     if (target.kind === "node") this.liveNodePositions.set(target.id, pos);
@@ -1445,38 +690,10 @@ export class KonvaSheetScene {
     else this.livePortPositions.set(target.id, pos);
   }
 
-  private constrainGroupDragDelta(
-    session: GroupDragSession,
-    dx: number,
-    dy: number,
-  ): Pt {
-    let nextDx = dx;
-    let nextDy = dy;
-
-    const applyConstraint = (start: Pt) => {
-      const clamped = this.clampPos({ x: start.x + dx, y: start.y + dy });
-      const allowedDx = clamped.x - start.x;
-      const allowedDy = clamped.y - start.y;
-      if (dx > 0) nextDx = Math.min(nextDx, allowedDx);
-      else if (dx < 0) nextDx = Math.max(nextDx, allowedDx);
-      if (dy > 0) nextDy = Math.min(nextDy, allowedDy);
-      else if (dy < 0) nextDy = Math.max(nextDy, allowedDy);
-    };
-
-    for (const start of session.nodeStartPositions.values())
-      applyConstraint(start);
-    for (const start of session.labelStartPositions.values())
-      applyConstraint(start);
-    for (const start of session.portStartPositions.values())
-      applyConstraint(start);
-
-    return { x: nextDx, y: nextDy };
-  }
-
   private applyGroupDragSessionPositions(session: GroupDragSession): void {
     const moveAll = (
       entries: IterableIterator<[string, Pt]>,
-      kind: SelectionDragTarget["kind"],
+      kind: DragSelectionTarget["kind"],
     ) => {
       for (const [id, start] of entries) {
         const next = this.clampPos({
@@ -1494,16 +711,23 @@ export class KonvaSheetScene {
   }
 
   private onSelectionDragStart = (
-    target: SelectionDragTarget,
+    target: DragSelectionTarget,
     pos: Pt,
   ): boolean => {
-    const session = this.buildGroupDragSession(target, pos);
+    const session = buildGroupDragSession({
+      target,
+      anchorPos: pos,
+      state: this.lastState,
+      liveNodePositions: this.liveNodePositions,
+      liveLabelPositions: this.liveLabelPositions,
+      livePortPositions: this.livePortPositions,
+    });
     this.groupDragSession = session;
     return session !== null;
   };
 
   private onSelectionDragMove = (
-    target: SelectionDragTarget,
+    target: DragSelectionTarget,
     pos: Pt,
   ): boolean => {
     const session = this.groupDragSession;
@@ -1516,11 +740,12 @@ export class KonvaSheetScene {
     }
     const desiredDx = pos.x - session.anchorStartPos.x;
     const desiredDy = pos.y - session.anchorStartPos.y;
-    const constrained = this.constrainGroupDragDelta(
+    const constrained = constrainGroupDragDelta({
       session,
-      desiredDx,
-      desiredDy,
-    );
+      dx: desiredDx,
+      dy: desiredDy,
+      clampPos: (nextPos) => this.clampPos(nextPos),
+    });
     session.appliedDx = constrained.x;
     session.appliedDy = constrained.y;
     this.applyGroupDragSessionPositions(session);
@@ -1529,7 +754,7 @@ export class KonvaSheetScene {
   };
 
   private onSelectionDragEnd = (
-    target: SelectionDragTarget,
+    target: DragSelectionTarget,
     pos: Pt,
   ): boolean => {
     const session = this.groupDragSession;
@@ -1543,26 +768,11 @@ export class KonvaSheetScene {
 
     this.onSelectionDragMove(target, pos);
     this.groupDragSession = null;
-
-    const collectEntries = (
-      entries: IterableIterator<[string, Pt]>,
-    ): Array<{ id: string; x: number; y: number }> => {
-      const result: Array<{ id: string; x: number; y: number }> = [];
-      for (const [id, start] of entries) {
-        const next = this.clampPos({
-          x: start.x + session.appliedDx,
-          y: start.y + session.appliedDy,
-        });
-        result.push({ id, x: next.x, y: next.y });
-      }
-      return result;
-    };
-
-    const nodePositions = collectEntries(session.nodeStartPositions.entries());
-    const labelPositions = collectEntries(
-      session.labelStartPositions.entries(),
-    );
-    const portPositions = collectEntries(session.portStartPositions.entries());
+    const { nodePositions, labelPositions, portPositions } =
+      collectGroupDragUpdates({
+        session,
+        clampPos: (nextPos) => this.clampPos(nextPos),
+      });
 
     if (this.callbacks.onMoveSelectionGroup) {
       this.callbacks.onMoveSelectionGroup({
@@ -1631,6 +841,7 @@ export class KonvaSheetScene {
     this.commentCullModels.clear();
     this.portCullModels.clear();
   }
+
   private wireContext(): KonvaSheetSceneWiresContext {
     return {
       stage: this.stage,
@@ -1690,27 +901,17 @@ export class KonvaSheetScene {
   render(state: SceneRenderState): void {
     const { project, sheet, selection, pendingEndpoint } = state;
     const pendingKey = this.pendingKey(pendingEndpoint);
-    const selectedNodeIds = new Set<string>();
-    const selectedLabelIds = new Set<string>();
-    const selectedCommentIds = new Set<string>();
-    const selectedPortIds = new Set<string>();
-    if (selection?.kind === "node") selectedNodeIds.add(selection.id);
-    else if (selection?.kind === "label") selectedLabelIds.add(selection.id);
-    else if (selection?.kind === "comment")
-      selectedCommentIds.add(selection.id);
-    else if (selection?.kind === "sheet-port")
-      selectedPortIds.add(selection.id);
-    else if (selection?.kind === "multi") {
-      for (const id of selection.nodeIds) selectedNodeIds.add(id);
-      for (const id of selection.labelIds) selectedLabelIds.add(id);
-      for (const id of selection.portIds) selectedPortIds.add(id);
-    }
-    const nextSelectedConnectionId =
-      selection?.kind === "wire-connection" ? selection.id : null;
-    if (this.selectedConnectionId !== nextSelectedConnectionId) {
+    const {
+      selectedNodeIds,
+      selectedLabelIds,
+      selectedCommentIds,
+      selectedPortIds,
+      selectedConnectionId,
+    } = buildSelectionSets(selection);
+    if (this.selectedConnectionId !== selectedConnectionId) {
       this.selectedWaypointIndex = null;
     }
-    this.selectedConnectionId = nextSelectedConnectionId;
+    this.selectedConnectionId = selectedConnectionId;
 
     this.lastState = state;
     this.resetTransientPositions();
@@ -1720,7 +921,10 @@ export class KonvaSheetScene {
     const { nodeLayouts } = buildSheetSceneLayout(project, sheet);
     this.nodeLayouts = nodeLayouts;
     this.rebuildCullModels(state);
-    this.sceneBounds = this.computeSceneBounds(state);
+    this.sceneBounds = computeSceneBounds({
+      state,
+      nodeLayouts: this.nodeLayouts,
+    });
     this.applyCamera();
     this.redrawWires(true);
 
