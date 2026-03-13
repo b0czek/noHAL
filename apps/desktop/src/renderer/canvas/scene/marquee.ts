@@ -1,4 +1,6 @@
 import type { Pt } from "../layout";
+import { clampRuntimePos } from "./bounds";
+import { screenToWorld } from "./camera";
 import { normalizedRect } from "./geometry";
 import type { Rect, SceneRuntime } from "./types";
 
@@ -31,8 +33,6 @@ export function cancelMarqueeSelection(runtime: SceneRuntime): void {
 export function finishMarqueeSelection(args: {
   runtime: SceneRuntime;
   thresholdPx: number;
-  clampPos: (pos: Pt) => Pt;
-  screenToWorld: (pos: Pt) => Pt;
   cancelMarqueeSelection: () => void;
   onClearSelection: () => void;
   onSelectWorldRect: (rect: Rect) => void;
@@ -40,8 +40,6 @@ export function finishMarqueeSelection(args: {
   const {
     runtime,
     thresholdPx,
-    clampPos,
-    screenToWorld,
     cancelMarqueeSelection,
     onClearSelection,
     onSelectWorldRect,
@@ -59,9 +57,13 @@ export function finishMarqueeSelection(args: {
   }
 
   const worldRect = normalizedRect(
-    clampPos(screenToWorld({ x: screenRect.x, y: screenRect.y })),
-    clampPos(
-      screenToWorld({
+    clampRuntimePos(
+      runtime,
+      screenToWorld(runtime.state.camera, { x: screenRect.x, y: screenRect.y }),
+    ),
+    clampRuntimePos(
+      runtime,
+      screenToWorld(runtime.state.camera, {
         x: screenRect.x + screenRect.width,
         y: screenRect.y + screenRect.height,
       }),

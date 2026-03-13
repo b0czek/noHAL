@@ -16,6 +16,7 @@ import {
   type KonvaSheetSceneWiresContext,
   redraw as redrawSceneWires,
 } from "../wires";
+import { clampScenePos } from "./bounds";
 import {
   applyCamera,
   centerCamera,
@@ -49,7 +50,6 @@ import { createSceneRuntime } from "./runtime";
 import { buildSelectionSets, selectItemsInWorldRect } from "./selection";
 import type { FocusTarget, Rect } from "./types";
 
-const SCENE_POSITION_PADDING = 2400;
 const MARQUEE_SELECT_THRESHOLD_PX = 4;
 const CULL_SCREEN_MARGIN_PX = 180;
 
@@ -76,8 +76,6 @@ export function createKonvaSheetScene(
   });
   applyCameraToRuntime();
   runtime.state.interactionCleanup = bindSceneInteractions(runtime, {
-    clampPos,
-    screenToWorld: (pos) => screenToWorld(runtime.state.camera, pos),
     syncPlacementPreview,
     applyCamera: applyCameraToRuntime,
     redrawWires: () => redrawWires(),
@@ -103,7 +101,6 @@ export function createKonvaSheetScene(
 
   const onSelectionDragMove = (target: DragSelectionTarget, pos: Pt): boolean =>
     moveDragSelection(runtime, target, pos, {
-      clampPos,
       redrawWires: () => redrawWires(),
     });
 
@@ -112,7 +109,6 @@ export function createKonvaSheetScene(
     pos: Pt,
   ): boolean => {
     const handled = endDragSelection(runtime, target, pos, {
-      clampPos,
       redrawWires: () => redrawWires(),
     });
     runtime.state.interaction.groupDragSession = null;
@@ -150,7 +146,7 @@ export function createKonvaSheetScene(
     },
 
     clientToWorld(clientX: number, clientY: number): Pt {
-      return clientToWorld(runtime, clientX, clientY, clampPos);
+      return clientToWorld(runtime, clientX, clientY);
     },
 
     focusTarget(target: FocusTarget): boolean {
@@ -276,14 +272,7 @@ export function createKonvaSheetScene(
   };
 
   function clampPos(pos: Pt): Pt {
-    const minX = -SCENE_POSITION_PADDING;
-    const minY = -SCENE_POSITION_PADDING;
-    const maxX = runtime.state.sceneBounds.maxX + SCENE_POSITION_PADDING;
-    const maxY = runtime.state.sceneBounds.maxY + SCENE_POSITION_PADDING;
-    return {
-      x: Math.max(minX, Math.min(maxX, pos.x)),
-      y: Math.max(minY, Math.min(maxY, pos.y)),
-    };
+    return clampScenePos(pos, runtime.state.sceneBounds);
   }
 
   function zoomByFactor(zoomFactor: number, pointer?: Pt): void {
@@ -403,8 +392,6 @@ export function createKonvaSheetScene(
     finishSceneMarqueeSelection({
       runtime,
       thresholdPx: MARQUEE_SELECT_THRESHOLD_PX,
-      clampPos,
-      screenToWorld: (pos) => screenToWorld(runtime.state.camera, pos),
       cancelMarqueeSelection,
       onClearSelection: () => {
         runtime.callbacks.onSelect(null);
@@ -453,7 +440,7 @@ export function createKonvaSheetScene(
       wireLayer: runtime.view.wireLayer,
       wireWorld: runtime.view.wireWorld,
       callbacks: runtime.callbacks,
-      clampPos,
+      clampPos: (pos) => clampScenePos(pos, runtime.state.sceneBounds),
       screenToWorld: (pos) => screenToWorld(runtime.state.camera, pos),
       getCursorPosCache: () => runtime.state.cursorPos,
       getLastState: () => runtime.state.lastState,

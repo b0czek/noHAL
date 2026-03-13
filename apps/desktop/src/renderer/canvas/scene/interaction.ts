@@ -1,14 +1,18 @@
 import type Konva from "konva";
 import type { Pt } from "../layout";
 import type { SceneRenderState } from "../types";
-import { isZoomInShortcut, isZoomOutShortcut, panCamera } from "./camera";
+import { clampRuntimePos } from "./bounds";
+import {
+  isZoomInShortcut,
+  isZoomOutShortcut,
+  panCamera,
+  screenToWorld,
+} from "./camera";
 import type { SceneRuntime } from "./types";
 
 const EVENT_NS = ".sceneInteraction";
 
 type SceneInteractionOps = {
-  clampPos: (pos: Pt) => Pt;
-  screenToWorld: (pos: Pt) => Pt;
   syncPlacementPreview: () => void;
   applyCamera: () => void;
   redrawWires: () => void;
@@ -25,8 +29,6 @@ export function bindSceneInteractions(
   ops: SceneInteractionOps,
 ): () => void {
   const {
-    clampPos,
-    screenToWorld,
     syncPlacementPreview,
     applyCamera,
     redrawWires,
@@ -38,6 +40,8 @@ export function bindSceneInteractions(
     updateMarqueeRect,
   } = ops;
   const { stage, container, placementHitRect } = runtime.view;
+  const toClampedWorld = (pos: Pt): Pt =>
+    clampRuntimePos(runtime, screenToWorld(runtime.state.camera, pos));
 
   const onKeyDown = (evt: KeyboardEvent) => {
     if (evt.code === "Space") runtime.state.interaction.spacePressed = true;
@@ -83,7 +87,7 @@ export function bindSceneInteractions(
     evt.cancelBubble = true;
     if ("preventDefault" in evt.evt) evt.evt.preventDefault();
     runtime.callbacks.onBackgroundClick?.(
-      clampPos(screenToWorld({ x: pos.x, y: pos.y })),
+      toClampedWorld({ x: pos.x, y: pos.y }),
     );
   });
 
@@ -95,9 +99,7 @@ export function bindSceneInteractions(
   stage.on(`mousemove${EVENT_NS} touchmove${EVENT_NS}`, () => {
     const pos = stage.getPointerPosition();
     const screenPos = pos ? { x: pos.x, y: pos.y } : null;
-    runtime.state.cursorPos = screenPos
-      ? clampPos(screenToWorld(screenPos))
-      : null;
+    runtime.state.cursorPos = screenPos ? toClampedWorld(screenPos) : null;
     syncPlacementPreview();
 
     const { interaction } = runtime.state;
@@ -141,7 +143,7 @@ export function bindSceneInteractions(
       evt.cancelBubble = true;
       evt.evt.preventDefault();
       runtime.callbacks.onBackgroundClick?.(
-        clampPos(screenToWorld({ x: pos.x, y: pos.y })),
+        toClampedWorld({ x: pos.x, y: pos.y }),
       );
       return;
     }

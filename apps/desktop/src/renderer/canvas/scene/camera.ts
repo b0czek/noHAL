@@ -1,17 +1,17 @@
 import type { Pt } from "../layout";
+import { clampRuntimePos, sceneWorldExtents } from "./bounds";
 import type { CameraState, SceneBounds, SceneRuntime } from "./types";
 
 const CAMERA_OVERSCROLL_PX = 220;
-const SCENE_POSITION_PADDING = 2400;
 
 export function clientToWorld(
   runtime: SceneRuntime,
   clientX: number,
   clientY: number,
-  clampPos: (pos: Pt) => Pt,
 ): Pt {
   const rect = runtime.view.container.getBoundingClientRect();
-  return clampPos(
+  return clampRuntimePos(
+    runtime,
     screenToWorld(runtime.state.camera, {
       x: clientX - rect.left,
       y: clientY - rect.top,
@@ -148,30 +148,27 @@ function clampCamera(
   },
 ): void {
   const { stageWidth, stageHeight, sceneBounds } = args;
-  const minWorldX = -SCENE_POSITION_PADDING;
-  const minWorldY = -SCENE_POSITION_PADDING;
-  const maxWorldX = sceneBounds.maxX + SCENE_POSITION_PADDING;
-  const maxWorldY = sceneBounds.maxY + SCENE_POSITION_PADDING;
-  const scaledWorldW = (maxWorldX - minWorldX) * camera.scale;
-  const scaledWorldH = (maxWorldY - minWorldY) * camera.scale;
+  const world = sceneWorldExtents(sceneBounds);
+  const scaledWorldW = (world.maxX - world.minX) * camera.scale;
+  const scaledWorldH = (world.maxY - world.minY) * camera.scale;
 
   if (scaledWorldW <= stageWidth - CAMERA_OVERSCROLL_PX * 2) {
     camera.x = Math.round(
-      (stageWidth - scaledWorldW) / 2 - minWorldX * camera.scale,
+      (stageWidth - scaledWorldW) / 2 - world.minX * camera.scale,
     );
   } else {
-    const minX = stageWidth - CAMERA_OVERSCROLL_PX - maxWorldX * camera.scale;
-    const maxX = CAMERA_OVERSCROLL_PX - minWorldX * camera.scale;
+    const minX = stageWidth - CAMERA_OVERSCROLL_PX - world.maxX * camera.scale;
+    const maxX = CAMERA_OVERSCROLL_PX - world.minX * camera.scale;
     camera.x = Math.max(minX, Math.min(maxX, camera.x));
   }
 
   if (scaledWorldH <= stageHeight - CAMERA_OVERSCROLL_PX * 2) {
     camera.y = Math.round(
-      (stageHeight - scaledWorldH) / 2 - minWorldY * camera.scale,
+      (stageHeight - scaledWorldH) / 2 - world.minY * camera.scale,
     );
   } else {
-    const minY = stageHeight - CAMERA_OVERSCROLL_PX - maxWorldY * camera.scale;
-    const maxY = CAMERA_OVERSCROLL_PX - minWorldY * camera.scale;
+    const minY = stageHeight - CAMERA_OVERSCROLL_PX - world.maxY * camera.scale;
+    const maxY = CAMERA_OVERSCROLL_PX - world.minY * camera.scale;
     camera.y = Math.max(minY, Math.min(maxY, camera.y));
   }
 }

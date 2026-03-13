@@ -1,5 +1,6 @@
 import type { Pt } from "../layout";
 import type { DragSelectionTarget } from "../renderables";
+import { clampRuntimePos } from "./bounds";
 import {
   buildGroupDragSession,
   collectGroupDragUpdates,
@@ -8,7 +9,6 @@ import {
 import type { GroupDragSession, SceneRuntime } from "./types";
 
 type DragSelectionOps = {
-  clampPos: (pos: Pt) => Pt;
   redrawWires: () => void;
 };
 
@@ -38,16 +38,17 @@ export function moveDragSelection(
   if (session.anchor.kind !== target.kind || session.anchor.id !== target.id) {
     return false;
   }
+  const clampPos = (nextPos: Pt) => clampRuntimePos(runtime, nextPos);
 
   const constrained = constrainGroupDragDelta({
     session,
     dx: pos.x - session.anchorStartPos.x,
     dy: pos.y - session.anchorStartPos.y,
-    clampPos: ops.clampPos,
+    clampPos,
   });
   session.appliedDx = constrained.x;
   session.appliedDy = constrained.y;
-  applyGroupDragSessionPositions(runtime, session, ops.clampPos);
+  applyGroupDragSessionPositions(runtime, session);
   ops.redrawWires();
   return true;
 }
@@ -63,13 +64,14 @@ export function endDragSelection(
   if (session.anchor.kind !== target.kind || session.anchor.id !== target.id) {
     return false;
   }
+  const clampPos = (nextPos: Pt) => clampRuntimePos(runtime, nextPos);
 
   moveDragSelection(runtime, target, pos, ops);
 
   const { nodePositions, labelPositions, portPositions } =
     collectGroupDragUpdates({
       session,
-      clampPos: ops.clampPos,
+      clampPos,
     });
 
   if (runtime.callbacks.onMoveSelectionGroup) {
@@ -96,14 +98,13 @@ export function endDragSelection(
 function applyGroupDragSessionPositions(
   runtime: SceneRuntime,
   session: GroupDragSession,
-  clampPos: (pos: Pt) => Pt,
 ): void {
   const moveAll = (
     entries: IterableIterator<[string, Pt]>,
     kind: DragSelectionTarget["kind"],
   ) => {
     for (const [id, start] of entries) {
-      const next = clampPos({
+      const next = clampRuntimePos(runtime, {
         x: start.x + session.appliedDx,
         y: start.y + session.appliedDy,
       });
