@@ -83,7 +83,7 @@ export default function Canvas() {
       selection: state.selection,
       pendingEndpoint: state.pendingEndpoint,
       pendingWirePoints: state.pendingWirePoints,
-      placementActive: placementMode() !== null,
+      placement: placementMode(),
     });
   });
 
@@ -100,7 +100,7 @@ export default function Canvas() {
       selection: state.selection,
       pendingEndpoint: state.pendingEndpoint,
       pendingWirePoints: state.pendingWirePoints,
-      placementActive: placementMode() !== null,
+      placement: placementMode(),
     });
   });
 

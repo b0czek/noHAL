@@ -14,6 +14,16 @@ export type SceneSelection =
   | { kind: "multi"; nodeIds: string[]; labelIds: string[]; portIds: string[] }
   | null;
 
+export type ScenePlacement =
+  | { kind: "subsheet" }
+  | { kind: "comment" }
+  | { kind: "label"; scope: "local" | "global" }
+  | {
+      kind: "sheet-port";
+      direction: "in" | "out" | "io";
+      type: "bit" | "float" | "s32" | "u32" | "s64" | "u64" | "port";
+    };
+
 export type SceneContextMenuTarget =
   | { kind: "node"; id: string; nodeKind: "component" | "sheet" }
   | { kind: "label"; id: string }
@@ -55,5 +65,5 @@ export interface SceneRenderState {
   selection: SceneSelection;
   pendingEndpoint: SheetEndpointRef | null;
   pendingWirePoints: XY[];
-  placementActive: boolean;
+  placement: ScenePlacement | null;
 }

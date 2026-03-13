@@ -4,14 +4,40 @@ import type {
   SheetEndpointRef,
 } from "@nohal/core/src/types";
 import Konva from "konva";
-import { SCENE_HEIGHT, SCENE_WIDTH } from "./constants";
+import {
+  BASE_STROKE_WIDTH,
+  CORNER_RADIUS_MD,
+  FONT_MONO,
+  FONT_SANS,
+  HEADER_H,
+  NODE_WIDTH,
+  PIN_HALO_FILL,
+  PIN_HALO_RADIUS_PAD,
+  PIN_R,
+  PIN_STROKE,
+  PORT_LABEL_H,
+  PORT_PANEL_FILL,
+  SCENE_HEIGHT,
+  SCENE_WIDTH,
+  SELECTED_BORDER,
+  SELECTED_LABEL_BORDER,
+  SHEET_NODE_FILL,
+  SIDE_ROW_H,
+  TEXT_MUTED,
+  TEXT_PRIMARY,
+  TEXT_SOFT,
+} from "./constants";
 import {
   renderComments,
   renderLabels,
   renderNodes,
   renderPorts,
 } from "./konvaSheetSceneRenderables";
-import type { SceneCallbacks, SceneRenderState } from "./konvaSheetSceneTypes";
+import type {
+  SceneCallbacks,
+  ScenePlacement,
+  SceneRenderState,
+} from "./konvaSheetSceneTypes";
 import {
   deleteSelectedWaypoint as deleteWireSelectedWaypoint,
   getSplitLabelPositionsForConnection,
@@ -19,6 +45,7 @@ import {
   redrawWires as redrawSceneWires,
 } from "./konvaSheetSceneWires";
 import { buildSheetSceneLayout, type NodeLayout, type Pt } from "./layout";
+import { dirStroke, labelFill, typeFill } from "./theme";
 
 export type { SceneRenderState } from "./konvaSheetSceneTypes";
 
@@ -54,12 +81,16 @@ type CullModel = {
   rotationDeg: number;
 };
 
+type SceneSheetPortPlacement = Extract<ScenePlacement, { kind: "sheet-port" }>;
+
 export class KonvaSheetScene {
   private container: HTMLDivElement;
   private stage: Konva.Stage;
   private wireLayer: Konva.Layer;
   private mainLayer: Konva.Layer;
   private uiLayer: Konva.Layer;
+  private placementHitRect: Konva.Rect;
+  private previewWorld: Konva.Group;
   private wireWorld: Konva.Group;
   private mainWorld: Konva.Group;
   private marqueeRect: Konva.Rect;
@@ -108,7 +139,19 @@ export class KonvaSheetScene {
     });
     this.wireLayer = new Konva.Layer();
     this.mainLayer = new Konva.Layer();
-    this.uiLayer = new Konva.Layer({ listening: false });
+    this.uiLayer = new Konva.Layer();
+    this.placementHitRect = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: this.stage.width(),
+      height: this.stage.height(),
+      visible: false,
+      fill: "rgba(0,0,0,0.001)",
+    });
+    this.previewWorld = new Konva.Group({
+      listening: false,
+      visible: false,
+    });
     this.wireWorld = new Konva.Group();
     this.mainWorld = new Konva.Group();
     this.marqueeRect = new Konva.Rect({
@@ -122,6 +165,8 @@ export class KonvaSheetScene {
     });
     this.wireLayer.add(this.wireWorld);
     this.mainLayer.add(this.mainWorld);
+    this.uiLayer.add(this.placementHitRect);
+    this.uiLayer.add(this.previewWorld);
     this.uiLayer.add(this.marqueeRect);
     this.stage.add(this.wireLayer);
     this.stage.add(this.mainLayer);
@@ -164,12 +209,28 @@ export class KonvaSheetScene {
     window.addEventListener("keydown", this.onKeyDown, true);
     window.addEventListener("keyup", this.onKeyUp);
 
+    this.placementHitRect.on("mousedown touchstart", (evt) => {
+      if (!this.lastState?.placement) return;
+      const pos = this.stage.getPointerPosition();
+      if (!pos) return;
+      evt.cancelBubble = true;
+      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+      this.callbacks.onBackgroundClick?.(
+        this.clampPos(this.screenToWorld({ x: pos.x, y: pos.y })),
+      );
+    });
+    this.placementHitRect.on("contextmenu", (evt) => {
+      evt.cancelBubble = true;
+      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+    });
+
     this.stage.on("mousemove touchmove", () => {
       const pos = this.stage.getPointerPosition();
       const screenPos = pos ? { x: pos.x, y: pos.y } : null;
       this.cursorPos = screenPos
         ? this.clampPos(this.screenToWorld(screenPos))
         : null;
+      this.syncPlacementPreview();
 
       if (this.isPanning && screenPos && this.panLastScreenPos) {
         const dx = screenPos.x - this.panLastScreenPos.x;
@@ -192,13 +253,14 @@ export class KonvaSheetScene {
       this.panLastScreenPos = null;
       this.cancelMarqueeSelection();
       this.cursorPos = null;
+      this.syncPlacementPreview();
       if (this.lastState?.pendingEndpoint) this.redrawWires();
     });
     this.stage.on("mousedown touchstart", (evt) => {
       const pos = this.stage.getPointerPosition();
       if (
         pos &&
-        (this.lastState?.pendingEndpoint || this.lastState?.placementActive) &&
+        this.lastState?.pendingEndpoint &&
         evt.evt instanceof MouseEvent &&
         evt.evt.button === 0 &&
         !this.spacePressed &&
@@ -239,7 +301,7 @@ export class KonvaSheetScene {
     });
     this.stage.on("click tap", (evt) => {
       if (!this.isBackgroundTarget(evt.target)) return;
-      if (this.lastState?.pendingEndpoint || this.lastState?.placementActive) {
+      if (this.lastState?.pendingEndpoint || this.lastState?.placement) {
         return;
       }
       this.callbacks.onSelect(null);
@@ -283,6 +345,7 @@ export class KonvaSheetScene {
     const h = Math.max(240, Math.floor(height));
     if (this.stage.width() === w && this.stage.height() === h) return;
     this.stage.size({ width: w, height: h });
+    this.placementHitRect.size({ width: w, height: h });
     this.applyCamera();
     if (this.lastState) {
       this.redrawWires(true);
@@ -479,10 +542,229 @@ export class KonvaSheetScene {
     };
     this.wireWorld.setAttrs(transform);
     this.mainWorld.setAttrs(transform);
+    this.previewWorld.setAttrs(transform);
     this.updateCullVisibility();
     this.wireLayer.batchDraw();
     this.mainLayer.batchDraw();
+    this.syncPlacementPreview();
     this.callbacks.onCameraChange?.({ ...this.camera });
+  }
+
+  private previewPortName(
+    direction: SceneSheetPortPlacement["direction"],
+  ): string {
+    if (direction === "in") return "in_sig";
+    if (direction === "out") return "out_sig";
+    return "io_sig";
+  }
+
+  private previewPortSide(
+    direction: SceneSheetPortPlacement["direction"],
+  ): "left" | "right" | "top" {
+    if (direction === "in") return "right";
+    if (direction === "out") return "left";
+    return "top";
+  }
+
+  private buildPlacementPreview(placement: ScenePlacement): Konva.Group {
+    const group = new Konva.Group({
+      listening: false,
+      opacity: 0.84,
+    });
+
+    if (placement.kind === "subsheet") {
+      const width = NODE_WIDTH;
+      const height = HEADER_H + SIDE_ROW_H + 12;
+      group.add(
+        new Konva.Rect({
+          x: 0,
+          y: 0,
+          width,
+          height,
+          cornerRadius: 14,
+          fill: SHEET_NODE_FILL,
+          stroke: SELECTED_BORDER,
+          strokeWidth: 2,
+          dash: [8, 6],
+        }),
+      );
+      group.add(
+        new Konva.Text({
+          x: 10,
+          y: 8,
+          width: width - 58,
+          text: "Sheet",
+          fontFamily: FONT_SANS,
+          fontSize: 12,
+          fill: TEXT_PRIMARY,
+        }),
+      );
+      group.add(
+        new Konva.Text({
+          x: width - 46,
+          y: 8,
+          width: 40,
+          align: "right",
+          text: "sheet",
+          fontFamily: FONT_SANS,
+          fontSize: 11,
+          fill: TEXT_MUTED,
+        }),
+      );
+      return group;
+    }
+
+    if (placement.kind === "comment") {
+      const content = "Comment";
+      const size = this.estimateCommentSize(content);
+      group.add(
+        new Konva.Rect({
+          x: 0,
+          y: 0,
+          width: size.width,
+          height: size.height,
+          cornerRadius: CORNER_RADIUS_MD,
+          fill: "rgba(12, 24, 28, 0.72)",
+          stroke: SELECTED_BORDER,
+          strokeWidth: 2,
+          dash: [8, 6],
+        }),
+      );
+      group.add(
+        new Konva.Text({
+          x: 0,
+          y: 0,
+          text: content,
+          fontFamily: FONT_SANS,
+          fontSize: 14,
+          lineHeight: 1.25,
+          fill: TEXT_PRIMARY,
+          padding: 10,
+          listening: false,
+        }),
+      );
+      return group;
+    }
+
+    if (placement.kind === "label") {
+      const name = placement.scope === "global" ? "global_sig" : "sig";
+      const size = this.estimateLabelSize(placement.scope, name);
+      const scopeW = Math.ceil(placement.scope.length * 5.8);
+      group.add(
+        new Konva.Rect({
+          x: 0,
+          y: -size.height / 2,
+          width: size.width,
+          height: size.height,
+          cornerRadius: CORNER_RADIUS_MD,
+          fill: labelFill(placement.scope),
+          stroke: SELECTED_LABEL_BORDER,
+          strokeWidth: 2,
+          dash: [8, 6],
+        }),
+      );
+      group.add(
+        new Konva.Text({
+          x: 8,
+          y: -4,
+          text: placement.scope,
+          fontFamily: FONT_SANS,
+          fontSize: 10,
+          fill: TEXT_SOFT,
+          listening: false,
+        }),
+      );
+      group.add(
+        new Konva.Text({
+          x: 14 + scopeW + 6,
+          y: -2,
+          text: name,
+          fontFamily: FONT_MONO,
+          fontSize: 12,
+          fill: TEXT_PRIMARY,
+          listening: false,
+        }),
+      );
+      return group;
+    }
+
+    const name = this.previewPortName(placement.direction);
+    const width = Math.ceil(name.length * 7.2) + 20;
+    const side = this.previewPortSide(placement.direction);
+    let labelRectX = 12;
+    let labelRectY = -PORT_LABEL_H / 2;
+    if (side === "right") labelRectX = -width - 12;
+    if (side === "top") {
+      labelRectX = -width / 2;
+      labelRectY = 12;
+    }
+    group.add(
+      new Konva.Rect({
+        x: labelRectX,
+        y: labelRectY,
+        width,
+        height: PORT_LABEL_H,
+        cornerRadius: CORNER_RADIUS_MD,
+        fill: PORT_PANEL_FILL,
+        stroke: dirStroke(placement.direction),
+        strokeWidth: 2,
+        dash: [8, 6],
+      }),
+    );
+    group.add(
+      new Konva.Text({
+        x: labelRectX + 9,
+        y: labelRectY + 5,
+        text: name,
+        fontFamily: FONT_MONO,
+        fontSize: 12,
+        fill: TEXT_PRIMARY,
+        listening: false,
+      }),
+    );
+    group.add(
+      new Konva.Circle({
+        x: 0,
+        y: 0,
+        radius: PIN_R + PIN_HALO_RADIUS_PAD,
+        fill: PIN_HALO_FILL,
+        listening: false,
+      }),
+    );
+    group.add(
+      new Konva.Circle({
+        x: 0,
+        y: 0,
+        radius: PIN_R,
+        fill: typeFill(placement.type),
+        stroke: PIN_STROKE,
+        strokeWidth: BASE_STROKE_WIDTH,
+        listening: false,
+      }),
+    );
+    return group;
+  }
+
+  private syncPlacementPreview(): void {
+    const placement = this.lastState?.placement ?? null;
+    const hadHitRect = this.placementHitRect.visible();
+    const hadPreview = this.previewWorld.visible();
+    this.placementHitRect.visible(placement !== null);
+
+    if (!placement || !this.cursorPos) {
+      if (!hadHitRect && !hadPreview) return;
+      this.previewWorld.visible(false);
+      this.previewWorld.destroyChildren();
+      this.uiLayer.batchDraw();
+      return;
+    }
+
+    this.previewWorld.visible(true);
+    this.previewWorld.destroyChildren();
+    const preview = this.buildPlacementPreview(placement);
+    preview.position(this.cursorPos);
+    this.previewWorld.add(preview);
+    this.uiLayer.batchDraw();
   }
 
   private syncLayerOrder(position: ProjectWireLayerPosition): void {
