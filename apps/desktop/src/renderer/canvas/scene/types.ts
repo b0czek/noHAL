@@ -21,6 +21,12 @@ export type SceneBounds = {
   maxY: number;
 };
 
+export type CameraState = {
+  x: number;
+  y: number;
+  scale: number;
+};
+
 export type FocusTarget = {
   kind: "node" | "label" | "comment" | "sheet-port";
   id: string;

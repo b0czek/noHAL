@@ -21,22 +21,37 @@ import {
   redraw as redrawSceneWires,
 } from "../wires";
 import {
+  applyCamera,
+  centerCamera,
+  centerCameraOnWorldPoint,
+  clientToWorld,
+  screenToWorld,
+  zoomCameraByFactor,
+} from "./camera";
+import {
   computeSceneBounds,
   focusCenterFromCullModel,
   rebuildCullModels,
   updateMainCullVisibility,
   updateWireCullVisibility,
 } from "./culling";
-import { normalizedRect, viewportWorldRect } from "./geometry";
-import { buildPlacementPreview } from "./placementPreview";
 import {
-  buildGroupDragSession,
-  buildSelectionSets,
-  collectGroupDragUpdates,
-  constrainGroupDragDelta,
-  selectItemsInWorldRect,
-} from "./selection";
+  endDragSelection,
+  moveDragSelection,
+  startDragSelection,
+} from "./dragSelection";
+import { viewportWorldRect } from "./geometry";
+import { bindSceneInteractions } from "./interaction";
+import {
+  cancelMarqueeSelection,
+  finishMarqueeSelection,
+  startMarqueeSelection,
+  updateMarqueeRect,
+} from "./marquee";
+import { buildPlacementPreview } from "./placementPreview";
+import { buildSelectionSets, selectItemsInWorldRect } from "./selection";
 import type {
+  CameraState,
   CullModel,
   FocusTarget,
   GroupDragSession,
@@ -45,7 +60,6 @@ import type {
 } from "./types";
 
 const SCENE_POSITION_PADDING = 2400;
-const CAMERA_OVERSCROLL_PX = 220;
 const MARQUEE_SELECT_THRESHOLD_PX = 4;
 const CULL_SCREEN_MARGIN_PX = 180;
 
@@ -75,7 +89,7 @@ export class KonvaSheetScene {
   private commentCullModels = new Map<string, CullModel>();
   private portCullModels = new Map<string, CullModel>();
   private cursorPos: Pt | null = null;
-  private camera = { x: 0, y: 0, scale: 1 };
+  private camera: CameraState = { x: 0, y: 0, scale: 1 };
   private selectedConnectionId: string | null = null;
   private selectedWaypointIndex: number | null = null;
   private wireRedrawFrameId: number | null = null;
@@ -92,8 +106,7 @@ export class KonvaSheetScene {
     maxX: SCENE_WIDTH,
     maxY: SCENE_HEIGHT,
   };
-  private onKeyDown: (evt: KeyboardEvent) => void;
-  private onKeyUp: (evt: KeyboardEvent) => void;
+  private interactionCleanup: (() => void) | null = null;
 
   constructor(container: HTMLDivElement, callbacks: SceneCallbacks) {
     this.container = container;
@@ -137,168 +150,57 @@ export class KonvaSheetScene {
     this.stage.add(this.wireLayer);
     this.stage.add(this.mainLayer);
     this.stage.add(this.uiLayer);
-    this.centerCamera();
+    this.camera = centerCamera({
+      stageWidth: this.stage.width(),
+      stageHeight: this.stage.height(),
+      sceneBounds: this.sceneBounds,
+    });
     this.applyCamera();
-
-    this.onKeyDown = (evt) => {
-      if (evt.code === "Space") this.spacePressed = true;
-      const primaryModifier = evt.ctrlKey || evt.metaKey;
-      if (
-        primaryModifier &&
-        !evt.altKey &&
-        !this.isEditableTarget(evt.target) &&
-        this.isContainerVisible()
-      ) {
-        const isZoomIn = this.isZoomInShortcut(evt);
-        const isZoomOut = this.isZoomOutShortcut(evt);
-        if (isZoomIn || isZoomOut) {
-          this.zoomByFactor(isZoomIn ? 1.08 : 1 / 1.08);
-          evt.preventDefault();
-          evt.stopPropagation();
-          evt.stopImmediatePropagation();
-          return;
-        }
-      }
-      if (
-        (evt.key === "Delete" || evt.key === "Backspace") &&
-        !this.isEditableTarget(evt.target)
-      ) {
-        if (!this.deleteSelectedWaypoint()) return;
-        evt.preventDefault();
-        evt.stopPropagation();
-        evt.stopImmediatePropagation();
-      }
-    };
-    this.onKeyUp = (evt) => {
-      if (evt.code === "Space") this.spacePressed = false;
-    };
-    window.addEventListener("keydown", this.onKeyDown, true);
-    window.addEventListener("keyup", this.onKeyUp);
-
-    this.placementHitRect.on("mousedown touchstart", (evt) => {
-      if (!this.lastState?.placement) return;
-      const pos = this.stage.getPointerPosition();
-      if (!pos) return;
-      evt.cancelBubble = true;
-      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
-      this.callbacks.onBackgroundClick?.(
-        this.clampPos(this.screenToWorld({ x: pos.x, y: pos.y })),
-      );
-    });
-    this.placementHitRect.on("contextmenu", (evt) => {
-      evt.cancelBubble = true;
-      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
-    });
-
-    this.stage.on("mousemove touchmove", () => {
-      const pos = this.stage.getPointerPosition();
-      const screenPos = pos ? { x: pos.x, y: pos.y } : null;
-      this.cursorPos = screenPos
-        ? this.clampPos(this.screenToWorld(screenPos))
-        : null;
-      this.syncPlacementPreview();
-
-      if (this.isPanning && screenPos && this.panLastScreenPos) {
-        const dx = screenPos.x - this.panLastScreenPos.x;
-        const dy = screenPos.y - this.panLastScreenPos.y;
-        this.panLastScreenPos = screenPos;
-        this.camera.x += dx;
-        this.camera.y += dy;
-        this.applyCamera();
-      }
-
-      if (this.isMarqueeSelecting && screenPos) {
-        this.marqueeCurrentScreenPos = screenPos;
-        this.updateMarqueeRect();
-      }
-
-      if (this.lastState?.pendingEndpoint) this.redrawWires();
-    });
-    this.stage.on("mouseleave", () => {
-      this.isPanning = false;
-      this.panLastScreenPos = null;
-      this.cancelMarqueeSelection();
-      this.cursorPos = null;
-      this.syncPlacementPreview();
-      if (this.lastState?.pendingEndpoint) this.redrawWires();
-    });
-    this.stage.on("mousedown touchstart", (evt) => {
-      const pos = this.stage.getPointerPosition();
-      if (
-        pos &&
-        this.lastState?.pendingEndpoint &&
-        evt.evt instanceof MouseEvent &&
-        evt.evt.button === 0 &&
-        !this.spacePressed &&
-        this.isBackgroundTarget(evt.target)
-      ) {
-        evt.cancelBubble = true;
-        evt.evt.preventDefault();
-        this.callbacks.onBackgroundClick?.(
-          this.clampPos(this.screenToWorld({ x: pos.x, y: pos.y })),
-        );
-        return;
-      }
-
-      if (this.shouldStartMarquee(evt)) {
-        if (!pos) return;
-        evt.cancelBubble = true;
-        this.startMarqueeSelection({ x: pos.x, y: pos.y });
-        if ("preventDefault" in evt.evt) evt.evt.preventDefault();
-        return;
-      }
-
-      if (!this.shouldStartPan(evt)) return;
-      if (!pos) return;
-      evt.cancelBubble = true;
-      this.isPanning = true;
-      this.panLastScreenPos = { x: pos.x, y: pos.y };
-      this.container.style.cursor = "grabbing";
-      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
-    });
-    this.stage.on("mouseup touchend", () => {
-      if (this.isMarqueeSelecting) {
-        this.finishMarqueeSelection();
-        return;
-      }
-      this.isPanning = false;
-      this.panLastScreenPos = null;
-      this.container.style.cursor = "";
-    });
-    this.stage.on("click tap", (evt) => {
-      if (!this.isBackgroundTarget(evt.target)) return;
-      if (this.lastState?.pendingEndpoint || this.lastState?.placement) {
-        return;
-      }
-      this.callbacks.onSelect(null);
-    });
-    this.stage.on("wheel", (evt) => {
-      const wheelEvt = evt.evt;
-      evt.evt.preventDefault();
-
-      if (!(wheelEvt.ctrlKey || wheelEvt.metaKey)) {
-        const deltaScale =
-          wheelEvt.deltaMode === WheelEvent.DOM_DELTA_LINE
-            ? 16
-            : wheelEvt.deltaMode === WheelEvent.DOM_DELTA_PAGE
-              ? this.stage.height()
-              : 1;
-        this.camera.x -= wheelEvt.deltaX * deltaScale;
-        this.camera.y -= wheelEvt.deltaY * deltaScale;
-        this.applyCamera();
-        if (this.lastState?.pendingEndpoint) this.redrawWires();
-        return;
-      }
-
-      const pointer = this.stage.getPointerPosition();
-      if (!pointer) return;
-      this.zoomByFactor(wheelEvt.deltaY > 0 ? 1 / 1.08 : 1.08, pointer);
+    this.interactionCleanup = bindSceneInteractions({
+      stage: this.stage,
+      container: this.container,
+      placementHitRect: this.placementHitRect,
+      callbacks: this.callbacks,
+      getLastState: () => this.lastState,
+      getCamera: () => this.camera,
+      clampPos: (pos) => this.clampPos(pos),
+      screenToWorld: (pos) => screenToWorld(this.camera, pos),
+      syncPlacementPreview: () => this.syncPlacementPreview(),
+      applyCamera: () => this.applyCamera(),
+      redrawWires: () => this.redrawWires(),
+      zoomByFactor: (zoomFactor, pointer) =>
+        this.zoomByFactor(zoomFactor, pointer),
+      deleteSelectedWaypoint: () => this.deleteSelectedWaypoint(),
+      getSpacePressed: () => this.spacePressed,
+      setSpacePressed: (value) => {
+        this.spacePressed = value;
+      },
+      getIsPanning: () => this.isPanning,
+      setIsPanning: (value) => {
+        this.isPanning = value;
+      },
+      getPanLastScreenPos: () => this.panLastScreenPos,
+      setPanLastScreenPos: (value) => {
+        this.panLastScreenPos = value;
+      },
+      getIsMarqueeSelecting: () => this.isMarqueeSelecting,
+      setMarqueeCurrentScreenPos: (value) => {
+        this.marqueeCurrentScreenPos = value;
+      },
+      startMarqueeSelection: (screenPos) =>
+        this.startMarqueeSelection(screenPos),
+      cancelMarqueeSelection: () => this.cancelMarqueeSelection(),
+      finishMarqueeSelection: () => this.finishMarqueeSelection(),
+      updateMarqueeRect: () => this.updateMarqueeRect(),
+      setCursorPos: (pos) => {
+        this.cursorPos = pos;
+      },
     });
   }
 
   destroy(): void {
-    window.removeEventListener("keydown", this.onKeyDown, true);
-    window.removeEventListener("keyup", this.onKeyUp);
+    this.interactionCleanup?.();
+    this.interactionCleanup = null;
     if (this.wireRedrawFrameId !== null) {
       window.cancelAnimationFrame(this.wireRedrawFrameId);
       this.wireRedrawFrameId = null;
@@ -321,12 +223,13 @@ export class KonvaSheetScene {
   }
 
   clientToWorld(clientX: number, clientY: number): Pt {
-    const rect = this.container.getBoundingClientRect();
-    const screen = {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-    };
-    return this.clampPos(this.screenToWorld(screen));
+    return clientToWorld({
+      clientX,
+      clientY,
+      container: this.container,
+      camera: this.camera,
+      clampPos: (pos) => this.clampPos(pos),
+    });
   }
 
   focusTarget(target: FocusTarget): boolean {
@@ -362,8 +265,12 @@ export class KonvaSheetScene {
     }
 
     if (!center) return false;
-    this.camera.x = this.stage.width() / 2 - center.x * this.camera.scale;
-    this.camera.y = this.stage.height() / 2 - center.y * this.camera.scale;
+    centerCameraOnWorldPoint({
+      camera: this.camera,
+      center,
+      stageWidth: this.stage.width(),
+      stageHeight: this.stage.height(),
+    });
     this.applyCamera();
     if (this.lastState?.pendingEndpoint) this.redrawWires();
     return true;
@@ -384,110 +291,33 @@ export class KonvaSheetScene {
     return endpoint ? endpointKey(endpoint) : null;
   }
 
-  private centerCamera(): void {
-    const stageW = this.stage.width();
-    const stageH = this.stage.height();
-    const worldW = this.sceneBounds.maxX - this.sceneBounds.minX;
-    const worldH = this.sceneBounds.maxY - this.sceneBounds.minY;
-    this.camera.scale = 1;
-    this.camera.x = Math.round(
-      (stageW - worldW) / 2 - this.sceneBounds.minX * this.camera.scale,
-    );
-    this.camera.y = Math.round(
-      (stageH - worldH) / 2 - this.sceneBounds.minY * this.camera.scale,
-    );
-  }
-
-  private isContainerVisible(): boolean {
-    if (!this.container.isConnected) return false;
-    const rect = this.container.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
-  }
-
-  private isZoomInShortcut(evt: KeyboardEvent): boolean {
-    return (
-      evt.key === "=" ||
-      evt.key === "+" ||
-      evt.code === "Equal" ||
-      evt.code === "NumpadAdd"
-    );
-  }
-
-  private isZoomOutShortcut(evt: KeyboardEvent): boolean {
-    return (
-      evt.key === "-" ||
-      evt.key === "_" ||
-      evt.code === "Minus" ||
-      evt.code === "NumpadSubtract"
-    );
-  }
-
   private zoomByFactor(zoomFactor: number, pointer?: Pt): void {
-    const zoomAnchor = pointer ?? this.stage.getPointerPosition();
-    const anchor = zoomAnchor ?? {
-      x: this.stage.width() / 2,
-      y: this.stage.height() / 2,
-    };
-    const oldScale = this.camera.scale;
-    const nextScale = Math.max(0.35, Math.min(2.8, oldScale * zoomFactor));
-    if (Math.abs(nextScale - oldScale) < 1e-6) return;
-    const worldAtPointer = this.screenToWorld({ x: anchor.x, y: anchor.y });
-    this.camera.scale = nextScale;
-    this.camera.x = anchor.x - worldAtPointer.x * nextScale;
-    this.camera.y = anchor.y - worldAtPointer.y * nextScale;
+    const changed = zoomCameraByFactor({
+      camera: this.camera,
+      zoomFactor,
+      pointer: pointer ?? this.stage.getPointerPosition(),
+      stageWidth: this.stage.width(),
+      stageHeight: this.stage.height(),
+    });
+    if (!changed) return;
     this.applyCamera();
     if (this.lastState?.pendingEndpoint) this.redrawWires();
   }
 
-  private clampCamera(): void {
-    const stageW = this.stage.width();
-    const stageH = this.stage.height();
-    const minWorldX = -SCENE_POSITION_PADDING;
-    const minWorldY = -SCENE_POSITION_PADDING;
-    const maxWorldX = this.sceneBounds.maxX + SCENE_POSITION_PADDING;
-    const maxWorldY = this.sceneBounds.maxY + SCENE_POSITION_PADDING;
-    const scaledWorldW = (maxWorldX - minWorldX) * this.camera.scale;
-    const scaledWorldH = (maxWorldY - minWorldY) * this.camera.scale;
-    const overscrollX = CAMERA_OVERSCROLL_PX;
-    const overscrollY = CAMERA_OVERSCROLL_PX;
-
-    if (scaledWorldW <= stageW - overscrollX * 2) {
-      this.camera.x = Math.round(
-        (stageW - scaledWorldW) / 2 - minWorldX * this.camera.scale,
-      );
-    } else {
-      const minX = stageW - overscrollX - maxWorldX * this.camera.scale;
-      const maxX = overscrollX - minWorldX * this.camera.scale;
-      this.camera.x = Math.max(minX, Math.min(maxX, this.camera.x));
-    }
-
-    if (scaledWorldH <= stageH - overscrollY * 2) {
-      this.camera.y = Math.round(
-        (stageH - scaledWorldH) / 2 - minWorldY * this.camera.scale,
-      );
-    } else {
-      const minY = stageH - overscrollY - maxWorldY * this.camera.scale;
-      const maxY = overscrollY - minWorldY * this.camera.scale;
-      this.camera.y = Math.max(minY, Math.min(maxY, this.camera.y));
-    }
-  }
-
   private applyCamera(): void {
-    this.clampCamera();
-    const transform = {
-      x: this.camera.x,
-      y: this.camera.y,
-      scaleX: this.camera.scale,
-      scaleY: this.camera.scale,
-    };
-    this.wireWorld.setAttrs(transform);
-    this.mainWorld.setAttrs(transform);
-    this.previewWorld.setAttrs(transform);
-    this.updateCullVisibility();
-    this.wireLayer.batchDraw();
-    this.mainLayer.batchDraw();
-    this.syncPlacementPreview();
-    this.callbacks.onCameraChange?.({ ...this.camera });
+    applyCamera({
+      camera: this.camera,
+      sceneBounds: this.sceneBounds,
+      stage: this.stage,
+      wireWorld: this.wireWorld,
+      mainWorld: this.mainWorld,
+      previewWorld: this.previewWorld,
+      wireLayer: this.wireLayer,
+      mainLayer: this.mainLayer,
+      updateCullVisibility: () => this.updateCullVisibility(),
+      syncPlacementPreview: () => this.syncPlacementPreview(),
+      onCameraChange: this.callbacks.onCameraChange,
+    });
   }
 
   private syncPlacementPreview(): void {
@@ -532,7 +362,7 @@ export class KonvaSheetScene {
       width: this.stage.width(),
       height: this.stage.height(),
       margin: CULL_SCREEN_MARGIN_PX,
-      screenToWorld: (pos) => this.screenToWorld(pos),
+      screenToWorld: (pos) => screenToWorld(this.camera, pos),
     });
   }
 
@@ -566,72 +396,64 @@ export class KonvaSheetScene {
     this.portCullModels = models.portCullModels;
   }
 
-  private screenToWorld(pos: Pt): Pt {
-    return {
-      x: (pos.x - this.camera.x) / this.camera.scale,
-      y: (pos.y - this.camera.y) / this.camera.scale,
-    };
-  }
-
   private startMarqueeSelection(screenPos: Pt): void {
-    this.isMarqueeSelecting = true;
-    this.marqueeStartScreenPos = screenPos;
-    this.marqueeCurrentScreenPos = screenPos;
-    this.container.style.cursor = "crosshair";
-    this.updateMarqueeRect();
+    startMarqueeSelection({
+      screenPos,
+      container: this.container,
+      setIsMarqueeSelecting: (value) => {
+        this.isMarqueeSelecting = value;
+      },
+      setMarqueeStartScreenPos: (value) => {
+        this.marqueeStartScreenPos = value;
+      },
+      setMarqueeCurrentScreenPos: (value) => {
+        this.marqueeCurrentScreenPos = value;
+      },
+      updateMarqueeRect: () => this.updateMarqueeRect(),
+    });
   }
 
   private cancelMarqueeSelection(): void {
-    if (!this.isMarqueeSelecting && !this.marqueeRect.visible()) return;
-    this.isMarqueeSelecting = false;
-    this.marqueeStartScreenPos = null;
-    this.marqueeCurrentScreenPos = null;
-    this.marqueeRect.hide();
-    this.uiLayer.batchDraw();
-    if (!this.isPanning) this.container.style.cursor = "";
+    cancelMarqueeSelection({
+      isMarqueeSelecting: this.isMarqueeSelecting,
+      marqueeRect: this.marqueeRect,
+      uiLayer: this.uiLayer,
+      isPanning: this.isPanning,
+      container: this.container,
+      setIsMarqueeSelecting: (value) => {
+        this.isMarqueeSelecting = value;
+      },
+      setMarqueeStartScreenPos: (value) => {
+        this.marqueeStartScreenPos = value;
+      },
+      setMarqueeCurrentScreenPos: (value) => {
+        this.marqueeCurrentScreenPos = value;
+      },
+    });
   }
 
   private finishMarqueeSelection(): void {
-    const start = this.marqueeStartScreenPos;
-    const end = this.marqueeCurrentScreenPos ?? start;
-    this.cancelMarqueeSelection();
-    if (!start || !end) return;
-
-    const screenRect = normalizedRect(start, end);
-    if (
-      screenRect.width < MARQUEE_SELECT_THRESHOLD_PX &&
-      screenRect.height < MARQUEE_SELECT_THRESHOLD_PX
-    ) {
-      this.callbacks.onSelect(null);
-      return;
-    }
-
-    const worldA = this.clampPos(
-      this.screenToWorld({ x: screenRect.x, y: screenRect.y }),
-    );
-    const worldB = this.clampPos(
-      this.screenToWorld({
-        x: screenRect.x + screenRect.width,
-        y: screenRect.y + screenRect.height,
-      }),
-    );
-    const worldRect = normalizedRect(worldA, worldB);
-    this.selectItemsInWorldRect(worldRect);
+    finishMarqueeSelection({
+      start: this.marqueeStartScreenPos,
+      end: this.marqueeCurrentScreenPos,
+      thresholdPx: MARQUEE_SELECT_THRESHOLD_PX,
+      clampPos: (pos) => this.clampPos(pos),
+      screenToWorld: (pos) => screenToWorld(this.camera, pos),
+      cancelMarqueeSelection: () => this.cancelMarqueeSelection(),
+      onClearSelection: () => {
+        this.callbacks.onSelect(null);
+      },
+      onSelectWorldRect: (rect) => this.selectItemsInWorldRect(rect),
+    });
   }
 
   private updateMarqueeRect(): void {
-    const start = this.marqueeStartScreenPos;
-    const end = this.marqueeCurrentScreenPos;
-    if (!start || !end) return;
-    const rect = normalizedRect(start, end);
-    this.marqueeRect.setAttrs({
-      x: rect.x,
-      y: rect.y,
-      width: rect.width,
-      height: rect.height,
-      visible: true,
+    updateMarqueeRect({
+      start: this.marqueeStartScreenPos,
+      end: this.marqueeCurrentScreenPos,
+      marqueeRect: this.marqueeRect,
+      uiLayer: this.uiLayer,
     });
-    this.uiLayer.batchDraw();
   }
 
   private selectItemsInWorldRect(rect: {
@@ -654,73 +476,17 @@ export class KonvaSheetScene {
     );
   }
 
-  private shouldStartMarquee(
-    evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
-  ): boolean {
-    return (
-      !this.lastState?.pendingEndpoint &&
-      evt.evt instanceof MouseEvent &&
-      evt.evt.button === 0 &&
-      !this.spacePressed &&
-      this.isBackgroundTarget(evt.target)
-    );
-  }
-
-  private setRenderedGroupPosition(target: DragSelectionTarget, pos: Pt): void {
-    const group =
-      target.kind === "node"
-        ? this.nodeGroups.get(target.id)
-        : target.kind === "label"
-          ? this.labelGroups.get(target.id)
-          : target.kind === "comment"
-            ? this.commentGroups.get(target.id)
-            : this.portGroups.get(target.id);
-    if (group) group.position(pos);
-  }
-
-  private applyGroupDragLivePosition(
-    target: DragSelectionTarget,
-    pos: Pt,
-  ): void {
-    if (target.kind === "node") this.liveNodePositions.set(target.id, pos);
-    else if (target.kind === "label")
-      this.liveLabelPositions.set(target.id, pos);
-    else if (target.kind === "comment")
-      this.liveCommentPositions.set(target.id, pos);
-    else this.livePortPositions.set(target.id, pos);
-  }
-
-  private applyGroupDragSessionPositions(session: GroupDragSession): void {
-    const moveAll = (
-      entries: IterableIterator<[string, Pt]>,
-      kind: DragSelectionTarget["kind"],
-    ) => {
-      for (const [id, start] of entries) {
-        const next = this.clampPos({
-          x: start.x + session.appliedDx,
-          y: start.y + session.appliedDy,
-        });
-        this.setRenderedGroupPosition({ kind, id }, next);
-        this.applyGroupDragLivePosition({ kind, id }, next);
-      }
-    };
-
-    moveAll(session.nodeStartPositions.entries(), "node");
-    moveAll(session.labelStartPositions.entries(), "label");
-    moveAll(session.portStartPositions.entries(), "sheet-port");
-  }
-
   private onSelectionDragStart = (
     target: DragSelectionTarget,
     pos: Pt,
   ): boolean => {
-    const session = buildGroupDragSession({
+    const session = startDragSelection({
       target,
-      anchorPos: pos,
       state: this.lastState,
       liveNodePositions: this.liveNodePositions,
       liveLabelPositions: this.liveLabelPositions,
       livePortPositions: this.livePortPositions,
+      pos,
     });
     this.groupDragSession = session;
     return session !== null;
@@ -730,102 +496,46 @@ export class KonvaSheetScene {
     target: DragSelectionTarget,
     pos: Pt,
   ): boolean => {
-    const session = this.groupDragSession;
-    if (!session) return false;
-    if (
-      session.anchor.kind !== target.kind ||
-      session.anchor.id !== target.id
-    ) {
-      return false;
-    }
-    const desiredDx = pos.x - session.anchorStartPos.x;
-    const desiredDy = pos.y - session.anchorStartPos.y;
-    const constrained = constrainGroupDragDelta({
-      session,
-      dx: desiredDx,
-      dy: desiredDy,
+    return moveDragSelection({
       clampPos: (nextPos) => this.clampPos(nextPos),
+      redrawWires: () => this.redrawWires(),
+      session: this.groupDragSession,
+      target,
+      pos,
+      nodeGroups: this.nodeGroups,
+      labelGroups: this.labelGroups,
+      commentGroups: this.commentGroups,
+      portGroups: this.portGroups,
+      liveNodePositions: this.liveNodePositions,
+      liveLabelPositions: this.liveLabelPositions,
+      liveCommentPositions: this.liveCommentPositions,
+      livePortPositions: this.livePortPositions,
     });
-    session.appliedDx = constrained.x;
-    session.appliedDy = constrained.y;
-    this.applyGroupDragSessionPositions(session);
-    this.redrawWires();
-    return true;
   };
 
   private onSelectionDragEnd = (
     target: DragSelectionTarget,
     pos: Pt,
   ): boolean => {
-    const session = this.groupDragSession;
-    if (!session) return false;
-    if (
-      session.anchor.kind !== target.kind ||
-      session.anchor.id !== target.id
-    ) {
-      return false;
-    }
-
-    this.onSelectionDragMove(target, pos);
+    const handled = endDragSelection({
+      callbacks: this.callbacks,
+      clampPos: (nextPos) => this.clampPos(nextPos),
+      redrawWires: () => this.redrawWires(),
+      session: this.groupDragSession,
+      target,
+      pos,
+      nodeGroups: this.nodeGroups,
+      labelGroups: this.labelGroups,
+      commentGroups: this.commentGroups,
+      portGroups: this.portGroups,
+      liveNodePositions: this.liveNodePositions,
+      liveLabelPositions: this.liveLabelPositions,
+      liveCommentPositions: this.liveCommentPositions,
+      livePortPositions: this.livePortPositions,
+    });
     this.groupDragSession = null;
-    const { nodePositions, labelPositions, portPositions } =
-      collectGroupDragUpdates({
-        session,
-        clampPos: (nextPos) => this.clampPos(nextPos),
-      });
-
-    if (this.callbacks.onMoveSelectionGroup) {
-      this.callbacks.onMoveSelectionGroup({
-        nodePositions,
-        labelPositions,
-        portPositions,
-      });
-      return true;
-    }
-
-    for (const entry of nodePositions)
-      this.callbacks.onMoveNode(entry.id, entry.x, entry.y);
-    for (const entry of labelPositions)
-      this.callbacks.onMoveLabel(entry.id, entry.x, entry.y);
-    for (const entry of portPositions)
-      this.callbacks.onMoveSheetPort(entry.id, entry.x, entry.y);
-    return true;
+    return handled;
   };
-
-  private shouldStartPan(
-    evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
-  ): boolean {
-    if (evt.evt instanceof MouseEvent) {
-      if (evt.evt.button === 1) return true;
-      if (this.spacePressed && evt.evt.button === 0) return true;
-      return false;
-    }
-
-    return (
-      this.spacePressed ||
-      (this.isBackgroundTarget(evt.target) && this.isTwoFingerTouch(evt.evt))
-    );
-  }
-
-  private isTwoFingerTouch(evt: TouchEvent): boolean {
-    return evt.touches.length >= 2 || evt.targetTouches.length >= 2;
-  }
-
-  private isBackgroundTarget(target: Konva.Node): boolean {
-    const className = target.getClassName();
-    return target === this.stage || className === "Layer";
-  }
-
-  private isEditableTarget(target: EventTarget | null): boolean {
-    if (!(target instanceof HTMLElement)) return false;
-    const tag = target.tagName;
-    return (
-      target.isContentEditable ||
-      tag === "INPUT" ||
-      tag === "TEXTAREA" ||
-      tag === "SELECT"
-    );
-  }
 
   private resetTransientPositions(): void {
     this.groupDragSession = null;
@@ -849,7 +559,7 @@ export class KonvaSheetScene {
       wireWorld: this.wireWorld,
       callbacks: this.callbacks,
       clampPos: (pos) => this.clampPos(pos),
-      screenToWorld: (pos) => this.screenToWorld(pos),
+      screenToWorld: (pos) => screenToWorld(this.camera, pos),
       getCursorPosCache: () => this.cursorPos,
       getLastState: () => this.lastState,
       getNodeLayouts: () => this.nodeLayouts,
