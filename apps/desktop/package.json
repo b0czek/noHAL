@@ -2,12 +2,21 @@
   "name": "@nohal/desktop",
   "version": "0.2.0",
   "description": "Visual HAL IDE for LinuxCNC",
+  "homepage": "https://github.com/b0czek/noHAL",
+  "author": {
+    "name": "Dariusz Majnert",
+    "email": "dariusz.majnert@gmail.com"
+  },
   "private": true,
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "pack": "pnpm run build && electron-builder --dir",
+    "dist": "pnpm run dist:linux",
+    "dist:linux": "pnpm run build && electron-builder --linux AppImage deb",
+    "dist:win": "pnpm run build && electron-builder --win nsis",
     "preview": "electron-vite preview",
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
@@ -29,11 +38,40 @@
     "@types/node": "^22.13.4",
     "autoprefixer": "^10.4.27",
     "electron": "^36.2.1",
+    "electron-builder": "^26.8.1",
     "electron-vite": "^3.1.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.7.3",
     "vite-plugin-solid": "^2.11.2",
     "vitest": "^3.2.4"
+  },
+  "build": {
+    "appId": "io.nohal.desktop",
+    "productName": "NoHAL",
+    "asar": true,
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "package.json",
+      "!out/**/*.map"
+    ],
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "linux": {
+      "category": "Development",
+      "maintainer": "Dariusz Majnert <dariusz.majnert@gmail.com>",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
   }
 }

@@ -39,6 +39,16 @@ pnpm install
 pnpm dev
 ```
 
+## Packaging
+
+Desktop packaging is configured with `electron-builder`.
+
+```bash
+pnpm dist:linux
+```
+
+This produces Linux `AppImage` and `deb` artifacts for the desktop app.
+
 ## Docs
 
 Documentation is available in the [`docs/`](./docs/) directory.

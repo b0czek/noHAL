@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "pnpm --filter @nohal/desktop dev",
     "build": "pnpm --filter @nohal/desktop build",
+    "pack": "pnpm --filter @nohal/desktop pack",
+    "dist": "pnpm --filter @nohal/desktop dist",
+    "dist:linux": "pnpm --filter @nohal/desktop dist:linux",
+    "dist:win": "pnpm --filter @nohal/desktop dist:win",
     "preview": "pnpm --filter @nohal/desktop preview",
     "test": "pnpm -r test",
     "test:watch": "pnpm --filter @nohal/desktop test:watch",
