@@ -3,4 +3,3 @@ dist/
 out/
 .electron-vite/
 *.log
-apps/desktop/assets/icon.png

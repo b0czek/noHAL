@@ -16,7 +16,7 @@
     "export:icon": "bash ./scripts/export-icon.sh",
     "pack": "pnpm run export:icon && pnpm run build && electron-builder --dir",
     "dist": "pnpm run dist:linux",
-    "dist:linux": "pnpm run export:icon && pnpm run build && electron-builder --linux AppImage deb",
+    "dist:linux": "pnpm run build && electron-builder --linux AppImage deb",
     "dist:win": "pnpm run export:icon && pnpm run build && electron-builder --win nsis",
     "preview": "electron-vite preview",
     "test": "vitest run -c vitest.config.ts",
