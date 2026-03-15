@@ -4,10 +4,11 @@ import SettingsDialogShell from "../../components/settings/SettingsDialogShell";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 import AddfQueueTab from "./AddfQueueTab";
+import InstanceTab from "./InstanceTab";
 import { SheetSettingsProvider } from "./SheetSettingsContext";
 import ThreadOutputsTab from "./ThreadOutputsTab";
 
-type SheetSettingsTab = "thread-outputs" | "addf-queue";
+type SheetSettingsTab = "instance" | "thread-outputs" | "addf-queue";
 
 interface SheetSettingsDialogProps extends OverlayDialogProps {
   sheetId: string;
@@ -16,7 +17,7 @@ interface SheetSettingsDialogProps extends OverlayDialogProps {
 export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
   const { t } = useI18n();
   const { state } = useEditorStore();
-  const [tab, setTab] = createSignal<SheetSettingsTab>("thread-outputs");
+  const [tab, setTab] = createSignal<SheetSettingsTab>("instance");
   const sheet = () => state.project.sheets[props.sheetId];
 
   return (
@@ -33,6 +34,11 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
             headerClass="border-b border-white/8 pb-4"
             descriptionClass="mono"
             tabs={[
+              {
+                value: "instance",
+                label: t("sheetSettings.tabInstance"),
+                content: <InstanceTab />,
+              },
               {
                 value: "thread-outputs",
                 label: t("sheetSettings.tabThreadOutputs"),

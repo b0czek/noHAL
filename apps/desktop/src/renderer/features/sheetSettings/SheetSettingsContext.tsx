@@ -1,5 +1,8 @@
 import { getSheetThreadOutputs } from "@nohal/core/src/sheet";
-import type { SheetThreadOutputDefinition } from "@nohal/core/src/types";
+import type {
+  SheetNode,
+  SheetThreadOutputDefinition,
+} from "@nohal/core/src/types";
 import {
   createContext,
   createMemo,
@@ -24,6 +27,16 @@ function createSheetSettingsState(sheetId: string) {
   const isRootSheet = createMemo(
     () => sheet()?.id === state.project.rootSheetId,
   );
+  const instanceNode = createMemo<SheetNode | undefined>(() => {
+    const currentSheet = sheet();
+    const parentSheetId = currentSheet?.parentSheetId;
+    if (!currentSheet || !parentSheetId) return undefined;
+    const parentSheet = state.project.sheets[parentSheetId];
+    return parentSheet?.nodes.find(
+      (node): node is SheetNode =>
+        node.kind === "sheet" && node.sheetId === currentSheet.id,
+    );
+  });
   const halThreads = createMemo(() => state.project.halThreads ?? []);
   const rows = createMemo(() =>
     buildSheetQueueRows(state.project, sheetId, {
@@ -57,6 +70,7 @@ function createSheetSettingsState(sheetId: string) {
   return {
     sheetId,
     sheet,
+    instanceNode,
     threadOutputs,
     isRootSheet,
     halThreads,
@@ -72,6 +86,8 @@ function createSheetSettingsState(sheetId: string) {
       actions.updateSheetThreadOutputHalBinding(sheetId, outputId, halThreadId),
     removeThreadOutput: (outputId: string) =>
       actions.removeSheetThreadOutput(sheetId, outputId),
+    renameInstance: (value: string) =>
+      actions.renameSheetInstance(sheetId, value),
     commitRows,
   };
 }

@@ -219,8 +219,16 @@ export const en = {
 
   "sheetSettings.ariaLabel": "Sheet Settings",
   "sheetSettings.title": "Sheet Settings",
+  "sheetSettings.tabInstance": "Instance",
   "sheetSettings.tabThreadOutputs": "Thread Outputs",
   "sheetSettings.tabAddfQueue": "addf Queue",
+  "sheetSettings.instanceTitle": "Sheet Instance",
+  "sheetSettings.instanceHelp":
+    "Set the instance name used when this sheet is placed in its parent sheet.",
+  "sheetSettings.instanceRootHelp":
+    "The root sheet does not have a parent instance name.",
+  "sheetSettings.instanceUnavailable":
+    "This sheet is not currently placed in a parent sheet.",
   "sheetSettings.threadOutputsTitle": "Sheet Thread Outputs",
   "sheetSettings.threadOutputsHelp":
     "Define this sheet's local scheduling outputs. Parent sheets map subsheet outputs into their own outputs.",

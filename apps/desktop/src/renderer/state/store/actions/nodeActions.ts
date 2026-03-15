@@ -14,6 +14,7 @@ import type {
   HalValueType,
   LabelScope,
   SheetComment,
+  SheetNode,
   XY,
 } from "@nohal/core/src/types";
 import {
@@ -31,6 +32,54 @@ import {
 import type { EditorStoreActionContext } from "./types";
 
 export function createNodeActions(deps: EditorStoreActionContext) {
+  const renameNodeInSheet = (
+    sheetId: string,
+    nodeId: string,
+    instanceName: string,
+  ): void => {
+    const trimmed = instanceName.trim();
+    if (!trimmed) return;
+    if (!isValidHalName(trimmed)) {
+      deps.setState("status", `Invalid HAL instance name: ${trimmed}`);
+      return;
+    }
+    const currentSheet = getSheet(deps.state.project, sheetId);
+    const currentNode = currentSheet.nodes.find((n) => n.id === nodeId);
+    if (!currentNode || currentNode.instanceName === trimmed) return;
+    if (currentNode.kind === "component") {
+      const component =
+        deps.state.project.library.components[currentNode.componentId];
+      if (fixedInstanceNameForComponent(component)) {
+        deps.setState(
+          "status",
+          `Instance name is fixed for component '${component?.halComponentName ?? currentNode.componentId}'`,
+        );
+        return;
+      }
+      if (componentUsesLockedCanonicalInstanceNames(component)) {
+        deps.setState(
+          "status",
+          `Instance name is fixed for component '${component?.halComponentName ?? currentNode.componentId}'`,
+        );
+        return;
+      }
+    }
+    if (
+      currentSheet.nodes.some(
+        (n) => n.id !== nodeId && n.instanceName === trimmed,
+      )
+    ) {
+      deps.setState("status", `Instance name already exists: ${trimmed}`);
+      return;
+    }
+    deps.withProject((project) => {
+      const sheet = getSheet(project, sheetId);
+      const node = sheet.nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+      node.instanceName = trimmed;
+    });
+  };
+
   return {
     async refreshComponentInStore(componentId: string): Promise<void> {
       const current = deps.state.project.library.components[componentId];
@@ -261,48 +310,22 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     },
 
     renameNode(nodeId: string, instanceName: string): void {
-      const activeSheetId = deps.state.activeSheetId;
-      const trimmed = instanceName.trim();
-      if (!trimmed) return;
-      if (!isValidHalName(trimmed)) {
-        deps.setState("status", `Invalid HAL instance name: ${trimmed}`);
-        return;
-      }
-      const currentSheet = getSheet(deps.state.project, activeSheetId);
-      const currentNode = currentSheet.nodes.find((n) => n.id === nodeId);
-      if (!currentNode || currentNode.instanceName === trimmed) return;
-      if (currentNode.kind === "component") {
-        const component =
-          deps.state.project.library.components[currentNode.componentId];
-        if (fixedInstanceNameForComponent(component)) {
-          deps.setState(
-            "status",
-            `Instance name is fixed for component '${component?.halComponentName ?? currentNode.componentId}'`,
-          );
-          return;
-        }
-        if (componentUsesLockedCanonicalInstanceNames(component)) {
-          deps.setState(
-            "status",
-            `Instance name is fixed for component '${component?.halComponentName ?? currentNode.componentId}'`,
-          );
-          return;
-        }
-      }
-      if (
-        currentSheet.nodes.some(
-          (n) => n.id !== nodeId && n.instanceName === trimmed,
-        )
-      ) {
-        deps.setState("status", `Instance name already exists: ${trimmed}`);
-        return;
-      }
-      deps.withProject((project) => {
-        const sheet = getSheet(project, activeSheetId);
-        const node = sheet.nodes.find((n) => n.id === nodeId);
-        if (!node) return;
-        node.instanceName = trimmed;
-      });
+      renameNodeInSheet(deps.state.activeSheetId, nodeId, instanceName);
+    },
+
+    renameSheetInstance(sheetId: string, instanceName: string): void {
+      const currentSheet = deps.state.project.sheets[sheetId];
+      if (!currentSheet?.parentSheetId) return;
+      const parentSheet = getSheet(
+        deps.state.project,
+        currentSheet.parentSheetId,
+      );
+      const subsheetNode = parentSheet.nodes.find(
+        (node): node is SheetNode =>
+          node.kind === "sheet" && node.sheetId === sheetId,
+      );
+      if (!subsheetNode) return;
+      renameNodeInSheet(parentSheet.id, subsheetNode.id, instanceName);
     },
 
     updateSheetNodeThreadMap(

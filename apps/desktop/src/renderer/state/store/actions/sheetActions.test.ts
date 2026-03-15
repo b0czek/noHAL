@@ -106,4 +106,37 @@ describe("sheet actions", () => {
       ]),
     );
   });
+
+  it("renames a subsheet instance from sheet settings", () => {
+    const { project, rootSheet } = createProjectFixture();
+    const childSheet = createSheet("Existing Sheet", project.rootSheetId);
+    project.sheets[childSheet.id] = childSheet;
+    rootSheet.nodes.push({
+      id: "node_existing_subsheet",
+      kind: "sheet",
+      sheetId: childSheet.id,
+      instanceName: "existing_sheet",
+      position: { x: 180, y: 60 },
+    });
+
+    const store = createEditorStore(project, (key) => key);
+
+    store.actions.renameSheetInstance(childSheet.id, "renamed_sheet");
+
+    const nextRootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    const sheetNode = nextRootSheet.nodes.find(
+      (node) => node.id === "node_existing_subsheet",
+    );
+
+    expect(sheetNode).toEqual(
+      expect.objectContaining({
+        kind: "sheet",
+        instanceName: "renamed_sheet",
+      }),
+    );
+    expect(store.state.project.sheets[childSheet.id]?.name).toBe(
+      "Existing Sheet",
+    );
+  });
 });
