@@ -8,6 +8,7 @@ import { createSignal, For, Show } from "solid-js";
 import type { LandingProjectFlowController } from "../app/useLandingProjectFlow";
 import GeneralSettingsDialog from "../features/generalSettings";
 import { useI18n } from "../i18n";
+import BrandLogo from "./BrandLogo";
 import StringSelect from "./form/StringSelect";
 import { Alert } from "./ui/alert";
 import { Button } from "./ui/button";
@@ -52,9 +53,11 @@ export default function LandingPage(props: LandingPageProps) {
         <Card class="overflow-hidden border-white/10 bg-[radial-gradient(circle_at_18%_12%,hsl(var(--accent)/0.14),transparent_38%),radial-gradient(circle_at_88%_14%,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,rgba(11,24,31,0.9),rgba(8,17,22,0.86))]">
           <CardHeader class="gap-4 pb-0">
             <div class="flex items-center gap-3">
-              <div class="grid size-12 place-items-center rounded-2xl bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--accent)))] text-lg font-semibold text-primary-foreground shadow-lg shadow-black/20">
-                N
-              </div>
+              <BrandLogo
+                class="size-12 shadow-lg shadow-black/20"
+                alt=""
+                aria-hidden="true"
+              />
               <div>
                 <div class="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                   NoHAL

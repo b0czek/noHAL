@@ -13,10 +13,11 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "pack": "pnpm run build && electron-builder --dir",
+    "export:icon": "bash ./scripts/export-icon.sh",
+    "pack": "pnpm run export:icon && pnpm run build && electron-builder --dir",
     "dist": "pnpm run dist:linux",
-    "dist:linux": "pnpm run build && electron-builder --linux AppImage deb",
-    "dist:win": "pnpm run build && electron-builder --win nsis",
+    "dist:linux": "pnpm run export:icon && pnpm run build && electron-builder --linux AppImage deb",
+    "dist:win": "pnpm run export:icon && pnpm run build && electron-builder --win nsis",
     "preview": "electron-vite preview",
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
@@ -52,6 +53,7 @@
     "asar": true,
     "npmRebuild": false,
     "directories": {
+      "buildResources": "assets",
       "output": "dist"
     },
     "files": [
@@ -62,6 +64,7 @@
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "linux": {
       "category": "Development",
+      "icon": "assets/icon.png",
       "maintainer": "Dariusz Majnert <dariusz.majnert@gmail.com>",
       "target": [
         "AppImage",

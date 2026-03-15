@@ -15,6 +15,7 @@ import {
   HiOutlineTag,
 } from "solid-icons/hi";
 import { createMemo, createSignal } from "solid-js";
+import BrandLogo from "../components/BrandLogo";
 import CanvasComponentMenu from "../components/CanvasComponentMenu";
 import { Button } from "../components/ui/button";
 import {
@@ -87,9 +88,11 @@ export default function EditorTopbar(props: EditorTopbarProps) {
         title={t("topbar.goToLanding")}
         aria-label={t("topbar.goToLanding")}
       >
-        <div class="grid size-10 place-items-center rounded-2xl bg-[linear-gradient(135deg,hsl(var(--primary)),hsl(var(--accent)))] text-base font-semibold text-primary-foreground shadow-lg shadow-black/20">
-          N
-        </div>
+        <BrandLogo
+          class="size-10 shadow-lg shadow-black/20"
+          alt=""
+          aria-hidden="true"
+        />
         <div>
           <div class="text-sm font-semibold tracking-[0.18em]">NoHAL</div>
           <div class="text-xs text-muted-foreground">
