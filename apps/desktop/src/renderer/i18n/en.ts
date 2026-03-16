@@ -376,10 +376,10 @@ export const en = {
   "iniEditor.ariaLabel": "INI Editor",
   "iniEditor.title": "INI Editor",
   "iniEditor.subtitle":
-    "Edit imported LinuxCNC INI values used by HAL `[SECTION]KEY` substitutions.",
+    "Edit LinuxCNC INI values used by HAL `[SECTION]KEY` substitutions.",
   "iniEditor.noConfigTitle": "No machine configuration loaded",
   "iniEditor.noConfigHelp":
-    "Create an empty INI here, or import a machine configuration from the New Project flow.",
+    "Create an empty INI here.",
   "iniEditor.createEmptyConfig": "Create Empty INI",
   "iniEditor.valuesTitle": "INI Values",
   "iniEditor.enterEditMode": "Edit",

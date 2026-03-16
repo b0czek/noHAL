@@ -137,9 +137,6 @@ export default function LandingPage(props: LandingPageProps) {
           <CardHeader class="flex-row items-center justify-between gap-4">
             <div>
               <CardTitle>{t("landing.recentProjects")}</CardTitle>
-              <CardDescription>
-                {t("landing.noRecentProjectsHint")}
-              </CardDescription>
             </div>
             <Button
               variant="secondary"
