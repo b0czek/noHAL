@@ -1,4 +1,10 @@
-# NoHAL
+<p align="center">
+  <img src="./apps/desktop/assets/icon.svg" alt="NoHAL icon" width="160" />
+</p>
+
+<h1 align="center">NoHAL</h1>
+
+<p align="center">Visual editor for LinuxCNC machine configuration.</p>
 
 NoHAL is an editor for LinuxCNC machine configuration.
 
