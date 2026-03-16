@@ -45,7 +45,7 @@ export interface MachineConfigHalFileSelection {
 
 export interface ProjectMachineConfig {
   source: "imported-linuxcnc-config";
-  ini: LinuxCncIniDocument;
+  userIni: LinuxCncIniDocument;
   halSources: MachineConfigHalSource[];
 }
 

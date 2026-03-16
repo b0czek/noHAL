@@ -1,5 +1,6 @@
 import { parseHalImportDraft } from "./halImport";
 import { collectLinuxCncHalReferences, parseLinuxCncIni } from "./linuxcncIni";
+import { stripManagedEntriesFromIni } from "./machineConfig/shared";
 import type {
   CoreIo,
   LinuxCncIniDocument,
@@ -368,7 +369,7 @@ export const buildMachineConfigImportDraft =
     return {
       machineConfig: {
         source: "imported-linuxcnc-config",
-        ini,
+        userIni: stripManagedEntriesFromIni(ini),
         halSources,
       },
       halImport: halImportDraft,

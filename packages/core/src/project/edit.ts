@@ -62,17 +62,17 @@ export function addMachineIniSection(
   project: NoHALProject,
 ): LinuxCncIniSection {
   const { machineConfig } = ensureMachineConfig(project);
-  const nextLine = Math.max(0, machineConfig.ini.lineCount) + 1;
+  const nextLine = Math.max(0, machineConfig.userIni.lineCount) + 1;
   const section: LinuxCncIniSection = {
     name: nextUniqueIniLabel(
       "SECTION",
-      machineConfig.ini.sections.map((candidate) => candidate.name),
+      machineConfig.userIni.sections.map((candidate) => candidate.name),
     ),
     entries: [],
     line: nextLine,
   };
-  machineConfig.ini.sections.push(section);
-  machineConfig.ini.lineCount = nextLine;
+  machineConfig.userIni.sections.push(section);
+  machineConfig.userIni.lineCount = nextLine;
   return section;
 }
 
@@ -80,7 +80,7 @@ export function removeMachineIniSection(
   project: NoHALProject,
   sectionIndex: number,
 ): LinuxCncIniSection | null {
-  const sections = project.machineConfig?.ini.sections;
+  const sections = project.machineConfig?.userIni.sections;
   const section = sections?.[sectionIndex];
   if (!sections || !section) return null;
   sections.splice(sectionIndex, 1);
@@ -92,7 +92,7 @@ export function updateMachineIniSectionName(
   sectionIndex: number,
   name: string,
 ): boolean {
-  const section = project.machineConfig?.ini.sections[sectionIndex];
+  const section = project.machineConfig?.userIni.sections[sectionIndex];
   if (!section || section.name === name) return false;
   section.name = name;
   return true;
@@ -103,9 +103,9 @@ export function addMachineIniField(
   sectionIndex: number,
 ): LinuxCncIniEntry | null {
   const machineConfig = project.machineConfig;
-  const targetSection = machineConfig?.ini.sections[sectionIndex];
+  const targetSection = machineConfig?.userIni.sections[sectionIndex];
   if (!machineConfig || !targetSection) return null;
-  const nextLine = Math.max(0, machineConfig.ini.lineCount) + 1;
+  const nextLine = Math.max(0, machineConfig.userIni.lineCount) + 1;
   const entry: LinuxCncIniEntry = {
     key: nextUniqueIniLabel(
       "KEY",
@@ -115,7 +115,7 @@ export function addMachineIniField(
     line: nextLine,
   };
   targetSection.entries.push(entry);
-  machineConfig.ini.lineCount = nextLine;
+  machineConfig.userIni.lineCount = nextLine;
   return entry;
 }
 
@@ -124,7 +124,8 @@ export function removeMachineIniField(
   sectionIndex: number,
   entryIndex: number,
 ): LinuxCncIniEntry | null {
-  const entries = project.machineConfig?.ini.sections[sectionIndex]?.entries;
+  const entries =
+    project.machineConfig?.userIni.sections[sectionIndex]?.entries;
   const entry = entries?.[entryIndex];
   if (!entries || !entry) return null;
   entries.splice(entryIndex, 1);
@@ -138,7 +139,7 @@ export function updateMachineIniKey(
   key: string,
 ): boolean {
   const entry =
-    project.machineConfig?.ini.sections[sectionIndex]?.entries[entryIndex];
+    project.machineConfig?.userIni.sections[sectionIndex]?.entries[entryIndex];
   if (!entry || entry.key === key) return false;
   entry.key = key;
   return true;
@@ -151,7 +152,7 @@ export function updateMachineIniValue(
   value: string,
 ): boolean {
   const entry =
-    project.machineConfig?.ini.sections[sectionIndex]?.entries[entryIndex];
+    project.machineConfig?.userIni.sections[sectionIndex]?.entries[entryIndex];
   if (!entry || entry.value === value) return false;
   entry.value = value;
   return true;

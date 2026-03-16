@@ -14,10 +14,10 @@ describe("project edit helpers", () => {
     const section = addMachineIniSection(project);
     const field = addMachineIniField(project, 0);
 
-    expect(project.machineConfig?.ini.sections).toHaveLength(1);
+    expect(project.machineConfig?.userIni.sections).toHaveLength(1);
     expect(section.name).toBe("SECTION");
     expect(field?.key).toBe("KEY");
-    expect(project.machineConfig?.ini.lineCount).toBe(2);
+    expect(project.machineConfig?.userIni.lineCount).toBe(2);
   });
 
   it("updates the project wire layer position", () => {

@@ -420,9 +420,9 @@ export function useMachineImportFlow({
       }
       const opened = await actions.openPreparedProject(result.project, {
         status: t("landing.importedMachineStatus", {
-          suffix: machineImportFlow.machineConfigImport?.machineConfig.ini
+          suffix: machineImportFlow.machineConfigImport?.machineConfig.userIni
             .sourcePath
-            ? `: ${machineImportFlow.machineConfigImport.machineConfig.ini.sourcePath}`
+            ? `: ${machineImportFlow.machineConfigImport.machineConfig.userIni.sourcePath}`
             : draft.sourcePath
               ? `: ${draft.sourcePath}`
               : "",

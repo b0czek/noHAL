@@ -378,10 +378,16 @@ export const en = {
   "iniEditor.subtitle":
     "Edit LinuxCNC INI values used by HAL `[SECTION]KEY` substitutions.",
   "iniEditor.noConfigTitle": "No machine configuration loaded",
-  "iniEditor.noConfigHelp":
-    "Create an empty INI here.",
+  "iniEditor.noConfigHelp": "Create an empty INI here.",
   "iniEditor.createEmptyConfig": "Create Empty INI",
   "iniEditor.valuesTitle": "INI Values",
+  "iniEditor.managedTitle": "NoHAL-controlled",
+  "iniEditor.managedHelp":
+    "Values tagged as managed are derived by NoHAL and exported read-only.",
+  "iniEditor.userTitle": "User-controlled",
+  "iniEditor.userHelp":
+    "These INI values stay editable and are preserved in the project.",
+  "iniEditor.managedBadge": "managed",
   "iniEditor.enterEditMode": "Edit",
   "iniEditor.exitEditMode": "Done",
   "iniEditor.addSection": "Add Section",
