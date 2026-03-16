@@ -6,12 +6,13 @@ import {
   HiOutlinePlus,
   HiOutlineTrash,
 } from "solid-icons/hi";
-import { createSignal, For, Show } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
+import { cloneProject } from "../../state/store/helpers";
 
 interface EffectiveIniEntryRow {
   key: string;
@@ -34,9 +35,11 @@ export default function IniTab() {
   const [isEditMode, setIsEditMode] = createSignal(false);
 
   const machineConfig = () => state.project.machineConfig;
-  const managedSections = () =>
-    buildManagedMachineConfigIniSections(state.project);
-  const effectiveSections = () => {
+  const projectSnapshot = createMemo(() => cloneProject(state.project));
+  const managedSections = createMemo(() =>
+    buildManagedMachineConfigIniSections(projectSnapshot()),
+  );
+  const effectiveSections = createMemo(() => {
     const userSections = machineConfig()?.userIni.sections ?? [];
     const managedByName = new Map(
       managedSections().map((section) => [section.name.toUpperCase(), section]),
@@ -83,7 +86,7 @@ export default function IniTab() {
     }
 
     return combined;
-  };
+  });
   const toggleEditMode = () => setIsEditMode((enabled) => !enabled);
   const addFieldToSection = (sectionName: string, userSectionIndex: number) => {
     if (userSectionIndex >= 0) {
