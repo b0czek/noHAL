@@ -17,8 +17,10 @@ export const BOTTOM_PIN_TEXT_PAD = 10;
 export const BOTTOM_PIN_DOT_GAP = 6;
 
 // Typography
-export const FONT_SANS = "IBM Plex Sans";
-export const FONT_MONO = "IBM Plex Mono";
+export const FONT_SANS =
+  '"IBM Plex Sans", "Iosevka Aile", system-ui, -apple-system, BlinkMacSystemFont, sans-serif';
+export const FONT_MONO =
+  '"Iosevka", "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace';
 
 // Text colors
 export const TEXT_PRIMARY = "#d7eee7";
