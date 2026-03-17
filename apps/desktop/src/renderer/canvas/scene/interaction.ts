@@ -11,6 +11,7 @@ import {
 import type { SceneRuntime } from "./types";
 
 const EVENT_NS = ".sceneInteraction";
+const BACKGROUND_TAP_THRESHOLD_PX = 4;
 
 type SceneInteractionOps = {
   syncPlacementPreview: () => void;
@@ -104,11 +105,9 @@ export function bindSceneInteractions(
 
     const { interaction } = runtime.state;
     if (interaction.isPanning && screenPos && interaction.panLastScreenPos) {
-      panCamera(
-        runtime.state.camera,
-        screenPos.x - interaction.panLastScreenPos.x,
-        screenPos.y - interaction.panLastScreenPos.y,
-      );
+      const dx = screenPos.x - interaction.panLastScreenPos.x;
+      const dy = screenPos.y - interaction.panLastScreenPos.y;
+      panCamera(runtime.state.camera, dx, dy);
       interaction.panLastScreenPos = screenPos;
       applyCamera();
     }
@@ -118,12 +117,25 @@ export function bindSceneInteractions(
       updateMarqueeRect();
     }
 
+    if (
+      interaction.backgroundTapStartScreenPos &&
+      screenPos &&
+      movementExceededThreshold(
+        interaction.backgroundTapStartScreenPos,
+        screenPos,
+        BACKGROUND_TAP_THRESHOLD_PX,
+      )
+    ) {
+      interaction.backgroundTapStartScreenPos = null;
+    }
+
     if (runtime.state.lastState?.pendingEndpoint) redrawWires();
   });
 
   stage.on(`mouseleave${EVENT_NS}`, () => {
     runtime.state.interaction.isPanning = false;
     runtime.state.interaction.panLastScreenPos = null;
+    runtime.state.interaction.backgroundTapStartScreenPos = null;
     cancelMarqueeSelection();
     runtime.state.cursorPos = null;
     syncPlacementPreview();
@@ -145,6 +157,7 @@ export function bindSceneInteractions(
       runtime.callbacks.onBackgroundClick?.(
         toClampedWorld({ x: pos.x, y: pos.y }),
       );
+      runtime.state.interaction.backgroundTapStartScreenPos = null;
       return;
     }
 
@@ -159,19 +172,40 @@ export function bindSceneInteractions(
       if (!pos) return;
       evt.cancelBubble = true;
       startMarqueeSelection({ x: pos.x, y: pos.y });
+      runtime.state.interaction.backgroundTapStartScreenPos = null;
       if ("preventDefault" in evt.evt) evt.evt.preventDefault();
       return;
     }
 
-    if (!shouldStartPan(stage, evt, runtime.state.interaction.spacePressed)) {
+    if (shouldStartPan(stage, evt, runtime.state.interaction.spacePressed)) {
+      if (!pos) return;
+      evt.cancelBubble = true;
+      runtime.state.interaction.isPanning = true;
+      runtime.state.interaction.panLastScreenPos = { x: pos.x, y: pos.y };
+      runtime.state.interaction.backgroundTapStartScreenPos = null;
+      container.style.cursor = "grabbing";
+      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
       return;
     }
-    if (!pos) return;
-    evt.cancelBubble = true;
-    runtime.state.interaction.isPanning = true;
-    runtime.state.interaction.panLastScreenPos = { x: pos.x, y: pos.y };
-    container.style.cursor = "grabbing";
-    if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+
+    if (
+      shouldTrackBackgroundTap(
+        stage,
+        evt,
+        runtime.state.lastState,
+        runtime.state.interaction.spacePressed,
+      )
+    ) {
+      if (!pos) return;
+      runtime.state.interaction.backgroundTapStartScreenPos = {
+        x: pos.x,
+        y: pos.y,
+      };
+      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+      return;
+    }
+
+    runtime.state.interaction.backgroundTapStartScreenPos = null;
   });
 
   stage.on(`mouseup${EVENT_NS} touchend${EVENT_NS}`, () => {
@@ -179,20 +213,18 @@ export function bindSceneInteractions(
       finishMarqueeSelection();
       return;
     }
+
+    const shouldClearSelection =
+      runtime.state.interaction.backgroundTapStartScreenPos !== null &&
+      !runtime.state.lastState?.pendingEndpoint &&
+      !runtime.state.lastState?.placement;
+
     runtime.state.interaction.isPanning = false;
     runtime.state.interaction.panLastScreenPos = null;
+    runtime.state.interaction.backgroundTapStartScreenPos = null;
     container.style.cursor = "";
-  });
 
-  stage.on(`click${EVENT_NS} tap${EVENT_NS}`, (evt) => {
-    if (!isBackgroundTarget(stage, evt.target)) return;
-    if (
-      runtime.state.lastState?.pendingEndpoint ||
-      runtime.state.lastState?.placement
-    ) {
-      return;
-    }
-    runtime.callbacks.onSelect(null);
+    if (shouldClearSelection) runtime.callbacks.onSelect(null);
   });
 
   stage.on(`wheel${EVENT_NS}`, (evt) => {
@@ -258,6 +290,33 @@ function shouldStartPan(
   return (
     spacePressed ||
     (isBackgroundTarget(stage, evt.target) && isTwoFingerTouch(evt.evt))
+  );
+}
+
+function shouldTrackBackgroundTap(
+  stage: Konva.Stage,
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+  state: SceneRenderState | null,
+  spacePressed: boolean,
+): boolean {
+  return (
+    !state?.pendingEndpoint &&
+    !state?.placement &&
+    evt.evt instanceof TouchEvent &&
+    !spacePressed &&
+    isBackgroundTarget(stage, evt.target) &&
+    !isTwoFingerTouch(evt.evt)
+  );
+}
+
+function movementExceededThreshold(
+  start: Pt,
+  current: Pt,
+  thresholdPx: number,
+) {
+  return (
+    Math.abs(current.x - start.x) >= thresholdPx ||
+    Math.abs(current.y - start.y) >= thresholdPx
   );
 }
 

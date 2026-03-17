@@ -69,6 +69,7 @@ export type SceneView = {
 export type SceneInteractionState = {
   isPanning: boolean;
   panLastScreenPos: Pt | null;
+  backgroundTapStartScreenPos: Pt | null;
   isMarqueeSelecting: boolean;
   marqueeStartScreenPos: Pt | null;
   marqueeCurrentScreenPos: Pt | null;
