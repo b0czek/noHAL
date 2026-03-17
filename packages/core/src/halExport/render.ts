@@ -10,6 +10,13 @@ interface RenderInput {
   postguiNetLines: string[];
 }
 
+export function renderShutdownHalOutput(
+  project: NoHALProject,
+): string | undefined {
+  if (project.shutdown.trim().length === 0) return undefined;
+  return `${project.shutdown.trimEnd()}\n`;
+}
+
 export function renderHalOutput({
   project,
   runtimeSections,

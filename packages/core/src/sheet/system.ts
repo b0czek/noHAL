@@ -20,6 +20,7 @@ const SYSTEM_SUBSHEET_INSTANCE_BASE = "system";
 const KNOWN_SYSTEM_HAL_COMPONENT_NAMES = new Set([
   "motion",
   "axis",
+  "halui",
   "joint",
   "spindle",
   "ini",

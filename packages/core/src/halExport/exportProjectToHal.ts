@@ -4,12 +4,13 @@ import type { ExportResult } from "./context";
 import { createExportContext } from "./context";
 import { collectNetLines } from "./nets";
 import { collectParamLines } from "./params";
-import { renderHalOutput } from "./render";
+import { renderHalOutput, renderShutdownHalOutput } from "./render";
 import { buildRuntimeSections } from "./runtime";
 import { traverseSheetInstance } from "./traversal";
 
 export function exportProjectToHal(project: NoHALProject): ExportResult {
   reconcileProject(project);
+  const shutdownText = renderShutdownHalOutput(project);
   const ctx = createExportContext();
   traverseSheetInstance(ctx, project, project.rootSheetId, [], []);
 
@@ -28,6 +29,7 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
     );
     return {
       text: "",
+      ...(shutdownText ? { shutdownText } : {}),
       warnings: Array.from(new Set(ctx.warnings)),
     };
   }
@@ -43,6 +45,7 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
 
   return {
     ...output,
+    ...(shutdownText ? { shutdownText } : {}),
     warnings: Array.from(new Set(ctx.warnings)),
   };
 }

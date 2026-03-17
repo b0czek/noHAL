@@ -1,8 +1,13 @@
 import { fixedExportStageForComponent } from "../componentSystem";
+import { reconcileHaluiManagedNodes } from "../halui";
 import { createId, slugify } from "../id";
 import { reconcileIniManagedNodes } from "../ini";
 import { reconcileIocontrolManagedNodes } from "../iocontrol";
 import { normalizeLinuxCncVersion } from "../linuxcncVersion";
+import {
+  createEmptyLinuxCncIniDocument,
+  normalizeProjectMachineConfig,
+} from "../machineConfig/shared";
 import { reconcileMotmodManagedNodes } from "../motmod";
 import {
   createDefaultSheetThreadOutputs,
@@ -21,6 +26,7 @@ import type {
   SheetPort,
 } from "../types";
 import { NOHAL_PROJECT_FORMAT, NOHAL_PROJECT_VERSION } from "./formats";
+import { migrateProjectDocumentToCurrentVersion } from "./migrations";
 
 export const REQUIRED_HAL_THREAD_NAME = "servo-thread";
 
@@ -100,12 +106,7 @@ function normalizeHalThreads(value: unknown): HalThreadDefinition[] {
 export function createEmptyMachineConfig(): ProjectMachineConfig {
   return {
     source: "imported-linuxcnc-config",
-    ini: {
-      parser: "nohal-ini-v1",
-      lineCount: 0,
-      sections: [],
-      warnings: [],
-    },
+    userIni: createEmptyLinuxCncIniDocument(),
     halSources: [],
   };
 }
@@ -129,10 +130,15 @@ export function createDefaultProjectUi(activeSheetId: string): ProjectUiConfig {
   };
 }
 
+function normalizeProjectShutdown(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
 export function reconcileProject(project: NoHALProject): NoHALProject {
   reconcileMotmodManagedNodes(project);
   reconcileIniManagedNodes(project);
   reconcileIocontrolManagedNodes(project);
+  reconcileHaluiManagedNodes(project);
   for (const sheet of Object.values(project.sheets)) {
     for (const node of sheet.nodes) {
       if (node.kind !== "component") continue;
@@ -214,6 +220,7 @@ export function createEmptyProject(name: string): NoHALProject {
     format: NOHAL_PROJECT_FORMAT,
     version: NOHAL_PROJECT_VERSION,
     name,
+    shutdown: "",
     target: {
       linuxcncVersion: "2.10",
       platform: "linux",
@@ -246,24 +253,30 @@ function normalizeProjectTarget(value: unknown): NoHALProject["target"] {
 function assertProjectShape(input: unknown): asserts input is NoHALProject {
   if (!input || typeof input !== "object")
     throw new Error("Project file is not an object");
-  const project = input as Partial<NoHALProject>;
+  const project = input as Record<string, unknown>;
   if (project.format !== NOHAL_PROJECT_FORMAT)
     throw new Error("Unsupported project format");
   if (project.version !== NOHAL_PROJECT_VERSION)
     throw new Error(`Unsupported project version: ${String(project.version)}`);
   if (!project.sheets || typeof project.sheets !== "object")
     throw new Error("Project has no sheets");
-  if (!project.rootSheetId || !(project.rootSheetId in project.sheets)) {
+  if (
+    typeof project.rootSheetId !== "string" ||
+    !(project.rootSheetId in project.sheets)
+  ) {
     throw new Error("Project rootSheetId is missing or invalid");
   }
 }
 
 export function parseNoHALProject(content: string): NoHALProject {
   const parsed = JSON.parse(content) as unknown;
-  assertProjectShape(parsed);
-  const project = parsed as NoHALProject;
+  const migrated = migrateProjectDocumentToCurrentVersion(parsed);
+  assertProjectShape(migrated);
+  const project = migrated;
   project.target = normalizeProjectTarget(project.target);
+  project.shutdown = normalizeProjectShutdown(project.shutdown);
   project.halThreads = normalizeHalThreads(project.halThreads);
+  project.machineConfig = normalizeProjectMachineConfig(project.machineConfig);
   project.motmod = normalizeMotmodConfig(project.motmod);
   project.ui = normalizeProjectUi(
     project.ui,

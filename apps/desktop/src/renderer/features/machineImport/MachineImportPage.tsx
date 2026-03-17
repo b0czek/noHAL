@@ -419,7 +419,7 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                               {t("common.file")}
                             </span>
                             <span class="mono max-w-[70%] truncate text-right">
-                              {flow().machineConfigImport?.machineConfig.ini
+                              {flow().machineConfigImport?.machineConfig.userIni
                                 .sourcePath ??
                                 draft().sourcePath ??
                                 t("common.unspecified")}

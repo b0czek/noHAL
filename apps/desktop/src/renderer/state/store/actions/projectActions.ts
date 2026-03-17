@@ -171,6 +171,14 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       });
     },
 
+    updateProjectShutdown(shutdown: string): void {
+      if (shutdown === deps.state.project.shutdown) return;
+      deps.withProject((project) => {
+        projectEdits.project.shutdown.update(project, shutdown);
+      });
+      deps.setStatusT("store.status.updatedProjectShutdown");
+    },
+
     updateProjectWireLayerPosition(position: ProjectWireLayerPosition): void {
       if (deps.state.project.ui.wireLayerPosition === position) return;
       deps.withProject((project) => {
@@ -207,7 +215,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     },
 
     removeMachineIniSection(sectionIndex: number): void {
-      if (!deps.state.project.machineConfig?.ini.sections[sectionIndex]) {
+      if (!deps.state.project.machineConfig?.userIni.sections[sectionIndex]) {
         deps.setStatusT("store.status.noMachineConfigLoaded");
         return;
       }
@@ -219,7 +227,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
 
     updateMachineIniSectionName(sectionIndex: number, name: string): void {
       const existing =
-        deps.state.project.machineConfig?.ini.sections[sectionIndex];
+        deps.state.project.machineConfig?.userIni.sections[sectionIndex];
       if (!existing) {
         deps.setStatusT("store.status.noMachineConfigLoaded");
         return;
@@ -236,7 +244,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     },
 
     addMachineIniField(sectionIndex: number): void {
-      if (!deps.state.project.machineConfig?.ini.sections[sectionIndex]) {
+      if (!deps.state.project.machineConfig?.userIni.sections[sectionIndex]) {
         deps.setStatusT("store.status.noMachineConfigLoaded");
         return;
       }
@@ -248,9 +256,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
 
     removeMachineIniField(sectionIndex: number, entryIndex: number): void {
       if (
-        !deps.state.project.machineConfig?.ini.sections[sectionIndex]?.entries[
-          entryIndex
-        ]
+        !deps.state.project.machineConfig?.userIni.sections[sectionIndex]
+          ?.entries[entryIndex]
       ) {
         deps.setStatusT("store.status.noMachineConfigLoaded");
         return;
@@ -271,9 +278,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       key: string,
     ): void {
       const existing =
-        deps.state.project.machineConfig?.ini.sections[sectionIndex]?.entries[
-          entryIndex
-        ];
+        deps.state.project.machineConfig?.userIni.sections[sectionIndex]
+          ?.entries[entryIndex];
       if (!existing) {
         deps.setStatusT("store.status.noMachineConfigLoaded");
         return;
@@ -296,9 +302,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       value: string,
     ): void {
       const existing =
-        deps.state.project.machineConfig?.ini.sections[sectionIndex]?.entries[
-          entryIndex
-        ];
+        deps.state.project.machineConfig?.userIni.sections[sectionIndex]
+          ?.entries[entryIndex];
       if (!existing) {
         deps.setStatusT("store.status.noMachineConfigLoaded");
         return;

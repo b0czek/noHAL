@@ -3,6 +3,7 @@ export * from "./componentStore";
 export * from "./componentSystem";
 export * from "./componentVisibility";
 export * from "./customComponent";
+export * from "./halui";
 export * from "./ini";
 export * from "./iocontrol";
 export * from "./motmod";

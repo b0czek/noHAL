@@ -214,6 +214,18 @@ describe("exportProjectToHal connection signal names", () => {
     expect(postguiText).toContain("net ui_sig src.out sink.in0");
   });
 
+  it("emits a separate shutdown HAL output when configured", () => {
+    const project = createEmptyProject("Shutdown Export");
+    project.shutdown = "setp machine-off true\n# keep final newline normalized";
+
+    const { text, shutdownText } = exportProjectToHal(project);
+
+    expect(text).toContain("# NoHAL HAL export");
+    expect(shutdownText).toBe(
+      "setp machine-off true\n# keep final newline normalized\n",
+    );
+  });
+
   it("emits motmod functions in addf and allows thread assignment from root sheet queue", () => {
     const project = createEmptyProject("Motmod Addf Functions");
     const rootSheet = project.sheets[project.rootSheetId];

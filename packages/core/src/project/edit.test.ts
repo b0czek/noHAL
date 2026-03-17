@@ -3,6 +3,7 @@ import {
   addMachineIniField,
   addMachineIniSection,
   createEmptyProject,
+  updateProjectShutdown,
   updateProjectWireLayerPosition,
   updateProjectWireStyle,
 } from "./index";
@@ -14,10 +15,10 @@ describe("project edit helpers", () => {
     const section = addMachineIniSection(project);
     const field = addMachineIniField(project, 0);
 
-    expect(project.machineConfig?.ini.sections).toHaveLength(1);
+    expect(project.machineConfig?.userIni.sections).toHaveLength(1);
     expect(section.name).toBe("SECTION");
     expect(field?.key).toBe("KEY");
-    expect(project.machineConfig?.ini.lineCount).toBe(2);
+    expect(project.machineConfig?.userIni.lineCount).toBe(2);
   });
 
   it("updates the project wire layer position", () => {
@@ -38,5 +39,13 @@ describe("project edit helpers", () => {
     expect(updateProjectWireStyle(project, "straight")).toBe(true);
     expect(project.ui.wireStyle).toBe("straight");
     expect(updateProjectWireStyle(project, "straight")).toBe(false);
+  });
+
+  it("updates the project shutdown HAL text", () => {
+    const project = createEmptyProject("Shutdown Edit");
+
+    expect(updateProjectShutdown(project, "setp estop-clear true")).toBe(true);
+    expect(project.shutdown).toBe("setp estop-clear true");
+    expect(updateProjectShutdown(project, "setp estop-clear true")).toBe(false);
   });
 });

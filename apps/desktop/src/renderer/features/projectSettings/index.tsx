@@ -7,10 +7,12 @@ import CustomComponentsTab from "./CustomComponentsTab";
 import GeneralTab from "./GeneralTab";
 import IniTab from "./IniTab";
 import MotmodTab from "./MotmodTab";
+import ShutdownTab from "./ShutdownTab";
 import ThreadsTab from "./ThreadsTab";
 
 type ProjectSettingsTab =
   | "general"
+  | "shutdown"
   | "motmod"
   | "threads"
   | "custom-components"
@@ -37,6 +39,11 @@ export default function ProjectSettingsDialog(
           value: "general",
           label: t("projectSettings.tabGeneral"),
           content: <GeneralTab />,
+        },
+        {
+          value: "shutdown",
+          label: t("projectSettings.tabShutdown"),
+          content: <ShutdownTab />,
         },
         {
           value: "motmod",

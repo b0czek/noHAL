@@ -148,6 +148,7 @@ export const en = {
   "projectSettings.tabMotmod": "motmod",
   "projectSettings.tabThreads": "HAL Threads",
   "projectSettings.tabCustomComponents": "Custom Components",
+  "projectSettings.tabShutdown": "Shutdown",
   "projectSettings.tabIniEditor": "INI Editor",
   "projectSettings.generalTitle": "General",
   "projectSettings.generalHelp": "Adjust project-wide editor settings.",
@@ -165,6 +166,12 @@ export const en = {
   "projectSettings.generalWireStyleRightAngle": "Right-angle",
   "projectSettings.generalWireStyleStraight": "Straight",
   "projectSettings.generalWireStyleCurved": "Curved",
+  "projectSettings.shutdownTitle": "Shutdown HAL",
+  "projectSettings.shutdownHelp":
+    "Edit an optional HAL sequence written to a dedicated shutdown file and referenced from [HAL]SHUTDOWN.",
+  "projectSettings.shutdownEditorHelp":
+    "This is exported verbatim to the generated shutdown HAL file when non-empty.",
+  "projectSettings.shutdownLoadingEditor": "Loading editor…",
   "projectSettings.motmodTitle": "Motion Module (motmod)",
   "projectSettings.motmodHelp": "Configure common motmod settings.",
   "projectSettings.motmod.numJoints": "num_joints",
@@ -378,10 +385,16 @@ export const en = {
   "iniEditor.subtitle":
     "Edit LinuxCNC INI values used by HAL `[SECTION]KEY` substitutions.",
   "iniEditor.noConfigTitle": "No machine configuration loaded",
-  "iniEditor.noConfigHelp":
-    "Create an empty INI here.",
+  "iniEditor.noConfigHelp": "Create an empty INI here.",
   "iniEditor.createEmptyConfig": "Create Empty INI",
   "iniEditor.valuesTitle": "INI Values",
+  "iniEditor.managedTitle": "NoHAL-controlled",
+  "iniEditor.managedHelp":
+    "Values tagged as managed are derived by NoHAL and exported read-only.",
+  "iniEditor.userTitle": "User-controlled",
+  "iniEditor.userHelp":
+    "These INI values stay editable and are preserved in the project.",
+  "iniEditor.managedBadge": "managed",
   "iniEditor.enterEditMode": "Edit",
   "iniEditor.exitEditMode": "Done",
   "iniEditor.addSection": "Add Section",
@@ -426,6 +439,7 @@ export const en = {
   "store.status.savedProjectPath": "Saved project folder: {projectPath}",
   "store.status.failedSaveProject": "Failed to save project: {error}",
   "store.status.updatedProjectName": "Updated project name to {name}",
+  "store.status.updatedProjectShutdown": "Updated shutdown HAL",
   "store.status.updatedProjectWireLayerPosition":
     "Updated wire visibility to {position}",
   "store.status.updatedProjectWireStyle": "Updated wire style to {style}",

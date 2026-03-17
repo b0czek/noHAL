@@ -9,7 +9,7 @@ function withImportedIni(project: NoHALProject): NoHALProject {
     ...project,
     machineConfig: {
       source: "imported-linuxcnc-config",
-      ini: {
+      userIni: {
         parser: "nohal-ini-v1",
         sourcePath: "/machines/demo/demo.ini",
         sourceFileName: "demo.ini",
@@ -24,13 +24,7 @@ function withImportedIni(project: NoHALProject): NoHALProject {
           {
             name: "HAL",
             line: 4,
-            entries: [
-              { key: "HALFILE", value: "core.hal", line: 5 },
-              { key: "HALFILE", value: "io.hal", line: 6 },
-              { key: "POSTGUI_HALFILE", value: "postgui.hal", line: 7 },
-              { key: "SHUTDOWN", value: "shutdown.hal", line: 8 },
-              { key: "TWOPASS", value: "on", line: 9 },
-            ],
+            entries: [{ key: "TWOPASS", value: "on", line: 9 }],
           },
         ],
       },
@@ -89,16 +83,9 @@ describe("project build output", () => {
     expect(iniText).not.toContain("io.hal");
     expect(iniText).not.toContain("POSTGUI_HALFILE");
     expect(iniText).not.toContain("SHUTDOWN =");
-
-    expect(result.warnings).toContain(
+    expect(result.warnings).not.toContain(
       "Build INI collapsed 2 HALFILE entries into one generated HALFILE.",
     );
-    expect(
-      result.warnings.some((warning) => warning.includes("POSTGUI_HALFILE")),
-    ).toBe(true);
-    expect(
-      result.warnings.some((warning) => warning.includes("SHUTDOWN")),
-    ).toBe(true);
   });
 
   it("writes generated postgui HAL and POSTGUI_HALFILE when postgui stage nodes are present", async () => {
@@ -149,6 +136,34 @@ describe("project build output", () => {
       "POSTGUI_HALFILE = postgui-build-test-postgui.hal",
     );
     expect(iniText).not.toContain("POSTGUI_HALFILE = postgui.hal");
+  });
+
+  it("writes generated shutdown HAL and SHUTDOWN when shutdown text is present", async () => {
+    const { io, readFile } = createMemoryIo();
+    const buildProjectIntoDirectory = buildProjectIntoDirectoryWithIo(io);
+    const project = withImportedIni(createEmptyProject("Shutdown Build Test"));
+    project.shutdown = "setp estop-clear true\nunlinkp old.signal";
+    const projectDir = io.path.resolve("/tests", "shutdown.nohal");
+
+    const result = await buildProjectIntoDirectory(project, projectDir);
+
+    expect(result.files).toEqual(
+      expect.arrayContaining([
+        io.path.join(projectDir, "build", "shutdown-build-test.hal"),
+        io.path.join(projectDir, "build", "shutdown-build-test-shutdown.hal"),
+        io.path.join(projectDir, "build", "demo.ini"),
+      ]),
+    );
+
+    const shutdownText = await readFile(
+      io.path.join(projectDir, "build", "shutdown-build-test-shutdown.hal"),
+    );
+    expect(shutdownText).toBe("setp estop-clear true\nunlinkp old.signal\n");
+
+    const iniText = await readFile(
+      io.path.join(projectDir, "build", "demo.ini"),
+    );
+    expect(iniText).toContain("SHUTDOWN = shutdown-build-test-shutdown.hal");
   });
 
   it("removes stale generated outputs from previous builds when output names change", async () => {
