@@ -72,6 +72,15 @@ export function reconcileComponentNodesForDefinition(
       } else {
         delete node.pinInitialValues;
       }
+
+      const nextHiddenPinKeys = (node.hiddenPinKeys ?? []).filter((key) =>
+        validPinKeys.has(key),
+      );
+      if (nextHiddenPinKeys.length > 0) {
+        node.hiddenPinKeys = [...new Set(nextHiddenPinKeys)];
+      } else {
+        delete node.hiddenPinKeys;
+      }
     }
   }
 }

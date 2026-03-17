@@ -289,6 +289,19 @@ export function parseNoHALProject(content: string): NoHALProject {
     }
     for (const node of sheet.nodes) {
       if (node.kind !== "component") continue;
+      if (Array.isArray(node.hiddenPinKeys)) {
+        const hiddenPinKeys = [...new Set(node.hiddenPinKeys)].filter(
+          (key): key is string =>
+            typeof key === "string" && key.trim().length > 0,
+        );
+        if (hiddenPinKeys.length > 0) {
+          node.hiddenPinKeys = hiddenPinKeys;
+        } else {
+          delete node.hiddenPinKeys;
+        }
+      } else {
+        delete node.hiddenPinKeys;
+      }
       if (node.exportStage === "main" || node.exportStage === "postgui") {
         continue;
       }

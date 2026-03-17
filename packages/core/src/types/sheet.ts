@@ -25,6 +25,7 @@ export interface ComponentNode {
   paramValues: Record<string, string>;
   instanceConfigValues?: Record<string, string>;
   pinInitialValues?: Record<string, string>;
+  hiddenPinKeys?: string[];
   exportStage?: "main" | "postgui";
 }
 

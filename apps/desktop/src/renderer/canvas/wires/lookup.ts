@@ -1,4 +1,4 @@
-import { getNodePins } from "@nohal/core/src/graph";
+import { getVisibleNodePins } from "@nohal/core/src/graph";
 import type { NoHALProject, SheetDefinition } from "@nohal/core/src/types";
 import type { EndpointSide, SheetLookup } from "./types";
 
@@ -21,7 +21,7 @@ export function getSheetLookup(
   for (const node of sheet.nodes) {
     lookup.nodesById.set(node.id, node);
     const pinSides = new Map<string, EndpointSide>();
-    for (const pin of getNodePins(project, node)) {
+    for (const pin of getVisibleNodePins(project, sheet, node)) {
       pinSides.set(pin.key, pin.side);
     }
     lookup.nodePinSidesById.set(node.id, pinSides);

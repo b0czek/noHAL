@@ -1,4 +1,4 @@
-import { endpointKey, getNodePins } from "@nohal/core/src/graph";
+import { endpointKey, getVisibleNodePins } from "@nohal/core/src/graph";
 import type {
   NoHALProject,
   SheetDefinition,
@@ -106,9 +106,10 @@ function computeBottomBandHeightHorizontal(bottomNames: string[]): number {
 
 export function computeNodeLayout(
   project: NoHALProject,
+  sheet: SheetDefinition,
   node: SheetNodeInstance,
 ): NodeLayout {
-  const pins = getNodePins(project, node);
+  const pins = getVisibleNodePins(project, sheet, node);
   const left = pins.filter((p) => p.side === "left");
   const right = pins.filter((p) => p.side === "right");
   const top = pins.filter((p) => p.side === "top");
@@ -261,7 +262,7 @@ export function buildSheetSceneLayout(
   sheet: SheetDefinition,
 ): SheetSceneLayout {
   const nodeLayouts = new Map(
-    sheet.nodes.map((n) => [n.id, computeNodeLayout(project, n)]),
+    sheet.nodes.map((n) => [n.id, computeNodeLayout(project, sheet, n)]),
   );
   const endpointPoints = new Map<string, Pt>();
 

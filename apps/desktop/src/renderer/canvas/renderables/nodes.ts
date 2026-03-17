@@ -1,4 +1,8 @@
-import { endpointKey, getNodePins, getNodeTitle } from "@nohal/core/src/graph";
+import {
+  endpointKey,
+  getNodeTitle,
+  getVisibleNodePins,
+} from "@nohal/core/src/graph";
 import type { SheetEndpointRef } from "@nohal/core/src/types";
 import Konva from "konva";
 import {
@@ -94,7 +98,7 @@ export function renderNodes(
       }),
     );
 
-    const pins = getNodePins(project, node);
+    const pins = getVisibleNodePins(project, sheet, node);
     const leftPins = pins.filter((p) => p.side === "left");
     const rightPins = pins.filter((p) => p.side === "right");
     const topPins = pins.filter((p) => p.side === "top");

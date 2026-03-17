@@ -118,6 +118,9 @@ export const en = {
   "componentDialog.instanceConfig": "Instance Configuration",
   "componentDialog.noInstanceConfig": "No per-instance configuration fields.",
   "componentDialog.pinInitialValues": "Pin Initial Values (setp)",
+  "componentDialog.pinVisibility": "Visible on canvas",
+  "componentDialog.pinVisibilityConnectedHint":
+    "Connected pins cannot be hidden.",
   "componentDialog.noPins": "No pins.",
   "componentDialog.optionalPlaceholder": "(optional)",
   "componentDialog.pins": "Pins",

@@ -83,6 +83,42 @@ export function getNodePins(
     : getSheetNodePins(project, node);
 }
 
+export function isNodePinConnected(
+  sheet: SheetDefinition,
+  nodeId: string,
+  pinKey: string,
+): boolean {
+  const isTargetEndpoint = (endpoint: SheetEndpointRef): boolean =>
+    endpoint.kind === "node-pin" &&
+    endpoint.nodeId === nodeId &&
+    endpoint.pinKey === pinKey;
+
+  return (
+    sheet.directConnections.some(
+      (connection) =>
+        isTargetEndpoint(connection.a) || isTargetEndpoint(connection.b),
+    ) || sheet.labelAnchors.some((anchor) => isTargetEndpoint(anchor.endpoint))
+  );
+}
+
+export function getVisibleNodePins(
+  project: NoHALProject,
+  sheet: SheetDefinition,
+  node: SheetNodeInstance,
+): ResolvedPin[] {
+  const pins = getNodePins(project, node);
+  if (node.kind !== "component" || (node.hiddenPinKeys?.length ?? 0) === 0) {
+    return pins;
+  }
+
+  const hiddenPinKeys = new Set(node.hiddenPinKeys);
+  return pins.filter(
+    (pin) =>
+      !hiddenPinKeys.has(pin.key) ||
+      isNodePinConnected(sheet, node.id, pin.key),
+  );
+}
+
 export function resolveEndpointInSheet(
   project: NoHALProject,
   sheetId: string,

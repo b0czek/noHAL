@@ -127,10 +127,17 @@ function removePin(
     for (const node of sheet.nodes) {
       if (node.kind !== "component" || node.componentId !== componentId)
         continue;
-      if (!node.pinInitialValues) continue;
-      delete node.pinInitialValues[pinKey];
-      if (Object.keys(node.pinInitialValues).length === 0) {
-        delete node.pinInitialValues;
+      if (node.pinInitialValues) {
+        delete node.pinInitialValues[pinKey];
+        if (Object.keys(node.pinInitialValues).length === 0) {
+          delete node.pinInitialValues;
+        }
+      }
+      if (node.hiddenPinKeys) {
+        node.hiddenPinKeys = node.hiddenPinKeys.filter((key) => key !== pinKey);
+        if (node.hiddenPinKeys.length === 0) {
+          delete node.hiddenPinKeys;
+        }
       }
     }
   }

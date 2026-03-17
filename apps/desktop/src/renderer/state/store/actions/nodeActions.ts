@@ -5,7 +5,7 @@ import {
 } from "@nohal/core/src/componentSystem";
 import { isComponentPlaceable } from "@nohal/core/src/componentVisibility";
 import { reconcileComponentNodesForDefinition } from "@nohal/core/src/customComponent";
-import { getSheet } from "@nohal/core/src/graph";
+import { getSheet, isNodePinConnected } from "@nohal/core/src/graph";
 import { isValidHalName } from "@nohal/core/src/halNames";
 import { createId } from "@nohal/core/src/id";
 import { createSheetPortDraft } from "@nohal/core/src/project";
@@ -419,6 +419,15 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         } else {
           delete node.pinInitialValues;
         }
+
+        const nextHiddenPinKeys = (node.hiddenPinKeys ?? []).filter((key) =>
+          validPinKeys.has(key),
+        );
+        if (nextHiddenPinKeys.length > 0) {
+          node.hiddenPinKeys = [...new Set(nextHiddenPinKeys)];
+        } else {
+          delete node.hiddenPinKeys;
+        }
       });
     },
 
@@ -438,6 +447,46 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         if (Object.keys(next).length > 0) node.pinInitialValues = next;
         else delete node.pinInitialValues;
       });
+    },
+
+    updateNodePinVisibility(
+      nodeId: string,
+      pinKey: string,
+      visible: boolean,
+    ): void {
+      const activeSheetId = deps.state.activeSheetId;
+      const currentSheet = getSheet(deps.state.project, activeSheetId);
+      const currentNode = currentSheet.nodes.find((n) => n.id === nodeId);
+      if (!currentNode || currentNode.kind !== "component") return;
+      if (!visible && isNodePinConnected(currentSheet, nodeId, pinKey)) return;
+
+      const isCurrentlyVisible = !currentNode.hiddenPinKeys?.includes(pinKey);
+      if (isCurrentlyVisible === visible) return;
+
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const node = sheet.nodes.find((n) => n.id === nodeId);
+        if (!node || node.kind !== "component") return;
+
+        const nextHiddenPinKeys = new Set(node.hiddenPinKeys ?? []);
+        if (visible) nextHiddenPinKeys.delete(pinKey);
+        else nextHiddenPinKeys.add(pinKey);
+
+        if (nextHiddenPinKeys.size > 0) {
+          node.hiddenPinKeys = [...nextHiddenPinKeys].sort();
+        } else {
+          delete node.hiddenPinKeys;
+        }
+      });
+
+      if (
+        !visible &&
+        deps.state.pendingEndpoint?.kind === "node-pin" &&
+        deps.state.pendingEndpoint.nodeId === nodeId &&
+        deps.state.pendingEndpoint.pinKey === pinKey
+      ) {
+        deps.clearPendingConnectionUi();
+      }
     },
 
     updateNodeExportStage(nodeId: string, stage: "main" | "postgui"): void {

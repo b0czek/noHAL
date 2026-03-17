@@ -81,6 +81,7 @@ function createProjectWithTwoSheets(): NoHALProject {
             instanceName: "and2.0",
             position: { x: 10, y: 20 },
             paramValues: {},
+            hiddenPinKeys: ["in1"],
           },
         ],
       },
