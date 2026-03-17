@@ -28,6 +28,15 @@ export function updateProjectName(
   return true;
 }
 
+export function updateProjectShutdown(
+  project: NoHALProject,
+  shutdown: string,
+): boolean {
+  if (project.shutdown === shutdown) return false;
+  project.shutdown = shutdown;
+  return true;
+}
+
 export function updateProjectWireLayerPosition(
   project: NoHALProject,
   position: ProjectWireLayerPosition,
@@ -162,6 +171,9 @@ export const projectEdits = {
   project: {
     name: {
       update: updateProjectName,
+    },
+    shutdown: {
+      update: updateProjectShutdown,
     },
     wire: {
       visibility: {

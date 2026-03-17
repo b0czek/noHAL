@@ -171,6 +171,14 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       });
     },
 
+    updateProjectShutdown(shutdown: string): void {
+      if (shutdown === deps.state.project.shutdown) return;
+      deps.withProject((project) => {
+        projectEdits.project.shutdown.update(project, shutdown);
+      });
+      deps.setStatusT("store.status.updatedProjectShutdown");
+    },
+
     updateProjectWireLayerPosition(position: ProjectWireLayerPosition): void {
       if (deps.state.project.ui.wireLayerPosition === position) return;
       deps.withProject((project) => {

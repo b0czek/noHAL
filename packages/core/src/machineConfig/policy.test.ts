@@ -23,6 +23,7 @@ function createIni(
 describe("machine config ini policy", () => {
   it("defines HAL managed keys as entry-locked only", () => {
     expect(getMachineConfigIniEntryLockMode("HAL", "HALFILE")).toBe("entry");
+    expect(getMachineConfigIniEntryLockMode("HAL", "SHUTDOWN")).toBe("entry");
     expect(getMachineConfigIniEntryLockMode("HAL", "TWOPASS")).toBe("none");
     expect(getMachineConfigIniEntryLockMode("EMC", "MACHINE")).toBe("none");
   });
@@ -53,6 +54,7 @@ describe("machine config ini policy", () => {
 
   it("uses the policy to build effective machine INI output", () => {
     const project = createEmptyProject("Policy Test");
+    project.shutdown = "setp io.enabled true";
     project.machineConfig = {
       source: "imported-linuxcnc-config",
       userIni: createIni([
@@ -78,7 +80,14 @@ describe("machine config ini policy", () => {
       {
         name: "HAL",
         line: 0,
-        entries: [{ key: "HALFILE", value: "policy-test.hal", line: 0 }],
+        entries: [
+          { key: "HALFILE", value: "policy-test.hal", line: 0 },
+          {
+            key: "SHUTDOWN",
+            value: "policy-test-shutdown.hal",
+            line: 0,
+          },
+        ],
       },
     ]);
 
@@ -93,6 +102,11 @@ describe("machine config ini policy", () => {
         line: 4,
         entries: [
           { key: "HALFILE", value: "policy-test.hal", line: 0 },
+          {
+            key: "SHUTDOWN",
+            value: "policy-test-shutdown.hal",
+            line: 0,
+          },
           { key: "TWOPASS", value: "on", line: 6 },
         ],
       },

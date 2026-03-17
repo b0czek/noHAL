@@ -3,6 +3,7 @@ import {
   addMachineIniField,
   addMachineIniSection,
   createEmptyProject,
+  updateProjectShutdown,
   updateProjectWireLayerPosition,
   updateProjectWireStyle,
 } from "./index";
@@ -38,5 +39,13 @@ describe("project edit helpers", () => {
     expect(updateProjectWireStyle(project, "straight")).toBe(true);
     expect(project.ui.wireStyle).toBe("straight");
     expect(updateProjectWireStyle(project, "straight")).toBe(false);
+  });
+
+  it("updates the project shutdown HAL text", () => {
+    const project = createEmptyProject("Shutdown Edit");
+
+    expect(updateProjectShutdown(project, "setp estop-clear true")).toBe(true);
+    expect(project.shutdown).toBe("setp estop-clear true");
+    expect(updateProjectShutdown(project, "setp estop-clear true")).toBe(false);
   });
 });

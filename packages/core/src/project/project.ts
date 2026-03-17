@@ -129,6 +129,10 @@ export function createDefaultProjectUi(activeSheetId: string): ProjectUiConfig {
   };
 }
 
+function normalizeProjectShutdown(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
 export function reconcileProject(project: NoHALProject): NoHALProject {
   reconcileMotmodManagedNodes(project);
   reconcileIniManagedNodes(project);
@@ -214,6 +218,7 @@ export function createEmptyProject(name: string): NoHALProject {
     format: NOHAL_PROJECT_FORMAT,
     version: NOHAL_PROJECT_VERSION,
     name,
+    shutdown: "",
     target: {
       linuxcncVersion: "2.10",
       platform: "linux",
@@ -267,6 +272,7 @@ export function parseNoHALProject(content: string): NoHALProject {
   assertProjectShape(migrated);
   const project = migrated;
   project.target = normalizeProjectTarget(project.target);
+  project.shutdown = normalizeProjectShutdown(project.shutdown);
   project.halThreads = normalizeHalThreads(project.halThreads);
   project.machineConfig = normalizeProjectMachineConfig(project.machineConfig);
   project.motmod = normalizeMotmodConfig(project.motmod);

@@ -3,6 +3,7 @@ import type { PinDirection } from "../types";
 export interface ExportResult {
   text: string;
   postguiText?: string;
+  shutdownText?: string;
   warnings: string[];
 }
 

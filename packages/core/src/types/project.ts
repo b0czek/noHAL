@@ -69,6 +69,7 @@ export interface NoHALProject {
   format: typeof NOHAL_PROJECT_FORMAT;
   version: typeof NOHAL_PROJECT_VERSION;
   name: string;
+  shutdown: string;
   target: {
     linuxcncVersion: LinuxCncVersion;
     platform: "linux";

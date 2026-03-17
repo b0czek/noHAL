@@ -138,6 +138,34 @@ describe("project build output", () => {
     expect(iniText).not.toContain("POSTGUI_HALFILE = postgui.hal");
   });
 
+  it("writes generated shutdown HAL and SHUTDOWN when shutdown text is present", async () => {
+    const { io, readFile } = createMemoryIo();
+    const buildProjectIntoDirectory = buildProjectIntoDirectoryWithIo(io);
+    const project = withImportedIni(createEmptyProject("Shutdown Build Test"));
+    project.shutdown = "setp estop-clear true\nunlinkp old.signal";
+    const projectDir = io.path.resolve("/tests", "shutdown.nohal");
+
+    const result = await buildProjectIntoDirectory(project, projectDir);
+
+    expect(result.files).toEqual(
+      expect.arrayContaining([
+        io.path.join(projectDir, "build", "shutdown-build-test.hal"),
+        io.path.join(projectDir, "build", "shutdown-build-test-shutdown.hal"),
+        io.path.join(projectDir, "build", "demo.ini"),
+      ]),
+    );
+
+    const shutdownText = await readFile(
+      io.path.join(projectDir, "build", "shutdown-build-test-shutdown.hal"),
+    );
+    expect(shutdownText).toBe("setp estop-clear true\nunlinkp old.signal\n");
+
+    const iniText = await readFile(
+      io.path.join(projectDir, "build", "demo.ini"),
+    );
+    expect(iniText).toContain("SHUTDOWN = shutdown-build-test-shutdown.hal");
+  });
+
   it("removes stale generated outputs from previous builds when output names change", async () => {
     const { io, readFile } = createMemoryIo();
     const buildProjectIntoDirectory = buildProjectIntoDirectoryWithIo(io);

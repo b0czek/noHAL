@@ -17,6 +17,17 @@ interface GeneratedBuildFile {
   content: string;
 }
 
+function summarizeGeneratedHalOutputs(
+  hal: ReturnType<typeof exportProjectToHal>,
+) {
+  const labels = ["generated HAL"];
+  if (hal.postguiText) labels.push("postgui HAL");
+  if (hal.shutdownText) labels.push("shutdown HAL");
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels[0]}, ${labels[1]}, and ${labels[2]}`;
+}
+
 interface BuildManifest {
   format: typeof NOHAL_BUILD_MANIFEST_FORMAT;
   version: typeof NOHAL_BUILD_MANIFEST_VERSION;
@@ -104,14 +115,18 @@ const createGeneratedBuildFiles =
         content: hal.postguiText,
       });
     }
+    if (hal.shutdownText) {
+      files.push({
+        relativePath: `${slugify(project.name)}-shutdown.hal`,
+        content: hal.shutdownText,
+      });
+    }
 
     const machineConfig = project.machineConfig;
     const userIni = machineConfig?.userIni;
     if (!userIni || userIni.sections.length === 0) {
       warnings.push(
-        hal.postguiText
-          ? "Build output contains generated HAL and postgui HAL only (no imported machine INI is available in this project)."
-          : "Build output contains generated HAL only (no imported machine INI is available in this project).",
+        `Build output contains ${summarizeGeneratedHalOutputs(hal)} only (no imported machine INI is available in this project).`,
       );
       return { files, warnings: normalizeBuildWarnings(warnings) };
     }

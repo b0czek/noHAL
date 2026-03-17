@@ -36,6 +36,13 @@ function buildManagedHalEntries(project: NoHALProject): LinuxCncIniEntry[] {
       line: 0,
     });
   }
+  if (hal.shutdownText) {
+    entries.push({
+      key: "SHUTDOWN",
+      value: `${slugify(project.name)}-shutdown.hal`,
+      line: 0,
+    });
+  }
   return entries;
 }
 
