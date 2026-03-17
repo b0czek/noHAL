@@ -1,4 +1,7 @@
-import { buildManagedMachineConfigIniSections } from "@nohal/core/src/machineConfig/effective";
+import {
+  buildManagedMachineConfigIniSections,
+  getMachineConfigIniEntryLockMode,
+} from "@nohal/core/src/machineConfig/policy";
 import {
   HiOutlineCheck,
   HiOutlineLockClosed,
@@ -25,7 +28,6 @@ interface EffectiveIniEntryRow {
 interface EffectiveIniSectionRow {
   sectionName: string;
   userSectionIndex: number;
-  hasManagedEntries: boolean;
   entries: EffectiveIniEntryRow[];
 }
 
@@ -55,7 +57,6 @@ export default function IniTab() {
         return {
           sectionName: section.name,
           userSectionIndex: sectionIndex,
-          hasManagedEntries: Boolean(managedSection),
           entries: [
             ...(managedSection?.entries.map((entry) => ({
               ...entry,
@@ -77,7 +78,6 @@ export default function IniTab() {
       combined.push({
         sectionName: managedSection.name,
         userSectionIndex: -1,
-        hasManagedEntries: true,
         entries: managedSection.entries.map((entry) => ({
           ...entry,
           managed: true,
@@ -202,181 +202,220 @@ export default function IniTab() {
                 </Show>
 
                 <For each={effectiveSections()}>
-                  {(section) => (
-                    <div class="grid gap-3 px-1 py-2">
-                      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <Show
-                          when={isEditMode() && !section.hasManagedEntries}
-                          fallback={
-                            <div class="mono text-sm uppercase tracking-[0.16em] text-accent">
-                              [{section.sectionName}]
-                            </div>
-                          }
-                        >
-                          <div class="flex min-w-0 items-center gap-2">
-                            <span class="mono">[</span>
-                            <Input
-                              type="text"
-                              class="mono"
-                              value={section.sectionName}
-                              onChange={(evt) =>
-                                actions.updateMachineIniSectionName(
-                                  section.userSectionIndex,
-                                  evt.currentTarget.value,
-                                )
-                              }
-                            />
-                            <span class="mono">]</span>
-                          </div>
-                        </Show>
+                  {(section) => {
+                    const canEditSectionName = () =>
+                      isEditMode() && section.userSectionIndex >= 0;
+                    const canAddField = () => isEditMode();
+                    const canRemoveSection = () =>
+                      isEditMode() && section.userSectionIndex >= 0;
+                    const entryLocked = (entry: EffectiveIniEntryRow) => {
+                      if (entry.managed) {
+                        return true;
+                      }
+                      return (
+                        getMachineConfigIniEntryLockMode(
+                          section.sectionName,
+                          entry.key,
+                        ) !== "none"
+                      );
+                    };
+                    const visibleEntries = () =>
+                      isEditMode()
+                        ? section.entries.filter((entry) => !entryLocked(entry))
+                        : section.entries;
+                    const showEmptySection = () =>
+                      visibleEntries().length === 0 &&
+                      (!isEditMode() || section.entries.length === 0);
 
-                        <Show when={isEditMode()}>
-                          <div class="inline-flex items-center gap-2 self-end sm:self-auto">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                addFieldToSection(
-                                  section.sectionName,
-                                  section.userSectionIndex,
-                                )
-                              }
-                              title={t("iniEditor.addField")}
-                              aria-label={t("iniEditor.addField")}
-                            >
-                              <HiOutlinePlus size={16} aria-hidden="true" />
-                            </Button>
-                            <Show when={!section.hasManagedEntries}>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  if (
-                                    !confirmRemoveSection(
-                                      section.sectionName,
-                                      section.entries.length,
-                                    )
-                                  ) {
-                                    return;
-                                  }
-                                  actions.removeMachineIniSection(
+                    return (
+                      <div class="grid gap-3 px-1 py-2">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <Show
+                            when={canEditSectionName()}
+                            fallback={
+                              <div class="mono text-sm uppercase tracking-[0.16em] text-accent">
+                                [{section.sectionName}]
+                              </div>
+                            }
+                          >
+                            <div class="flex min-w-0 items-center gap-2">
+                              <span class="mono">[</span>
+                              <Input
+                                type="text"
+                                class="mono"
+                                value={section.sectionName}
+                                onChange={(evt) =>
+                                  actions.updateMachineIniSectionName(
                                     section.userSectionIndex,
-                                  );
-                                }}
-                                title={t("iniEditor.removeSection")}
-                                aria-label={t("iniEditor.removeSection")}
-                              >
-                                <HiOutlineTrash size={16} aria-hidden="true" />
-                              </Button>
-                            </Show>
-                          </div>
-                        </Show>
-                      </div>
+                                    evt.currentTarget.value,
+                                  )
+                                }
+                              />
+                              <span class="mono">]</span>
+                            </div>
+                          </Show>
 
-                      <div class="grid gap-2">
-                        <For each={section.entries}>
-                          {(entry) => (
-                            <Show
-                              when={isEditMode() && !entry.managed}
-                              fallback={
-                                <div
-                                  class="grid gap-2 rounded-xl bg-black/20 px-2 py-1.5 sm:grid-cols-[minmax(180px,280px)_minmax(0,1fr)_auto] sm:items-center"
-                                  classList={{
-                                    "border border-dashed border-white/10":
-                                      entry.managed,
-                                  }}
+                          <Show when={isEditMode()}>
+                            <div class="inline-flex items-center gap-2 self-end sm:self-auto">
+                              <Show when={canAddField()}>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() =>
+                                    addFieldToSection(
+                                      section.sectionName,
+                                      section.userSectionIndex,
+                                    )
+                                  }
+                                  title={t("iniEditor.addField")}
+                                  aria-label={t("iniEditor.addField")}
                                 >
-                                  <div class="inline-flex items-center gap-2">
-                                    <span class="mono text-xs text-muted-foreground">
-                                      {entry.key}
-                                    </span>
-                                    <Show when={entry.managed}>
-                                      <Badge
-                                        variant="secondary"
-                                        class="gap-1 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]"
-                                        title={t("iniEditor.managedHelp")}
-                                      >
-                                        <HiOutlineLockClosed
-                                          size={11}
-                                          aria-hidden="true"
-                                        />
-                                      </Badge>
-                                    </Show>
-                                  </div>
-                                  <div class="min-w-0 break-all px-1 text-sm">
-                                    {entry.value}
-                                  </div>
-                                  <Show when={!entry.managed}>
-                                    <span aria-hidden="true" class="w-0" />
-                                  </Show>
-                                </div>
-                              }
-                            >
-                              <div class="grid gap-2 rounded-xl bg-black/20 p-3 sm:grid-cols-[minmax(160px,240px)_minmax(0,1fr)_auto] sm:items-center">
-                                <Input
-                                  type="text"
-                                  class="mono"
-                                  value={entry.key}
-                                  onChange={(evt) =>
-                                    actions.updateMachineIniKey(
-                                      section.userSectionIndex,
-                                      entry.userEntryIndex ?? 0,
-                                      evt.currentTarget.value,
-                                    )
-                                  }
-                                />
-                                <Input
-                                  type="text"
-                                  value={entry.value}
-                                  onChange={(evt) =>
-                                    actions.updateMachineIniValue(
-                                      section.userSectionIndex,
-                                      entry.userEntryIndex ?? 0,
-                                      evt.currentTarget.value,
-                                    )
-                                  }
-                                />
+                                  <HiOutlinePlus size={16} aria-hidden="true" />
+                                </Button>
+                              </Show>
+                              <Show when={canRemoveSection()}>
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => {
                                     if (
-                                      !confirmRemoveField(
+                                      !confirmRemoveSection(
                                         section.sectionName,
-                                        entry.key,
+                                        section.entries.length,
                                       )
                                     ) {
                                       return;
                                     }
-                                    actions.removeMachineIniField(
+                                    actions.removeMachineIniSection(
                                       section.userSectionIndex,
-                                      entry.userEntryIndex ?? 0,
                                     );
                                   }}
-                                  title={t("iniEditor.removeField")}
-                                  aria-label={t("iniEditor.removeField")}
+                                  title={t("iniEditor.removeSection")}
+                                  aria-label={t("iniEditor.removeSection")}
                                 >
                                   <HiOutlineTrash
                                     size={16}
                                     aria-hidden="true"
                                   />
                                 </Button>
-                              </div>
-                            </Show>
-                          )}
-                        </For>
+                              </Show>
+                            </div>
+                          </Show>
+                        </div>
 
-                        <Show when={section.entries.length === 0}>
-                          <div class="text-sm text-muted-foreground">
-                            {t("iniEditor.emptySection")}
-                          </div>
-                        </Show>
+                        <div class="grid gap-2">
+                          <For each={visibleEntries()}>
+                            {(entry) => {
+                              const canEditEntry = () =>
+                                isEditMode() &&
+                                section.userSectionIndex >= 0 &&
+                                entry.userEntryIndex !== undefined &&
+                                !entryLocked(entry);
+
+                              return (
+                                <Show
+                                  when={canEditEntry()}
+                                  fallback={
+                                    <div
+                                      class="grid gap-2 rounded-xl bg-black/20 px-2 py-1.5 sm:grid-cols-[minmax(180px,280px)_minmax(0,1fr)_auto] sm:items-center"
+                                      classList={{
+                                        "border border-dashed border-white/10":
+                                          entryLocked(entry),
+                                      }}
+                                    >
+                                      <div class="inline-flex items-center gap-2">
+                                        <span class="mono text-xs text-muted-foreground">
+                                          {entry.key}
+                                        </span>
+                                        <Show when={entryLocked(entry)}>
+                                          <Badge
+                                            variant="secondary"
+                                            class="gap-1 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]"
+                                            title={t("iniEditor.managedHelp")}
+                                          >
+                                            <HiOutlineLockClosed
+                                              size={11}
+                                              aria-hidden="true"
+                                            />
+                                          </Badge>
+                                        </Show>
+                                      </div>
+                                      <div class="min-w-0 break-all px-1 text-sm">
+                                        {entry.value}
+                                      </div>
+                                      <Show when={!entryLocked(entry)}>
+                                        <span aria-hidden="true" class="w-0" />
+                                      </Show>
+                                    </div>
+                                  }
+                                >
+                                  <div class="grid gap-2 rounded-xl bg-black/20 p-3 sm:grid-cols-[minmax(160px,240px)_minmax(0,1fr)_auto] sm:items-center">
+                                    <Input
+                                      type="text"
+                                      class="mono"
+                                      value={entry.key}
+                                      onChange={(evt) =>
+                                        actions.updateMachineIniKey(
+                                          section.userSectionIndex,
+                                          entry.userEntryIndex ?? 0,
+                                          evt.currentTarget.value,
+                                        )
+                                      }
+                                    />
+                                    <Input
+                                      type="text"
+                                      value={entry.value}
+                                      onChange={(evt) =>
+                                        actions.updateMachineIniValue(
+                                          section.userSectionIndex,
+                                          entry.userEntryIndex ?? 0,
+                                          evt.currentTarget.value,
+                                        )
+                                      }
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => {
+                                        if (
+                                          !confirmRemoveField(
+                                            section.sectionName,
+                                            entry.key,
+                                          )
+                                        ) {
+                                          return;
+                                        }
+                                        actions.removeMachineIniField(
+                                          section.userSectionIndex,
+                                          entry.userEntryIndex ?? 0,
+                                        );
+                                      }}
+                                      title={t("iniEditor.removeField")}
+                                      aria-label={t("iniEditor.removeField")}
+                                    >
+                                      <HiOutlineTrash
+                                        size={16}
+                                        aria-hidden="true"
+                                      />
+                                    </Button>
+                                  </div>
+                                </Show>
+                              );
+                            }}
+                          </For>
+
+                          <Show when={showEmptySection()}>
+                            <div class="text-sm text-muted-foreground">
+                              {t("iniEditor.emptySection")}
+                            </div>
+                          </Show>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  }}
                 </For>
               </div>
             </div>

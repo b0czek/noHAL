@@ -1,6 +1,6 @@
 import { parseHalImportDraft } from "./halImport";
 import { collectLinuxCncHalReferences, parseLinuxCncIni } from "./linuxcncIni";
-import { stripManagedEntriesFromIni } from "./machineConfig/shared";
+import { stripManagedEntriesFromIni } from "./machineConfig/policy";
 import type {
   CoreIo,
   LinuxCncIniDocument,

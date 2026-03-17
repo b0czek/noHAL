@@ -1,6 +1,6 @@
 import { exportProjectToHal } from "../halExport";
 import { slugify } from "../id";
-import { buildEffectiveMachineConfigIni } from "../machineConfig/effective";
+import { buildEffectiveMachineConfigIni } from "../machineConfig/policy";
 import type {
   CoreIo,
   LinuxCncIniDocument,

@@ -5,12 +5,7 @@ import type {
   MachineConfigHalSource,
   ProjectMachineConfig,
 } from "../types";
-
-const MANAGED_MACHINE_CONFIG_HAL_KEYS = new Set([
-  "HALFILE",
-  "POSTGUI_HALFILE",
-  "SHUTDOWN",
-]);
+import { stripManagedEntriesFromIni } from "./policy";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -93,30 +88,6 @@ export function normalizeLinuxCncIniDocument(
     lineCount,
     sections,
     warnings,
-  };
-}
-
-export function isManagedMachineConfigIniEntry(
-  sectionName: string,
-  key: string,
-): boolean {
-  return (
-    sectionName.trim().toUpperCase() === "HAL" &&
-    MANAGED_MACHINE_CONFIG_HAL_KEYS.has(key.trim().toUpperCase())
-  );
-}
-
-export function stripManagedEntriesFromIni(
-  ini: LinuxCncIniDocument,
-): LinuxCncIniDocument {
-  return {
-    ...ini,
-    sections: ini.sections.map((section) => ({
-      ...section,
-      entries: section.entries.filter(
-        (entry) => !isManagedMachineConfigIniEntry(section.name, entry.key),
-      ),
-    })),
   };
 }
 
