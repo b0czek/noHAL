@@ -1,24 +1,24 @@
 import { getNodeTitle } from "@nohal/core/src/graph";
 import { createMemo, createSignal, Show } from "solid-js";
-import type { OverlayDialogProps } from "../app/types";
-import { useI18n } from "../i18n";
-import { useEditorStore } from "../state/EditorStoreProvider";
-import ComponentNodeFunctionsTab from "./componentNodeDialog/FunctionsTab";
-import ComponentNodeInstanceConfigTab from "./componentNodeDialog/InstanceConfigTab";
-import ComponentNodeInstanceTab from "./componentNodeDialog/InstanceTab";
-import ComponentNodeParametersTab from "./componentNodeDialog/ParametersTab";
-import ComponentNodePinsTab from "./componentNodeDialog/PinsTab";
-import type { ComponentNodeTab } from "./componentNodeDialog/types";
-import SettingsDialogShell from "./settings/SettingsDialogShell";
+import type { OverlayDialogProps } from "../../app/types";
+import SettingsDialogShell from "../../components/settings/SettingsDialogShell";
+import { useI18n } from "../../i18n";
+import { useEditorStore } from "../../state/EditorStoreProvider";
+import FunctionsTab from "./FunctionsTab";
+import InstanceConfigTab from "./InstanceConfigTab";
+import InstanceTab from "./InstanceTab";
+import ParametersTab from "./ParametersTab";
+import PinsTab from "./PinsTab";
+import type { ComponentSettingsTab } from "./types";
 
-interface ComponentNodeDialogProps extends OverlayDialogProps {
+interface ComponentSettingsProps extends OverlayDialogProps {
   nodeId: string;
 }
 
-export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
+export default function ComponentSettings(props: ComponentSettingsProps) {
   const { t } = useI18n();
   const { state } = useEditorStore();
-  const [tab, setTab] = createSignal<ComponentNodeTab>("instance");
+  const [tab, setTab] = createSignal<ComponentSettingsTab>("instance");
 
   const node = createMemo(() => {
     const currentSheet = state.project.sheets[state.activeSheetId];
@@ -42,33 +42,33 @@ export default function ComponentNodeDialog(props: ComponentNodeDialogProps) {
         dialogClass="h-[min(780px,calc(100vh-36px))] w-[min(920px,calc(100vw-36px))]"
         headerClass="border-b border-white/8 pb-4"
         value={tab()}
-        onChange={(value) => setTab(value as ComponentNodeTab)}
+        onChange={(value) => setTab(value as ComponentSettingsTab)}
         onClose={props.onClose}
         tabs={[
           {
             value: "instance",
             label: t("componentDialog.instance"),
-            content: <ComponentNodeInstanceTab node={node} />,
+            content: <InstanceTab node={node} />,
           },
           {
             value: "functions",
             label: t("componentDialog.functions"),
-            content: <ComponentNodeFunctionsTab node={node} />,
+            content: <FunctionsTab node={node} />,
           },
           {
             value: "instance-config",
             label: t("componentDialog.instanceConfig"),
-            content: <ComponentNodeInstanceConfigTab node={node} />,
+            content: <InstanceConfigTab node={node} />,
           },
           {
             value: "parameters",
             label: t("componentDialog.parameters"),
-            content: <ComponentNodeParametersTab node={node} />,
+            content: <ParametersTab node={node} />,
           },
           {
             value: "pins",
             label: t("componentDialog.pins"),
-            content: <ComponentNodePinsTab node={node} />,
+            content: <PinsTab node={node} />,
           },
         ]}
       />

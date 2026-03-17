@@ -3,16 +3,14 @@ import {
   fixedInstanceNameForComponent,
 } from "@nohal/core/src/componentSystem";
 import { createMemo, Show } from "solid-js";
+import StringSelect from "../../components/form/StringSelect";
+import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 import { componentUsesLockedCanonicalInstanceNames } from "../../state/store/helpers";
-import StringSelect from "../form/StringSelect";
-import { Input } from "../ui/input";
-import type { ComponentNodeDialogTabProps } from "./types";
+import type { ComponentSettingsTabProps } from "./types";
 
-export default function ComponentNodeInstanceTab(
-  props: ComponentNodeDialogTabProps,
-) {
+export default function InstanceTab(props: ComponentSettingsTabProps) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
   const component = createMemo(() => {

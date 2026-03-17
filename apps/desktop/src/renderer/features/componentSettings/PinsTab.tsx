@@ -1,23 +1,21 @@
 import { getNodePins } from "@nohal/core/src/graph";
 import { createMemo, createSignal, For, Show } from "solid-js";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 import {
-  COMPONENT_NODE_PIN_FILTER_MODES,
-  type ComponentNodeDialogTabProps,
-  type ComponentNodePinFilterMode,
+  COMPONENT_SETTINGS_PIN_FILTER_MODES,
+  type ComponentSettingsPinFilterMode,
+  type ComponentSettingsTabProps,
 } from "./types";
 
-export default function ComponentNodePinsTab(
-  props: ComponentNodeDialogTabProps,
-) {
+export default function PinsTab(props: ComponentSettingsTabProps) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
   const [pinFilter, setPinFilter] =
-    createSignal<ComponentNodePinFilterMode>("all");
+    createSignal<ComponentSettingsPinFilterMode>("all");
   const fieldLabelClass =
     "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
   const pins = createMemo(() => {
@@ -31,7 +29,7 @@ export default function ComponentNodePinsTab(
       ? pins()
       : pins().filter((pin) => pin.direction === mode);
   });
-  const pinFilterLabel = (mode: ComponentNodePinFilterMode) => {
+  const pinFilterLabel = (mode: ComponentSettingsPinFilterMode) => {
     switch (mode) {
       case "all":
         return t("componentDialog.pinFilter.all");
@@ -56,7 +54,7 @@ export default function ComponentNodePinsTab(
           </div>
         </div>
         <div class="inline-flex flex-wrap items-center gap-2 rounded-xl bg-black/20 p-1">
-          <For each={COMPONENT_NODE_PIN_FILTER_MODES}>
+          <For each={COMPONENT_SETTINGS_PIN_FILTER_MODES}>
             {(mode) => (
               <Button
                 type="button"

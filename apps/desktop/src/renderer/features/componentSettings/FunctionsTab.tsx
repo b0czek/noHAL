@@ -1,12 +1,10 @@
 import { createMemo, For, Show } from "solid-js";
+import { Badge } from "../../components/ui/badge";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
-import { Badge } from "../ui/badge";
-import type { ComponentNodeDialogTabProps } from "./types";
+import type { ComponentSettingsTabProps } from "./types";
 
-export default function ComponentNodeFunctionsTab(
-  props: ComponentNodeDialogTabProps,
-) {
+export default function FunctionsTab(props: ComponentSettingsTabProps) {
   const { t } = useI18n();
   const { state } = useEditorStore();
   const componentFunctions = createMemo(() => {

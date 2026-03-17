@@ -1,14 +1,17 @@
 import type { ComponentInstanceConfigFieldDefinition } from "@nohal/core/src/types";
 import { createMemo, For, Show } from "solid-js";
+import { Input } from "../../components/ui/input";
+import {
+  Switch,
+  SwitchControl,
+  SwitchLabel,
+  SwitchThumb,
+} from "../../components/ui/switch";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
-import { Input } from "../ui/input";
-import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../ui/switch";
-import type { ComponentNodeDialogTabProps } from "./types";
+import type { ComponentSettingsTabProps } from "./types";
 
-export default function ComponentNodeInstanceConfigTab(
-  props: ComponentNodeDialogTabProps,
-) {
+export default function InstanceConfigTab(props: ComponentSettingsTabProps) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
   const instanceConfigFields = createMemo(() => {

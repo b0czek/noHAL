@@ -1,12 +1,10 @@
 import { createMemo, For, Show } from "solid-js";
+import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
-import { Input } from "../ui/input";
-import type { ComponentNodeDialogTabProps } from "./types";
+import type { ComponentSettingsTabProps } from "./types";
 
-export default function ComponentNodeParametersTab(
-  props: ComponentNodeDialogTabProps,
-) {
+export default function ParametersTab(props: ComponentSettingsTabProps) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
   const componentParams = createMemo(() => {

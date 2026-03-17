@@ -1,6 +1,6 @@
 import { Match, Switch } from "solid-js";
-import ComponentNodeDialog from "../components/ComponentNodeDialog";
 import ComponentSearchDialog from "../components/ComponentSearchDialog";
+import ComponentSettings from "../features/componentSettings";
 import GeneralSettingsDialog from "../features/generalSettings";
 import ProjectSettingsDialog from "../features/projectSettings";
 import SheetSettingsDialog from "../features/sheetSettings";
@@ -34,7 +34,7 @@ export default function EditorOverlayHost() {
         }
       >
         {(current) => (
-          <ComponentNodeDialog
+          <ComponentSettings
             nodeId={current().nodeId}
             onClose={editorUi.closeActiveOverlay}
           />
