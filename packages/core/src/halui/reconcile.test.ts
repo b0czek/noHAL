@@ -26,5 +26,4 @@ describe("halui-managed system component", () => {
     expect(component).toEqual(createHaluiSystemComponentDefinition("2.10"));
     expect(node?.componentId).toBe(HALUI_SYSTEM_COMPONENT_ID);
   });
-
 });
