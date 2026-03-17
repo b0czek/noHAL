@@ -1,4 +1,4 @@
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, Index, Show } from "solid-js";
 import { Badge } from "../../components/ui/badge";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
@@ -36,29 +36,29 @@ export default function FunctionsTab(props: ComponentSettingsTabProps) {
         }
       >
         <div class="grid gap-2">
-          <For each={componentFunctions()}>
+          <Index each={componentFunctions()}>
             {(fn) => (
               <div
                 class="grid gap-2 rounded-xl bg-black/20 p-3 text-sm"
-                title={fn.doc ?? ""}
+                title={fn().doc ?? ""}
               >
                 <div class="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">{fn.floatMode}</Badge>
+                  <Badge variant="outline">{fn().floatMode}</Badge>
                   <span class="mono">
-                    {fn.declaredName === "_"
+                    {fn().declaredName === "_"
                       ? t("componentDialog.functionDefault")
-                      : fn.halSuffix}
+                      : fn().halSuffix}
                   </span>
                 </div>
                 <div class="text-xs text-muted-foreground">
                   {t("componentDialog.functionAddf")}
                 </div>
                 <div class="mono text-sm">
-                  {addfTargetForFunction(fn.halSuffix)}
+                  {addfTargetForFunction(fn().halSuffix)}
                 </div>
               </div>
             )}
-          </For>
+          </Index>
         </div>
       </Show>
     </section>

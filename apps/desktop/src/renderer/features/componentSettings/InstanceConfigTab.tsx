@@ -1,5 +1,5 @@
 import type { ComponentInstanceConfigFieldDefinition } from "@nohal/core/src/types";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, Index, Show } from "solid-js";
 import { Input } from "../../components/ui/input";
 import {
   Switch,
@@ -64,37 +64,41 @@ export default function InstanceConfigTab(props: ComponentSettingsTabProps) {
         }
       >
         <div class="grid gap-3">
-          <For each={instanceConfigFields()}>
+          <Index each={instanceConfigFields()}>
             {(field) => (
               <div
                 class="grid gap-2 rounded-xl bg-black/20 p-3"
-                title={field.doc ?? ""}
+                title={field().doc ?? ""}
               >
-                <span class="mono text-sm">{field.key}</span>
+                <span class="mono text-sm">{field().key}</span>
                 <Show
-                  when={field.type === "boolean"}
+                  when={field().type === "boolean"}
                   fallback={
                     <Input
-                      type={instanceConfigInputType(field)}
-                      step={instanceConfigInputStep(field)}
-                      min={field.min !== undefined ? `${field.min}` : undefined}
-                      max={field.max !== undefined ? `${field.max}` : undefined}
-                      value={instanceConfigValue(field)}
+                      type={instanceConfigInputType(field())}
+                      step={instanceConfigInputStep(field())}
+                      min={
+                        field().min !== undefined ? `${field().min}` : undefined
+                      }
+                      max={
+                        field().max !== undefined ? `${field().max}` : undefined
+                      }
+                      value={instanceConfigValue(field())}
                       onInput={(evt) =>
                         updateInstanceConfigValue(
-                          field.key,
+                          field().key,
                           evt.currentTarget.value,
                         )
                       }
-                      placeholder={defaultInstanceConfigValue(field)}
+                      placeholder={defaultInstanceConfigValue(field())}
                     />
                   }
                 >
                   <Switch
-                    checked={instanceConfigValue(field) === "true"}
+                    checked={instanceConfigValue(field()) === "true"}
                     onChange={(checked) =>
                       updateInstanceConfigValue(
-                        field.key,
+                        field().key,
                         checked ? "true" : "false",
                       )
                     }
@@ -108,7 +112,7 @@ export default function InstanceConfigTab(props: ComponentSettingsTabProps) {
                 </Show>
               </div>
             )}
-          </For>
+          </Index>
         </div>
       </Show>
     </section>

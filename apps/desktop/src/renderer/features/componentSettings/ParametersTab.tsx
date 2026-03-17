@@ -1,4 +1,4 @@
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, Index, Show } from "solid-js";
 import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
@@ -29,28 +29,28 @@ export default function ParametersTab(props: ComponentSettingsTabProps) {
         }
       >
         <div class="grid gap-2">
-          <For each={componentParams()}>
+          <Index each={componentParams()}>
             {(param) => (
               <div class="grid gap-2 rounded-xl bg-black/20 p-3 sm:grid-cols-[minmax(160px,240px)_minmax(0,1fr)] sm:items-center">
                 <span class="mono text-sm text-muted-foreground">
-                  {param.name}
+                  {param().name}
                 </span>
                 <Input
-                  value={props.node()?.paramValues[param.key] ?? ""}
+                  value={props.node()?.paramValues[param().key] ?? ""}
                   onInput={(evt) => {
                     const currentNode = props.node();
                     if (!currentNode) return;
                     actions.updateNodeParam(
                       currentNode.id,
-                      param.key,
+                      param().key,
                       evt.currentTarget.value,
                     );
                   }}
-                  placeholder={param.defaultValue ?? ""}
+                  placeholder={param().defaultValue ?? ""}
                 />
               </div>
             )}
-          </For>
+          </Index>
         </div>
       </Show>
     </section>
