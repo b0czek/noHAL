@@ -8,6 +8,7 @@ import {
 describe("hal import system component detection", () => {
   it("recognizes LinuxCNC system component namespaces", () => {
     expect(isSystemHalImportComponentName("motion")).toBe(true);
+    expect(isSystemHalImportComponentName("halui")).toBe(true);
     expect(isSystemHalImportComponentName("iocontrol")).toBe(true);
     expect(isSystemHalImportComponentName("INI")).toBe(true);
   });
@@ -97,6 +98,35 @@ describe("hal import system component detection", () => {
           {
             key: "tool_change",
             name: "tool-change",
+            direction: "io",
+            type: "bit",
+          },
+        ],
+        params: [],
+        functions: [],
+      },
+      {
+        linuxcncVersion: "2.10",
+      },
+    );
+
+    expect(analysis).toBeNull();
+  });
+
+  it("treats the halui schema as standard for matching imports", () => {
+    const analysis = analyzeSystemHalImportOverride(
+      { inferredHalComponentName: "halui" },
+      {
+        pins: [
+          {
+            key: "program_run",
+            name: "program.run",
+            direction: "io",
+            type: "bit",
+          },
+          {
+            key: "feed_override_reset",
+            name: "feed-override.reset",
             direction: "io",
             type: "bit",
           },

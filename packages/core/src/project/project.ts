@@ -1,4 +1,5 @@
 import { fixedExportStageForComponent } from "../componentSystem";
+import { reconcileHaluiManagedNodes } from "../halui";
 import { createId, slugify } from "../id";
 import { reconcileIniManagedNodes } from "../ini";
 import { reconcileIocontrolManagedNodes } from "../iocontrol";
@@ -137,6 +138,7 @@ export function reconcileProject(project: NoHALProject): NoHALProject {
   reconcileMotmodManagedNodes(project);
   reconcileIniManagedNodes(project);
   reconcileIocontrolManagedNodes(project);
+  reconcileHaluiManagedNodes(project);
   for (const sheet of Object.values(project.sheets)) {
     for (const node of sheet.nodes) {
       if (node.kind !== "component") continue;

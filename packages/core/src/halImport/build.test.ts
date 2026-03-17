@@ -202,6 +202,64 @@ describe("buildProjectFromHalImport", () => {
     ).toBeUndefined();
   });
 
+  it("rebinds imported halui to the managed singleton definition", () => {
+    const result = buildProjectFromHalImport({
+      draft: {
+        parser: "nohal-hal-v1",
+        lineCount: 0,
+        componentGroups: [
+          {
+            id: "group_halui",
+            inferredHalComponentName: "halui",
+            runtimeHint: "userspace",
+            instances: [
+              {
+                instanceName: "halui",
+                componentGroupId: "group_halui",
+                pinNames: ["program.run", "mode.is-manual"],
+                paramValues: {},
+              },
+            ],
+            pins: [
+              {
+                name: "program.run",
+                observedDirections: ["in"],
+              },
+              {
+                name: "mode.is-manual",
+                observedDirections: ["out"],
+              },
+            ],
+            params: [],
+          },
+        ],
+        nets: [],
+        setps: [],
+        addfs: [],
+        warnings: [],
+      },
+      componentStore: createEmptyComponentStore(),
+      linkSelections: {},
+      linuxcncVersion: "2.10",
+    });
+
+    const systemSheet = findSystemSheet(result.project);
+    const haluiNode = systemSheet?.nodes.find(
+      (node) =>
+        node.kind === "component" &&
+        node.instanceName === "halui" &&
+        result.project.library.components[node.componentId]?.system?.manager ===
+          "halui",
+    );
+
+    expect(haluiNode).toBeDefined();
+    if (!haluiNode || haluiNode.kind !== "component") return;
+    expect(haluiNode.componentId).toBe("system:halui:halui");
+    expect(
+      result.project.library.components["halimport:halui"],
+    ).toBeUndefined();
+  });
+
   it("uses edited project-local component overrides when provided", () => {
     const editedComponent: ComponentDefinition = {
       id: "halimport:custom_logic",

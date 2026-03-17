@@ -1,4 +1,5 @@
 import { resolveComponentPinsForInstance } from "../componentInstance";
+import { createHaluiSystemComponentDefinition } from "../componentStore/catalog/system/halui";
 import {
   createIniSystemComponentDefinition,
   iniManagedInstanceConfigValues,
@@ -18,6 +19,7 @@ import type {
 
 const SYSTEM_HAL_COMPONENT_NAMES = new Set([
   "axis",
+  "halui",
   "ini",
   "iocontrol",
   "joint",
@@ -117,6 +119,11 @@ function systemDefinitionForImportGroup(
   if (halName === "iocontrol") {
     return {
       component: createIocontrolSystemComponentDefinition(),
+    };
+  }
+  if (halName === "halui") {
+    return {
+      component: createHaluiSystemComponentDefinition(linuxcncVersion),
     };
   }
   return null;
