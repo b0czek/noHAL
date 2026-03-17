@@ -22,6 +22,7 @@ function createIni(
 
 describe("machine config ini policy", () => {
   it("defines HAL managed keys as entry-locked only", () => {
+    expect(getMachineConfigIniEntryLockMode("HAL", "HALUI")).toBe("entry");
     expect(getMachineConfigIniEntryLockMode("HAL", "HALFILE")).toBe("entry");
     expect(getMachineConfigIniEntryLockMode("HAL", "SHUTDOWN")).toBe("entry");
     expect(getMachineConfigIniEntryLockMode("HAL", "TWOPASS")).toBe("none");
@@ -34,6 +35,7 @@ describe("machine config ini policy", () => {
         name: "HAL",
         line: 1,
         entries: [
+          { key: "HALUI", value: "something-else", line: 1 },
           { key: "HALFILE", value: "legacy.hal", line: 2 },
           { key: "TWOPASS", value: "on", line: 3 },
           { key: "SHUTDOWN", value: "cleanup.hal", line: 4 },
@@ -67,6 +69,7 @@ describe("machine config ini policy", () => {
           name: "HAL",
           line: 4,
           entries: [
+            { key: "HALUI", value: "custom-halui", line: 4 },
             { key: "HALFILE", value: "legacy.hal", line: 5 },
             { key: "TWOPASS", value: "on", line: 6 },
           ],
@@ -81,6 +84,7 @@ describe("machine config ini policy", () => {
         name: "HAL",
         line: 0,
         entries: [
+          { key: "HALUI", value: "halui", line: 0 },
           { key: "HALFILE", value: "policy-test.hal", line: 0 },
           {
             key: "SHUTDOWN",
@@ -101,6 +105,7 @@ describe("machine config ini policy", () => {
         name: "HAL",
         line: 4,
         entries: [
+          { key: "HALUI", value: "halui", line: 0 },
           { key: "HALFILE", value: "policy-test.hal", line: 0 },
           {
             key: "SHUTDOWN",

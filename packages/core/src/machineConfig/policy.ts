@@ -24,6 +24,11 @@ function buildManagedHalEntries(project: NoHALProject): LinuxCncIniEntry[] {
   const hal = exportProjectToHal(project);
   const entries: LinuxCncIniEntry[] = [
     {
+      key: "HALUI",
+      value: "halui",
+      line: 0,
+    },
+    {
       key: "HALFILE",
       value: `${slugify(project.name)}.hal`,
       line: 0,
@@ -50,7 +55,7 @@ export const MACHINE_CONFIG_INI_SECTION_POLICIES: readonly MachineConfigIniSecti
   [
     {
       sectionName: "HAL",
-      managedKeys: ["HALFILE", "POSTGUI_HALFILE", "SHUTDOWN"],
+      managedKeys: ["HALUI", "HALFILE", "POSTGUI_HALFILE", "SHUTDOWN"],
       buildManagedEntries: buildManagedHalEntries,
     },
   ];
