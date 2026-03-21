@@ -1,6 +1,9 @@
 import { exportProjectToHal } from "../halExport";
 import { slugify } from "../id";
-import { buildEffectiveMachineConfigIni } from "../machineConfig/policy";
+import {
+  buildEffectiveMachineConfigIni,
+  buildManagedMachineConfigIniSections,
+} from "../machineConfig/policy";
 import type {
   CoreIo,
   LinuxCncIniDocument,
@@ -15,17 +18,6 @@ import {
 interface GeneratedBuildFile {
   relativePath: string;
   content: string;
-}
-
-function summarizeGeneratedHalOutputs(
-  hal: ReturnType<typeof exportProjectToHal>,
-) {
-  const labels = ["generated HAL"];
-  if (hal.postguiText) labels.push("postgui HAL");
-  if (hal.shutdownText) labels.push("shutdown HAL");
-  if (labels.length === 1) return labels[0];
-  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
-  return `${labels[0]}, ${labels[1]}, and ${labels[2]}`;
 }
 
 interface BuildManifest {
@@ -92,6 +84,17 @@ function buildIniText(ini: LinuxCncIniDocument): string {
   return `${lines.join("\n")}\n`;
 }
 
+function buildProjectIni(project: NoHALProject): LinuxCncIniDocument {
+  const effectiveIni = buildEffectiveMachineConfigIni(project);
+  if (effectiveIni) return effectiveIni;
+  return {
+    parser: "nohal-ini-v1",
+    lineCount: 0,
+    warnings: [],
+    sections: buildManagedMachineConfigIniSections(project),
+  };
+}
+
 const createGeneratedBuildFiles =
   (io: CoreIo) =>
   (
@@ -123,15 +126,7 @@ const createGeneratedBuildFiles =
     }
 
     const machineConfig = project.machineConfig;
-    const userIni = machineConfig?.userIni;
-    if (!userIni || userIni.sections.length === 0) {
-      warnings.push(
-        `Build output contains ${summarizeGeneratedHalOutputs(hal)} only (no imported machine INI is available in this project).`,
-      );
-      return { files, warnings: normalizeBuildWarnings(warnings) };
-    }
-
-    const unsupportedSources = machineConfig.halSources.filter(
+    const unsupportedSources = (machineConfig?.halSources ?? []).filter(
       (source) =>
         source.status === "missing" ||
         source.status === "skipped-lib" ||
@@ -139,18 +134,13 @@ const createGeneratedBuildFiles =
     );
     if (unsupportedSources.length > 0) {
       warnings.push(
-        `Imported machine config had ${unsupportedSources.length} HAL source reference${unsupportedSources.length === 1 ? "" : "s"} that are not reproduced as separate build outputs.`,
+        `Machine config had ${unsupportedSources.length} HAL source reference${unsupportedSources.length === 1 ? "" : "s"} that are not reproduced as separate build outputs.`,
       );
-    }
-
-    const effectiveIni = buildEffectiveMachineConfigIni(project);
-    if (!effectiveIni) {
-      return { files, warnings: normalizeBuildWarnings(warnings) };
     }
 
     files.push({
       relativePath: buildIniFileName(io)(project),
-      content: buildIniText(effectiveIni),
+      content: buildIniText(buildProjectIni(project)),
     });
 
     return { files, warnings: normalizeBuildWarnings(warnings) };
