@@ -44,13 +44,13 @@ export default function LandingPage(props: LandingPageProps) {
   const [isGeneralSettingsOpen, setIsGeneralSettingsOpen] = createSignal(false);
 
   return (
-    <div class="relative min-h-screen bg-[linear-gradient(180deg,#081216_0%,#04090c_100%)] px-4 py-8 sm:px-6">
+    <div class="relative h-screen overflow-hidden bg-[linear-gradient(180deg,#081216_0%,#04090c_100%)]">
       <div
         class="pointer-events-none fixed inset-0 opacity-45 [background-image:radial-gradient(circle_at_12%_6%,hsl(var(--accent)/0.12),transparent_28%),radial-gradient(circle_at_88%_8%,hsl(var(--primary)/0.12),transparent_24%),linear-gradient(rgba(122,230,208,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(122,230,208,0.025)_1px,transparent_1px)] [background-size:auto,auto,28px_28px,28px_28px]"
         aria-hidden="true"
       />
-      <main class="relative z-10 mx-auto grid w-full max-w-5xl gap-5">
-        <Card class="overflow-hidden border-white/10 bg-[radial-gradient(circle_at_18%_12%,hsl(var(--accent)/0.14),transparent_38%),radial-gradient(circle_at_88%_14%,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,rgba(11,24,31,0.9),rgba(8,17,22,0.86))]">
+      <main class="relative z-10 mx-auto flex h-full w-full max-w-5xl min-h-0 flex-col gap-5 px-4 py-8 sm:px-6">
+        <Card class="shrink-0 overflow-hidden border-white/10 bg-[radial-gradient(circle_at_18%_12%,hsl(var(--accent)/0.14),transparent_38%),radial-gradient(circle_at_88%_14%,hsl(var(--primary)/0.14),transparent_32%),linear-gradient(180deg,rgba(11,24,31,0.9),rgba(8,17,22,0.86))]">
           <CardHeader class="gap-4 pb-0">
             <div class="flex items-center gap-3">
               <BrandLogo
@@ -133,7 +133,7 @@ export default function LandingPage(props: LandingPageProps) {
           </CardContent>
         </Card>
 
-        <Card class="border-white/8 bg-transparent shadow-none">
+        <Card class="flex min-h-0 flex-1 flex-col border-white/8 bg-transparent shadow-none">
           <CardHeader class="flex-row items-center justify-between gap-4">
             <div>
               <CardTitle>{t("landing.recentProjects")}</CardTitle>
@@ -150,7 +150,7 @@ export default function LandingPage(props: LandingPageProps) {
               {t("common.refresh")}
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent class="min-h-0 flex-1">
             <Show
               when={!landing().isRecentProjectsLoading()}
               fallback={
@@ -167,7 +167,7 @@ export default function LandingPage(props: LandingPageProps) {
                   </div>
                 }
               >
-                <div class="grid max-h-[min(70vh,700px)] gap-3 overflow-auto">
+                <div class="grid h-full gap-3 overflow-auto">
                   <For each={landing().recentProjects()}>
                     {(entry) => (
                       <button
