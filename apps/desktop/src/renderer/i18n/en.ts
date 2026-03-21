@@ -24,9 +24,9 @@ export const en = {
   "common.updated": "Updated {time}",
 
   "landing.brandSubtitle": "Visual HAL IDE for LinuxCNC",
-  "landing.title": "Pick a project and get to work.",
+  "landing.title": "Welcome to noHAL",
   "landing.copy":
-    "Open an existing project folder or create a new project and jump into the editor only when you are ready.",
+    "Create a new project, open an existing one, or jump back into a recent one below.",
   "landing.newProject": "New Project",
   "landing.openProject": "Open Project",
   "landing.recentProjects": "Recent Projects",
