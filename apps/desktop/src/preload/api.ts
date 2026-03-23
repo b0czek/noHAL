@@ -15,6 +15,8 @@ export type UnsavedChangesChoice = "save" | "discard" | "cancel";
 
 export interface NoHALApi {
   setWindowDirtyState(isDirty: boolean): void;
+  readClipboardText(): string;
+  writeClipboardText(text: string): void;
   promptUnsavedChanges(): Promise<UnsavedChangesChoice>;
   onRequestSaveBeforeClose(listener: () => Promise<boolean>): () => void;
   getAppSettings(): Promise<AppSettings>;

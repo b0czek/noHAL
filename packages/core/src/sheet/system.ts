@@ -73,6 +73,19 @@ function isSystemSheetCandidate(component: ComponentDefinition | undefined) {
   return KNOWN_SYSTEM_HAL_COMPONENT_NAMES.has(component.halComponentName);
 }
 
+export function isProtectedSystemNode(
+  project: NoHALProject,
+  node: { kind: string; componentId?: string },
+): boolean {
+  return (
+    node.kind === "component" &&
+    !!(
+      node.componentId &&
+      isSystemComponent(project.library.components[node.componentId])
+    )
+  );
+}
+
 export function findSystemSheet(project: NoHALProject): SheetDefinition | null {
   const rootSheet = project.sheets[project.rootSheetId];
   if (!rootSheet) return null;
@@ -89,6 +102,13 @@ export function findSystemSheet(project: NoHALProject): SheetDefinition | null {
   }
 
   return null;
+}
+
+export function isProtectedSystemSheet(
+  project: NoHALProject,
+  sheetId: string,
+): boolean {
+  return findSystemSheet(project)?.id === sheetId;
 }
 
 export function findSystemSheetNode(project: NoHALProject): SheetNode | null {

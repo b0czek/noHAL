@@ -62,6 +62,8 @@ export function useEditorShortcuts(): void {
       const isFindInProject = key === "f" && evt.shiftKey;
       const isUndo = key === "z" && !evt.shiftKey;
       const isRedo = key === "y" || (key === "z" && evt.shiftKey);
+      const isCopy = key === "c" && !evt.shiftKey;
+      const isPaste = key === "v" && !evt.shiftKey;
 
       if (isFindInSheet) {
         evt.preventDefault();
@@ -83,6 +85,18 @@ export function useEditorShortcuts(): void {
 
       if (isRedo) {
         if (!actions.redo()) return;
+        evt.preventDefault();
+        return;
+      }
+
+      if (isCopy) {
+        if (!actions.copySelection()) return;
+        evt.preventDefault();
+        return;
+      }
+
+      if (isPaste) {
+        if (!actions.pasteClipboard()) return;
         evt.preventDefault();
       }
     };

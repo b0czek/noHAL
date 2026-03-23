@@ -66,6 +66,8 @@ export const en = {
   "canvasContext.sheetPort": "Sheet Port",
   "canvasContext.connection": "Connection",
   "canvasContext.waypoint": "Waypoint",
+  "canvasContext.copy": "Copy",
+  "canvasContext.paste": "Paste",
   "canvasContext.move": "Move",
   "canvasContext.newSheet": "New Sheet",
   "canvasContext.putEverythingIntoSubsheet": "Into Subsheet",
@@ -533,6 +535,13 @@ export const en = {
     "System-managed components cannot be deleted",
   "store.status.removedSelectionSkippedSystemManaged":
     "Removed selection (skipped {count} system-managed components)",
+  "store.status.nothingCopyableInSelection": "Nothing copyable is selected",
+  "store.status.copiedSelection": "Copied selection ({count} items)",
+  "store.status.copiedSelectionSkippedProtected":
+    "Copied selection ({count} items, skipped {skipped} protected system items)",
+  "store.status.nothingToPasteInSelectionClipboard":
+    "Nothing is available to paste",
+  "store.status.pastedSelection": "Pasted selection ({count} items)",
   "store.status.placedComponent": "Placed component {componentName}",
   "store.status.createdSubsheet": "Created subsheet {name}",
   "store.status.cannotPlaceSheetInsideItself":
