@@ -37,6 +37,7 @@ export type GroupDragSession = {
   anchor: DragSelectionTarget;
   nodeStartPositions: Map<string, Pt>;
   labelStartPositions: Map<string, Pt>;
+  commentStartPositions: Map<string, Pt>;
   portStartPositions: Map<string, Pt>;
   anchorStartPos: Pt;
   appliedDx: number;

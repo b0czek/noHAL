@@ -411,6 +411,7 @@ export function createKonvaSheetScene(
         nodeLayouts: runtime.graph.nodeLayouts,
         liveNodePositions: runtime.graph.liveNodePositions,
         liveLabelPositions: runtime.graph.liveLabelPositions,
+        liveCommentPositions: runtime.graph.liveCommentPositions,
         livePortPositions: runtime.graph.livePortPositions,
       }),
     );

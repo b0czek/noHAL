@@ -268,11 +268,13 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     moveSelectionGroup(updates: {
       nodePositions: Array<{ id: string; x: number; y: number }>;
       labelPositions: Array<{ id: string; x: number; y: number }>;
+      commentPositions: Array<{ id: string; x: number; y: number }>;
       portPositions: Array<{ id: string; x: number; y: number }>;
     }): void {
       if (
         updates.nodePositions.length === 0 &&
         updates.labelPositions.length === 0 &&
+        updates.commentPositions.length === 0 &&
         updates.portPositions.length === 0
       ) {
         return;
@@ -287,6 +289,9 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         const labelUpdates = new Map(
           updates.labelPositions.map((entry) => [entry.id, entry]),
         );
+        const commentUpdates = new Map(
+          updates.commentPositions.map((entry) => [entry.id, entry]),
+        );
         const portUpdates = new Map(
           updates.portPositions.map((entry) => [entry.id, entry]),
         );
@@ -300,6 +305,11 @@ export function createNodeActions(deps: EditorStoreActionContext) {
           const next = labelUpdates.get(label.id);
           if (!next) continue;
           label.position = { x: next.x, y: next.y };
+        }
+        for (const comment of sheet.comments) {
+          const next = commentUpdates.get(comment.id);
+          if (!next) continue;
+          comment.position = { x: next.x, y: next.y };
         }
         for (const port of sheet.ports) {
           const next = portUpdates.get(port.id);

@@ -1,4 +1,8 @@
-import { estimatePortBox, measureLabelBox } from "../measurements";
+import {
+  estimateCommentSize,
+  estimatePortBox,
+  measureLabelBox,
+} from "../measurements";
 import type { DragSelectionTarget } from "../renderables";
 import type { SceneRenderState, SceneSelection } from "../types";
 import { rectContainsRect, rotatedRectBounds } from "./geometry";
@@ -19,6 +23,7 @@ export function buildSelectionSets(
   else if (selection?.kind === "multi") {
     for (const id of selection.nodeIds) selectedNodeIds.add(id);
     for (const id of selection.labelIds) selectedLabelIds.add(id);
+    for (const id of selection.commentIds) selectedCommentIds.add(id);
     for (const id of selection.portIds) selectedPortIds.add(id);
   }
 
@@ -41,7 +46,8 @@ export function selectionContainsTarget(
   if (selection.kind !== "multi") return false;
   if (target.kind === "node") return selection.nodeIds.includes(target.id);
   if (target.kind === "label") return selection.labelIds.includes(target.id);
-  if (target.kind === "comment") return false;
+  if (target.kind === "comment")
+    return selection.commentIds.includes(target.id);
   return selection.portIds.includes(target.id);
 }
 
@@ -51,6 +57,7 @@ export function buildGroupDragSession(args: {
   state: SceneRenderState | null;
   liveNodePositions: Map<string, { x: number; y: number }>;
   liveLabelPositions: Map<string, { x: number; y: number }>;
+  liveCommentPositions: Map<string, { x: number; y: number }>;
   livePortPositions: Map<string, { x: number; y: number }>;
 }): GroupDragSession | null {
   const {
@@ -59,6 +66,7 @@ export function buildGroupDragSession(args: {
     state,
     liveNodePositions,
     liveLabelPositions,
+    liveCommentPositions,
     livePortPositions,
   } = args;
   const selection = state?.selection;
@@ -68,11 +76,13 @@ export function buildGroupDragSession(args: {
   const total =
     selection.nodeIds.length +
     selection.labelIds.length +
+    selection.commentIds.length +
     selection.portIds.length;
   if (total <= 1) return null;
 
   const nodeStartPositions = new Map<string, { x: number; y: number }>();
   const labelStartPositions = new Map<string, { x: number; y: number }>();
+  const commentStartPositions = new Map<string, { x: number; y: number }>();
   const portStartPositions = new Map<string, { x: number; y: number }>();
 
   for (const nodeId of selection.nodeIds) {
@@ -93,6 +103,17 @@ export function buildGroupDragSession(args: {
     );
   }
 
+  for (const commentId of selection.commentIds) {
+    const comment = state.sheet.comments.find(
+      (entry) => entry.id === commentId,
+    );
+    if (!comment) continue;
+    commentStartPositions.set(
+      commentId,
+      liveCommentPositions.get(commentId) ?? comment.position,
+    );
+  }
+
   for (const portId of selection.portIds) {
     const port = state.sheet.ports.find((entry) => entry.id === portId);
     if (!port) continue;
@@ -105,6 +126,7 @@ export function buildGroupDragSession(args: {
   if (
     nodeStartPositions.size +
       labelStartPositions.size +
+      commentStartPositions.size +
       portStartPositions.size <=
     1
   ) {
@@ -115,6 +137,7 @@ export function buildGroupDragSession(args: {
     anchor: target,
     nodeStartPositions,
     labelStartPositions,
+    commentStartPositions,
     portStartPositions,
     anchorStartPos: { x: anchorPos.x, y: anchorPos.y },
     appliedDx: 0,
@@ -146,6 +169,8 @@ export function constrainGroupDragDelta(args: {
     applyConstraint(start);
   for (const start of session.labelStartPositions.values())
     applyConstraint(start);
+  for (const start of session.commentStartPositions.values())
+    applyConstraint(start);
   for (const start of session.portStartPositions.values())
     applyConstraint(start);
 
@@ -158,6 +183,7 @@ export function collectGroupDragUpdates(args: {
 }): {
   nodePositions: Array<{ id: string; x: number; y: number }>;
   labelPositions: Array<{ id: string; x: number; y: number }>;
+  commentPositions: Array<{ id: string; x: number; y: number }>;
   portPositions: Array<{ id: string; x: number; y: number }>;
 } {
   const { session, clampPos } = args;
@@ -178,6 +204,7 @@ export function collectGroupDragUpdates(args: {
   return {
     nodePositions: collectEntries(session.nodeStartPositions.entries()),
     labelPositions: collectEntries(session.labelStartPositions.entries()),
+    commentPositions: collectEntries(session.commentStartPositions.entries()),
     portPositions: collectEntries(session.portStartPositions.entries()),
   };
 }
@@ -188,6 +215,7 @@ export function selectItemsInWorldRect(args: {
   nodeLayouts: Map<string, { width: number; height: number }>;
   liveNodePositions: Map<string, { x: number; y: number }>;
   liveLabelPositions: Map<string, { x: number; y: number }>;
+  liveCommentPositions: Map<string, { x: number; y: number }>;
   livePortPositions: Map<string, { x: number; y: number }>;
 }): SceneSelection {
   const {
@@ -196,10 +224,12 @@ export function selectItemsInWorldRect(args: {
     nodeLayouts,
     liveNodePositions,
     liveLabelPositions,
+    liveCommentPositions,
     livePortPositions,
   } = args;
   const nodeIds: string[] = [];
   const labelIds: string[] = [];
+  const commentIds: string[] = [];
   const portIds: string[] = [];
 
   for (const node of state.sheet.nodes) {
@@ -231,6 +261,22 @@ export function selectItemsInWorldRect(args: {
     if (rectContainsRect(rect, labelRect)) labelIds.push(label.id);
   }
 
+  for (const comment of state.sheet.comments) {
+    const pos = liveCommentPositions.get(comment.id) ?? comment.position;
+    const size = estimateCommentSize(comment.text);
+    const commentRect = rotatedRectBounds(
+      {
+        x: pos.x,
+        y: pos.y,
+        width: size.width,
+        height: size.height,
+      },
+      comment.rotation ?? 0,
+      pos,
+    );
+    if (rectContainsRect(rect, commentRect)) commentIds.push(comment.id);
+  }
+
   for (const port of state.sheet.ports) {
     const pos = livePortPositions.get(port.id) ?? port.position;
     const portRect = rotatedRectBounds(
@@ -241,11 +287,13 @@ export function selectItemsInWorldRect(args: {
     if (rectContainsRect(rect, portRect)) portIds.push(port.id);
   }
 
-  const total = nodeIds.length + labelIds.length + portIds.length;
+  const total =
+    nodeIds.length + labelIds.length + commentIds.length + portIds.length;
   if (total === 0) return null;
   if (total === 1) {
     if (nodeIds.length === 1) return { kind: "node", id: nodeIds[0] };
     if (labelIds.length === 1) return { kind: "label", id: labelIds[0] };
+    if (commentIds.length === 1) return { kind: "comment", id: commentIds[0] };
     return { kind: "sheet-port", id: portIds[0] };
   }
 
@@ -253,6 +301,7 @@ export function selectItemsInWorldRect(args: {
     kind: "multi",
     nodeIds,
     labelIds,
+    commentIds,
     portIds,
   };
 }

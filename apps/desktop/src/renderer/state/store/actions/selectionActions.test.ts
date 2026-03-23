@@ -61,6 +61,11 @@ function createProjectFixture() {
     scope: "local",
     position: { x: 80, y: 180 },
   });
+  rootSheet.comments.push({
+    id: "comment_note",
+    text: "Test note",
+    position: { x: 140, y: 220 },
+  });
   rootSheet.ports.push({
     id: "port_source",
     name: "source",
@@ -122,6 +127,7 @@ describe("selection actions", () => {
       kind: "multi",
       nodeIds: ["node_component", "node_system_component"],
       labelIds: ["label_signal"],
+      commentIds: ["comment_note"],
       portIds: ["port_source"],
     });
 
@@ -143,6 +149,7 @@ describe("selection actions", () => {
     expect(componentNodes).toHaveLength(2);
     expect(systemNodes).toHaveLength(1);
     expect(rootSheet.labels).toHaveLength(2);
+    expect(rootSheet.comments).toHaveLength(2);
     expect(rootSheet.ports).toHaveLength(2);
     expect(rootSheet.directConnections).toHaveLength(3);
     expect(rootSheet.labelAnchors).toHaveLength(2);
@@ -156,6 +163,9 @@ describe("selection actions", () => {
     const pastedPort = rootSheet.ports.find(
       (port) => port.id !== "port_source",
     );
+    const pastedComment = rootSheet.comments.find(
+      (comment) => comment.id !== "comment_note",
+    );
 
     expect(pastedNode).toEqual(
       expect.objectContaining({
@@ -168,6 +178,12 @@ describe("selection actions", () => {
       expect.objectContaining({
         name: "sig_a",
         position: { x: 120, y: 220 },
+      }),
+    );
+    expect(pastedComment).toEqual(
+      expect.objectContaining({
+        text: "Test note",
+        position: { x: 180, y: 260 },
       }),
     );
     expect(pastedPort).toEqual(
@@ -205,6 +221,7 @@ describe("selection actions", () => {
       kind: "multi",
       nodeIds: [pastedNode?.id],
       labelIds: [pastedLabel?.id],
+      commentIds: [pastedComment?.id],
       portIds: [pastedPort?.id],
     });
   });
@@ -247,6 +264,7 @@ describe("selection actions", () => {
       kind: "multi",
       nodeIds: ["node_component"],
       labelIds: ["label_signal"],
+      commentIds: ["comment_note"],
       portIds: ["port_source"],
     });
 
@@ -267,6 +285,9 @@ describe("selection actions", () => {
     const pastedPort = rootSheet.ports.find(
       (port) => port.id !== "port_source",
     );
+    const pastedComment = rootSheet.comments.find(
+      (comment) => comment.id !== "comment_note",
+    );
 
     expect(pastedNode).toEqual(
       expect.objectContaining({
@@ -276,6 +297,11 @@ describe("selection actions", () => {
     expect(pastedLabel).toEqual(
       expect.objectContaining({
         position: { x: 470, y: 670 },
+      }),
+    );
+    expect(pastedComment).toEqual(
+      expect.objectContaining({
+        position: { x: 530, y: 710 },
       }),
     );
     expect(pastedPort).toEqual(
@@ -293,6 +319,7 @@ describe("selection actions", () => {
       kind: "multi",
       nodeIds: ["node_component", "node_system_component"],
       labelIds: ["label_signal"],
+      commentIds: ["comment_note"],
       portIds: ["port_source"],
     });
 
@@ -304,6 +331,7 @@ describe("selection actions", () => {
       [expect.objectContaining({ id: "node_system_component" })],
     );
     expect(rootSheet.labels).toHaveLength(0);
+    expect(rootSheet.comments).toHaveLength(0);
     expect(rootSheet.ports).toHaveLength(0);
     expect(rootSheet.directConnections).toHaveLength(0);
     expect(rootSheet.labelAnchors).toHaveLength(0);

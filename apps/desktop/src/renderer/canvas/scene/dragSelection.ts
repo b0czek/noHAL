@@ -23,6 +23,7 @@ export function startDragSelection(
     state: runtime.state.lastState,
     liveNodePositions: runtime.graph.liveNodePositions,
     liveLabelPositions: runtime.graph.liveLabelPositions,
+    liveCommentPositions: runtime.graph.liveCommentPositions,
     livePortPositions: runtime.graph.livePortPositions,
   });
 }
@@ -68,7 +69,7 @@ export function endDragSelection(
 
   moveDragSelection(runtime, target, pos, ops);
 
-  const { nodePositions, labelPositions, portPositions } =
+  const { nodePositions, labelPositions, commentPositions, portPositions } =
     collectGroupDragUpdates({
       session,
       clampPos,
@@ -78,6 +79,7 @@ export function endDragSelection(
     runtime.callbacks.onMoveSelectionGroup({
       nodePositions,
       labelPositions,
+      commentPositions,
       portPositions,
     });
     return true;
@@ -88,6 +90,9 @@ export function endDragSelection(
   }
   for (const entry of labelPositions) {
     runtime.callbacks.onMoveLabel(entry.id, entry.x, entry.y);
+  }
+  for (const entry of commentPositions) {
+    runtime.callbacks.onMoveComment(entry.id, entry.x, entry.y);
   }
   for (const entry of portPositions) {
     runtime.callbacks.onMoveSheetPort(entry.id, entry.x, entry.y);
@@ -115,6 +120,7 @@ function applyGroupDragSessionPositions(
 
   moveAll(session.nodeStartPositions.entries(), "node");
   moveAll(session.labelStartPositions.entries(), "label");
+  moveAll(session.commentStartPositions.entries(), "comment");
   moveAll(session.portStartPositions.entries(), "sheet-port");
 }
 

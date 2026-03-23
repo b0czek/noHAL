@@ -39,6 +39,7 @@ export function selectionIdBuckets(
       return createSelectionIdBuckets({
         nodeIds: selection.nodeIds,
         labelIds: selection.labelIds,
+        commentIds: selection.commentIds,
         portIds: selection.portIds,
       });
     default:

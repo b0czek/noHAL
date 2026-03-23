@@ -67,5 +67,5 @@ export function buildSelectionForPastedItems(
     if (commentIds.length === 1) return { kind: "comment", id: commentIds[0] };
     return { kind: "sheet-port", id: portIds[0] };
   }
-  return { kind: "multi", nodeIds, labelIds, portIds };
+  return { kind: "multi", nodeIds, labelIds, commentIds, portIds };
 }

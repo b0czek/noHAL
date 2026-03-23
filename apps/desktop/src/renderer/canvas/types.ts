@@ -4,15 +4,9 @@ import type {
   SheetEndpointRef,
   XY,
 } from "@nohal/core/src/types";
+import type { Selection } from "../state/store/selectionTypes";
 
-export type SceneSelection =
-  | { kind: "node"; id: string }
-  | { kind: "label"; id: string }
-  | { kind: "comment"; id: string }
-  | { kind: "sheet-port"; id: string }
-  | { kind: "wire-connection"; id: string }
-  | { kind: "multi"; nodeIds: string[]; labelIds: string[]; portIds: string[] }
-  | null;
+export type SceneSelection = Selection;
 
 export type ScenePlacement =
   | { kind: "component"; componentId: string }
@@ -52,6 +46,7 @@ export interface SceneCallbacks {
   onMoveSelectionGroup?: (updates: {
     nodePositions: Array<{ id: string; x: number; y: number }>;
     labelPositions: Array<{ id: string; x: number; y: number }>;
+    commentPositions: Array<{ id: string; x: number; y: number }>;
     portPositions: Array<{ id: string; x: number; y: number }>;
   }) => void;
   onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;

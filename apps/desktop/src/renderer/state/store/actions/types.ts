@@ -5,6 +5,7 @@ import type {
   XY,
 } from "@nohal/core/src/types";
 import type { TranslationKey } from "../../../i18n";
+import type { Selection } from "../selectionTypes";
 
 export type ActionStatusParams = Record<
   string,
@@ -26,14 +27,7 @@ export type WithProjectOptions = {
   markDirty?: boolean;
 };
 
-export type EditorSelection =
-  | { kind: "node"; id: string }
-  | { kind: "label"; id: string }
-  | { kind: "comment"; id: string }
-  | { kind: "sheet-port"; id: string }
-  | { kind: "wire-connection"; id: string }
-  | { kind: "multi"; nodeIds: string[]; labelIds: string[]; portIds: string[] }
-  | null;
+export type EditorSelection = Selection;
 
 export interface EditorState {
   project: NoHALProject;
