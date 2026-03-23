@@ -149,6 +149,7 @@ export const en = {
   "projectSettings.title": "Project Settings",
   "projectSettings.tabGeneral": "General",
   "projectSettings.tabMotmod": "motmod",
+  "projectSettings.tabMesa": "Mesa",
   "projectSettings.tabThreads": "HAL Threads",
   "projectSettings.tabCustomComponents": "Custom Components",
   "projectSettings.tabShutdown": "Shutdown",
@@ -192,6 +193,31 @@ export const en = {
   "projectSettings.motmod.syncSummary":
     "Pending: +{add} add, -{remove} remove, {adopt} adopt, {ensure} ensure components, {update} update config",
   "projectSettings.motmod.syncNow": "Sync now",
+  "projectSettings.mesaTitle": "Mesa / HostMot2",
+  "projectSettings.mesaHelp":
+    "Configure supported Mesa Ethernet boards and keep their managed System-sheet nodes synchronized.",
+  "projectSettings.mesa.hostBoards": "Host Boards",
+  "projectSettings.mesa.hostBoardsHelp":
+    "Add Ethernet host boards, set IP addresses, and attach supported DB25 peripheral cards or smart-serial devices.",
+  "projectSettings.mesa.addHost": "Add host",
+  "projectSettings.mesa.removeHost": "Remove host",
+  "projectSettings.mesa.emptyTitle": "No Mesa boards configured",
+  "projectSettings.mesa.emptyHelp":
+    "Add a host board to generate Mesa system nodes and HostMot2 export lines.",
+  "projectSettings.mesa.hostCard": "Host #{index}",
+  "projectSettings.mesa.hostModel": "Board Model",
+  "projectSettings.mesa.hostIp": "IP Address",
+  "projectSettings.mesa.connectors": "DB25 Peripheral Cards",
+  "projectSettings.mesa.smartSerial": "Smart-Serial",
+  "projectSettings.mesa.channelLabel": "Channel {channel}",
+  "projectSettings.mesa.validationTitle": "Validation",
+  "projectSettings.mesa.syncStatusLabel": "System HAL projection",
+  "projectSettings.mesa.syncStatusInSync": "In sync",
+  "projectSettings.mesa.syncStatusOutOfSync": "Out of sync",
+  "projectSettings.mesa.syncSummary":
+    "Pending: +{add} add, -{remove} remove, {ensure} ensure components, {update} rename/update nodes",
+  "projectSettings.mesa.syncNow": "Sync now",
+  "projectSettings.mesa.noCard": "(none)",
   "customComponents.title": "Custom Components",
   "customComponents.help":
     "Components that are not backed by a `.comp` file. You can define the command used to load them.",
@@ -501,6 +527,16 @@ export const en = {
     "Motmod system projection is already in sync",
   "store.status.syncedMotmodProjection":
     "Synced motmod projection (+{added}, -{removed}, {adopted} adopted, {ensured} ensured, {updated} updated)",
+  "store.status.addedMesaHost": "Added Mesa host",
+  "store.status.removedMesaHost": "Removed Mesa host",
+  "store.status.updatedMesaHost": "Updated Mesa host model",
+  "store.status.updatedMesaHostIp": "Updated Mesa host IP",
+  "store.status.updatedMesaConnector": "Updated Mesa connector assignment",
+  "store.status.updatedMesaSmartSerial": "Updated Mesa smart-serial assignment",
+  "store.status.mesaProjectionAlreadyInSync":
+    "Mesa system projection is already in sync",
+  "store.status.syncedMesaProjection":
+    "Synced Mesa projection (+{added}, -{removed}, {ensured} ensured, {updated} updated)",
   "store.status.cannotRemoveLastHalThread":
     "At least one HAL thread must exist",
   "store.status.cannotRemoveRequiredHalThread":
