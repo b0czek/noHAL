@@ -429,6 +429,7 @@ export function createKonvaSheetScene(
     runtime.graph.liveLabelPositions.clear();
     runtime.graph.liveCommentPositions.clear();
     runtime.graph.livePortPositions.clear();
+    runtime.graph.liveConnectionWaypoints.clear();
     runtime.graph.nodeGroups.clear();
     runtime.graph.labelGroups.clear();
     runtime.graph.commentGroups.clear();

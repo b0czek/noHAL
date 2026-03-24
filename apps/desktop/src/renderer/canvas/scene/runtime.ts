@@ -68,6 +68,7 @@ export function createSceneRuntime(
       liveLabelPositions: new Map(),
       liveCommentPositions: new Map(),
       livePortPositions: new Map(),
+      liveConnectionWaypoints: new Map(),
       nodeGroups: new Map(),
       labelGroups: new Map(),
       commentGroups: new Map(),

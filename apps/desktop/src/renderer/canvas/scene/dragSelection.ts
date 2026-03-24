@@ -122,6 +122,21 @@ function applyGroupDragSessionPositions(
   moveAll(session.labelStartPositions.entries(), "label");
   moveAll(session.commentStartPositions.entries(), "comment");
   moveAll(session.portStartPositions.entries(), "sheet-port");
+
+  for (const [
+    connectionId,
+    startWaypoints,
+  ] of session.connectionWaypointStartPositions.entries()) {
+    runtime.graph.liveConnectionWaypoints.set(
+      connectionId,
+      startWaypoints.map((start) =>
+        clampRuntimePos(runtime, {
+          x: start.x + session.appliedDx,
+          y: start.y + session.appliedDy,
+        }),
+      ),
+    );
+  }
 }
 
 function setRenderedGroupPosition(

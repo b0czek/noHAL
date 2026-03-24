@@ -1,3 +1,4 @@
+import type { SheetEndpointRef } from "@nohal/core/src/types";
 import {
   estimateCommentSize,
   estimatePortBox,
@@ -84,6 +85,10 @@ export function buildGroupDragSession(args: {
   const labelStartPositions = new Map<string, { x: number; y: number }>();
   const commentStartPositions = new Map<string, { x: number; y: number }>();
   const portStartPositions = new Map<string, { x: number; y: number }>();
+  const connectionWaypointStartPositions = new Map<
+    string,
+    { x: number; y: number }[]
+  >();
 
   for (const nodeId of selection.nodeIds) {
     const node = state.sheet.nodes.find((entry) => entry.id === nodeId);
@@ -123,6 +128,23 @@ export function buildGroupDragSession(args: {
     );
   }
 
+  // Treat connection waypoints as part of the dragged group when both endpoints
+  // are already included in the multi-selection.
+  for (const connection of state.sheet.directConnections) {
+    const waypoints = connection.waypoints;
+    if (!waypoints || waypoints.length === 0) continue;
+    if (
+      !endpointMovesWithSelection(connection.a, selection) ||
+      !endpointMovesWithSelection(connection.b, selection)
+    ) {
+      continue;
+    }
+    connectionWaypointStartPositions.set(
+      connection.id,
+      waypoints.map((point) => ({ x: point.x, y: point.y })),
+    );
+  }
+
   if (
     nodeStartPositions.size +
       labelStartPositions.size +
@@ -139,6 +161,7 @@ export function buildGroupDragSession(args: {
     labelStartPositions,
     commentStartPositions,
     portStartPositions,
+    connectionWaypointStartPositions,
     anchorStartPos: { x: anchorPos.x, y: anchorPos.y },
     appliedDx: 0,
     appliedDy: 0,
@@ -173,6 +196,9 @@ export function constrainGroupDragDelta(args: {
     applyConstraint(start);
   for (const start of session.portStartPositions.values())
     applyConstraint(start);
+  for (const waypoints of session.connectionWaypointStartPositions.values()) {
+    for (const waypoint of waypoints) applyConstraint(waypoint);
+  }
 
   return { x: nextDx, y: nextDy };
 }
@@ -207,6 +233,15 @@ export function collectGroupDragUpdates(args: {
     commentPositions: collectEntries(session.commentStartPositions.entries()),
     portPositions: collectEntries(session.portStartPositions.entries()),
   };
+}
+
+function endpointMovesWithSelection(
+  endpoint: SheetEndpointRef,
+  selection: Extract<SceneSelection, { kind: "multi" }>,
+): boolean {
+  return endpoint.kind === "node-pin"
+    ? selection.nodeIds.includes(endpoint.nodeId)
+    : selection.portIds.includes(endpoint.portId);
 }
 
 export function selectItemsInWorldRect(args: {

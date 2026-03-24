@@ -39,6 +39,7 @@ export type GroupDragSession = {
   labelStartPositions: Map<string, Pt>;
   commentStartPositions: Map<string, Pt>;
   portStartPositions: Map<string, Pt>;
+  connectionWaypointStartPositions: Map<string, Pt[]>;
   anchorStartPos: Pt;
   appliedDx: number;
   appliedDy: number;
@@ -86,6 +87,7 @@ export type SceneGraphState = {
   liveLabelPositions: Map<string, Pt>;
   liveCommentPositions: Map<string, Pt>;
   livePortPositions: Map<string, Pt>;
+  liveConnectionWaypoints: Map<string, Pt[]>;
   nodeGroups: Map<string, Konva.Group>;
   labelGroups: Map<string, Konva.Group>;
   commentGroups: Map<string, Konva.Group>;
