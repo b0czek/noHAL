@@ -2,7 +2,7 @@ import type { ProjectMesaSmartSerialCardKind } from "../types";
 import type { MesaSmartSerialCatalogEntry } from "./types";
 
 export const MESA_SMART_SERIAL_CARD_KINDS: readonly ProjectMesaSmartSerialCardKind[] =
-  ["7i66-8", "7i66-24", "7i71", "7i72"] as const;
+  ["7i66-8", "7i66-24", "7i84", "7i71", "7i72"] as const;
 
 export const MESA_SMART_SERIAL_CARDS: readonly MesaSmartSerialCatalogEntry[] = [
   {
@@ -21,6 +21,15 @@ export const MESA_SMART_SERIAL_CARDS: readonly MesaSmartSerialCatalogEntry[] = [
     halInstanceName: "7i66",
     peripheralProfile: {
       digitalOutputs: 24,
+    },
+    defaultMode: 0,
+  },
+  {
+    kind: "7i84",
+    displayName: "7i84",
+    peripheralProfile: {
+      digitalInputs: 32,
+      digitalOutputs: 16,
     },
     defaultMode: 0,
   },

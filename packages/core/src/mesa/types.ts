@@ -5,6 +5,7 @@ export type ProjectMesaDb25CardKind = "7i77";
 export type ProjectMesaSmartSerialCardKind =
   | "7i66-8"
   | "7i66-24"
+  | "7i84"
   | "7i71"
   | "7i72";
 
