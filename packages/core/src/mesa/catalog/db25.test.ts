@@ -24,7 +24,9 @@ describe("Mesa DB25 catalog", () => {
     ).map((pin) => pin.name);
 
     expect(hostPinNames).toContain("encoder.05.position");
-    expect(ioPinNames).toContain("input.00");
+    expect(ioPinNames).toContain("input-00");
+    expect(ioPinNames).toContain("input-00-not");
+    expect(ioPinNames).toContain("output-15");
     expect(ioPinNames).not.toContain("spinena");
     expect(analogPinNames).toContain("analogena");
     expect(analogPinNames).toContain("spinena");

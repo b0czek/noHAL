@@ -8,6 +8,7 @@ import {
   type MesaSchemaProfile,
 } from "./catalog";
 import {
+  createMesaBitInputPins,
   createMesaEncoderPins,
   mergeMesaSchemaProfiles,
   schemaProfileSummary,
@@ -202,13 +203,23 @@ function buildRawGpioProfile(
       const gpioIndex = rawGpio.firstIndex + localPinIndex;
       const gpioName = formatMesaGpioIndex(gpioIndex);
       const isOutput = outputPins.has(localPinIndex);
-      return {
+      if (isOutput) {
+        return [
+          {
+            key: `gpio_${gpioName}`,
+            name: `gpio.${gpioName}.out`,
+            direction: "in" as const,
+            type: "bit" as const,
+          },
+        ];
+      }
+      return createMesaBitInputPins({
         key: `gpio_${gpioName}`,
-        name: `gpio.${gpioName}.${isOutput ? "out" : "in"}`,
-        direction: isOutput ? "in" : "out",
-        type: "bit",
-      };
-    }),
+        name: `gpio.${gpioName}.in`,
+        negatedKey: `gpio_${gpioName}_not`,
+        negatedName: `gpio.${gpioName}.in_not`,
+      });
+    }).flat(),
   };
 }
 

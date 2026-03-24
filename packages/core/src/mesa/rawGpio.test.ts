@@ -65,6 +65,11 @@ describe("Mesa raw GPIO support", () => {
           direction: "out",
         }),
         expect.objectContaining({
+          key: "gpio_017_not",
+          name: "gpio.017.in_not",
+          direction: "out",
+        }),
+        expect.objectContaining({
           key: "gpio_018",
           name: "gpio.018.out",
           direction: "in",
@@ -79,6 +84,9 @@ describe("Mesa raw GPIO support", () => {
     expect(hostComponent?.pins.some((pin) => pin.name === "gpio.018.in")).toBe(
       false,
     );
+    expect(
+      hostComponent?.pins.some((pin) => pin.name === "gpio.018.in_not"),
+    ).toBe(false);
   });
 
   it("emits HostMot2 raw GPIO output configuration as setp lines", () => {

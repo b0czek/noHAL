@@ -73,6 +73,63 @@ function createFlagPin(
   return [{ key, name, direction, type }];
 }
 
+interface MesaBitInputPinNames {
+  key: string;
+  name: string;
+  negatedKey?: string;
+  negatedName?: string;
+}
+
+export function createMesaBitInputPins(
+  names: MesaBitInputPinNames,
+): ComponentPinDefinition[] {
+  const pins: ComponentPinDefinition[] = [
+    {
+      key: names.key,
+      name: names.name,
+      direction: "out",
+      type: "bit",
+    },
+  ];
+  if (names.negatedKey && names.negatedName) {
+    pins.push({
+      key: names.negatedKey,
+      name: names.negatedName,
+      direction: "out",
+      type: "bit",
+    });
+  }
+  return pins;
+}
+
+function createDigitalInputPins(
+  count: number | undefined,
+): ComponentPinDefinition[] {
+  if (!count || count <= 0) return [];
+  return Array.from({ length: count }, (_, index) => {
+    const suffix = `${index}`.padStart(2, "0");
+    return createMesaBitInputPins({
+      key: `input_${suffix}`,
+      name: `input-${suffix}`,
+      negatedKey: `input_${suffix}_not`,
+      negatedName: `input-${suffix}-not`,
+    });
+  }).flat();
+}
+
+function createDigitalOutputPins(
+  count: number | undefined,
+): ComponentPinDefinition[] {
+  if (!count || count <= 0) return [];
+  return createIndexedPins(
+    count,
+    (index) => `output-${`${index}`.padStart(2, "0")}`,
+    "in",
+    "bit",
+    "output",
+  );
+}
+
 export function pinsForMesaSchemaProfile(
   profile: MesaSchemaProfile,
 ): ComponentPinDefinition[] {
@@ -80,20 +137,8 @@ export function pinsForMesaSchemaProfile(
   return [
     ...(spec.explicitPins ?? []),
     ...createIndexedEncoderPins(spec.encoders),
-    ...createIndexedPins(
-      spec.digitalInputs,
-      (index) => `input.${`${index}`.padStart(2, "0")}`,
-      "out",
-      "bit",
-      "input",
-    ),
-    ...createIndexedPins(
-      spec.digitalOutputs,
-      (index) => `output.${`${index}`.padStart(2, "0")}`,
-      "in",
-      "bit",
-      "output",
-    ),
+    ...createDigitalInputPins(spec.digitalInputs),
+    ...createDigitalOutputPins(spec.digitalOutputs),
     ...createIndexedPins(
       spec.analogInputs,
       (index) => `analogin.${`${index}`.padStart(2, "0")}`,
