@@ -2,7 +2,11 @@ export type ProjectMesaHostKind = "7i92t";
 
 export type ProjectMesaDb25CardKind = "7i77";
 
-export type ProjectMesaSmartSerialCardKind = "7i71" | "7i72";
+export type ProjectMesaSmartSerialCardKind =
+  | "7i66-8"
+  | "7i66-24"
+  | "7i71"
+  | "7i72";
 
 export const MESA_RAW_GPIO_CARD_KIND = "raw_gpio";
 

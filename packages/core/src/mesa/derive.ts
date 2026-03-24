@@ -464,7 +464,7 @@ export function deriveMesaTopology(
             assignment.channel,
             assignment.connectorKey,
           ),
-          instanceName: `${instanceName}.${assignment.cardKind}.${address.portIndex}.${nestedChannel}`,
+          instanceName: `${instanceName}.${card.displayName}.${address.portIndex}.${nestedChannel}`,
           displayName: `${card.displayName} ${connector.label} ${port.label} ch${nestedChannel}`,
           schemaProfile: card.peripheralProfile,
           preferredPosition: {
@@ -507,7 +507,7 @@ export function deriveMesaTopology(
           assignment.portKey,
           assignment.channel,
         ),
-        instanceName: `${instanceName}.${assignment.cardKind}.${port.portIndex}.${assignment.channel}`,
+        instanceName: `${instanceName}.${card.displayName}.${port.portIndex}.${assignment.channel}`,
         displayName: `${card.displayName} ${port.label} ch${assignment.channel}`,
         schemaProfile: card.peripheralProfile,
         preferredPosition: {
