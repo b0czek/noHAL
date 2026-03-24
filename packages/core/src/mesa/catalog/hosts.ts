@@ -18,6 +18,7 @@ export const MESA_HOSTS: readonly MesaHostCatalogEntry[] = [
         kind: "db25",
         order: 0,
         smartSerialAddress: { portIndex: 0, channel: 0 },
+        rawGpio: { firstIndex: 0, count: 17 },
       },
       {
         key: "p2",
@@ -25,6 +26,7 @@ export const MESA_HOSTS: readonly MesaHostCatalogEntry[] = [
         kind: "db25",
         order: 1,
         smartSerialAddress: { portIndex: 1, channel: 0 },
+        rawGpio: { firstIndex: 17, count: 17 },
       },
     ],
     smartSerialPorts: [],

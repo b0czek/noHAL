@@ -1,0 +1,93 @@
+import { describe, expect, it } from "vitest";
+import { exportProjectToHal } from "../halExport";
+import { createEmptyProject, reconcileProject } from "../project";
+import {
+  addMesaHost,
+  setMesaConnectorCard,
+  setMesaRawGpioPinDirection,
+  updateMesaHostIp,
+} from "./edit";
+import { MESA_RAW_GPIO_CARD_KIND } from "./types";
+
+function makeRawGpioProject() {
+  const project = createEmptyProject("Mesa Raw GPIO");
+  const hostId = addMesaHost(project, "7i92t");
+  updateMesaHostIp(project, hostId, "192.168.1.121");
+  setMesaConnectorCard(project, hostId, "p2", MESA_RAW_GPIO_CARD_KIND);
+  setMesaRawGpioPinDirection(project, hostId, "p2", 1, "output");
+  setMesaRawGpioPinDirection(project, hostId, "p2", 4, "output");
+  return project;
+}
+
+describe("Mesa raw GPIO support", () => {
+  it("stores per-pin raw GPIO output selection on the connector assignment", () => {
+    const project = createEmptyProject("Mesa Raw GPIO Edit");
+    const hostId = addMesaHost(project, "7i92t");
+
+    setMesaConnectorCard(project, hostId, "p2", MESA_RAW_GPIO_CARD_KIND);
+
+    expect(setMesaRawGpioPinDirection(project, hostId, "p2", 1, "output")).toBe(
+      true,
+    );
+    expect(
+      project.mesa?.hosts[0]?.connectors?.find(
+        (item) => item.connectorKey === "p2",
+      )?.rawGpio?.outputPins,
+    ).toEqual([1]);
+
+    expect(setMesaRawGpioPinDirection(project, hostId, "p2", 1, "input")).toBe(
+      true,
+    );
+    expect(
+      project.mesa?.hosts[0]?.connectors?.find(
+        (item) => item.connectorKey === "p2",
+      )?.rawGpio?.outputPins,
+    ).toEqual([]);
+  });
+
+  it("projects raw GPIO pins onto the Mesa host component using per-pin direction", () => {
+    const project = makeRawGpioProject();
+
+    reconcileProject(project);
+
+    const hostComponent = Object.values(project.library.components).find(
+      (component) =>
+        component.system?.manager === "mesa" &&
+        component.system?.family === "host",
+    );
+
+    expect(hostComponent).toBeDefined();
+    expect(hostComponent?.pins).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "gpio_017",
+          name: "gpio.017.in",
+          direction: "out",
+        }),
+        expect.objectContaining({
+          key: "gpio_018",
+          name: "gpio.018.out",
+          direction: "in",
+        }),
+        expect.objectContaining({
+          key: "gpio_021",
+          name: "gpio.021.out",
+          direction: "in",
+        }),
+      ]),
+    );
+    expect(hostComponent?.pins.some((pin) => pin.name === "gpio.018.in")).toBe(
+      false,
+    );
+  });
+
+  it("emits HostMot2 raw GPIO output configuration as setp lines", () => {
+    const project = makeRawGpioProject();
+
+    const { text } = exportProjectToHal(project);
+
+    expect(text).toContain("setp hm2_7i92t.0.gpio.018.is_output 1");
+    expect(text).toContain("setp hm2_7i92t.0.gpio.021.is_output 1");
+    expect(text).not.toContain("setp hm2_7i92t.0.gpio.017.is_output 1");
+  });
+});

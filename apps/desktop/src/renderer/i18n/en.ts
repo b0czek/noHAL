@@ -198,7 +198,7 @@ export const en = {
     "Configure supported Mesa Ethernet boards and keep their managed System-sheet nodes synchronized.",
   "projectSettings.mesa.hostBoards": "Host Boards",
   "projectSettings.mesa.hostBoardsHelp":
-    "Add Ethernet host boards, set IP addresses, and attach supported DB25 peripheral cards or smart-serial devices.",
+    "Add Ethernet host boards, set IP addresses, and attach supported DB25 peripheral cards, raw GPIO connectors, or smart-serial devices.",
   "projectSettings.mesa.addHost": "Add host",
   "projectSettings.mesa.removeHost": "Remove host",
   "projectSettings.mesa.emptyTitle": "No Mesa boards configured",
@@ -208,6 +208,12 @@ export const en = {
   "projectSettings.mesa.hostModel": "Board Model",
   "projectSettings.mesa.hostIp": "IP Address",
   "projectSettings.mesa.connectors": "DB25 Peripheral Cards",
+  "projectSettings.mesa.rawGpio": "Raw GPIO",
+  "projectSettings.mesa.rawGpioHelp":
+    "Expose this connector as direct HostMot2 GPIO and choose which lines switch to output mode.",
+  "projectSettings.mesa.gpioLabel": "GPIO {gpio}",
+  "projectSettings.mesa.gpioDirectionInput": "Input",
+  "projectSettings.mesa.gpioDirectionOutput": "Output",
   "projectSettings.mesa.smartSerial": "Smart-Serial",
   "projectSettings.mesa.channelLabel": "Channel {channel}",
   "projectSettings.mesa.validationTitle": "Validation",
@@ -532,6 +538,7 @@ export const en = {
   "store.status.updatedMesaHost": "Updated Mesa host model",
   "store.status.updatedMesaHostIp": "Updated Mesa host IP",
   "store.status.updatedMesaConnector": "Updated Mesa connector assignment",
+  "store.status.updatedMesaRawGpio": "Updated Mesa raw GPIO direction",
   "store.status.updatedMesaSmartSerial": "Updated Mesa smart-serial assignment",
   "store.status.mesaProjectionAlreadyInSync":
     "Mesa system projection is already in sync",

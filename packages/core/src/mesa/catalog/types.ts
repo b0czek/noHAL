@@ -29,6 +29,10 @@ export interface MesaHostConnectorDefinition {
   kind: MesaConnectorKind;
   order: number;
   smartSerialAddress?: MesaSmartSerialAddress;
+  rawGpio?: {
+    firstIndex: number;
+    count: number;
+  };
 }
 
 export interface MesaSmartSerialPortDefinition {

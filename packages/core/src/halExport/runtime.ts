@@ -9,7 +9,6 @@ import { resolveAddfFunctionTarget } from "../componentFunctions";
 import { getSheet } from "../graph";
 import { isValidHalName } from "../halNames";
 import { interpolateLoadrt, interpolateLoadrtByStrategy } from "../loadrt";
-import { buildMesaRuntimeContribution } from "../mesa";
 import { firstSheetThreadOutputId, getSheetThreadOutputs } from "../sheet";
 import type {
   NoHALProject,
@@ -18,6 +17,7 @@ import type {
 } from "../types";
 import type { ExportContext } from "./context";
 import { pushFatal } from "./context";
+import { collectGeneratedRuntimeContributions } from "./contributions";
 import { joinInstancePath, resolveExportedInstancePath } from "./naming";
 
 type RuntimeInstanceRecord = ExportContext["componentInstances"][number];
@@ -63,7 +63,7 @@ export function buildRuntimeSections(
   project: NoHALProject,
   ctx: ExportContext,
 ): RuntimeSections {
-  const mesaRuntime = buildMesaRuntimeContribution(project, ctx);
+  const generatedRuntime = collectGeneratedRuntimeContributions(project, ctx);
   const rules = project.halExport?.componentRules ?? {};
   const addfConfig = project.halExport?.addf;
   const loadOrderList = project.halExport?.loadOrder ?? [];
@@ -193,7 +193,7 @@ export function buildRuntimeSections(
   };
 
   emitMotmodLoadrt();
-  loadrtLines.push(...mesaRuntime.loadrtLines);
+  loadrtLines.push(...generatedRuntime.loadrtLines);
   const exportableHalThreads = projectHalThreads.filter(
     (thread) => !motionOwnedThreadNames.has(thread.name),
   );
@@ -719,7 +719,7 @@ export function buildRuntimeSections(
   return {
     customLoadLines,
     loadrtLines,
-    loadusrLines: [],
+    loadusrLines: [...generatedRuntime.loadusrLines],
     addfLines,
     runtimeSummaryLines,
   };

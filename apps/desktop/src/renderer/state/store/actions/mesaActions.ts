@@ -1,11 +1,13 @@
 import {
   addMesaHost as addMesaHostEdit,
-  type ProjectMesaDb25CardKind,
+  type ProjectMesaConnectorCardKind,
+  type ProjectMesaGpioDirection,
   type ProjectMesaHostKind,
   type ProjectMesaSmartSerialCardKind,
   type ProjectMesaSmartSerialTarget,
   removeMesaHost as removeMesaHostEdit,
   setMesaConnectorCard as setMesaConnectorCardEdit,
+  setMesaRawGpioPinDirection as setMesaRawGpioPinDirectionEdit,
   setMesaSmartSerialCard as setMesaSmartSerialCardEdit,
   syncMesaManagedProjection as syncMesaManagedProjectionEdit,
   updateMesaHostIp as updateMesaHostIpEdit,
@@ -49,13 +51,32 @@ export function createMesaActions(deps: EditorStoreActionContext) {
     setMesaConnectorCard(
       hostId: string,
       connectorKey: string,
-      cardKind: ProjectMesaDb25CardKind | undefined,
+      cardKind: ProjectMesaConnectorCardKind | undefined,
     ): void {
       const changed = deps.withProject((project) =>
         setMesaConnectorCardEdit(project, hostId, connectorKey, cardKind),
       );
       if (!changed) return;
       deps.setStatusT("store.status.updatedMesaConnector");
+    },
+
+    setMesaRawGpioPinDirection(
+      hostId: string,
+      connectorKey: string,
+      pinIndex: number,
+      direction: ProjectMesaGpioDirection,
+    ): void {
+      const changed = deps.withProject((project) =>
+        setMesaRawGpioPinDirectionEdit(
+          project,
+          hostId,
+          connectorKey,
+          pinIndex,
+          direction,
+        ),
+      );
+      if (!changed) return;
+      deps.setStatusT("store.status.updatedMesaRawGpio");
     },
 
     setMesaSmartSerialCard(

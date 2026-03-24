@@ -9,6 +9,7 @@ import {
 } from "./catalog";
 import type {
   ProjectMesaConfig,
+  ProjectMesaConnectorCardKind,
   ProjectMesaDb25CardAssignment,
   ProjectMesaDb25CardKind,
   ProjectMesaHostConfig,
@@ -16,6 +17,7 @@ import type {
   ProjectMesaSmartSerialAssignment,
   ProjectMesaSmartSerialCardKind,
 } from "./types";
+import { MESA_RAW_GPIO_CARD_KIND } from "./types";
 
 export const DEFAULT_MESA_HOST_KIND: ProjectMesaHostKind = "7i92t";
 
@@ -31,12 +33,15 @@ function normalizeHostKind(value: unknown): ProjectMesaHostKind {
   return DEFAULT_MESA_HOST_KIND;
 }
 
-function normalizeDb25CardKind(
+function normalizeConnectorCardKind(
   value: unknown,
-): ProjectMesaDb25CardKind | undefined {
+): ProjectMesaConnectorCardKind | undefined {
   const candidate = `${value ?? ""}`.trim().toLowerCase();
+  if (candidate === MESA_RAW_GPIO_CARD_KIND) {
+    return MESA_RAW_GPIO_CARD_KIND;
+  }
   if (MESA_DB25_CARD_KINDS.includes(candidate as ProjectMesaDb25CardKind)) {
-    return candidate as ProjectMesaDb25CardKind;
+    return candidate as ProjectMesaConnectorCardKind;
   }
   return undefined;
 }
@@ -55,6 +60,27 @@ function normalizeSmartSerialCardKind(
   return undefined;
 }
 
+function normalizeRawGpioConfig(
+  count: number | undefined,
+  value: unknown,
+): { outputPins: number[] } | undefined {
+  if (!count || count <= 0) return undefined;
+  const raw = isRecord(value) ? value : {};
+  const rawList = Array.isArray(raw.outputPins) ? raw.outputPins : [];
+  const seen = new Set<number>();
+  const outputPins: number[] = [];
+  for (const candidate of rawList) {
+    const pin = Number.parseInt(`${candidate ?? ""}`, 10);
+    if (!Number.isInteger(pin) || pin < 0 || pin >= count || seen.has(pin)) {
+      continue;
+    }
+    seen.add(pin);
+    outputPins.push(pin);
+  }
+  outputPins.sort((a, b) => a - b);
+  return { outputPins };
+}
+
 function normalizeConnectorAssignments(
   hostKind: ProjectMesaHostKind,
   value: unknown,
@@ -67,11 +93,24 @@ function normalizeConnectorAssignments(
     if (!isRecord(raw)) continue;
     const connectorKey = `${raw.connectorKey ?? ""}`.trim().toLowerCase();
     if (!connectorKey || seen.has(connectorKey)) continue;
-    if (!host?.connectorSlots.some((item) => item.key === connectorKey))
-      continue;
-    const cardKind = normalizeDb25CardKind(raw.cardKind);
+    const connector = host?.connectorSlots.find(
+      (item) => item.key === connectorKey,
+    );
+    if (!connector) continue;
+    const cardKind = normalizeConnectorCardKind(raw.cardKind);
     if (!cardKind) continue;
-    out.push({ connectorKey, cardKind });
+    out.push(
+      cardKind === MESA_RAW_GPIO_CARD_KIND
+        ? {
+            connectorKey,
+            cardKind,
+            rawGpio: normalizeRawGpioConfig(
+              connector.rawGpio?.count,
+              raw.rawGpio,
+            ),
+          }
+        : { connectorKey, cardKind },
+    );
     seen.add(connectorKey);
   }
   return out.sort((a, b) => a.connectorKey.localeCompare(b.connectorKey));

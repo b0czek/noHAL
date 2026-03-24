@@ -4,6 +4,14 @@ export type ProjectMesaDb25CardKind = "7i77";
 
 export type ProjectMesaSmartSerialCardKind = "7i71" | "7i72";
 
+export const MESA_RAW_GPIO_CARD_KIND = "raw_gpio";
+
+export type ProjectMesaConnectorCardKind =
+  | ProjectMesaDb25CardKind
+  | typeof MESA_RAW_GPIO_CARD_KIND;
+
+export type ProjectMesaGpioDirection = "input" | "output";
+
 export interface ProjectMesaSmartSerialAssignment {
   connectorKey?: string;
   portKey: string;
@@ -18,7 +26,10 @@ export type ProjectMesaSmartSerialTarget = Pick<
 
 export interface ProjectMesaDb25CardAssignment {
   connectorKey: string;
-  cardKind?: ProjectMesaDb25CardKind;
+  cardKind?: ProjectMesaConnectorCardKind;
+  rawGpio?: {
+    outputPins?: number[];
+  };
 }
 
 export interface ProjectMesaHostConfig {

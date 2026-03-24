@@ -11,9 +11,11 @@ import { mergeMesaSchemaProfiles, schemaProfileSummary } from "./schema";
 import type {
   ProjectMesaConfig,
   ProjectMesaDb25CardAssignment,
+  ProjectMesaDb25CardKind,
   ProjectMesaHostConfig,
   ProjectMesaSmartSerialAssignment,
 } from "./types";
+import { MESA_RAW_GPIO_CARD_KIND } from "./types";
 
 export type MesaDerivedNodeFamily = "host" | "db25" | "sserial";
 
@@ -99,6 +101,36 @@ function baseGroupX(groupIndex: number): number {
   return 120 + groupIndex * 760;
 }
 
+function formatMesaGpioIndex(index: number): string {
+  return `${index}`.padStart(3, "0");
+}
+
+function buildRawGpioProfile(
+  host: ProjectMesaHostConfig,
+  assignment: ProjectMesaDb25CardAssignment,
+): MesaSchemaProfile | undefined {
+  if (assignment.cardKind !== MESA_RAW_GPIO_CARD_KIND) return undefined;
+  const connector = getMesaHostCatalogEntry(host.kind)?.connectorSlots.find(
+    (item) => item.key === assignment.connectorKey,
+  );
+  const rawGpio = connector?.rawGpio;
+  if (!rawGpio) return undefined;
+  const outputPins = new Set(assignment.rawGpio?.outputPins ?? []);
+  return {
+    explicitPins: Array.from({ length: rawGpio.count }, (_, localPinIndex) => {
+      const gpioIndex = rawGpio.firstIndex + localPinIndex;
+      const gpioName = formatMesaGpioIndex(gpioIndex);
+      const isOutput = outputPins.has(localPinIndex);
+      return {
+        key: `gpio_${gpioName}`,
+        name: `gpio.${gpioName}.${isOutput ? "out" : "in"}`,
+        direction: isOutput ? "in" : "out",
+        type: "bit",
+      };
+    }),
+  };
+}
+
 function buildHostDirectProfile(
   host: ProjectMesaHostConfig,
   connectorAssignments: ProjectMesaDb25CardAssignment[],
@@ -106,10 +138,11 @@ function buildHostDirectProfile(
   const hostCatalog = getMesaHostCatalogEntry(host.kind);
   return mergeMesaSchemaProfiles(
     hostCatalog?.directProfile,
-    ...connectorAssignments.map(
-      (assignment) =>
-        getMesaDb25CardCatalogEntry(assignment.cardKind ?? "")?.hostmot
-          .directProfile,
+    ...connectorAssignments.map((assignment) =>
+      assignment.cardKind === MESA_RAW_GPIO_CARD_KIND
+        ? buildRawGpioProfile(host, assignment)
+        : getMesaDb25CardCatalogEntry(assignment.cardKind ?? "")?.hostmot
+            .directProfile,
     ),
   );
 }
@@ -276,14 +309,20 @@ export function deriveMesaTopology(
       }
     }
 
-    const connectorAssignments = (host.connectors ?? [])
-      .filter((assignment) => assignment.cardKind)
+    const allConnectorAssignments = host.connectors ?? [];
+    const connectorAssignments = allConnectorAssignments
+      .filter((assignment) =>
+        Boolean(getMesaDb25CardCatalogEntry(assignment.cardKind ?? "")),
+      )
       .map(
         (assignment) =>
           assignment as ProjectMesaDb25CardAssignment & {
-            cardKind: NonNullable<ProjectMesaDb25CardAssignment["cardKind"]>;
+            cardKind: ProjectMesaDb25CardKind;
           },
       );
+    const rawGpioAssignments = allConnectorAssignments.filter(
+      (assignment) => assignment.cardKind === MESA_RAW_GPIO_CARD_KIND,
+    );
     const smartSerialAssignments = (host.smartSerial ?? [])
       .filter((assignment) => assignment.cardKind)
       .map(
@@ -301,7 +340,7 @@ export function deriveMesaTopology(
 
     const hostDirectProfile = buildHostDirectProfile(
       host,
-      connectorAssignments,
+      allConnectorAssignments,
     );
     const { instanceName, hostIndex } = hm2InstanceNameForHost(
       host,
@@ -320,6 +359,18 @@ export function deriveMesaTopology(
       preferredPosition: { x: groupX, y: 120 },
       summary: schemaProfileSummary(hostDirectProfile),
     });
+
+    for (const assignment of rawGpioAssignments) {
+      const connector = catalogHost.connectorSlots.find(
+        (item) => item.key === assignment.connectorKey,
+      );
+      if (connector?.rawGpio) continue;
+      issues.push({
+        severity: "fatal",
+        message: `Raw GPIO is not available on ${catalogHost.displayName} ${connector?.label ?? assignment.connectorKey}.`,
+        hostId: host.id,
+      });
+    }
 
     for (const assignment of connectorAssignments) {
       const connector = catalogHost.connectorSlots.find(

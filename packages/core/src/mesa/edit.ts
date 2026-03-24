@@ -1,5 +1,6 @@
 import { createId } from "../id";
 import type { NoHALProject } from "../types";
+import { getMesaDb25CardCatalogEntry } from "./catalog";
 import {
   type MesaReconcilePlan,
   planMesaReconcile,
@@ -11,12 +12,14 @@ import {
   normalizeProjectMesaConfig,
 } from "./shared";
 import type {
-  ProjectMesaDb25CardKind,
+  ProjectMesaConnectorCardKind,
+  ProjectMesaGpioDirection,
   ProjectMesaHostConfig,
   ProjectMesaHostKind,
   ProjectMesaSmartSerialCardKind,
   ProjectMesaSmartSerialTarget,
 } from "./types";
+import { MESA_RAW_GPIO_CARD_KIND } from "./types";
 
 function findMesaHost(
   project: NoHALProject,
@@ -86,7 +89,7 @@ export function setMesaConnectorCard(
   project: NoHALProject,
   hostId: string,
   connectorKey: string,
-  cardKind: ProjectMesaDb25CardKind | undefined,
+  cardKind: ProjectMesaConnectorCardKind | undefined,
 ): boolean {
   const host = findMesaHost(project, hostId);
   if (!host) return false;
@@ -106,13 +109,45 @@ export function setMesaConnectorCard(
     return true;
   }
   if (index >= 0 && connectors[index]?.cardKind === cardKind) return false;
+  const nextAssignment =
+    cardKind === MESA_RAW_GPIO_CARD_KIND
+      ? { connectorKey, cardKind, rawGpio: { outputPins: [] } }
+      : { connectorKey, cardKind };
   if (index >= 0) {
-    connectors[index] = { connectorKey, cardKind };
-  } else connectors.push({ connectorKey, cardKind });
+    connectors[index] = nextAssignment;
+  } else connectors.push(nextAssignment);
   host.connectors = connectors;
   host.smartSerial = smartSerial.filter(
     (item) => item.connectorKey !== connectorKey,
   );
+  renormalizeMesa(project);
+  return true;
+}
+
+export function setMesaRawGpioPinDirection(
+  project: NoHALProject,
+  hostId: string,
+  connectorKey: string,
+  pinIndex: number,
+  direction: ProjectMesaGpioDirection,
+): boolean {
+  const host = findMesaHost(project, hostId);
+  if (!host || !Number.isInteger(pinIndex) || pinIndex < 0) return false;
+  const connectors = host.connectors ?? [];
+  const assignment = connectors.find(
+    (item) =>
+      item.connectorKey === connectorKey &&
+      item.cardKind === MESA_RAW_GPIO_CARD_KIND,
+  );
+  if (!assignment) return false;
+  const outputPins = new Set(assignment.rawGpio?.outputPins ?? []);
+  const hadPin = outputPins.has(pinIndex);
+  if (direction === "output") outputPins.add(pinIndex);
+  else outputPins.delete(pinIndex);
+  if ((direction === "output") === hadPin) return false;
+  assignment.rawGpio = {
+    outputPins: [...outputPins].sort((a, b) => a - b),
+  };
   renormalizeMesa(project);
   return true;
 }
@@ -128,7 +163,9 @@ export function setMesaSmartSerialCard(
   if (
     target.connectorKey &&
     !(host.connectors ?? []).some(
-      (item) => item.connectorKey === target.connectorKey && item.cardKind,
+      (item) =>
+        item.connectorKey === target.connectorKey &&
+        Boolean(getMesaDb25CardCatalogEntry(item.cardKind ?? "")),
     )
   ) {
     return false;
