@@ -527,6 +527,7 @@ export function deriveMesaTopology(
     for (const assignment of smartSerialAssignments) {
       const card = getMesaSmartSerialCatalogEntry(assignment.cardKind);
       if (!card) continue;
+      const halInstanceName = card.halInstanceName ?? card.displayName;
       if (assignment.connectorKey) {
         const connectorAssignment = connectorAssignmentsByKey.get(
           assignment.connectorKey,
@@ -570,7 +571,7 @@ export function deriveMesaTopology(
             assignment.channel,
             assignment.connectorKey,
           ),
-          instanceName: `${instanceName}.${card.displayName}.${address.portIndex}.${nestedChannel}`,
+          instanceName: `${instanceName}.${halInstanceName}.${address.portIndex}.${nestedChannel}`,
           displayName: `${card.displayName} ${connector.label} ${port.label} ch${nestedChannel}`,
           schemaProfile: card.peripheralProfile,
           preferredPosition: {
@@ -613,7 +614,7 @@ export function deriveMesaTopology(
           assignment.portKey,
           assignment.channel,
         ),
-        instanceName: `${instanceName}.${card.displayName}.${port.portIndex}.${assignment.channel}`,
+        instanceName: `${instanceName}.${halInstanceName}.${port.portIndex}.${assignment.channel}`,
         displayName: `${card.displayName} ${port.label} ch${assignment.channel}`,
         schemaProfile: card.peripheralProfile,
         preferredPosition: {

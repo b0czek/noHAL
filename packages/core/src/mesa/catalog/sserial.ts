@@ -7,7 +7,8 @@ export const MESA_SMART_SERIAL_CARD_KINDS: readonly ProjectMesaSmartSerialCardKi
 export const MESA_SMART_SERIAL_CARDS: readonly MesaSmartSerialCatalogEntry[] = [
   {
     kind: "7i66-8",
-    displayName: "7i66",
+    displayName: "7i66-8",
+    halInstanceName: "7i66",
     peripheralProfile: {
       digitalInputs: 16,
       digitalOutputs: 8,
@@ -16,7 +17,8 @@ export const MESA_SMART_SERIAL_CARDS: readonly MesaSmartSerialCatalogEntry[] = [
   },
   {
     kind: "7i66-24",
-    displayName: "7i66",
+    displayName: "7i66-24",
+    halInstanceName: "7i66",
     peripheralProfile: {
       digitalOutputs: 24,
     },

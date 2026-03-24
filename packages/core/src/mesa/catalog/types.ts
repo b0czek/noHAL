@@ -87,6 +87,7 @@ export interface MesaDb25CatalogEntry {
 export interface MesaSmartSerialCatalogEntry {
   kind: ProjectMesaSmartSerialCardKind;
   displayName: string;
+  halInstanceName?: string;
   peripheralProfile: MesaSchemaProfile;
   defaultMode: number;
 }

@@ -33,12 +33,11 @@ describe("Mesa smart-serial HAL projection", () => {
   it.each([
     "7i66-8",
     "7i66-24",
-  ] as const)("projects %s into HAL as 7i66", (cardKind) => {
+  ] as const)("projects %s into HAL as 7i66 while preserving the variant in the GUI name", (cardKind) => {
     const component = reconcileSmartSerialComponent(cardKind);
 
     expect(component).toBeDefined();
-    expect(component?.name).toContain("7i66");
-    expect(component?.name).not.toContain(cardKind);
+    expect(component?.name).toContain(cardKind);
     expect(component?.constraints?.fixedInstanceName).toBe(
       "hm2_7i92t.0.7i66.0.2",
     );
