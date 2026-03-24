@@ -19,7 +19,7 @@ type SceneInteractionOps = {
   redrawWires: () => void;
   zoomByFactor: (zoomFactor: number, pointer?: Pt) => void;
   deleteSelectedWaypoint: () => boolean;
-  startMarqueeSelection: (screenPos: Pt) => void;
+  startMarqueeSelection: (screenPos: Pt, additive: boolean) => void;
   cancelMarqueeSelection: () => void;
   finishMarqueeSelection: () => void;
   updateMarqueeRect: () => void;
@@ -136,6 +136,7 @@ export function bindSceneInteractions(
     runtime.state.interaction.isPanning = false;
     runtime.state.interaction.panLastScreenPos = null;
     runtime.state.interaction.backgroundTapStartScreenPos = null;
+    runtime.state.interaction.backgroundTapAdditive = false;
     cancelMarqueeSelection();
     runtime.state.cursorPos = null;
     syncPlacementPreview();
@@ -171,8 +172,12 @@ export function bindSceneInteractions(
     ) {
       if (!pos) return;
       evt.cancelBubble = true;
-      startMarqueeSelection({ x: pos.x, y: pos.y });
+      startMarqueeSelection(
+        { x: pos.x, y: pos.y },
+        evt.evt instanceof MouseEvent && evt.evt.shiftKey,
+      );
       runtime.state.interaction.backgroundTapStartScreenPos = null;
+      runtime.state.interaction.backgroundTapAdditive = false;
       if ("preventDefault" in evt.evt) evt.evt.preventDefault();
       return;
     }
@@ -201,11 +206,34 @@ export function bindSceneInteractions(
         x: pos.x,
         y: pos.y,
       };
+      runtime.state.interaction.backgroundTapAdditive = false;
       if ("preventDefault" in evt.evt) evt.evt.preventDefault();
       return;
     }
 
+    // Track plain background clicks so mouseup can clear selection, but keep
+    // Shift-background clicks non-destructive for additive selection flows.
+    if (
+      !runtime.state.lastState?.pendingEndpoint &&
+      !runtime.state.lastState?.placement &&
+      evt.evt instanceof MouseEvent &&
+      evt.evt.button === 0 &&
+      !runtime.state.interaction.spacePressed &&
+      isBackgroundTarget(stage, evt.target)
+    ) {
+      if (!pos) return;
+      runtime.state.interaction.backgroundTapStartScreenPos = {
+        x: pos.x,
+        y: pos.y,
+      };
+      runtime.state.interaction.backgroundTapAdditive = evt.evt.shiftKey;
+      evt.cancelBubble = true;
+      evt.evt.preventDefault();
+      return;
+    }
+
     runtime.state.interaction.backgroundTapStartScreenPos = null;
+    runtime.state.interaction.backgroundTapAdditive = false;
   });
 
   stage.on(`mouseup${EVENT_NS} touchend${EVENT_NS}`, () => {
@@ -216,12 +244,14 @@ export function bindSceneInteractions(
 
     const shouldClearSelection =
       runtime.state.interaction.backgroundTapStartScreenPos !== null &&
+      !runtime.state.interaction.backgroundTapAdditive &&
       !runtime.state.lastState?.pendingEndpoint &&
       !runtime.state.lastState?.placement;
 
     runtime.state.interaction.isPanning = false;
     runtime.state.interaction.panLastScreenPos = null;
     runtime.state.interaction.backgroundTapStartScreenPos = null;
+    runtime.state.interaction.backgroundTapAdditive = false;
     container.style.cursor = "";
 
     if (shouldClearSelection) runtime.callbacks.onSelect(null);

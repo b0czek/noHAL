@@ -7,12 +7,14 @@ import type { Rect, SceneRuntime } from "./types";
 export function startMarqueeSelection(args: {
   runtime: SceneRuntime;
   screenPos: Pt;
+  additive: boolean;
   updateMarqueeRect: () => void;
 }): void {
-  const { runtime, screenPos, updateMarqueeRect } = args;
+  const { runtime, screenPos, additive, updateMarqueeRect } = args;
   runtime.state.interaction.isMarqueeSelecting = true;
   runtime.state.interaction.marqueeStartScreenPos = screenPos;
   runtime.state.interaction.marqueeCurrentScreenPos = screenPos;
+  runtime.state.interaction.marqueeAdditive = additive;
   runtime.view.container.style.cursor = "crosshair";
   updateMarqueeRect();
 }
@@ -25,6 +27,7 @@ export function cancelMarqueeSelection(runtime: SceneRuntime): void {
   interaction.isMarqueeSelecting = false;
   interaction.marqueeStartScreenPos = null;
   interaction.marqueeCurrentScreenPos = null;
+  interaction.marqueeAdditive = false;
   runtime.view.marqueeRect.hide();
   runtime.view.uiLayer.batchDraw();
   if (!interaction.isPanning) runtime.view.container.style.cursor = "";
@@ -34,8 +37,8 @@ export function finishMarqueeSelection(args: {
   runtime: SceneRuntime;
   thresholdPx: number;
   cancelMarqueeSelection: () => void;
-  onClearSelection: () => void;
-  onSelectWorldRect: (rect: Rect) => void;
+  onClearSelection: (additive: boolean) => void;
+  onSelectWorldRect: (rect: Rect, additive: boolean) => void;
 }): void {
   const {
     runtime,
@@ -46,13 +49,14 @@ export function finishMarqueeSelection(args: {
   } = args;
   const start = runtime.state.interaction.marqueeStartScreenPos;
   const end = runtime.state.interaction.marqueeCurrentScreenPos;
+  const additive = runtime.state.interaction.marqueeAdditive;
   const resolvedEnd = end ?? start;
   cancelMarqueeSelection();
   if (!start || !resolvedEnd) return;
 
   const screenRect = normalizedRect(start, resolvedEnd);
   if (screenRect.width < thresholdPx && screenRect.height < thresholdPx) {
-    onClearSelection();
+    onClearSelection(additive);
     return;
   }
 
@@ -69,7 +73,7 @@ export function finishMarqueeSelection(args: {
       }),
     ),
   );
-  onSelectWorldRect(worldRect);
+  onSelectWorldRect(worldRect, additive);
 }
 
 export function updateMarqueeRect(runtime: SceneRuntime): void {

@@ -71,9 +71,11 @@ export type SceneInteractionState = {
   isPanning: boolean;
   panLastScreenPos: Pt | null;
   backgroundTapStartScreenPos: Pt | null;
+  backgroundTapAdditive: boolean;
   isMarqueeSelecting: boolean;
   marqueeStartScreenPos: Pt | null;
   marqueeCurrentScreenPos: Pt | null;
+  marqueeAdditive: boolean;
   groupDragSession: GroupDragSession | null;
   spacePressed: boolean;
 };

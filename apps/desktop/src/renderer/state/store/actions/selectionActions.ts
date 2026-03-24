@@ -12,7 +12,11 @@ import {
   removeSheetSelectionItems,
   syncProjectUi,
 } from "../helpers";
-import { selectionIdBuckets } from "../selection";
+import {
+  extendSelection as mergeSelection,
+  selectionIdBuckets,
+  toggleSelection as toggleSelectionState,
+} from "../selection";
 import type { EditorSelection, EditorStoreActionContext } from "./types";
 
 type SelectionActionLinks = {
@@ -28,6 +32,17 @@ export function createSelectionActions(
   return {
     select(sel: EditorSelection): void {
       deps.setState("selection", sel);
+    },
+
+    extendSelection(sel: EditorSelection): void {
+      deps.setState("selection", mergeSelection(deps.state.selection, sel));
+    },
+
+    toggleSelection(sel: EditorSelection): void {
+      deps.setState(
+        "selection",
+        toggleSelectionState(deps.state.selection, sel),
+      );
     },
 
     clearPendingEndpoint(): void {

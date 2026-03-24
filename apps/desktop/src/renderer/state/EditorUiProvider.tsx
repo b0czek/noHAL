@@ -81,18 +81,6 @@ function createEditorUiState() {
     return true;
   };
 
-  const labelClick = (labelId: string) => {
-    if (state.pendingEndpoint) {
-      actions.anchorPendingToLabel(labelId);
-      return;
-    }
-    actions.select({ kind: "label", id: labelId });
-  };
-
-  const commentClick = (commentId: string) => {
-    actions.select({ kind: "comment", id: commentId });
-  };
-
   const openComponentEditorForNode = (nodeId: string) => {
     const node = currentSheet().nodes.find((n) => n.id === nodeId);
     if (!node) return;
@@ -169,8 +157,6 @@ function createEditorUiState() {
   return {
     activeOverlay: overlay,
     placementMode,
-    labelClick,
-    commentClick,
     openOverlay,
     openComponentEditorForNode,
     openSelectedComponentEditor,

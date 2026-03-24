@@ -373,10 +373,11 @@ export function createKonvaSheetScene(
     runtime.graph.portCullModels = models.portCullModels;
   }
 
-  function startMarqueeSelection(screenPos: Pt): void {
+  function startMarqueeSelection(screenPos: Pt, additive: boolean): void {
     startSceneMarqueeSelection({
       runtime,
       screenPos,
+      additive,
       updateMarqueeRect,
     });
   }
@@ -390,7 +391,8 @@ export function createKonvaSheetScene(
       runtime,
       thresholdPx: MARQUEE_SELECT_THRESHOLD_PX,
       cancelMarqueeSelection,
-      onClearSelection: () => {
+      onClearSelection: (additive) => {
+        if (additive) return;
         runtime.callbacks.onSelect(null);
       },
       onSelectWorldRect: selectItemsInWorldRectFromRuntime,
@@ -401,7 +403,10 @@ export function createKonvaSheetScene(
     updateSceneMarqueeRect(runtime);
   }
 
-  function selectItemsInWorldRectFromRuntime(rect: Rect): void {
+  function selectItemsInWorldRectFromRuntime(
+    rect: Rect,
+    additive: boolean,
+  ): void {
     const state = runtime.state.lastState;
     if (!state) return;
     runtime.callbacks.onSelect(
@@ -414,6 +419,7 @@ export function createKonvaSheetScene(
         liveCommentPositions: runtime.graph.liveCommentPositions,
         livePortPositions: runtime.graph.livePortPositions,
       }),
+      additive ? { mode: "add" } : undefined,
     );
   }
 

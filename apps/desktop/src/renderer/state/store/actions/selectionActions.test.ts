@@ -118,6 +118,66 @@ function installClipboardMock() {
 }
 
 describe("selection actions", () => {
+  it("extends the selection when shift-clicking additional items", () => {
+    const { project } = createProjectFixture();
+    const store = createEditorStore(project, (key) => key);
+
+    store.actions.select({ kind: "node", id: "node_component" });
+    store.actions.extendSelection({ kind: "label", id: "label_signal" });
+    store.actions.extendSelection({ kind: "comment", id: "comment_note" });
+    store.actions.extendSelection({ kind: "sheet-port", id: "port_source" });
+
+    expect(store.state.selection).toEqual({
+      kind: "multi",
+      nodeIds: ["node_component"],
+      labelIds: ["label_signal"],
+      commentIds: ["comment_note"],
+      portIds: ["port_source"],
+    });
+  });
+
+  it("keeps the existing selection when extendSelection receives null", () => {
+    const { project } = createProjectFixture();
+    const store = createEditorStore(project, (key) => key);
+
+    store.actions.select({ kind: "node", id: "node_component" });
+    store.actions.extendSelection(null);
+
+    expect(store.state.selection).toEqual({
+      kind: "node",
+      id: "node_component",
+    });
+  });
+
+  it("toggles off a selected item when shift-clicking it again", () => {
+    const { project } = createProjectFixture();
+    const store = createEditorStore(project, (key) => key);
+
+    store.actions.select({
+      kind: "multi",
+      nodeIds: ["node_component"],
+      labelIds: ["label_signal"],
+      commentIds: [],
+      portIds: [],
+    });
+    store.actions.toggleSelection({ kind: "label", id: "label_signal" });
+
+    expect(store.state.selection).toEqual({
+      kind: "node",
+      id: "node_component",
+    });
+  });
+
+  it("clears the selection when toggling the only selected item", () => {
+    const { project } = createProjectFixture();
+    const store = createEditorStore(project, (key) => key);
+
+    store.actions.select({ kind: "node", id: "node_component" });
+    store.actions.toggleSelection({ kind: "node", id: "node_component" });
+
+    expect(store.state.selection).toBe(null);
+  });
+
   it("copies and pastes selected items while skipping protected system nodes", () => {
     const { project } = createProjectFixture();
     const clipboard = installClipboardMock();

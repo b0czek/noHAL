@@ -90,7 +90,7 @@ export interface RenderLabelsArgs {
 export interface RenderCommentsArgs {
   callbacks: Pick<
     SceneCallbacks,
-    "onCommentClick" | "onContextMenuRequest" | "onMoveComment"
+    "onContextMenuRequest" | "onMoveComment" | "onSelect"
   >;
   sheet: SheetDefinition;
   selectedCommentIds: ReadonlySet<string>;

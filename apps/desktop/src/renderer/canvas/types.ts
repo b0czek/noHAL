@@ -7,6 +7,9 @@ import type {
 import type { Selection } from "../state/store/selectionTypes";
 
 export type SceneSelection = Selection;
+export type SceneSelectOptions = {
+  mode?: "add" | "toggle";
+};
 
 export type ScenePlacement =
   | { kind: "component"; componentId: string }
@@ -34,11 +37,10 @@ export interface SceneContextMenuRequest {
 }
 
 export interface SceneCallbacks {
-  onSelect: (selection: SceneSelection) => void;
+  onSelect: (selection: SceneSelection, options?: SceneSelectOptions) => void;
   onOpenNode: (nodeId: string) => void;
   onEndpointClick: (endpoint: SheetEndpointRef) => void;
-  onLabelClick: (labelId: string) => void;
-  onCommentClick: (commentId: string) => void;
+  onLabelClick: (labelId: string, options?: SceneSelectOptions) => void;
   onMoveNode: (id: string, x: number, y: number) => void;
   onMoveLabel: (id: string, x: number, y: number) => void;
   onMoveComment: (id: string, x: number, y: number) => void;
@@ -50,7 +52,7 @@ export interface SceneCallbacks {
     portPositions: Array<{ id: string; x: number; y: number }>;
   }) => void;
   onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
-  onBackgroundClick?: (point: XY) => void;
+  onBackgroundClick?: (point: XY, options?: SceneSelectOptions) => void;
   onCameraChange?: (camera: { x: number; y: number; scale: number }) => void;
   onContextMenuRequest?: (request: SceneContextMenuRequest) => void;
 }
