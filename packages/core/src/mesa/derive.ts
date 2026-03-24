@@ -7,7 +7,11 @@ import {
   isMesaSmartSerialCardCompatible,
   type MesaSchemaProfile,
 } from "./catalog";
-import { mergeMesaSchemaProfiles, schemaProfileSummary } from "./schema";
+import {
+  createMesaEncoderPins,
+  mergeMesaSchemaProfiles,
+  schemaProfileSummary,
+} from "./schema";
 import type {
   ProjectMesaConfig,
   ProjectMesaDb25CardAssignment,
@@ -17,7 +21,7 @@ import type {
 } from "./types";
 import { MESA_RAW_GPIO_CARD_KIND } from "./types";
 
-export type MesaDerivedNodeFamily = "host" | "db25" | "sserial";
+export type MesaDerivedNodeFamily = "host" | "pseudo" | "db25" | "sserial";
 
 export interface MesaValidationIssue {
   severity: "warning" | "fatal";
@@ -29,12 +33,24 @@ export interface MesaDerivedNode {
   key: string;
   hostId: string;
   family: MesaDerivedNodeFamily;
+  subfamily?: string;
   componentId: string;
   instanceName: string;
   displayName: string;
   schemaProfile: MesaSchemaProfile;
   preferredPosition: { x: number; y: number };
   summary: string;
+}
+
+export interface MesaPseudoComponentSpec {
+  key: string;
+  subfamily: string;
+  componentToken: string;
+  instanceSuffix: string;
+  displayNameSuffix: string;
+  schemaProfile: MesaSchemaProfile;
+  preferredOffset: { x: number; y: number };
+  summary?: string;
 }
 
 export interface MesaDerivedHostRuntime {
@@ -62,6 +78,10 @@ function sanitizeComponentToken(input: string): string {
 
 function componentIdForHost(hostId: string): string {
   return `system:mesa:host:${sanitizeComponentToken(hostId)}`;
+}
+
+function componentIdForPseudo(hostId: string, componentToken: string): string {
+  return `system:mesa:pseudo:${sanitizeComponentToken(hostId)}:${sanitizeComponentToken(componentToken)}`;
 }
 
 function componentIdForDb25(
@@ -103,6 +123,67 @@ function baseGroupX(groupIndex: number): number {
 
 function formatMesaGpioIndex(index: number): string {
   return `${index}`.padStart(3, "0");
+}
+
+function buildEncoderPseudoComponentSpecs(
+  count: number,
+): MesaPseudoComponentSpec[] {
+  if (count <= 0) return [];
+  return Array.from({ length: count }, (_, index) => {
+    const suffix = `${index}`.padStart(2, "0");
+    return {
+      key: `encoder:${suffix}`,
+      subfamily: "encoder",
+      componentToken: `encoder:${suffix}`,
+      instanceSuffix: `encoder.${suffix}`,
+      displayNameSuffix: `Encoder ${suffix}`,
+      schemaProfile: {
+        explicitPins: createMesaEncoderPins(),
+      },
+      preferredOffset: { x: 220, y: index * 96 },
+      summary: schemaProfileSummary({ encoders: 1 }),
+    };
+  });
+}
+
+function splitHostPseudoComponents(directProfile: MesaSchemaProfile): {
+  hostProfile: MesaSchemaProfile;
+  pseudoComponents: MesaPseudoComponentSpec[];
+} {
+  const pseudoComponents = buildEncoderPseudoComponentSpecs(
+    directProfile.encoders ?? 0,
+  );
+  return {
+    hostProfile: {
+      ...directProfile,
+      encoders: undefined,
+    },
+    pseudoComponents,
+  };
+}
+
+function createMesaPseudoComponentNode(
+  host: ProjectMesaHostConfig,
+  hostDisplayName: string,
+  hostInstanceName: string,
+  groupOrigin: { x: number; y: number },
+  spec: MesaPseudoComponentSpec,
+): MesaDerivedNode {
+  return {
+    key: `${host.id}:${spec.key}`,
+    hostId: host.id,
+    family: "pseudo",
+    subfamily: spec.subfamily,
+    componentId: componentIdForPseudo(host.id, spec.componentToken),
+    instanceName: `${hostInstanceName}.${spec.instanceSuffix}`,
+    displayName: `${hostDisplayName} ${spec.displayNameSuffix}`,
+    schemaProfile: spec.schemaProfile,
+    preferredPosition: {
+      x: groupOrigin.x + spec.preferredOffset.x,
+      y: groupOrigin.y + spec.preferredOffset.y,
+    },
+    summary: spec.summary ?? schemaProfileSummary(spec.schemaProfile),
+  };
 }
 
 function buildRawGpioProfile(
@@ -342,11 +423,14 @@ export function deriveMesaTopology(
       host,
       allConnectorAssignments,
     );
+    const { hostProfile: hostPinsProfile, pseudoComponents } =
+      splitHostPseudoComponents(hostDirectProfile);
     const { instanceName, hostIndex } = hm2InstanceNameForHost(
       host,
       hostIndexByKind,
     );
     const groupX = baseGroupX(groupIndex);
+    const groupOrigin = { x: groupX, y: 120 };
 
     nodes.push({
       key: host.id,
@@ -355,10 +439,21 @@ export function deriveMesaTopology(
       componentId: componentIdForHost(host.id),
       instanceName,
       displayName: catalogHost.displayName,
-      schemaProfile: hostDirectProfile,
-      preferredPosition: { x: groupX, y: 120 },
-      summary: schemaProfileSummary(hostDirectProfile),
+      schemaProfile: hostPinsProfile,
+      preferredPosition: groupOrigin,
+      summary: schemaProfileSummary(hostPinsProfile),
     });
+    for (const pseudoComponent of pseudoComponents) {
+      nodes.push(
+        createMesaPseudoComponentNode(
+          host,
+          catalogHost.displayName,
+          instanceName,
+          groupOrigin,
+          pseudoComponent,
+        ),
+      );
+    }
 
     for (const assignment of rawGpioAssignments) {
       const connector = catalogHost.connectorSlots.find(

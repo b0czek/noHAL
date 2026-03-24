@@ -1,6 +1,11 @@
 import type { ComponentPinDefinition } from "../types";
 import type { MesaSchemaProfile } from "./catalog/types";
 
+export interface MesaEncoderPinOptions {
+  keyPrefix?: string;
+  namePrefix?: string;
+}
+
 function createIndexedPins(
   count: number | undefined,
   nameFactory: (index: number) => string,
@@ -17,33 +22,43 @@ function createIndexedPins(
   }));
 }
 
-function createEncoderPins(
+export function createMesaEncoderPins(
+  options: MesaEncoderPinOptions = {},
+): ComponentPinDefinition[] {
+  const keyPrefix = options.keyPrefix ? `${options.keyPrefix}_` : "";
+  const namePrefix = options.namePrefix ? `${options.namePrefix}.` : "";
+  return [
+    {
+      key: `${keyPrefix}position`,
+      name: `${namePrefix}position`,
+      direction: "out",
+      type: "float",
+    },
+    {
+      key: `${keyPrefix}velocity`,
+      name: `${namePrefix}velocity`,
+      direction: "out",
+      type: "float",
+    },
+    {
+      key: `${keyPrefix}index_enable`,
+      name: `${namePrefix}index-enable`,
+      direction: "io",
+      type: "bit",
+    },
+  ];
+}
+
+function createIndexedEncoderPins(
   count: number | undefined,
 ): ComponentPinDefinition[] {
   if (!count || count <= 0) return [];
   return Array.from({ length: count }, (_, index) => {
     const suffix = `${index}`.padStart(2, "0");
-    const pins: ComponentPinDefinition[] = [
-      {
-        key: `encoder_${suffix}_position`,
-        name: `encoder.${suffix}.position`,
-        direction: "out",
-        type: "float",
-      },
-      {
-        key: `encoder_${suffix}_velocity`,
-        name: `encoder.${suffix}.velocity`,
-        direction: "out",
-        type: "float",
-      },
-      {
-        key: `encoder_${suffix}_index_enable`,
-        name: `encoder.${suffix}.index-enable`,
-        direction: "io",
-        type: "bit",
-      },
-    ];
-    return pins;
+    return createMesaEncoderPins({
+      keyPrefix: `encoder_${suffix}`,
+      namePrefix: `encoder.${suffix}`,
+    });
   }).flat();
 }
 
@@ -64,7 +79,7 @@ export function pinsForMesaSchemaProfile(
   const spec = profile;
   return [
     ...(spec.explicitPins ?? []),
-    ...createEncoderPins(spec.encoders),
+    ...createIndexedEncoderPins(spec.encoders),
     ...createIndexedPins(
       spec.digitalInputs,
       (index) => `input.${`${index}`.padStart(2, "0")}`,
