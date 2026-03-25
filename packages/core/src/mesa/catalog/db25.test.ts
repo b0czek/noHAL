@@ -36,7 +36,7 @@ describe("Mesa DB25 catalog", () => {
     expect(ioPinNames).not.toContain("spinena");
     expect(analogPinNames).toContain("analogena");
     expect(analogPinNames).toContain("spinena");
-    expect(analogPinNames).toContain("analogout.05");
+    expect(analogPinNames).toContain("analogout5");
     expect(analogParamNames).toContain("analogout0-maxlim");
     expect(analogParamNames).toContain("analogout0-minlim");
     expect(analogParamNames).toContain("analogout0-scalemax");

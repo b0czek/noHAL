@@ -48,7 +48,7 @@ describe("Mesa HAL import support", () => {
       setp hm2_7i92t.0.encoder.00.scale 4096
       setp hm2_7i92t.0.encoder.00.index-mask TRUE
       setp hm2_7i92t.0.7i77.0.1.analogout0-maxlim 1200
-      setp hm2_7i92t.0.7i77.0.1.analogout.00 3.5
+      setp hm2_7i92t.0.7i77.0.1.analogout0 3.5
     `);
 
     const result = buildProjectFromHalImport({
@@ -94,7 +94,7 @@ describe("Mesa HAL import support", () => {
     const analogComponent =
       result.project.library.components[analogNode.componentId];
     const analogOutPin = analogComponent?.pins.find(
-      (pin) => pin.name === "analogout.00",
+      (pin) => pin.name === "analogout0",
     );
     const analogOutMaxLimParam = analogComponent?.params.find(
       (param) => param.name === "analogout0-maxlim",
@@ -125,7 +125,7 @@ describe("Mesa HAL import support", () => {
       net encoder-index hm2_7i92t.0.encoder.0.index_enable <=> and2.0.in0
       setp hm2_7i92t.0.encoder.0.index_mask_invert false
       setp hm2_7i92t.0.7i77.0.1.analogout0_scalemax 6000
-      setp hm2_7i92t.0.7i77.0.1.analogout.0 3.5
+      setp hm2_7i92t.0.7i77.0.1.analogout0 3.5
     `);
 
     const result = buildProjectFromHalImport({
@@ -180,7 +180,7 @@ describe("Mesa HAL import support", () => {
     const analogComponent =
       result.project.library.components[analogNode.componentId];
     const analogOutPin = analogComponent?.pins.find(
-      (pin) => pin.name === "analogout.00",
+      (pin) => pin.name === "analogout0",
     );
     const analogOutScaleMaxParam = analogComponent?.params.find(
       (param) => param.name === "analogout0-scalemax",
@@ -224,7 +224,7 @@ describe("Mesa HAL import support", () => {
       loadrt and2 count=1
       net spindle-enable and2.0.out => hm2_7i92T.0.7i77.0.1.spinena
       net encoder-index hm2_7i92T.0.encoder.00.index-enable <=> and2.0.in0
-      setp hm2_7i92T.0.7i77.0.1.analogout.00 3.5
+      setp hm2_7i92T.0.7i77.0.1.analogout0 3.5
     `);
 
     const result = buildProjectFromHalImport({

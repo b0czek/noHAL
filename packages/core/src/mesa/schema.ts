@@ -216,6 +216,18 @@ function createDigitalOutputPins(
   );
 }
 
+function createAnalogOutputPins(
+  count: number | undefined,
+): ComponentPinDefinition[] {
+  if (!count || count <= 0) return [];
+  return Array.from({ length: count }, (_, index) => ({
+    key: `analogout_${`${index}`.padStart(2, "0")}`,
+    name: `analogout${index}`,
+    direction: "in" as const,
+    type: "float" as const,
+  }));
+}
+
 export function pinsForMesaSchemaProfile(
   profile: MesaSchemaProfile,
 ): ComponentPinDefinition[] {
@@ -232,13 +244,7 @@ export function pinsForMesaSchemaProfile(
       "float",
       "analogin",
     ),
-    ...createIndexedPins(
-      spec.analogOutputs,
-      (index) => `analogout.${`${index}`.padStart(2, "0")}`,
-      "in",
-      "float",
-      "analogout",
-    ),
+    ...createAnalogOutputPins(spec.analogOutputs),
     ...createFlagPin(
       spec.spindleEnable,
       "spindle_enable",
