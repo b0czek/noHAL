@@ -5,7 +5,6 @@ import {
 import { For } from "solid-js";
 import StringSelect from "../../../components/form/StringSelect";
 import { useI18n } from "../../../i18n";
-import { useEditorStore } from "../../../state/EditorStoreProvider";
 
 interface MesaSmartSerialSectionProps {
   hostId: string;
@@ -20,13 +19,21 @@ interface MesaSmartSerialSectionProps {
   outerClass: string;
   titleClass?: string;
   fieldLabelClass: string;
+  onSetSmartSerialCard: (
+    hostId: string,
+    target: {
+      connectorKey?: string;
+      portKey: string;
+      channel: number;
+    },
+    cardKind: ProjectMesaSmartSerialCardKind | undefined,
+  ) => void;
 }
 
 export default function MesaSmartSerialSection(
   props: MesaSmartSerialSectionProps,
 ) {
   const { t } = useI18n();
-  const { actions } = useEditorStore();
 
   const smartSerialOptions = () => [
     {
@@ -69,7 +76,7 @@ export default function MesaSmartSerialSection(
                     }
                     options={smartSerialOptions()}
                     onChange={(value) =>
-                      actions.setMesaSmartSerialCard(
+                      props.onSetSmartSerialCard(
                         props.hostId,
                         {
                           connectorKey: props.connectorKey,

@@ -1,3 +1,4 @@
+import type { ProjectMesaConfig } from "../mesa/types";
 import type { ComponentStore } from "./componentStore";
 import type { ComponentDefinition } from "./components";
 import type { NoHALProject, ProjectMotmodConfig } from "./project";
@@ -91,6 +92,7 @@ export interface HalImportBuildOptions {
   componentStore: ComponentStore;
   linkSelections: Record<string, HalImportLinkSelection>;
   projectLocalComponentOverrides?: Record<string, ComponentDefinition>;
+  mesa?: ProjectMesaConfig;
   linuxcncVersion?: NoHALProject["target"]["linuxcncVersion"];
   projectName?: string;
   placementHeuristic?: HalImportPlacementHeuristic;

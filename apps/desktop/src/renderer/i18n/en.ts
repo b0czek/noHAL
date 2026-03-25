@@ -312,6 +312,8 @@ export const en = {
   "projectCreation.projectLocalGenerated": "Project-local (generated)",
   "projectCreation.systemComponent": "System component",
   "projectCreation.systemAutoReason": "recognized LinuxCNC system component",
+  "projectCreation.mesaSystemAutoReason":
+    "recognized Mesa component from configured hardware",
   "projectCreation.systemOverrideBadge": "override",
   "projectCreation.systemOverrideBadgeTitle":
     "This system link will be imported as a custom override to preserve non-standard members.",
@@ -328,6 +330,8 @@ export const en = {
     "Choose a blank project or import a LinuxCNC machine configuration (INI + HAL).",
   "projectCreation.subtitleMachineFiles":
     "Select the INI file first, then configure which HAL files to include before component linking.",
+  "projectCreation.subtitleMesa":
+    "Mesa hardware was detected in the imported HAL. Configure the actual Mesa layout before reviewing component links.",
   "projectCreation.subtitleLink":
     "Verify component links before building the imported sheet.",
   "projectCreation.blankProject": "Blank Project",
@@ -340,6 +344,13 @@ export const en = {
   "projectCreation.pickMachineIniFile": "Pick INI File",
   "projectCreation.addHalFileRow": "Add Row",
   "projectCreation.continueToComponentLinking": "Continue to Component Linking",
+  "projectCreation.mesaDetectedTitle": "Mesa Hardware Detected",
+  "projectCreation.mesaDetectedHelp":
+    "This import references Mesa / HostMot2 hardware. noHAL will not guess the hardware layout here. Configure the board and attached cards explicitly, then continue.",
+  "projectCreation.mesaValidationBlocking":
+    "Mesa configuration still has blocking validation issues.",
+  "projectCreation.mesaHostRequired":
+    "Add and configure at least one Mesa host before continuing.",
   "projectCreation.machineConfigIniSource": "INI Source",
   "projectCreation.iniKeys": "INI keys",
   "projectCreation.selectedHalFilesList": "Selected HAL Files",

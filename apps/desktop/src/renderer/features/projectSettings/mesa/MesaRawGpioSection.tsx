@@ -1,7 +1,7 @@
+import type { ProjectMesaGpioDirection } from "@nohal/core/src/mesa";
 import { For } from "solid-js";
 import StringSelect from "../../../components/form/StringSelect";
 import { useI18n } from "../../../i18n";
-import { useEditorStore } from "../../../state/EditorStoreProvider";
 
 interface MesaRawGpioSectionProps {
   hostId: string;
@@ -12,11 +12,16 @@ interface MesaRawGpioSectionProps {
   outerClass: string;
   titleClass?: string;
   fieldLabelClass: string;
+  onSetPinDirection: (
+    hostId: string,
+    connectorKey: string,
+    pinIndex: number,
+    direction: ProjectMesaGpioDirection,
+  ) => void;
 }
 
 export default function MesaRawGpioSection(props: MesaRawGpioSectionProps) {
   const { t } = useI18n();
-  const { actions } = useEditorStore();
   const formatMesaGpioIndex = (index: number) => `${index}`.padStart(3, "0");
 
   const gpioDirectionOptions = () => [
@@ -54,7 +59,7 @@ export default function MesaRawGpioSection(props: MesaRawGpioSectionProps) {
               value={outputPins().has(pinIndex) ? "output" : "input"}
               options={gpioDirectionOptions()}
               onChange={(value) =>
-                actions.setMesaRawGpioPinDirection(
+                props.onSetPinDirection(
                   props.hostId,
                   props.connectorKey,
                   pinIndex,

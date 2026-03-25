@@ -6,8 +6,11 @@ import {
   MESA_RAW_GPIO_CARD_KIND,
   type MesaValidationIssue,
   type ProjectMesaConnectorCardKind,
+  type ProjectMesaGpioDirection,
   type ProjectMesaHostConfig,
   type ProjectMesaHostKind,
+  type ProjectMesaSmartSerialCardKind,
+  type ProjectMesaSmartSerialTarget,
 } from "@nohal/core/src/mesa";
 import { For, Show } from "solid-js";
 import StringSelect from "../../../components/form/StringSelect";
@@ -19,7 +22,6 @@ import {
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { useI18n } from "../../../i18n";
-import { useEditorStore } from "../../../state/EditorStoreProvider";
 import MesaRawGpioSection from "./MesaRawGpioSection";
 import MesaSmartSerialSection from "./MesaSmartSerialSection";
 
@@ -28,11 +30,29 @@ interface MesaHostCardProps {
   index: number;
   issues: readonly MesaValidationIssue[];
   fieldLabelClass: string;
+  onRemoveHost: (hostId: string) => void;
+  onUpdateHostKind: (hostId: string, kind: ProjectMesaHostKind) => void;
+  onUpdateHostIp: (hostId: string, ip: string) => void;
+  onSetConnectorCard: (
+    hostId: string,
+    connectorKey: string,
+    cardKind: ProjectMesaConnectorCardKind | undefined,
+  ) => void;
+  onSetRawGpioPinDirection: (
+    hostId: string,
+    connectorKey: string,
+    pinIndex: number,
+    direction: ProjectMesaGpioDirection,
+  ) => void;
+  onSetSmartSerialCard: (
+    hostId: string,
+    target: ProjectMesaSmartSerialTarget,
+    cardKind: ProjectMesaSmartSerialCardKind | undefined,
+  ) => void;
 }
 
 export default function MesaHostCard(props: MesaHostCardProps) {
   const { t } = useI18n();
-  const { actions } = useEditorStore();
 
   const hostOptions = () =>
     MESA_HOSTS.map((host) => ({
@@ -96,7 +116,7 @@ export default function MesaHostCard(props: MesaHostCardProps) {
         <Button
           type="button"
           variant="outline"
-          onClick={() => actions.removeMesaHost(props.host.id)}
+          onClick={() => props.onRemoveHost(props.host.id)}
         >
           {t("projectSettings.mesa.removeHost")}
         </Button>
@@ -111,7 +131,7 @@ export default function MesaHostCard(props: MesaHostCardProps) {
             value={props.host.kind}
             options={hostOptions()}
             onChange={(value) =>
-              actions.updateMesaHostKind(
+              props.onUpdateHostKind(
                 props.host.id,
                 value as ProjectMesaHostKind,
               )
@@ -127,7 +147,7 @@ export default function MesaHostCard(props: MesaHostCardProps) {
             type="text"
             value={props.host.ip}
             onChange={(evt) =>
-              actions.updateMesaHostIp(props.host.id, evt.currentTarget.value)
+              props.onUpdateHostIp(props.host.id, evt.currentTarget.value)
             }
           />
         </div>
@@ -157,7 +177,7 @@ export default function MesaHostCard(props: MesaHostCardProps) {
                       value={assignedCardKind()}
                       options={connectorOptions(props.host.kind)}
                       onChange={(value) =>
-                        actions.setMesaConnectorCard(
+                        props.onSetConnectorCard(
                           props.host.id,
                           slot.key,
                           (value || undefined) as
@@ -185,6 +205,7 @@ export default function MesaHostCard(props: MesaHostCardProps) {
                       outerClass="ml-0 grid gap-3 rounded-xl border border-white/10 bg-black/20 p-3 lg:ml-[140px]"
                       titleClass="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
                       fieldLabelClass={props.fieldLabelClass}
+                      onSetPinDirection={props.onSetRawGpioPinDirection}
                     />
                   </Show>
 
@@ -201,6 +222,7 @@ export default function MesaHostCard(props: MesaHostCardProps) {
                       outerClass="ml-0 grid gap-3 rounded-xl border border-white/10 bg-black/20 p-3 lg:ml-[140px]"
                       titleClass="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
                       fieldLabelClass={props.fieldLabelClass}
+                      onSetSmartSerialCard={props.onSetSmartSerialCard}
                     />
                   </Show>
                 </div>
@@ -217,6 +239,7 @@ export default function MesaHostCard(props: MesaHostCardProps) {
           smartSerialMap={smartSerialMap}
           outerClass="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20"
           fieldLabelClass={props.fieldLabelClass}
+          onSetSmartSerialCard={props.onSetSmartSerialCard}
         />
       </Show>
 

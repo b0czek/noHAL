@@ -1,185 +1,38 @@
 import { customComponentDefinitionEdits } from "@nohal/core/src/customComponent";
 import {
-  buildGeneratedLocalComponentsFromHalImport,
   buildProjectFromHalImport as buildImportedProject,
-  isSystemHalImportComponentGroup,
-  suggestHalImportLinks,
+  detectMesaHalImport,
 } from "@nohal/core/src/halImport";
 import type {
+  ProjectMesaConnectorCardKind,
+  ProjectMesaGpioDirection,
+  ProjectMesaHostKind,
+  ProjectMesaSmartSerialCardKind,
+  ProjectMesaSmartSerialTarget,
+} from "@nohal/core/src/mesa";
+import { createDefaultMesaConfig } from "@nohal/core/src/project";
+import type {
   ComponentDefinition,
-  HalImportDraft,
-  HalImportLinkSelection,
   HalImportPlacementHeuristic,
   HalValueType,
   LinuxCncVersion,
-  MachineConfigHalFileSelection,
-  MachineConfigImportDraft,
-  MachineConfigImportSetupDraft,
 } from "@nohal/core/src/types";
 import type { Accessor } from "solid-js";
 import { createStore, unwrap } from "solid-js/store";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
-
-export type MachineImportFlowStep = "machine-files" | "link";
-
-type MachineImportFlowState = {
-  isActive: boolean;
-  step: MachineImportFlowStep;
-  isBusy: boolean;
-  errorMessage: string | null;
-  importDraft: HalImportDraft | null;
-  machineConfigImport: MachineConfigImportDraft | null;
-  machineConfigSetup: MachineConfigImportSetupDraft | null;
-  selectedMachineHalFiles: MachineConfigHalFileSelection[];
-  linkSelections: Record<string, string>;
-  linkReasons: Record<string, string>;
-  generatedLocalComponents: Record<string, ComponentDefinition>;
-  placementHeuristic: HalImportPlacementHeuristic;
-};
-
-type MachineImportFlowEvent =
-  | { type: "open" }
-  | { type: "close" }
-  | { type: "setBusy"; value: boolean }
-  | { type: "setError"; message: string | null }
-  | {
-      type: "importDraftLoaded";
-      draft: HalImportDraft;
-      machineConfigImport: MachineConfigImportDraft;
-      linkSelections: Record<string, string>;
-      linkReasons: Record<string, string>;
-      generatedLocalComponents: Record<string, ComponentDefinition>;
-    }
-  | {
-      type: "machineConfigSetupLoaded";
-      setup: MachineConfigImportSetupDraft;
-    }
-  | { type: "updateMachineHalFile"; index: number; filePath: string }
-  | { type: "setMachineHalFileResolveIni"; index: number; value: boolean }
-  | { type: "removeMachineHalFile"; index: number }
-  | { type: "addBlankMachineHalFile" }
-  | { type: "setStep"; step: MachineImportFlowStep }
-  | { type: "setLinkSelection"; groupId: string; value: string }
-  | {
-      type: "setPlacementHeuristic";
-      value: HalImportPlacementHeuristic;
-    };
-
-function createInitialMachineImportFlowState(): MachineImportFlowState {
-  return {
-    isActive: false,
-    step: "machine-files",
-    isBusy: false,
-    errorMessage: null,
-    importDraft: null,
-    machineConfigImport: null,
-    machineConfigSetup: null,
-    selectedMachineHalFiles: [],
-    linkSelections: {},
-    linkReasons: {},
-    generatedLocalComponents: {},
-    placementHeuristic: "related-groups",
-  };
-}
-
-function makeMachineHalSelection(
-  filePath: string,
-  resolveIniSubstitutions = true,
-): MachineConfigHalFileSelection {
-  return { filePath, resolveIniSubstitutions };
-}
-
-function reduceMachineImportFlowState(
-  state: MachineImportFlowState,
-  event: MachineImportFlowEvent,
-): MachineImportFlowState {
-  switch (event.type) {
-    case "open":
-      return {
-        ...createInitialMachineImportFlowState(),
-        isActive: true,
-      };
-    case "close":
-      return {
-        ...createInitialMachineImportFlowState(),
-      };
-    case "setBusy":
-      return { ...state, isBusy: event.value };
-    case "setError":
-      return { ...state, errorMessage: event.message };
-    case "importDraftLoaded":
-      return {
-        ...state,
-        importDraft: event.draft,
-        machineConfigImport: event.machineConfigImport,
-        linkSelections: event.linkSelections,
-        linkReasons: event.linkReasons,
-        generatedLocalComponents: event.generatedLocalComponents,
-        step: "link",
-      };
-    case "machineConfigSetupLoaded":
-      return {
-        ...state,
-        machineConfigSetup: event.setup,
-        machineConfigImport: null,
-        importDraft: null,
-        selectedMachineHalFiles: event.setup.suggestedHalFilePaths.map(
-          (filePath) => makeMachineHalSelection(filePath),
-        ),
-        generatedLocalComponents: {},
-        errorMessage: null,
-        step: "machine-files",
-      };
-    case "updateMachineHalFile":
-      return {
-        ...state,
-        selectedMachineHalFiles: state.selectedMachineHalFiles.map(
-          (item, index) =>
-            index === event.index
-              ? { ...item, filePath: event.filePath }
-              : item,
-        ),
-      };
-    case "setMachineHalFileResolveIni":
-      return {
-        ...state,
-        selectedMachineHalFiles: state.selectedMachineHalFiles.map(
-          (item, index) =>
-            index === event.index
-              ? { ...item, resolveIniSubstitutions: event.value }
-              : item,
-        ),
-      };
-    case "removeMachineHalFile":
-      return {
-        ...state,
-        selectedMachineHalFiles: state.selectedMachineHalFiles.filter(
-          (_filePath, index) => index !== event.index,
-        ),
-      };
-    case "addBlankMachineHalFile":
-      return {
-        ...state,
-        selectedMachineHalFiles: [
-          ...state.selectedMachineHalFiles,
-          makeMachineHalSelection(""),
-        ],
-      };
-    case "setStep":
-      return { ...state, step: event.step };
-    case "setLinkSelection":
-      return {
-        ...state,
-        linkSelections: {
-          ...state.linkSelections,
-          [event.groupId]: event.value,
-        },
-      };
-    case "setPlacementHeuristic":
-      return { ...state, placementHeuristic: event.value };
-  }
-}
+import type { CustomComponentEditorProps } from "../projectSettings/CustomComponentEditor";
+import {
+  buildGeneratedLocalComponents as buildGeneratedComponentsForSelections,
+  prepareLinkStepState,
+  toLinkSelections,
+} from "./flowLinking";
+import { mesaEdits } from "./flowMesa";
+import {
+  createInitialState,
+  type FlowEvent,
+  reduceFlowState,
+} from "./flowState";
 
 interface UseMachineImportFlowArgs {
   setIsEditorOpen: (value: boolean) => void;
@@ -195,60 +48,36 @@ export function useMachineImportFlow({
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
   const [machineImportFlow, setMachineImportFlow] = createStore(
-    createInitialMachineImportFlowState(),
+    createInitialState(),
   );
 
-  const dispatchMachineImportFlow = (event: MachineImportFlowEvent) => {
-    setMachineImportFlow((current) =>
-      reduceMachineImportFlowState(current, event),
-    );
+  const dispatchMachineImportFlow = (event: FlowEvent) => {
+    setMachineImportFlow((current) => reduceFlowState(current, event));
   };
 
-  const toLinkSelections = (
-    draft: HalImportDraft,
-    encodedSelections: Record<string, string>,
-  ): Record<string, HalImportLinkSelection> =>
-    Object.fromEntries(
-      draft.componentGroups.map((group) => {
-        const value = encodedSelections[group.id] ?? "local";
-        if (value.startsWith("store:")) {
-          return [
-            group.id,
-            {
-              groupId: group.id,
-              mode: "store" as const,
-              componentId: value.slice("store:".length),
-            },
-          ];
-        }
-        return [
-          group.id,
-          { groupId: group.id, mode: "project-local" as const },
-        ];
-      }),
-    );
-
   const buildGeneratedLocalComponents = (
-    draft: HalImportDraft,
-    encodedSelections: Record<string, string>,
-  ) =>
-    buildGeneratedLocalComponentsFromHalImport({
+    encodedSelections = machineImportFlow.linkSelections,
+  ) => {
+    const draft = machineImportFlow.importDraft;
+    if (!draft) return {};
+    return buildGeneratedComponentsForSelections({
       draft,
+      encodedSelections,
       componentStore: state.componentStore,
-      linkSelections: toLinkSelections(draft, encodedSelections),
     });
+  };
 
   const updateGeneratedLocalComponent = (
     groupId: string,
-    transform: (component: ComponentDefinition) => ComponentDefinition,
+    edit: (component: ComponentDefinition) => void,
   ) => {
     const component = machineImportFlow.generatedLocalComponents[groupId];
     if (!component) return;
-    setMachineImportFlow(
-      "generatedLocalComponents",
-      groupId,
-      transform(structuredClone(unwrap(component))),
-    );
+    setMachineImportFlow("generatedLocalComponents", groupId, (current) => {
+      const next = structuredClone(unwrap(current));
+      edit(next);
+      return next;
+    });
   };
 
   const ensureGeneratedLocalComponent = (
@@ -256,13 +85,27 @@ export function useMachineImportFlow({
     encodedSelections = machineImportFlow.linkSelections,
   ) => {
     if (machineImportFlow.generatedLocalComponents[groupId]) return;
-    const draft = machineImportFlow.importDraft;
-    if (!draft) return;
-    const generated = buildGeneratedLocalComponents(draft, encodedSelections)[
-      groupId
-    ];
+    const generated = buildGeneratedLocalComponents(encodedSelections)[groupId];
     if (!generated) return;
     setMachineImportFlow("generatedLocalComponents", groupId, generated);
+  };
+
+  const prepareLinkStep = (mesaConfig = machineImportFlow.mesaConfig) => {
+    const draft = machineImportFlow.importDraft;
+    const machineConfigImport = machineImportFlow.machineConfigImport;
+    if (!draft || !machineConfigImport) return;
+    dispatchMachineImportFlow({
+      type: "importDraftLoaded",
+      ...prepareLinkStepState({
+        draft,
+        machineConfigImport,
+        mesaConfig,
+        componentStore: state.componentStore,
+        linuxcncVersion: selectedLinuxCncVersion(),
+        systemAutoReason: t("projectCreation.systemAutoReason"),
+        mesaSystemAutoReason: t("projectCreation.mesaSystemAutoReason"),
+      }),
+    });
   };
 
   const closeMachineImportFlow = () => {
@@ -334,39 +177,33 @@ export function useMachineImportFlow({
         halSelections,
       );
       const draft = machineImport.halImport;
-      const suggestions = suggestHalImportLinks(draft, state.componentStore, {
-        linuxcncVersion: selectedLinuxCncVersion(),
-      });
-      const nextSelections: Record<string, string> = {};
-      const nextReasons: Record<string, string> = {};
-      for (const suggestion of suggestions) {
-        const group = draft.componentGroups.find(
-          (item) => item.id === suggestion.groupId,
-        );
-        const isSystemGroup = group
-          ? isSystemHalImportComponentGroup(group)
-          : false;
-        nextSelections[suggestion.groupId] =
-          suggestion.selection.mode === "store"
-            ? `store:${suggestion.selection.componentId}`
-            : isSystemGroup
-              ? "system"
-              : "local";
-        nextReasons[suggestion.groupId] = isSystemGroup
-          ? t("projectCreation.systemAutoReason")
-          : suggestion.reason;
+      if (detectMesaHalImport(draft).detected) {
+        dispatchMachineImportFlow({
+          type: "importDraftLoaded",
+          draft,
+          machineConfigImport: machineImport,
+          step: "mesa",
+          mesaDetected: true,
+          mesaConfig: machineImportFlow.mesaConfig ?? createDefaultMesaConfig(),
+          linkSelections: {},
+          linkReasons: {},
+          systemLinkGroupIds: [],
+          generatedLocalComponents: {},
+        });
+        return;
       }
-      const generatedLocalComponents = buildGeneratedLocalComponents(
-        draft,
-        nextSelections,
-      );
+
       dispatchMachineImportFlow({
         type: "importDraftLoaded",
-        draft,
-        machineConfigImport: machineImport,
-        linkSelections: nextSelections,
-        linkReasons: nextReasons,
-        generatedLocalComponents,
+        ...prepareLinkStepState({
+          draft,
+          machineConfigImport: machineImport,
+          mesaConfig: null,
+          componentStore: state.componentStore,
+          linuxcncVersion: selectedLinuxCncVersion(),
+          systemAutoReason: t("projectCreation.systemAutoReason"),
+          mesaSystemAutoReason: t("projectCreation.mesaSystemAutoReason"),
+        }),
       });
     } catch (error) {
       dispatchMachineImportFlow({
@@ -376,6 +213,12 @@ export function useMachineImportFlow({
     } finally {
       dispatchMachineImportFlow({ type: "setBusy", value: false });
     }
+  };
+
+  const continueFromMesaStep = () => {
+    if (!machineImportFlow.mesaConfig) return;
+    dispatchMachineImportFlow({ type: "setError", message: null });
+    prepareLinkStep();
   };
 
   const createImportedProject = async () => {
@@ -388,10 +231,7 @@ export function useMachineImportFlow({
         draft,
         machineImportFlow.linkSelections,
       );
-      const generatedLocalComponents = buildGeneratedLocalComponents(
-        draft,
-        machineImportFlow.linkSelections,
-      );
+      const generatedLocalComponents = buildGeneratedLocalComponents();
       const projectLocalComponentOverrides = Object.fromEntries(
         draft.componentGroups.flatMap((group) => {
           const value = machineImportFlow.linkSelections[group.id] ?? "local";
@@ -410,6 +250,7 @@ export function useMachineImportFlow({
         componentStore: state.componentStore,
         linkSelections,
         projectLocalComponentOverrides,
+        mesa: machineImportFlow.mesaConfig ?? undefined,
         linuxcncVersion: selectedLinuxCncVersion(),
         placementHeuristic: machineImportFlow.placementHeuristic,
       });
@@ -450,11 +291,89 @@ export function useMachineImportFlow({
   };
 
   const backToMachineFilesStep = () => {
-    if (machineImportFlow.isBusy) return;
-    if (!machineImportFlow.machineConfigSetup) return;
+    if (machineImportFlow.isBusy || !machineImportFlow.machineConfigSetup)
+      return;
     dispatchMachineImportFlow({ type: "setStep", step: "machine-files" });
     dispatchMachineImportFlow({ type: "setError", message: null });
   };
+
+  const addMesaImportHost = (kind?: ProjectMesaHostKind) =>
+    dispatchMachineImportFlow({
+      type: "setMesaConfig",
+      value: mesaEdits.addHost(machineImportFlow.mesaConfig, kind),
+    });
+
+  const removeMesaImportHost = (hostId: string) =>
+    dispatchMachineImportFlow({
+      type: "setMesaConfig",
+      value: mesaEdits.removeHost(machineImportFlow.mesaConfig, hostId),
+    });
+
+  const updateMesaImportHostKind = (
+    hostId: string,
+    kind: ProjectMesaHostKind,
+  ) =>
+    dispatchMachineImportFlow({
+      type: "setMesaConfig",
+      value: mesaEdits.updateHostKind(
+        machineImportFlow.mesaConfig,
+        hostId,
+        kind,
+      ),
+    });
+
+  const updateMesaImportHostIp = (hostId: string, ip: string) =>
+    dispatchMachineImportFlow({
+      type: "setMesaConfig",
+      value: mesaEdits.updateHostIp(machineImportFlow.mesaConfig, hostId, ip),
+    });
+
+  const setMesaImportConnectorCard = (
+    hostId: string,
+    connectorKey: string,
+    cardKind: ProjectMesaConnectorCardKind | undefined,
+  ) =>
+    dispatchMachineImportFlow({
+      type: "setMesaConfig",
+      value: mesaEdits.setConnectorCard(
+        machineImportFlow.mesaConfig,
+        hostId,
+        connectorKey,
+        cardKind,
+      ),
+    });
+
+  const setMesaImportRawGpioPinDirection = (
+    hostId: string,
+    connectorKey: string,
+    pinIndex: number,
+    direction: ProjectMesaGpioDirection,
+  ) =>
+    dispatchMachineImportFlow({
+      type: "setMesaConfig",
+      value: mesaEdits.setRawGpioPinDirection(
+        machineImportFlow.mesaConfig,
+        hostId,
+        connectorKey,
+        pinIndex,
+        direction,
+      ),
+    });
+
+  const setMesaImportSmartSerialCard = (
+    hostId: string,
+    target: ProjectMesaSmartSerialTarget,
+    cardKind: ProjectMesaSmartSerialCardKind | undefined,
+  ) =>
+    dispatchMachineImportFlow({
+      type: "setMesaConfig",
+      value: mesaEdits.setSmartSerialCard(
+        machineImportFlow.mesaConfig,
+        hostId,
+        target,
+        cardKind,
+      ),
+    });
 
   const changeHalImportLinkSelection = (groupId: string, value: string) => {
     const nextSelections = {
@@ -462,8 +381,9 @@ export function useMachineImportFlow({
       [groupId]: value,
     };
     dispatchMachineImportFlow({ type: "setLinkSelection", groupId, value });
-    if (value === "local")
+    if (value === "local") {
       ensureGeneratedLocalComponent(groupId, nextSelections);
+    }
   };
 
   const updateMachineHalFilePath = (index: number, filePath: string) =>
@@ -500,7 +420,6 @@ export function useMachineImportFlow({
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
       customComponentDefinitionEdits.halComponentName.update(component, value);
-      return component;
     });
 
   const updateGeneratedLocalComponentRuntimeKind = (
@@ -509,7 +428,6 @@ export function useMachineImportFlow({
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
       customComponentDefinitionEdits.runtimeKind.update(component, value);
-      return component;
     });
 
   const updateGeneratedLocalComponentLoadCommand = (
@@ -518,19 +436,16 @@ export function useMachineImportFlow({
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
       customComponentDefinitionEdits.loadCommand.update(component, value);
-      return component;
     });
 
   const addGeneratedLocalComponentPin = (groupId: string) =>
     updateGeneratedLocalComponent(groupId, (component) => {
       customComponentDefinitionEdits.pin.add(component);
-      return component;
     });
 
   const removeGeneratedLocalComponentPin = (groupId: string, pinKey: string) =>
     updateGeneratedLocalComponent(groupId, (component) => {
       customComponentDefinitionEdits.pin.remove(component, pinKey);
-      return component;
     });
 
   const updateGeneratedLocalComponentPinName = (
@@ -540,7 +455,6 @@ export function useMachineImportFlow({
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
       customComponentDefinitionEdits.pin.name.update(component, pinKey, value);
-      return component;
     });
 
   const updateGeneratedLocalComponentPinType = (
@@ -550,7 +464,6 @@ export function useMachineImportFlow({
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
       customComponentDefinitionEdits.pin.type.update(component, pinKey, value);
-      return component;
     });
 
   const updateGeneratedLocalComponentPinDirection = (
@@ -564,13 +477,11 @@ export function useMachineImportFlow({
         pinKey,
         value,
       );
-      return component;
     });
 
   const addGeneratedLocalComponentParam = (groupId: string) =>
     updateGeneratedLocalComponent(groupId, (component) => {
       customComponentDefinitionEdits.param.add(component);
-      return component;
     });
 
   const removeGeneratedLocalComponentParam = (
@@ -579,7 +490,6 @@ export function useMachineImportFlow({
   ) =>
     updateGeneratedLocalComponent(groupId, (component) => {
       customComponentDefinitionEdits.param.remove(component, paramKey);
-      return component;
     });
 
   const updateGeneratedLocalComponentParamName = (
@@ -593,7 +503,6 @@ export function useMachineImportFlow({
         paramKey,
         value,
       );
-      return component;
     });
 
   const updateGeneratedLocalComponentParamType = (
@@ -607,7 +516,6 @@ export function useMachineImportFlow({
         paramKey,
         value,
       );
-      return component;
     });
 
   const updateGeneratedLocalComponentParamDirection = (
@@ -621,7 +529,6 @@ export function useMachineImportFlow({
         paramKey,
         value,
       );
-      return component;
     });
 
   const updateGeneratedLocalComponentParamDefaultValue = (
@@ -635,8 +542,37 @@ export function useMachineImportFlow({
         paramKey,
         value,
       );
-      return component;
     });
+
+  const bindGeneratedLocalComponentEditor = (
+    groupId: string,
+  ): Omit<CustomComponentEditorProps, "component"> => ({
+    onHalComponentNameChange: (value) =>
+      updateGeneratedLocalComponentHalComponentName(groupId, value),
+    onRuntimeKindChange: (value) =>
+      updateGeneratedLocalComponentRuntimeKind(groupId, value),
+    onLoadCommandChange: (value) =>
+      updateGeneratedLocalComponentLoadCommand(groupId, value),
+    onAddPin: () => addGeneratedLocalComponentPin(groupId),
+    onRemovePin: (pinKey) => removeGeneratedLocalComponentPin(groupId, pinKey),
+    onPinNameChange: (pinKey, value) =>
+      updateGeneratedLocalComponentPinName(groupId, pinKey, value),
+    onPinTypeChange: (pinKey, value) =>
+      updateGeneratedLocalComponentPinType(groupId, pinKey, value),
+    onPinDirectionChange: (pinKey, value) =>
+      updateGeneratedLocalComponentPinDirection(groupId, pinKey, value),
+    onAddParam: () => addGeneratedLocalComponentParam(groupId),
+    onRemoveParam: (paramKey) =>
+      removeGeneratedLocalComponentParam(groupId, paramKey),
+    onParamNameChange: (paramKey, value) =>
+      updateGeneratedLocalComponentParamName(groupId, paramKey, value),
+    onParamTypeChange: (paramKey, value) =>
+      updateGeneratedLocalComponentParamType(groupId, paramKey, value),
+    onParamDirectionChange: (paramKey, value) =>
+      updateGeneratedLocalComponentParamDirection(groupId, paramKey, value),
+    onParamDefaultValueChange: (paramKey, value) =>
+      updateGeneratedLocalComponentParamDefaultValue(groupId, paramKey, value),
+  });
 
   return {
     selectedLinuxCncVersion,
@@ -646,8 +582,16 @@ export function useMachineImportFlow({
     pickMachineIniFile,
     pickMachineHalFileForRow,
     continueToLinkStep,
+    continueFromMesaStep,
     createImportedProject,
     backToMachineFilesStep,
+    addMesaImportHost,
+    removeMesaImportHost,
+    updateMesaImportHostKind,
+    updateMesaImportHostIp,
+    setMesaImportConnectorCard,
+    setMesaImportRawGpioPinDirection,
+    setMesaImportSmartSerialCard,
     changeHalImportLinkSelection,
     updateMachineHalFilePath,
     updateMachineHalFileResolveIni,
@@ -668,6 +612,7 @@ export function useMachineImportFlow({
     updateGeneratedLocalComponentParamType,
     updateGeneratedLocalComponentParamDirection,
     updateGeneratedLocalComponentParamDefaultValue,
+    bindGeneratedLocalComponentEditor,
   };
 }
 
