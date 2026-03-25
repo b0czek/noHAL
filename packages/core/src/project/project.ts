@@ -8,6 +8,8 @@ import {
   createEmptyLinuxCncIniDocument,
   normalizeProjectMachineConfig,
 } from "../machineConfig/shared";
+import { normalizeProjectMesaConfig, reconcileMesaManagedNodes } from "../mesa";
+import type { ProjectMesaConfig } from "../mesa/types";
 import { reconcileMotmodManagedNodes } from "../motmod";
 import {
   createDefaultSheetThreadOutputs,
@@ -122,6 +124,12 @@ export function createDefaultMotmodConfig(): ProjectMotmodConfig {
   };
 }
 
+export function createDefaultMesaConfig(): ProjectMesaConfig {
+  return {
+    hosts: [],
+  };
+}
+
 export function createDefaultProjectUi(activeSheetId: string): ProjectUiConfig {
   return {
     activeSheetId,
@@ -136,6 +144,7 @@ function normalizeProjectShutdown(value: unknown): string {
 
 export function reconcileProject(project: NoHALProject): NoHALProject {
   reconcileMotmodManagedNodes(project);
+  reconcileMesaManagedNodes(project);
   reconcileIniManagedNodes(project);
   reconcileIocontrolManagedNodes(project);
   reconcileHaluiManagedNodes(project);
@@ -235,6 +244,7 @@ export function createEmptyProject(name: string): NoHALProject {
     halThreads,
     machineConfig: createEmptyMachineConfig(),
     motmod: createDefaultMotmodConfig(),
+    mesa: createDefaultMesaConfig(),
     ui: createDefaultProjectUi(top.id),
   };
 
@@ -278,6 +288,7 @@ export function parseNoHALProject(content: string): NoHALProject {
   project.halThreads = normalizeHalThreads(project.halThreads);
   project.machineConfig = normalizeProjectMachineConfig(project.machineConfig);
   project.motmod = normalizeMotmodConfig(project.motmod);
+  project.mesa = normalizeProjectMesaConfig(project.mesa);
   project.ui = normalizeProjectUi(
     project.ui,
     project.rootSheetId,

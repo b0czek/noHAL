@@ -42,6 +42,7 @@ export interface ComponentVisibilityPolicy {
 export interface ComponentSystemMetadata {
   manager: string;
   family?: string;
+  subfamily?: string;
 }
 
 export interface ComponentConstraintPolicy {

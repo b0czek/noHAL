@@ -1,4 +1,5 @@
 import type { LinuxCncVersion } from "../linuxcncVersion";
+import type { ProjectMesaConfig } from "../mesa/types";
 import type {
   NOHAL_PROJECT_FORMAT,
   NOHAL_PROJECT_VERSION,
@@ -80,6 +81,7 @@ export interface NoHALProject {
   halThreads?: HalThreadDefinition[];
   machineConfig?: ProjectMachineConfig;
   motmod?: ProjectMotmodConfig;
+  mesa?: ProjectMesaConfig;
   halExport?: HalExportConfig;
   ui: ProjectUiConfig;
 }

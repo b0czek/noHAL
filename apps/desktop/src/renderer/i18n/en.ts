@@ -151,6 +151,7 @@ export const en = {
   "projectSettings.title": "Project Settings",
   "projectSettings.tabGeneral": "General",
   "projectSettings.tabMotmod": "motmod",
+  "projectSettings.tabMesa": "Mesa",
   "projectSettings.tabThreads": "HAL Threads",
   "projectSettings.tabCustomComponents": "Custom Components",
   "projectSettings.tabShutdown": "Shutdown",
@@ -194,6 +195,37 @@ export const en = {
   "projectSettings.motmod.syncSummary":
     "Pending: +{add} add, -{remove} remove, {adopt} adopt, {ensure} ensure components, {update} update config",
   "projectSettings.motmod.syncNow": "Sync now",
+  "projectSettings.mesaTitle": "Mesa / HostMot2",
+  "projectSettings.mesaHelp":
+    "Configure supported Mesa Ethernet boards and keep their managed System-sheet nodes synchronized.",
+  "projectSettings.mesa.hostBoards": "Host Boards",
+  "projectSettings.mesa.hostBoardsHelp":
+    "Add Ethernet host boards, set IP addresses, and attach supported DB25 peripheral cards, raw GPIO connectors, or smart-serial devices.",
+  "projectSettings.mesa.addHost": "Add host",
+  "projectSettings.mesa.removeHost": "Remove host",
+  "projectSettings.mesa.emptyTitle": "No Mesa boards configured",
+  "projectSettings.mesa.emptyHelp":
+    "Add a host board to generate Mesa system nodes and HostMot2 export lines.",
+  "projectSettings.mesa.hostCard": "Host #{index}",
+  "projectSettings.mesa.hostModel": "Board Model",
+  "projectSettings.mesa.hostIp": "IP Address",
+  "projectSettings.mesa.connectors": "DB25 Peripheral Cards",
+  "projectSettings.mesa.rawGpio": "Raw GPIO",
+  "projectSettings.mesa.rawGpioHelp":
+    "Expose this connector as direct HostMot2 GPIO and choose which lines switch to output mode.",
+  "projectSettings.mesa.gpioLabel": "GPIO {gpio}",
+  "projectSettings.mesa.gpioDirectionInput": "Input",
+  "projectSettings.mesa.gpioDirectionOutput": "Output",
+  "projectSettings.mesa.smartSerial": "Smart-Serial",
+  "projectSettings.mesa.channelLabel": "Channel {channel}",
+  "projectSettings.mesa.validationTitle": "Validation",
+  "projectSettings.mesa.syncStatusLabel": "System HAL projection",
+  "projectSettings.mesa.syncStatusInSync": "In sync",
+  "projectSettings.mesa.syncStatusOutOfSync": "Out of sync",
+  "projectSettings.mesa.syncSummary":
+    "Pending: +{add} add, -{remove} remove, {ensure} ensure components, {update} rename/update nodes",
+  "projectSettings.mesa.syncNow": "Sync now",
+  "projectSettings.mesa.noCard": "(none)",
   "customComponents.title": "Custom Components",
   "customComponents.help":
     "Components that are not backed by a `.comp` file. You can define the command used to load them.",
@@ -282,6 +314,8 @@ export const en = {
   "projectCreation.projectLocalGenerated": "Project-local (generated)",
   "projectCreation.systemComponent": "System component",
   "projectCreation.systemAutoReason": "recognized LinuxCNC system component",
+  "projectCreation.mesaSystemAutoReason":
+    "recognized Mesa component from configured hardware",
   "projectCreation.systemOverrideBadge": "override",
   "projectCreation.systemOverrideBadgeTitle":
     "This system link will be imported as a custom override to preserve non-standard members.",
@@ -298,6 +332,8 @@ export const en = {
     "Choose a blank project or import a LinuxCNC machine configuration (INI + HAL).",
   "projectCreation.subtitleMachineFiles":
     "Select the INI file first, then configure which HAL files to include before component linking.",
+  "projectCreation.subtitleMesa":
+    "Mesa hardware was detected in the imported HAL. Configure the actual Mesa layout before reviewing component links.",
   "projectCreation.subtitleLink":
     "Verify component links before building the imported sheet.",
   "projectCreation.blankProject": "Blank Project",
@@ -310,6 +346,13 @@ export const en = {
   "projectCreation.pickMachineIniFile": "Pick INI File",
   "projectCreation.addHalFileRow": "Add Row",
   "projectCreation.continueToComponentLinking": "Continue to Component Linking",
+  "projectCreation.mesaDetectedTitle": "Mesa Hardware Detected",
+  "projectCreation.mesaDetectedHelp":
+    "This import references Mesa / HostMot2 hardware. noHAL will not guess the hardware layout here. Configure the board and attached cards explicitly, then continue.",
+  "projectCreation.mesaValidationBlocking":
+    "Mesa configuration still has blocking validation issues.",
+  "projectCreation.mesaHostRequired":
+    "Add and configure at least one Mesa host before continuing.",
   "projectCreation.machineConfigIniSource": "INI Source",
   "projectCreation.iniKeys": "INI keys",
   "projectCreation.selectedHalFilesList": "Selected HAL Files",
@@ -503,6 +546,17 @@ export const en = {
     "Motmod system projection is already in sync",
   "store.status.syncedMotmodProjection":
     "Synced motmod projection (+{added}, -{removed}, {adopted} adopted, {ensured} ensured, {updated} updated)",
+  "store.status.addedMesaHost": "Added Mesa host",
+  "store.status.removedMesaHost": "Removed Mesa host",
+  "store.status.updatedMesaHost": "Updated Mesa host model",
+  "store.status.updatedMesaHostIp": "Updated Mesa host IP",
+  "store.status.updatedMesaConnector": "Updated Mesa connector assignment",
+  "store.status.updatedMesaRawGpio": "Updated Mesa raw GPIO direction",
+  "store.status.updatedMesaSmartSerial": "Updated Mesa smart-serial assignment",
+  "store.status.mesaProjectionAlreadyInSync":
+    "Mesa system projection is already in sync",
+  "store.status.syncedMesaProjection":
+    "Synced Mesa projection (+{added}, -{removed}, {ensured} ensured, {updated} updated)",
   "store.status.cannotRemoveLastHalThread":
     "At least one HAL thread must exist",
   "store.status.cannotRemoveRequiredHalThread":

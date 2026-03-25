@@ -32,6 +32,11 @@ import type {
   PinDirection,
   SheetAddfQueueStoredEntry,
 } from "../types";
+import {
+  buildMesaImportPlan,
+  resolveMesaImportTarget,
+  shouldIgnoreMesaImportSetp,
+} from "./mesa";
 
 function stripExtension(fileName: string): string {
   return fileName.replace(/\.[^.]+$/, "");
@@ -381,6 +386,17 @@ export function buildProjectFromHalImport(
       ...draft.motmod,
     };
   }
+  const mesaImportPlan = options.mesa
+    ? buildMesaImportPlan(draft, options.mesa)
+    : null;
+  if (mesaImportPlan) {
+    project.mesa = structuredClone(mesaImportPlan.mesa);
+    for (const binding of mesaImportPlan.nodeBindings) {
+      project.library.components[binding.componentId] = structuredClone(
+        binding.component,
+      );
+    }
+  }
 
   const rootSheet = project.sheets[project.rootSheetId];
   const systemSheet = findSystemSheet(project);
@@ -450,6 +466,7 @@ export function buildProjectFromHalImport(
   const resolvedComponentIdByGroupId = new Map<string, string>();
 
   for (const group of draft.componentGroups) {
+    if (mesaImportPlan?.handledGroupIds.has(group.id)) continue;
     const selection = selections.get(group.id);
     if (selection?.mode === "store") {
       const comp = storeComponentsById.get(selection.componentId);
@@ -491,6 +508,33 @@ export function buildProjectFromHalImport(
     Record<string, string> | undefined
   >();
   const resolvedPinsByNodeId = new Map<string, ComponentPinDefinition[]>();
+
+  if (mesaImportPlan) {
+    for (const binding of mesaImportPlan.nodeBindings) {
+      const nodeId = createId("node");
+      rootSheet.nodes.push({
+        id: nodeId,
+        kind: "component",
+        componentId: binding.componentId,
+        instanceName: binding.instanceName,
+        position: { x: 0, y: 0 },
+        paramValues: {},
+      });
+      const node = rootSheet.nodes[rootSheet.nodes.length - 1];
+      nodeRefById.set(nodeId, node);
+      nodeIdByInstanceName.set(binding.instanceName, nodeId);
+      componentByNodeId.set(nodeId, binding.component);
+      nodeInstanceNameById.set(nodeId, binding.instanceName);
+      nodeInstanceConfigById.set(nodeId, undefined);
+      const resolvedPins = resolveComponentPinsForInstance(binding.component);
+      resolvedPinsByNodeId.set(nodeId, resolvedPins);
+      for (const pin of resolvedPins) {
+        const pinRefKey = `${binding.instanceName}::${pin.name}`;
+        pinKeyByInstanceAndPinName.set(pinRefKey, pin.key);
+        pinDirectionByInstanceAndPinName.set(pinRefKey, pin.direction);
+      }
+    }
+  }
 
   const allInstances = draft.componentGroups
     .flatMap((group) =>
@@ -725,35 +769,27 @@ export function buildProjectFromHalImport(
   };
 
   allInstances.forEach(({ group, instance }, _index) => {
+    const existingNodeId = nodeIdByInstanceName.get(instance.instanceName);
+    if (existingNodeId) {
+      if (
+        instance.instanceConfigValues &&
+        Object.keys(instance.instanceConfigValues).length > 0
+      ) {
+        warnings.push(
+          `Ignoring imported instance config for managed Mesa node '${instance.instanceName}'`,
+        );
+      }
+      return;
+    }
     const componentId = resolvedComponentIdByGroupId.get(group.id);
     const component = resolvedComponentByGroupId.get(group.id);
     if (!componentId || !component) {
-      warnings.push(
-        `Missing resolved component for instance '${instance.instanceName}'`,
-      );
+      if (!mesaImportPlan?.handledGroupIds.has(group.id)) {
+        warnings.push(
+          `Missing resolved component for instance '${instance.instanceName}'`,
+        );
+      }
       return;
-    }
-
-    const paramValues: Record<string, string> = {};
-    const pinInitialValues: Record<string, string> = {};
-    for (const [name, value] of Object.entries(instance.paramValues)) {
-      const param = findMatchingComponentParam(component, name);
-      if (param) {
-        paramValues[param.key] = value;
-        continue;
-      }
-      const pin = findMatchingComponentPin(
-        component,
-        name,
-        instance.instanceConfigValues,
-      );
-      if (pin) {
-        pinInitialValues[pin.key] = value;
-        continue;
-      }
-      warnings.push(
-        `Ignoring setp '${instance.instanceName}.${name}' because '${component.halComponentName}' has no matching param or pin '${name}'`,
-      );
     }
 
     const nodeId = createId("node");
@@ -763,12 +799,11 @@ export function buildProjectFromHalImport(
       componentId,
       instanceName: instance.instanceName,
       position: { x: 0, y: 0 },
-      paramValues,
+      paramValues: {},
       ...(instance.instanceConfigValues &&
       Object.keys(instance.instanceConfigValues).length > 0
         ? { instanceConfigValues: { ...instance.instanceConfigValues } }
         : {}),
-      ...(Object.keys(pinInitialValues).length > 0 ? { pinInitialValues } : {}),
       ...(postguiOnlyInstanceNames.has(instance.instanceName)
         ? { exportStage: "postgui" as const }
         : {}),
@@ -791,6 +826,55 @@ export function buildProjectFromHalImport(
     }
   });
 
+  for (const setp of draft.setps) {
+    if (
+      shouldIgnoreMesaImportSetp(
+        mesaImportPlan,
+        setp.instanceName,
+        setp.fieldName,
+      )
+    ) {
+      continue;
+    }
+    const mesaTarget = resolveMesaImportTarget(
+      mesaImportPlan,
+      setp.instanceName,
+      setp.fieldName,
+    );
+    const targetInstanceName = mesaTarget?.instanceName ?? setp.instanceName;
+    const targetFieldName = mesaTarget?.fieldName ?? setp.fieldName;
+    const nodeId = nodeIdByInstanceName.get(targetInstanceName);
+    if (!nodeId) {
+      warnings.push(
+        `Ignoring setp '${setp.rawPath}' because instance '${targetInstanceName}' was not imported`,
+      );
+      continue;
+    }
+    const node = nodeRefById.get(nodeId);
+    const component = componentByNodeId.get(nodeId);
+    if (!node || node.kind !== "component" || !component) continue;
+    const param = findMatchingComponentParam(component, targetFieldName);
+    if (param) {
+      node.paramValues[param.key] = setp.value;
+      continue;
+    }
+    const pin = findMatchingComponentPin(
+      component,
+      targetFieldName,
+      nodeInstanceConfigById.get(nodeId),
+    );
+    if (pin) {
+      node.pinInitialValues = {
+        ...(node.pinInitialValues ?? {}),
+        [pin.key]: setp.value,
+      };
+      continue;
+    }
+    warnings.push(
+      `Ignoring setp '${setp.rawPath}' because '${component.halComponentName}' has no matching param or pin '${targetFieldName}'`,
+    );
+  }
+
   const anchoredNetEndpoints = new Set<string>();
   const directConnectionPairs = new Set<string>();
   const netNameUsageCount = new Map<string, number>();
@@ -810,7 +894,15 @@ export function buildProjectFromHalImport(
     const resolvedEndpoints: ImportPreparedEndpoint[] = [];
 
     for (const endpoint of net.endpoints) {
-      const nodeId = nodeIdByInstanceName.get(endpoint.instanceName);
+      const mesaTarget = resolveMesaImportTarget(
+        mesaImportPlan,
+        endpoint.instanceName,
+        endpoint.pinName,
+      );
+      const targetInstanceName =
+        mesaTarget?.instanceName ?? endpoint.instanceName;
+      const targetPinName = mesaTarget?.fieldName ?? endpoint.pinName;
+      const nodeId = nodeIdByInstanceName.get(targetInstanceName);
       if (!nodeId) {
         warnings.push(
           `Line ${net.line}: missing node for endpoint '${endpoint.rawPath}'`,
@@ -818,39 +910,39 @@ export function buildProjectFromHalImport(
         continue;
       }
       const pinKey = pinKeyByInstanceAndPinName.get(
-        `${endpoint.instanceName}::${endpoint.pinName}`,
+        `${targetInstanceName}::${targetPinName}`,
       );
       let resolvedPinKey = pinKey;
       let resolvedDirection = pinDirectionByInstanceAndPinName.get(
-        `${endpoint.instanceName}::${endpoint.pinName}`,
+        `${targetInstanceName}::${targetPinName}`,
       );
       if (!resolvedPinKey) {
         const component = componentByNodeId.get(nodeId);
         const matched = findMatchingComponentPin(
           component,
-          endpoint.pinName,
+          targetPinName,
           nodeInstanceConfigById.get(nodeId),
         );
         if (matched) {
           resolvedPinKey = matched.key;
           resolvedDirection = matched.direction;
           pinKeyByInstanceAndPinName.set(
-            `${endpoint.instanceName}::${endpoint.pinName}`,
+            `${targetInstanceName}::${targetPinName}`,
             matched.key,
           );
           pinDirectionByInstanceAndPinName.set(
-            `${endpoint.instanceName}::${endpoint.pinName}`,
+            `${targetInstanceName}::${targetPinName}`,
             matched.direction,
           );
         }
       }
       if (!resolvedPinKey) {
         warnings.push(
-          `Line ${net.line}: component pin '${endpoint.pinName}' not found on '${endpoint.instanceName}'`,
+          `Line ${net.line}: component pin '${targetPinName}' not found on '${targetInstanceName}'`,
         );
         continue;
       }
-      const pinRefKey = `${endpoint.instanceName}::${endpoint.pinName}`;
+      const pinRefKey = `${targetInstanceName}::${targetPinName}`;
       if (
         !resolvedEndpoints.some(
           (item) => item.nodeId === nodeId && item.pinKey === resolvedPinKey,

@@ -5,6 +5,7 @@ import { isValidHalName } from "../halNames";
 import type { NoHALProject } from "../types";
 import type { ExportContext } from "./context";
 import { pushFatal } from "./context";
+import { collectGeneratedParamContributions } from "./contributions";
 import { resolveExportedInstancePath } from "./naming";
 
 export interface ParamLines {
@@ -16,8 +17,9 @@ export function collectParamLines(
   project: NoHALProject,
   ctx: ExportContext,
 ): ParamLines {
-  const mainSetpLines: string[] = [];
-  const postguiSetpLines: string[] = [];
+  const generated = collectGeneratedParamContributions(project, ctx);
+  const mainSetpLines = [...generated.mainSetpLines];
+  const postguiSetpLines = [...generated.postguiSetpLines];
   const seenSheets = new Set<string>();
 
   function emitParams(sheetId: string, pathParts: string[]): void {

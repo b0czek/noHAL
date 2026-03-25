@@ -9,6 +9,7 @@ import type {
 import { createStore, reconcile, unwrap } from "solid-js/store";
 import type { TranslationKey } from "../i18n";
 import { createComponentStoreActions } from "./store/actions/componentStoreActions";
+import { createMesaActions } from "./store/actions/mesaActions";
 import { createNodeActions } from "./store/actions/nodeActions";
 import { createProjectActions } from "./store/actions/projectActions";
 import { createSelectionActions } from "./store/actions/selectionActions";
@@ -312,6 +313,7 @@ export function createEditorStore(
   };
 
   const projectActions = createProjectActions(actionCtx);
+  const mesaActions = createMesaActions(actionCtx);
   const componentStoreActions = createComponentStoreActions(actionCtx);
   const wireActions = createWireActions(actionCtx);
   const nodeActions = createNodeActions(actionCtx);
@@ -356,6 +358,7 @@ export function createEditorStore(
     ...selectionActions,
 
     ...projectActions,
+    ...mesaActions,
 
     async saveProject(): Promise<boolean> {
       return performSaveProject();

@@ -170,4 +170,120 @@ describe("moveSelectionIntoSubsheet", () => {
       },
     ]);
   });
+
+  it("preserves child-side connectivity for label nets that cross the subsheet boundary", () => {
+    const project = createEmptyProject("Subsheet Label Move");
+    const root = project.sheets[project.rootSheetId];
+
+    root.nodes = [];
+    root.directConnections = [];
+    root.labels = [];
+    root.labelAnchors = [];
+    root.comments = [];
+    root.ports = [];
+    for (const sheetId of Object.keys(project.sheets)) {
+      if (sheetId === project.rootSheetId) continue;
+      delete project.sheets[sheetId];
+    }
+
+    project.library.components["test:src"] = {
+      id: "test:src",
+      name: "src",
+      halComponentName: "src",
+      source: "manual",
+      runtime: { kind: "unknown" },
+      pins: [{ key: "out", name: "out", direction: "out", type: "bit" }],
+      params: [],
+    };
+    project.library.components["test:sink"] = {
+      id: "test:sink",
+      name: "sink",
+      halComponentName: "sink",
+      source: "manual",
+      runtime: { kind: "unknown" },
+      pins: [{ key: "in", name: "in", direction: "in", type: "bit" }],
+      params: [],
+    };
+
+    const srcNode = {
+      id: "node_src",
+      kind: "component" as const,
+      componentId: "test:src",
+      instanceName: "src",
+      position: { x: 120, y: 100 },
+      paramValues: {},
+    };
+    const sinkNode = {
+      id: "node_sink",
+      kind: "component" as const,
+      componentId: "test:sink",
+      instanceName: "sink",
+      position: { x: 420, y: 100 },
+      paramValues: {},
+    };
+    root.nodes.push(srcNode, sinkNode);
+
+    root.labels.push({
+      id: "label_sig",
+      name: "sig",
+      scope: "global",
+      position: { x: 260, y: 90 },
+    });
+    root.labelAnchors.push(
+      {
+        id: "anchor_mesa",
+        labelId: "label_sig",
+        endpoint: { kind: "node-pin", nodeId: srcNode.id, pinKey: "out" },
+      },
+      {
+        id: "anchor_sink",
+        labelId: "label_sig",
+        endpoint: { kind: "node-pin", nodeId: sinkNode.id, pinKey: "in" },
+      },
+    );
+
+    const child = createSheet("Child", root.id);
+    project.sheets[child.id] = child;
+    const subsheetNode: SheetNode = {
+      id: "node_child",
+      kind: "sheet",
+      sheetId: child.id,
+      instanceName: "child",
+      position: { x: 420, y: 100 },
+    };
+
+    moveSelectionIntoSubsheet(project, {
+      parentSheetId: root.id,
+      childSheetId: child.id,
+      subsheetNode,
+      movedNodeIds: [srcNode.id],
+    });
+
+    const childPort = child.ports[0];
+    expect(childPort).toBeDefined();
+    expect(root.labelAnchors).toEqual([
+      {
+        id: "anchor_mesa",
+        labelId: "label_sig",
+        endpoint: {
+          kind: "node-pin",
+          nodeId: subsheetNode.id,
+          pinKey: childPort?.id,
+        },
+      },
+      {
+        id: "anchor_sink",
+        labelId: "label_sig",
+        endpoint: { kind: "node-pin", nodeId: sinkNode.id, pinKey: "in" },
+      },
+    ]);
+    expect(child.directConnections).toEqual([
+      {
+        id: expect.any(String),
+        a: { kind: "sheet-port", portId: childPort?.id },
+        b: { kind: "node-pin", nodeId: srcNode.id, pinKey: "out" },
+        signalName: "sig",
+      },
+    ]);
+  });
 });

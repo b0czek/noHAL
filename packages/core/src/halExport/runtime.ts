@@ -17,6 +17,7 @@ import type {
 } from "../types";
 import type { ExportContext } from "./context";
 import { pushFatal } from "./context";
+import { collectGeneratedRuntimeContributions } from "./contributions";
 import { joinInstancePath, resolveExportedInstancePath } from "./naming";
 
 type RuntimeInstanceRecord = ExportContext["componentInstances"][number];
@@ -62,6 +63,7 @@ export function buildRuntimeSections(
   project: NoHALProject,
   ctx: ExportContext,
 ): RuntimeSections {
+  const generatedRuntime = collectGeneratedRuntimeContributions(project, ctx);
   const rules = project.halExport?.componentRules ?? {};
   const addfConfig = project.halExport?.addf;
   const loadOrderList = project.halExport?.loadOrder ?? [];
@@ -191,6 +193,7 @@ export function buildRuntimeSections(
   };
 
   emitMotmodLoadrt();
+  loadrtLines.push(...generatedRuntime.loadrtLines);
   const exportableHalThreads = projectHalThreads.filter(
     (thread) => !motionOwnedThreadNames.has(thread.name),
   );
@@ -716,7 +719,7 @@ export function buildRuntimeSections(
   return {
     customLoadLines,
     loadrtLines,
-    loadusrLines: [],
+    loadusrLines: [...generatedRuntime.loadusrLines],
     addfLines,
     runtimeSummaryLines,
   };

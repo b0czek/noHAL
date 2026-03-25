@@ -167,7 +167,13 @@ export function moveSelectionIntoSubsheet(
 
   const parentConnectionsNext: SheetDefinition["directConnections"] = [];
   const childConnectionsNext = [...childSheet.directConnections];
+  const childConnectionPairs = new Set(
+    childConnectionsNext.map((conn) => directConnectionPairKey(conn.a, conn.b)),
+  );
   const parentConnectionPairs = new Set<string>();
+  const parentLabelsById = new Map(
+    parentSheet.labels.map((label) => [label.id, label]),
+  );
   for (const conn of parentSheet.directConnections) {
     const aMoved = isMovedNodeEndpoint(conn.a, movedNodeIdSet);
     const bMoved = isMovedNodeEndpoint(conn.b, movedNodeIdSet);
@@ -244,6 +250,23 @@ export function moveSelectionIntoSubsheet(
     });
   };
 
+  const ensureChildBoundaryConnection = (
+    movedEndpoint: SheetEndpointRef,
+    portId: string,
+    signalName?: string,
+  ) => {
+    const portEndpoint = { kind: "sheet-port", portId } as const;
+    const pairKey = directConnectionPairKey(movedEndpoint, portEndpoint);
+    if (childConnectionPairs.has(pairKey)) return;
+    childConnectionPairs.add(pairKey);
+    childConnectionsNext.push({
+      id: createId("conn"),
+      a: portEndpoint,
+      b: cloneEndpoint(movedEndpoint),
+      ...(signalName ? { signalName } : {}),
+    });
+  };
+
   const parentAnchorsNext: SheetDefinition["labelAnchors"] = [];
   const childAnchorsNext = [...childSheet.labelAnchors];
   for (const anchor of parentSheet.labelAnchors) {
@@ -272,11 +295,17 @@ export function moveSelectionIntoSubsheet(
 
     if (!labelMoved && endpointMoved) {
       const boundaryPort = ensureBoundaryPortForEndpoint(anchor.endpoint);
+      const signalName = parentLabelsById.get(anchor.labelId)?.name;
       parentAnchorsNext.push({
         id: anchor.id,
         labelId: anchor.labelId,
         endpoint: subsheetEndpointForPort(boundaryPort.id),
       });
+      ensureChildBoundaryConnection(
+        anchor.endpoint,
+        boundaryPort.id,
+        signalName,
+      );
       continue;
     }
 
