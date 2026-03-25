@@ -44,6 +44,21 @@ export const MESA_HOSTS: readonly MesaHostCatalogEntry[] = [
           direction: "out",
           type: "bit",
         },
+        {
+          key: "watchdog_has_bit",
+          name: "watchdog.has_bit",
+          direction: "io",
+          type: "bit",
+        },
+      ],
+      explicitParams: [
+        {
+          key: "watchdog_timeout_ns",
+          name: "watchdog.timeout_ns",
+          direction: "rw",
+          type: "u32",
+          defaultValue: "5000000",
+        },
       ],
     },
   },
