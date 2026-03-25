@@ -1,6 +1,6 @@
 import type { ProjectMesaGpioDirection } from "@nohal/core/src/mesa";
 import { For } from "solid-js";
-import StringSelect from "../../../components/form/StringSelect";
+import { Button } from "../../../components/ui/button";
 import { useI18n } from "../../../i18n";
 
 interface MesaRawGpioSectionProps {
@@ -24,17 +24,6 @@ export default function MesaRawGpioSection(props: MesaRawGpioSectionProps) {
   const { t } = useI18n();
   const formatMesaGpioIndex = (index: number) => `${index}`.padStart(3, "0");
 
-  const gpioDirectionOptions = () => [
-    {
-      value: "input",
-      label: t("projectSettings.mesa.gpioDirectionInput"),
-    },
-    {
-      value: "output",
-      label: t("projectSettings.mesa.gpioDirectionOutput"),
-    },
-  ];
-
   const outputPins = () => new Set(props.outputPins);
 
   return (
@@ -55,18 +44,38 @@ export default function MesaRawGpioSection(props: MesaRawGpioSectionProps) {
                 gpio: formatMesaGpioIndex(props.firstIndex + pinIndex),
               })}
             </div>
-            <StringSelect
-              value={outputPins().has(pinIndex) ? "output" : "input"}
-              options={gpioDirectionOptions()}
-              onChange={(value) =>
-                props.onSetPinDirection(
-                  props.hostId,
-                  props.connectorKey,
-                  pinIndex,
-                  (value || "input") as "input" | "output",
-                )
-              }
-            />
+            <div class="inline-flex min-h-9 w-fit items-center gap-2 rounded-xl bg-black/20 p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={outputPins().has(pinIndex) ? "ghost" : "default"}
+                onClick={() =>
+                  props.onSetPinDirection(
+                    props.hostId,
+                    props.connectorKey,
+                    pinIndex,
+                    "input",
+                  )
+                }
+              >
+                {t("projectSettings.mesa.gpioDirectionInput")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={outputPins().has(pinIndex) ? "default" : "ghost"}
+                onClick={() =>
+                  props.onSetPinDirection(
+                    props.hostId,
+                    props.connectorKey,
+                    pinIndex,
+                    "output",
+                  )
+                }
+              >
+                {t("projectSettings.mesa.gpioDirectionOutput")}
+              </Button>
+            </div>
           </div>
         )}
       </For>
