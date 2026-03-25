@@ -1,5 +1,8 @@
 import type { MesaDerivedNode } from "../../../mesa/derive";
-import { pinsForMesaSchemaProfile } from "../../../mesa/schema";
+import {
+  paramsForMesaSchemaProfile,
+  pinsForMesaSchemaProfile,
+} from "../../../mesa/schema";
 import type { ComponentDefinition } from "../../../types";
 
 export const MESA_SYSTEM_MANAGER = "mesa" as const;
@@ -55,7 +58,7 @@ export function createMesaSystemComponentDefinition(
     },
     runtime,
     pins: pinsForMesaSchemaProfile(node.schemaProfile),
-    params: [],
+    params: paramsForMesaSchemaProfile(node.schemaProfile),
     ...(functions ? { functions } : {}),
     docs: {
       description: `System-managed Mesa ${node.subfamily ?? node.family} node. Generated from project Mesa configuration (${node.summary}).`,

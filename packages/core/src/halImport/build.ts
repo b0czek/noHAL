@@ -32,7 +32,11 @@ import type {
   PinDirection,
   SheetAddfQueueStoredEntry,
 } from "../types";
-import { buildMesaImportPlan, resolveMesaImportTarget } from "./mesa";
+import {
+  buildMesaImportPlan,
+  resolveMesaImportTarget,
+  shouldIgnoreMesaImportSetp,
+} from "./mesa";
 
 function stripExtension(fileName: string): string {
   return fileName.replace(/\.[^.]+$/, "");
@@ -823,6 +827,15 @@ export function buildProjectFromHalImport(
   });
 
   for (const setp of draft.setps) {
+    if (
+      shouldIgnoreMesaImportSetp(
+        mesaImportPlan,
+        setp.instanceName,
+        setp.fieldName,
+      )
+    ) {
+      continue;
+    }
     const mesaTarget = resolveMesaImportTarget(
       mesaImportPlan,
       setp.instanceName,

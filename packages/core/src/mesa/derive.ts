@@ -9,6 +9,7 @@ import {
 } from "./catalog";
 import {
   createMesaBitInputPins,
+  createMesaEncoderParams,
   createMesaEncoderPins,
   mergeMesaSchemaProfiles,
   schemaProfileSummary,
@@ -140,6 +141,7 @@ function buildEncoderPseudoComponentSpecs(
       displayNameSuffix: `Encoder ${suffix}`,
       schemaProfile: {
         explicitPins: createMesaEncoderPins(),
+        explicitParams: createMesaEncoderParams(),
       },
       preferredOffset: { x: 220, y: index * 96 },
       summary: schemaProfileSummary({ encoders: 1 }),

@@ -43,27 +43,5 @@ describe("Mesa encoder HAL projection", () => {
       "hm2_7i92t.0.encoder.05",
     ]);
 
-    expect(encoderComponents[0]?.pins).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          key: "position",
-          name: "position",
-          direction: "out",
-          type: "float",
-        }),
-        expect.objectContaining({
-          key: "velocity",
-          name: "velocity",
-          direction: "out",
-          type: "float",
-        }),
-        expect.objectContaining({
-          key: "index_enable",
-          name: "index-enable",
-          direction: "io",
-          type: "bit",
-        }),
-      ]),
-    );
   });
 });

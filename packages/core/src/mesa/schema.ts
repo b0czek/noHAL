@@ -1,4 +1,7 @@
-import type { ComponentPinDefinition } from "../types";
+import type {
+  ComponentParamDefinition,
+  ComponentPinDefinition,
+} from "../types";
 import type { MesaSchemaProfile } from "./catalog/types";
 
 export interface MesaEncoderPinOptions {
@@ -47,6 +50,89 @@ export function createMesaEncoderPins(
       type: "bit",
     },
   ];
+}
+
+export function createMesaEncoderParams(): ComponentParamDefinition[] {
+  return [
+    {
+      key: "scale",
+      name: "scale",
+      direction: "rw",
+      type: "float",
+      doc: 'Converts from "count" units to "position" units.',
+    },
+    {
+      key: "index_invert",
+      name: "index-invert",
+      direction: "rw",
+      type: "bit",
+      doc: "If true, the rising edge of Index triggers the index event.",
+    },
+    {
+      key: "index_mask",
+      name: "index-mask",
+      direction: "rw",
+      type: "bit",
+      doc: "If true, Index only has an effect when the Index-Mask gate is active.",
+    },
+    {
+      key: "index_mask_invert",
+      name: "index-mask-invert",
+      direction: "rw",
+      type: "bit",
+      doc: "If true, Index-Mask must be false for Index to have an effect.",
+    },
+    {
+      key: "counter_mode",
+      name: "counter-mode",
+      direction: "rw",
+      type: "bit",
+      doc: "False selects quadrature mode; true selects Step/Dir mode.",
+    },
+    {
+      key: "filter",
+      name: "filter",
+      direction: "rw",
+      type: "bit",
+      doc: "Controls the quadrature input filter depth.",
+    },
+    {
+      key: "vel_timeout",
+      name: "vel-timeout",
+      direction: "rw",
+      type: "float",
+      doc: "How long to wait for the next pulse before reporting zero velocity.",
+    },
+  ];
+}
+
+function createIndexedAnalogOutputParams(
+  count: number | undefined,
+): ComponentParamDefinition[] {
+  if (!count || count <= 0) return [];
+  return Array.from({ length: count }, (_, index) => [
+    {
+      key: `analogout_${`${index}`.padStart(2, "0")}_maxlim`,
+      name: `analogout${index}-maxlim`,
+      direction: "rw" as const,
+      type: "float" as const,
+      doc: "The maximum speed request allowable.",
+    },
+    {
+      key: `analogout_${`${index}`.padStart(2, "0")}_minlim`,
+      name: `analogout${index}-minlim`,
+      direction: "rw" as const,
+      type: "float" as const,
+      doc: "The minimum speed request.",
+    },
+    {
+      key: `analogout_${`${index}`.padStart(2, "0")}_scalemax`,
+      name: `analogout${index}-scalemax`,
+      direction: "rw" as const,
+      type: "float" as const,
+      doc: "The speed request corresponding to full-scale analog output.",
+    },
+  ]).flat();
 }
 
 function createIndexedEncoderPins(
@@ -170,11 +256,21 @@ export function pinsForMesaSchemaProfile(
   ];
 }
 
+export function paramsForMesaSchemaProfile(
+  profile: MesaSchemaProfile,
+): ComponentParamDefinition[] {
+  return [
+    ...(profile.explicitParams ?? []),
+    ...createIndexedAnalogOutputParams(profile.analogOutputs),
+  ];
+}
+
 export function mergeMesaSchemaProfiles(
   ...profiles: (MesaSchemaProfile | undefined)[]
 ): MesaSchemaProfile {
   const merged: MesaSchemaProfile = {};
   const explicitPins = new Map<string, ComponentPinDefinition>();
+  const explicitParams = new Map<string, ComponentParamDefinition>();
   const numericKeys = [
     "encoders",
     "digitalInputs",
@@ -191,6 +287,9 @@ export function mergeMesaSchemaProfiles(
     for (const pin of profile.explicitPins ?? []) {
       explicitPins.set(pin.key, pin);
     }
+    for (const param of profile.explicitParams ?? []) {
+      explicitParams.set(param.key, param);
+    }
     for (const key of numericKeys) {
       const value = profile[key] as number | undefined;
       if (!value || value <= 0) continue;
@@ -203,6 +302,9 @@ export function mergeMesaSchemaProfiles(
   }
   if (explicitPins.size > 0) {
     merged.explicitPins = [...explicitPins.values()];
+  }
+  if (explicitParams.size > 0) {
+    merged.explicitParams = [...explicitParams.values()];
   }
   return merged;
 }

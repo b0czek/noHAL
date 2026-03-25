@@ -1,4 +1,7 @@
-import type { ComponentPinDefinition } from "../../types/components";
+import type {
+  ComponentParamDefinition,
+  ComponentPinDefinition,
+} from "../../types/components";
 import type {
   ProjectMesaDb25CardKind,
   ProjectMesaHostKind,
@@ -9,6 +12,7 @@ export type MesaConnectorKind = "db25";
 
 export interface MesaSchemaProfile {
   explicitPins?: ComponentPinDefinition[];
+  explicitParams?: ComponentParamDefinition[];
   encoders?: number;
   digitalInputs?: number;
   digitalOutputs?: number;

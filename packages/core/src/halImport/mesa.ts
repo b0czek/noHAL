@@ -96,6 +96,16 @@ function parseMesaInstancePath(value: string): {
   };
 }
 
+function isMesaRawGpioDirectionField(fieldName: string): boolean {
+  const segments = normalizeMesaPathSegments(fieldName);
+  return (
+    segments.length === 3 &&
+    segments[0] === "gpio" &&
+    /^\d+$/.test(segments[1] ?? "") &&
+    segments[2] === "is-output"
+  );
+}
+
 function resolveMesaFieldName(
   component: Pick<ComponentDefinition, "pins" | "params">,
   fieldName: string,
@@ -196,6 +206,18 @@ export function buildMesaImportPlan(
     nodeBindings,
     handledGroupIds,
   };
+}
+
+export function shouldIgnoreMesaImportSetp(
+  plan: MesaImportPlan | null | undefined,
+  instanceName: string,
+  fieldName: string,
+): boolean {
+  if (!plan) return false;
+  const importedInstance = parseMesaInstancePath(instanceName.trim());
+  if (!importedInstance) return false;
+  if (importedInstance.suffixSegments.length !== 0) return false;
+  return isMesaRawGpioDirectionField(fieldName);
 }
 
 export function resolveMesaImportTarget(

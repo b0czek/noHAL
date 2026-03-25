@@ -45,6 +45,9 @@ describe("Mesa HAL import support", () => {
       loadrt and2 count=1
       net spindle-enable and2.0.out => hm2_7i92t.0.7i77.0.1.spinena
       net encoder-index hm2_7i92t.0.encoder.00.index-enable <=> and2.0.in0
+      setp hm2_7i92t.0.encoder.00.scale 4096
+      setp hm2_7i92t.0.encoder.00.index-mask TRUE
+      setp hm2_7i92t.0.7i77.0.1.analogout0-maxlim 1200
       setp hm2_7i92t.0.7i77.0.1.analogout.00 3.5
     `);
 
@@ -73,16 +76,37 @@ describe("Mesa HAL import support", () => {
     expect(encoderNode).toBeDefined();
     expect(analogNode).toBeDefined();
 
+    if (!encoderNode || encoderNode.kind !== "component") return;
+    const encoderComponent =
+      result.project.library.components[encoderNode.componentId];
+    const scaleParam = encoderComponent?.params.find(
+      (param) => param.name === "scale",
+    );
+    const indexMaskParam = encoderComponent?.params.find(
+      (param) => param.name === "index-mask",
+    );
+    expect(scaleParam).toBeDefined();
+    expect(indexMaskParam).toBeDefined();
+    expect(encoderNode.paramValues[scaleParam?.key ?? ""]).toBe("4096");
+    expect(encoderNode.paramValues[indexMaskParam?.key ?? ""]).toBe("TRUE");
+
     if (!analogNode || analogNode.kind !== "component") return;
     const analogComponent =
       result.project.library.components[analogNode.componentId];
     const analogOutPin = analogComponent?.pins.find(
       (pin) => pin.name === "analogout.00",
     );
+    const analogOutMaxLimParam = analogComponent?.params.find(
+      (param) => param.name === "analogout0-maxlim",
+    );
 
     expect(analogComponent?.system?.manager).toBe("mesa");
     expect(analogOutPin).toBeDefined();
+    expect(analogOutMaxLimParam).toBeDefined();
     expect(analogNode.pinInitialValues?.[analogOutPin?.key ?? ""]).toBe("3.5");
+    expect(analogNode.paramValues[analogOutMaxLimParam?.key ?? ""]).toBe(
+      "1200",
+    );
     expect(
       result.project.library.components["halimport:hm2_eth"],
     ).toBeUndefined();
@@ -99,6 +123,8 @@ describe("Mesa HAL import support", () => {
       loadrt and2 count=1
       net spindle-enable and2.0.out => hm2_7i92t.0.7i77.0.0.output-0
       net encoder-index hm2_7i92t.0.encoder.0.index_enable <=> and2.0.in0
+      setp hm2_7i92t.0.encoder.0.index_mask_invert false
+      setp hm2_7i92t.0.7i77.0.1.analogout0_scalemax 6000
       setp hm2_7i92t.0.7i77.0.1.analogout.0 3.5
     `);
 
@@ -125,6 +151,11 @@ describe("Mesa HAL import support", () => {
         node.kind === "component" &&
         node.instanceName === "hm2_7i92t.0.7i77.0.0",
     );
+    const encoderNode = systemSheet?.nodes.find(
+      (node) =>
+        node.kind === "component" &&
+        node.instanceName === "hm2_7i92t.0.encoder.00",
+    );
     const analogNode = systemSheet?.nodes.find(
       (node) =>
         node.kind === "component" &&
@@ -132,7 +163,18 @@ describe("Mesa HAL import support", () => {
     );
 
     expect(ioNode).toBeDefined();
+    expect(encoderNode).toBeDefined();
     expect(analogNode).toBeDefined();
+
+    if (!encoderNode || encoderNode.kind !== "component") return;
+    const encoderComponent =
+      result.project.library.components[encoderNode.componentId];
+    const indexMaskInvertParam = encoderComponent?.params.find(
+      (param) => param.name === "index-mask-invert",
+    );
+    expect(encoderNode.paramValues[indexMaskInvertParam?.key ?? ""]).toBe(
+      "false",
+    );
 
     if (!analogNode || analogNode.kind !== "component") return;
     const analogComponent =
@@ -140,12 +182,19 @@ describe("Mesa HAL import support", () => {
     const analogOutPin = analogComponent?.pins.find(
       (pin) => pin.name === "analogout.00",
     );
+    const analogOutScaleMaxParam = analogComponent?.params.find(
+      (param) => param.name === "analogout0-scalemax",
+    );
+    expect(analogNode.paramValues[analogOutScaleMaxParam?.key ?? ""]).toBe(
+      "6000",
+    );
     expect(analogNode.pinInitialValues?.[analogOutPin?.key ?? ""]).toBe("3.5");
   });
 
   it("routes Mesa raw GPIO host pins using configured per-pin direction", () => {
     const draft = parseHalImportDraft(`
       loadrt and2 count=1
+      setp hm2_7i92t.0.gpio.018.is_output 1
       net machine-enable and2.0.out => hm2_7i92t.0.gpio.18.out
     `);
 
@@ -158,7 +207,11 @@ describe("Mesa HAL import support", () => {
     });
 
     expect(
-      result.warnings.filter((warning) => warning.includes("component pin")),
+      result.warnings.filter(
+        (warning) =>
+          warning.includes("component pin") ||
+          warning.includes("Ignoring setp"),
+      ),
     ).toEqual([]);
     expect(
       result.project.sheets[result.project.rootSheetId]?.directConnections
