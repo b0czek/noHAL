@@ -243,6 +243,9 @@ function buildHostDirectProfile(
 
 function buildHostModuleConfigTokens(profile: MesaSchemaProfile): string[] {
   const tokens: string[] = [];
+  if (profile.dpll) {
+    tokens.push("num_dplls=1");
+  }
   if (profile.encoders && profile.encoders > 0) {
     tokens.push(`num_encoders=${profile.encoders}`);
   }

@@ -13,6 +13,7 @@ export type MesaConnectorKind = "db25";
 export interface MesaSchemaProfile {
   explicitPins?: ComponentPinDefinition[];
   explicitParams?: ComponentParamDefinition[];
+  dpll?: boolean;
   encoders?: number;
   digitalInputs?: number;
   digitalOutputs?: number;

@@ -31,6 +31,7 @@ export const MESA_HOSTS: readonly MesaHostCatalogEntry[] = [
     ],
     smartSerialPorts: [],
     directProfile: {
+      dpll: true,
       explicitPins: [
         {
           key: "status_connected",

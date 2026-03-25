@@ -42,6 +42,5 @@ describe("Mesa encoder HAL projection", () => {
       "hm2_7i92t.0.encoder.04",
       "hm2_7i92t.0.encoder.05",
     ]);
-
   });
 });

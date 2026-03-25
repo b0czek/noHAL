@@ -9,6 +9,63 @@ export interface MesaEncoderPinOptions {
   namePrefix?: string;
 }
 
+export function createMesaDpllPins(): ComponentPinDefinition[] {
+  return [
+    ...Array.from({ length: 4 }, (_, index) => {
+      const suffix = `${index + 1}`.padStart(2, "0");
+      return {
+        key: `dpll_timer_us_${suffix}`,
+        name: `dpll.${suffix}.timer-us`,
+        direction: "in" as const,
+        type: "float" as const,
+        doc: "Trigger offset for the associated DPLL timer in microseconds.",
+      };
+    }),
+    {
+      key: "dpll_base_freq_khz",
+      name: "dpll.base-freq-khz",
+      direction: "in",
+      type: "float",
+      doc: "Base frequency of the phase-locked loop in kHz.",
+    },
+    {
+      key: "dpll_phase_error_us",
+      name: "dpll.phase-error-us",
+      direction: "out",
+      type: "float",
+      doc: "Reported DPLL phase error in microseconds.",
+    },
+    {
+      key: "dpll_time_const",
+      name: "dpll.time-const",
+      direction: "in",
+      type: "u32",
+      doc: "Filter time-constant for the DPLL loop.",
+    },
+    {
+      key: "dpll_plimit",
+      name: "dpll.plimit",
+      direction: "in",
+      type: "u32",
+      doc: "Phase adjustment limit for the DPLL loop.",
+    },
+    {
+      key: "dpll_ddsize",
+      name: "dpll.ddsize",
+      direction: "out",
+      type: "u32",
+      doc: "Driver-internal DPLL state value.",
+    },
+    {
+      key: "dpll_prescale",
+      name: "dpll.prescale",
+      direction: "in",
+      type: "u32",
+      doc: "Prescale factor for the DPLL rate generator.",
+    },
+  ];
+}
+
 function createIndexedPins(
   count: number | undefined,
   nameFactory: (index: number) => string,
@@ -234,6 +291,7 @@ export function pinsForMesaSchemaProfile(
   const spec = profile;
   return [
     ...(spec.explicitPins ?? []),
+    ...(spec.dpll ? createMesaDpllPins() : []),
     ...createIndexedEncoderPins(spec.encoders),
     ...createDigitalInputPins(spec.digitalInputs),
     ...createDigitalOutputPins(spec.digitalOutputs),
@@ -285,6 +343,7 @@ export function mergeMesaSchemaProfiles(
     "analogOutputs",
   ] as const satisfies readonly (keyof MesaSchemaProfile)[];
   const booleanKeys = [
+    "dpll",
     "spindleEnable",
     "analogEnable",
   ] as const satisfies readonly (keyof MesaSchemaProfile)[];
@@ -318,6 +377,7 @@ export function mergeMesaSchemaProfiles(
 export function schemaProfileSummary(profile: MesaSchemaProfile): string {
   const spec = profile;
   const parts = [
+    spec.dpll ? "dpll" : null,
     spec.encoders ? `${spec.encoders} encoder` : null,
     spec.digitalInputs ? `${spec.digitalInputs} DI` : null,
     spec.digitalOutputs ? `${spec.digitalOutputs} DO` : null,
