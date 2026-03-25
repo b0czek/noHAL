@@ -72,7 +72,15 @@ export function renderComments(
     });
     group.on("click tap", (evt) => {
       evt.cancelBubble = true;
-      callbacks.onCommentClick(comment.id);
+      callbacks.onSelect(
+        { kind: "comment", id: comment.id },
+        {
+          mode:
+            evt.evt instanceof MouseEvent && evt.evt.shiftKey
+              ? "toggle"
+              : undefined,
+        },
+      );
     });
     group.on("contextmenu", (evt) => {
       evt.cancelBubble = true;

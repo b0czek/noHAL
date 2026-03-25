@@ -15,6 +15,10 @@ const api: NoHALApi = {
   setWindowDirtyState: (isDirty) => {
     ipcRenderer.send("nohal:set-window-dirty-state", isDirty);
   },
+  readClipboardText: () => ipcRenderer.sendSync("nohal:read-clipboard-text"),
+  writeClipboardText: (text) => {
+    ipcRenderer.sendSync("nohal:write-clipboard-text", text);
+  },
   promptUnsavedChanges: () =>
     ipcRenderer.invoke("nohal:prompt-unsaved-changes") as Promise<
       "save" | "discard" | "cancel"

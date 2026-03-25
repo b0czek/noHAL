@@ -1,4 +1,6 @@
+import type { DirectConnection, SheetEndpointRef } from "@nohal/core/src/types";
 import Konva from "konva";
+import type { Selection } from "../../state/store/selectionTypes";
 import {
   LABEL_ANCHOR_DASH,
   LABEL_ANCHOR_STROKE,
@@ -50,6 +52,11 @@ export function redraw(runtime: SceneRuntime): void {
   const selectedConn = selectedConnectionId
     ? sheet.directConnections.find((c) => c.id === selectedConnectionId)
     : null;
+  const selectedConnWaypoints = selectedConn
+    ? (runtime.graph.liveConnectionWaypoints.get(selectedConn.id) ??
+      selectedConn.waypoints ??
+      [])
+    : [];
 
   if (!selectedConn) {
     runtime.state.selectedConnectionId = null;
@@ -58,9 +65,9 @@ export function redraw(runtime: SceneRuntime): void {
     const { selectedWaypointIndex } = runtime.state;
     if (
       selectedWaypointIndex !== null &&
-      (selectedConn.waypoints?.length ?? 0) <= selectedWaypointIndex
+      selectedConnWaypoints.length <= selectedWaypointIndex
     ) {
-      const waypointCount = selectedConn.waypoints?.length ?? 0;
+      const waypointCount = selectedConnWaypoints.length;
       runtime.state.selectedWaypointIndex =
         waypointCount > 0 ? waypointCount - 1 : null;
     }
@@ -74,10 +81,14 @@ export function redraw(runtime: SceneRuntime): void {
     const a = getEndpointPoint(runtime, lookup, conn.a);
     const b = getEndpointPoint(runtime, lookup, conn.b);
     if (!a || !b) continue;
+    const waypoints =
+      runtime.graph.liveConnectionWaypoints.get(conn.id) ??
+      conn.waypoints ??
+      [];
 
     const routePoints: Pt[] = [
       a,
-      ...(conn.waypoints ?? []).map((p) => ({ x: p.x, y: p.y })),
+      ...waypoints.map((p) => ({ x: p.x, y: p.y })),
       b,
     ];
     const displayRoutePoints = buildDisplayWirePoints({
@@ -87,6 +98,8 @@ export function redraw(runtime: SceneRuntime): void {
       endEndpoint: conn.b,
     });
     const selected = activeSelectedConnectionId === conn.id;
+    const waypointsVisible =
+      selected || connectionWaypointsVisibleForSelection(state.selection, conn);
     const wire = drawWirePath(runtime, displayRoutePoints, wireStyle, {
       stroke: selected ? WIRE_SELECTED_STROKE : WIRE_DEFAULT_STROKE,
       strokeWidth: selected
@@ -133,8 +146,7 @@ export function redraw(runtime: SceneRuntime): void {
       }
     });
 
-    if (selected && (conn.waypoints?.length ?? 0) > 0 && wire) {
-      const waypoints = conn.waypoints ?? [];
+    if (waypointsVisible && waypoints.length > 0 && wire) {
       for (let i = 0; i < waypoints.length; i += 1) {
         const isSelectedWaypoint = activeSelectedWaypointIndex === i;
         const waypointIndex = i + 1;
@@ -296,4 +308,24 @@ export function redraw(runtime: SceneRuntime): void {
   }
 
   runtime.view.wireLayer.batchDraw();
+}
+
+function connectionWaypointsVisibleForSelection(
+  selection: Selection,
+  connection: DirectConnection,
+): boolean {
+  if (!selection || selection.kind !== "multi") return false;
+  return (
+    endpointIncludedInSelection(connection.a, selection) &&
+    endpointIncludedInSelection(connection.b, selection)
+  );
+}
+
+function endpointIncludedInSelection(
+  endpoint: SheetEndpointRef,
+  selection: Extract<NonNullable<Selection>, { kind: "multi" }>,
+): boolean {
+  return endpoint.kind === "node-pin"
+    ? selection.nodeIds.includes(endpoint.nodeId)
+    : selection.portIds.includes(endpoint.portId);
 }

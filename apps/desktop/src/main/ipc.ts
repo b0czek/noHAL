@@ -6,7 +6,7 @@ import type {
   MachineConfigHalFileSelection,
   NoHALProject,
 } from "@nohal/core/src/types";
-import { BrowserWindow, dialog, ipcMain } from "electron";
+import { BrowserWindow, clipboard, dialog, ipcMain } from "electron";
 import { appSettings } from "./appSettings";
 import { applyChangedAppSettings } from "./appSettingsEffects";
 import { componentStore } from "./componentStore";
@@ -31,6 +31,15 @@ export function registerIpcHandlers(): void {
     const win = BrowserWindow.fromWebContents(evt.sender);
     if (!win) return;
     setWindowDirtyState(win, Boolean(isDirty));
+  });
+
+  ipcMain.on("nohal:read-clipboard-text", (evt) => {
+    evt.returnValue = clipboard.readText();
+  });
+
+  ipcMain.on("nohal:write-clipboard-text", (evt, text: string) => {
+    clipboard.writeText(text);
+    evt.returnValue = null;
   });
 
   ipcMain.on(

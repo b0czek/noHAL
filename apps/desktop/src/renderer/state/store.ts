@@ -6,7 +6,7 @@ import type {
   SheetEndpointRef,
   XY,
 } from "@nohal/core/src/types";
-import { createStore, unwrap } from "solid-js/store";
+import { createStore, reconcile, unwrap } from "solid-js/store";
 import type { TranslationKey } from "../i18n";
 import { createComponentStoreActions } from "./store/actions/componentStoreActions";
 import { createNodeActions } from "./store/actions/nodeActions";
@@ -108,6 +108,17 @@ export function createEditorStore(
   const clonePendingWirePoints = (points: XY[]): XY[] =>
     structuredClone(unwrap(points));
 
+  const replaceStateValue = <K extends keyof EditorState>(
+    key: K,
+    value: EditorState[K],
+  ): void => {
+    if (value !== null && typeof value === "object") {
+      setState(key, reconcile(value) as never);
+      return;
+    }
+    setState(key, value);
+  };
+
   const captureHistorySnapshot = (): EditorHistorySnapshot => ({
     project: cloneProject(state.project),
     projectRevision,
@@ -119,11 +130,11 @@ export function createEditorStore(
 
   const restoreHistorySnapshot = (snapshot: EditorHistorySnapshot): void => {
     projectRevision = snapshot.projectRevision;
-    setState("project", snapshot.project);
-    setState("activeSheetId", snapshot.activeSheetId);
-    setState("selection", snapshot.selection);
-    setState("pendingEndpoint", snapshot.pendingEndpoint);
-    setState("pendingWirePoints", snapshot.pendingWirePoints);
+    replaceStateValue("project", snapshot.project);
+    replaceStateValue("activeSheetId", snapshot.activeSheetId);
+    replaceStateValue("selection", snapshot.selection);
+    replaceStateValue("pendingEndpoint", snapshot.pendingEndpoint);
+    replaceStateValue("pendingWirePoints", snapshot.pendingWirePoints);
     syncDirtyFlag();
   };
 
@@ -265,7 +276,7 @@ export function createEditorStore(
   };
 
   const setActionState: EditorStoreActionContext["setState"] = (key, value) => {
-    setState(key, value);
+    replaceStateValue(key, value);
   };
 
   const setProjectUiActiveSheetId = (sheetId: string): void =>

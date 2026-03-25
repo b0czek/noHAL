@@ -213,6 +213,14 @@
     @apply focus-ring relative grid w-full appearance-none gap-0.5 rounded-sm border-0 bg-transparent px-2.5 py-2 text-left text-foreground outline-none transition hover:bg-accent hover:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-45 disabled:cursor-default disabled:opacity-45;
   }
 
+  .canvas-context-item-with-icon {
+    @apply grid-cols-[1rem_minmax(0,1fr)] gap-x-2;
+  }
+
+  .canvas-context-item-icon {
+    @apply row-span-2 flex size-4 items-center justify-center text-muted-foreground;
+  }
+
   .canvas-context-item-name {
     @apply text-[13px] font-medium;
   }

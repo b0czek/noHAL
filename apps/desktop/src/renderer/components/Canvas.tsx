@@ -46,7 +46,25 @@ export default function Canvas() {
     getHostEl: () => hostEl,
     getScene: () => scene,
   });
-  const handleBackgroundClick = (point: { x: number; y: number }) => {
+  const handleSelect = (
+    selection: typeof state.selection,
+    options?: { mode?: "add" | "toggle" },
+  ) => {
+    if (options?.mode === "toggle") {
+      actions.toggleSelection(selection);
+      return;
+    }
+    if (options?.mode === "add") {
+      actions.extendSelection(selection);
+      return;
+    }
+    actions.select(selection);
+  };
+
+  const handleBackgroundClick = (
+    point: { x: number; y: number },
+    _options?: { mode?: "add" | "toggle" },
+  ) => {
     if (placementMode()) {
       editorUi.placeAt(point);
       return;
@@ -54,14 +72,24 @@ export default function Canvas() {
     actions.addPendingWirePoint(point);
   };
 
+  const handleLabelClick = (
+    labelId: string,
+    options?: { mode?: "add" | "toggle" },
+  ) => {
+    if (state.pendingEndpoint) {
+      actions.anchorPendingToLabel(labelId);
+      return;
+    }
+    handleSelect({ kind: "label", id: labelId }, options);
+  };
+
   onMount(() => {
     scene = createKonvaSheetScene(hostEl, {
-      onSelect: actions.select,
+      onSelect: handleSelect,
       onOpenNode: editorUi.openComponentEditorForNode,
       onEndpointClick: actions.endpointClick,
       onBackgroundClick: handleBackgroundClick,
-      onLabelClick: editorUi.labelClick,
-      onCommentClick: editorUi.commentClick,
+      onLabelClick: handleLabelClick,
       onMoveNode: actions.moveNode,
       onMoveLabel: actions.moveLabel,
       onMoveComment: actions.moveComment,

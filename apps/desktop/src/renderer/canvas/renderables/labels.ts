@@ -104,7 +104,12 @@ export function renderLabels(
     });
     group.on("click tap", (evt) => {
       evt.cancelBubble = true;
-      callbacks.onLabelClick(label.id);
+      callbacks.onLabelClick(label.id, {
+        mode:
+          evt.evt instanceof MouseEvent && evt.evt.shiftKey
+            ? "toggle"
+            : undefined,
+      });
     });
     group.on("contextmenu", (evt) => {
       evt.cancelBubble = true;

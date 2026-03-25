@@ -1,9 +1,9 @@
-import { isSystemComponent } from "@nohal/core/src/componentSystem";
 import { getSheet } from "@nohal/core/src/graph";
 import { createId } from "@nohal/core/src/id";
 import { createSheet } from "@nohal/core/src/project";
 import {
-  findSystemSheet,
+  isProtectedSystemNode,
+  isProtectedSystemSheet,
   moveSelectionIntoSubsheet,
   sheetModelEdits,
 } from "@nohal/core/src/sheet";
@@ -20,23 +20,10 @@ import {
   selectionBoundsForNodesAndLabels,
   syncProjectUi,
 } from "../helpers";
+import { selectionIdBuckets } from "../selection";
 import type { EditorSelection, EditorStoreActionContext } from "./types";
 
 export function createSheetActions(deps: EditorStoreActionContext) {
-  const isSystemManagedProtectedNode = (
-    project: EditorStoreActionContext["state"]["project"],
-    node: { kind: string; componentId?: string },
-  ): boolean =>
-    node.kind === "component" &&
-    !!(
-      node.componentId &&
-      isSystemComponent(project.library.components[node.componentId])
-    );
-  const isProtectedSystemSheet = (
-    project: EditorStoreActionContext["state"]["project"],
-    sheetId: string,
-  ): boolean => findSystemSheet(project)?.id === sheetId;
-
   const setActiveSheet = (sheetId: string): void => {
     if (!deps.state.project.sheets[sheetId]) return;
     deps.setState("activeSheetId", sheetId);
@@ -51,33 +38,12 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     labelIds: Set<string>;
     portIds: Set<string>;
   } | null => {
-    if (!selection) return null;
-    if (selection.kind === "node") {
-      return {
-        nodeIds: new Set([selection.id]),
-        labelIds: new Set(),
-        portIds: new Set(),
-      };
-    }
-    if (selection.kind === "label") {
-      return {
-        nodeIds: new Set(),
-        labelIds: new Set([selection.id]),
-        portIds: new Set(),
-      };
-    }
-    if (selection.kind === "sheet-port") {
-      return {
-        nodeIds: new Set(),
-        labelIds: new Set(),
-        portIds: new Set([selection.id]),
-      };
-    }
-    if (selection.kind !== "multi") return null;
+    const resolved = selectionIdBuckets(selection);
+    if (!resolved) return null;
     return {
-      nodeIds: new Set(selection.nodeIds),
-      labelIds: new Set(selection.labelIds),
-      portIds: new Set(selection.portIds),
+      nodeIds: resolved.nodeIds,
+      labelIds: resolved.labelIds,
+      portIds: resolved.portIds,
     };
   };
 
@@ -105,9 +71,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       labelIds.has(label.id),
     );
     if (
-      movedNodes.some((node) =>
-        isSystemManagedProtectedNode(currentProject, node),
-      )
+      movedNodes.some((node) => isProtectedSystemNode(currentProject, node))
     ) {
       deps.setStatusT("store.status.cannotSubsheetSystemManagedComponent");
       return null;

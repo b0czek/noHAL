@@ -437,8 +437,16 @@ export function renderNodes(
         callbacks.onMoveNode(node.id, pos.x, pos.y);
       },
     });
-    nodeGroup.on("click tap", () => {
-      callbacks.onSelect({ kind: "node", id: node.id });
+    nodeGroup.on("click tap", (evt) => {
+      callbacks.onSelect(
+        { kind: "node", id: node.id },
+        {
+          mode:
+            evt.evt instanceof MouseEvent && evt.evt.shiftKey
+              ? "toggle"
+              : undefined,
+        },
+      );
     });
     nodeGroup.on("contextmenu", (evt) => {
       evt.cancelBubble = true;

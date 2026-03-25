@@ -4,6 +4,8 @@ import {
   isComponentSearchable,
 } from "@nohal/core/src/componentVisibility";
 import { getSheet } from "@nohal/core/src/graph";
+import { HiOutlineDocumentDuplicate } from "solid-icons/hi";
+import { RiDocumentClipboardLine } from "solid-icons/ri";
 import { createMemo } from "solid-js";
 import type {
   SceneContextMenuRequest,
@@ -42,6 +44,13 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     x: number;
     y: number;
   }): ContextMenuActionItem[] => [
+    {
+      label: t("canvasContext.paste"),
+      icon: <RiDocumentClipboardLine size={16} aria-hidden="true" />,
+      onSelect: () => {
+        actions.pasteClipboard(point);
+      },
+    },
     {
       label: t("topbar.addComponent"),
       onSelect: () => undefined,
@@ -243,6 +252,14 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   } | null => {
     const sheet = currentSheet();
     const actionSelection = actionSelectionForTarget(target);
+    const copyItem: ContextMenuActionItem = {
+      label: t("canvasContext.copy"),
+      icon: <HiOutlineDocumentDuplicate size={16} aria-hidden="true" />,
+      onSelect: () => {
+        actions.select(actionSelection);
+        actions.copySelection();
+      },
+    };
     const moveItem: ContextMenuActionItem = {
       label: t("canvasContext.move"),
       onSelect: () => undefined,
@@ -253,6 +270,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       return {
         title: t("canvasContext.selection"),
         items: [
+          copyItem,
           moveItem,
           {
             label: t("inspector.deleteSelection"),
@@ -278,6 +296,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           return entry.sourceRef.kind !== "linuxcnc-builtin";
         })();
         const componentItems = [
+          ...(!isSystemManagedProtected ? [copyItem] : []),
           moveItem,
           {
             label: t("inspector.openComponentSettings"),
@@ -313,6 +332,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       return {
         title: t("canvasContext.subsheet"),
         items: [
+          copyItem,
           {
             label: t("inspector.enterSubsheet"),
             onSelect: () => editorUi.openComponentEditorForNode(node.id),
@@ -336,6 +356,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       return {
         title: t("canvasContext.label"),
         items: [
+          copyItem,
           moveItem,
           {
             label: t("inspector.deleteSelection"),
@@ -352,6 +373,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       return {
         title: t("canvasContext.comment"),
         items: [
+          copyItem,
           {
             label: t("inspector.deleteSelection"),
             onSelect: () => {
@@ -367,6 +389,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       return {
         title: t("canvasContext.sheetPort"),
         items: [
+          copyItem,
           {
             label: t("inspector.deleteSelection"),
             onSelect: () => {

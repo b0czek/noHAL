@@ -1,14 +1,22 @@
-import { isSystemComponent } from "@nohal/core/src/componentSystem";
 import { getSheet } from "@nohal/core/src/graph";
-import { findSystemSheet } from "@nohal/core/src/sheet";
+import {
+  isProtectedSystemNode,
+  isProtectedSystemSheet,
+} from "@nohal/core/src/sheet";
 import type { XY } from "@nohal/core/src/types";
+import { createSelectionClipboard } from "../../../clipboard/selection";
 import {
   cloneProject,
   collectSheetSubtreeIds,
-  pruneSheetNodeReferences,
   removeSheetNodeReferencesForDeletedSheets,
+  removeSheetSelectionItems,
   syncProjectUi,
 } from "../helpers";
+import {
+  extendSelection as mergeSelection,
+  selectionIdBuckets,
+  toggleSelection as toggleSelectionState,
+} from "../selection";
 import type { EditorSelection, EditorStoreActionContext } from "./types";
 
 type SelectionActionLinks = {
@@ -20,23 +28,21 @@ export function createSelectionActions(
   deps: EditorStoreActionContext,
   links: SelectionActionLinks,
 ) {
-  const isSystemManagedProtectedNode = (
-    project: EditorStoreActionContext["state"]["project"],
-    node: { kind: string; componentId?: string },
-  ): boolean =>
-    node.kind === "component" &&
-    !!(
-      node.componentId &&
-      isSystemComponent(project.library.components[node.componentId])
-    );
-  const isProtectedSystemSheet = (
-    project: EditorStoreActionContext["state"]["project"],
-    sheetId: string,
-  ): boolean => findSystemSheet(project)?.id === sheetId;
-
+  const clipboard = createSelectionClipboard(deps);
   return {
     select(sel: EditorSelection): void {
       deps.setState("selection", sel);
+    },
+
+    extendSelection(sel: EditorSelection): void {
+      deps.setState("selection", mergeSelection(deps.state.selection, sel));
+    },
+
+    toggleSelection(sel: EditorSelection): void {
+      deps.setState(
+        "selection",
+        toggleSelectionState(deps.state.selection, sel),
+      );
     },
 
     clearPendingEndpoint(): void {
@@ -52,6 +58,14 @@ export function createSelectionActions(
       });
     },
 
+    copySelection(): boolean {
+      return clipboard.copySelection();
+    },
+
+    pasteClipboard(targetPosition?: XY): boolean {
+      return clipboard.pasteClipboard(targetPosition);
+    },
+
     removeSelection(): void {
       const sel = deps.state.selection;
       if (!sel) return;
@@ -62,7 +76,7 @@ export function createSelectionActions(
           deps.state.activeSheetId,
         );
         const node = currentSheet.nodes.find((n) => n.id === sel.id);
-        if (node && isSystemManagedProtectedNode(deps.state.project, node)) {
+        if (node && isProtectedSystemNode(deps.state.project, node)) {
           deps.setStatusT("store.status.cannotDeleteSystemManagedComponent");
           return;
         }
@@ -87,7 +101,9 @@ export function createSelectionActions(
           deps.state.project,
           deps.state.activeSheetId,
         );
-        const selectedNodeIds = new Set(sel.nodeIds);
+        const selectionIds = selectionIdBuckets(sel);
+        if (!selectionIds) return;
+        const selectedNodeIds = new Set(selectionIds.nodeIds);
         const protectedSheetNodeIds = new Set(
           currentSheet.nodes
             .filter(
@@ -105,13 +121,11 @@ export function createSelectionActions(
             .filter(
               (node) =>
                 selectedNodeIds.has(node.id) &&
-                isSystemManagedProtectedNode(deps.state.project, node),
+                isProtectedSystemNode(deps.state.project, node),
             )
             .map((node) => node.id),
         );
         for (const nodeId of protectedNodeIds) selectedNodeIds.delete(nodeId);
-        const selectedLabelIds = new Set(sel.labelIds);
-        const selectedPortIds = new Set(sel.portIds);
 
         const deletedSheetIds = new Set<string>();
         for (const node of currentSheet.nodes) {
@@ -134,31 +148,10 @@ export function createSelectionActions(
 
         const sheet = next.sheets[deps.state.activeSheetId];
         if (sheet) {
-          const removedNodeIds = new Set<string>();
-          sheet.nodes = sheet.nodes.filter((n) => {
-            if (!selectedNodeIds.has(n.id)) return true;
-            removedNodeIds.add(n.id);
-            return false;
+          removeSheetSelectionItems(sheet, {
+            ...selectionIds,
+            nodeIds: selectedNodeIds,
           });
-          pruneSheetNodeReferences(sheet, removedNodeIds);
-
-          sheet.labels = sheet.labels.filter(
-            (l) => !selectedLabelIds.has(l.id),
-          );
-          sheet.labelAnchors = sheet.labelAnchors.filter((a) => {
-            if (selectedLabelIds.has(a.labelId)) return false;
-            return !(
-              a.endpoint.kind === "sheet-port" &&
-              selectedPortIds.has(a.endpoint.portId)
-            );
-          });
-
-          sheet.ports = sheet.ports.filter((p) => !selectedPortIds.has(p.id));
-          sheet.directConnections = sheet.directConnections.filter(
-            (c) =>
-              !(c.a.kind === "sheet-port" && selectedPortIds.has(c.a.portId)) &&
-              !(c.b.kind === "sheet-port" && selectedPortIds.has(c.b.portId)),
-          );
         }
 
         syncProjectUi(next, deps.state.activeSheetId);
@@ -179,44 +172,11 @@ export function createSelectionActions(
       const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
-        if (sel.kind === "node") {
-          const node = sheet.nodes.find((n) => n.id === sel.id);
-          if (node && isSystemManagedProtectedNode(project, node)) return;
-          const removedNodeIds = new Set([sel.id]);
-          sheet.nodes = sheet.nodes.filter((n) => n.id !== sel.id);
-          pruneSheetNodeReferences(sheet, removedNodeIds);
-        } else if (sel.kind === "label") {
-          sheet.labels = sheet.labels.filter((l) => l.id !== sel.id);
-          sheet.labelAnchors = sheet.labelAnchors.filter(
-            (a) => a.labelId !== sel.id,
-          );
-        } else if (sel.kind === "comment") {
-          sheet.comments = sheet.comments.filter((c) => c.id !== sel.id);
-        } else if (sel.kind === "sheet-port") {
-          sheet.ports = sheet.ports.filter((p) => p.id !== sel.id);
-          sheet.directConnections = sheet.directConnections.filter(
-            (c) =>
-              !(c.a.kind === "sheet-port" && c.a.portId === sel.id) &&
-              !(c.b.kind === "sheet-port" && c.b.portId === sel.id),
-          );
-          sheet.labelAnchors = sheet.labelAnchors.filter(
-            (a) =>
-              !(
-                a.endpoint.kind === "sheet-port" && a.endpoint.portId === sel.id
-              ),
-          );
-        }
+        const selectionIds = selectionIdBuckets(sel);
+        if (!selectionIds) return;
+        removeSheetSelectionItems(sheet, selectionIds);
       });
       deps.clearSelectionAndPendingUi();
-      if (sel.kind === "node") {
-        const node = getSheet(deps.state.project, activeSheetId).nodes.find(
-          (n) => n.id === sel.id,
-        );
-        if (node && isSystemManagedProtectedNode(deps.state.project, node)) {
-          deps.setStatusT("store.status.cannotDeleteSystemManagedComponent");
-          return;
-        }
-      }
       deps.setStatusT("store.status.removedSelection");
     },
   };

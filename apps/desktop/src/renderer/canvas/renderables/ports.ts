@@ -107,7 +107,15 @@ export function renderPorts(
     });
     portGroup.on("click tap", (evt) => {
       evt.cancelBubble = true;
-      callbacks.onSelect({ kind: "sheet-port", id: port.id });
+      callbacks.onSelect(
+        { kind: "sheet-port", id: port.id },
+        {
+          mode:
+            evt.evt instanceof MouseEvent && evt.evt.shiftKey
+              ? "toggle"
+              : undefined,
+        },
+      );
     });
     portGroup.on("contextmenu", (evt) => {
       evt.cancelBubble = true;

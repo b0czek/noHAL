@@ -264,6 +264,67 @@ export function pruneSheetNodeReferences(
   if (Object.keys(sheet.hal).length === 0) delete sheet.hal;
 }
 
+export function pruneSheetPortReferences(
+  sheet: SheetDefinition,
+  removedPortIds: ReadonlySet<string>,
+): void {
+  if (removedPortIds.size === 0) return;
+
+  sheet.directConnections = sheet.directConnections.filter(
+    (c) =>
+      !(c.a.kind === "sheet-port" && removedPortIds.has(c.a.portId)) &&
+      !(c.b.kind === "sheet-port" && removedPortIds.has(c.b.portId)),
+  );
+
+  sheet.labelAnchors = sheet.labelAnchors.filter(
+    (a) =>
+      !(
+        a.endpoint.kind === "sheet-port" &&
+        removedPortIds.has(a.endpoint.portId)
+      ),
+  );
+}
+
+export function removeSheetSelectionItems(
+  sheet: SheetDefinition,
+  selection: {
+    nodeIds: ReadonlySet<string>;
+    labelIds: ReadonlySet<string>;
+    commentIds: ReadonlySet<string>;
+    portIds: ReadonlySet<string>;
+  },
+): void {
+  if (selection.nodeIds.size > 0) {
+    const removedNodeIds = new Set<string>();
+    sheet.nodes = sheet.nodes.filter((node) => {
+      if (!selection.nodeIds.has(node.id)) return true;
+      removedNodeIds.add(node.id);
+      return false;
+    });
+    pruneSheetNodeReferences(sheet, removedNodeIds);
+  }
+
+  if (selection.labelIds.size > 0) {
+    sheet.labels = sheet.labels.filter(
+      (label) => !selection.labelIds.has(label.id),
+    );
+    sheet.labelAnchors = sheet.labelAnchors.filter(
+      (anchor) => !selection.labelIds.has(anchor.labelId),
+    );
+  }
+
+  if (selection.commentIds.size > 0) {
+    sheet.comments = sheet.comments.filter(
+      (comment) => !selection.commentIds.has(comment.id),
+    );
+  }
+
+  if (selection.portIds.size > 0) {
+    sheet.ports = sheet.ports.filter((port) => !selection.portIds.has(port.id));
+    pruneSheetPortReferences(sheet, selection.portIds);
+  }
+}
+
 export function collectSheetSubtreeIds(
   project: NoHALProject,
   rootSheetId: string,

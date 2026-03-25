@@ -24,6 +24,7 @@ import {
 export interface ContextMenuActionItem {
   label: string;
   onSelect: () => void;
+  icon?: JSX.Element;
   disabled?: boolean;
   meta?: string;
   closeOnSelect?: boolean;
@@ -78,9 +79,16 @@ function ContextMenuActionNode(props: {
     return (
       <DropdownMenuSub>
         <DropdownMenuSubTrigger
-          class="canvas-context-item"
+          class="canvas-context-item canvas-context-item-with-icon"
           disabled={props.item.disabled}
         >
+          <Show when={props.item.icon}>
+            {(icon) => (
+              <span class="canvas-context-item-icon" aria-hidden="true">
+                {icon()}
+              </span>
+            )}
+          </Show>
           <span class="canvas-context-item-name">{props.item.label}</span>
           <Show when={props.item.meta}>
             {(meta) => <span class="canvas-context-item-meta">{meta()}</span>}
@@ -117,11 +125,18 @@ function ContextMenuActionNode(props: {
 
   return (
     <DropdownMenuItem
-      class="canvas-context-item"
+      class="canvas-context-item canvas-context-item-with-icon"
       disabled={props.item.disabled}
       closeOnSelect={props.item.closeOnSelect}
       onSelect={() => props.item.onSelect()}
     >
+      <Show when={props.item.icon}>
+        {(icon) => (
+          <span class="canvas-context-item-icon" aria-hidden="true">
+            {icon()}
+          </span>
+        )}
+      </Show>
       <span class="canvas-context-item-name">{props.item.label}</span>
       <Show when={props.item.meta}>
         {(meta) => <span class="canvas-context-item-meta">{meta()}</span>}

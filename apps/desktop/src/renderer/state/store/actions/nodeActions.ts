@@ -14,6 +14,7 @@ import type {
   HalValueType,
   LabelScope,
   SheetComment,
+  SheetEndpointRef,
   SheetNode,
   XY,
 } from "@nohal/core/src/types";
@@ -30,6 +31,16 @@ import {
   toErrorMessage,
 } from "../helpers";
 import type { EditorStoreActionContext } from "./types";
+
+function endpointMovesWithGroup(
+  endpoint: SheetEndpointRef,
+  movedNodeIds: ReadonlySet<string>,
+  movedPortIds: ReadonlySet<string>,
+): boolean {
+  return endpoint.kind === "node-pin"
+    ? movedNodeIds.has(endpoint.nodeId)
+    : movedPortIds.has(endpoint.portId);
+}
 
 export function createNodeActions(deps: EditorStoreActionContext) {
   const renameNodeInSheet = (
@@ -268,11 +279,13 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     moveSelectionGroup(updates: {
       nodePositions: Array<{ id: string; x: number; y: number }>;
       labelPositions: Array<{ id: string; x: number; y: number }>;
+      commentPositions: Array<{ id: string; x: number; y: number }>;
       portPositions: Array<{ id: string; x: number; y: number }>;
     }): void {
       if (
         updates.nodePositions.length === 0 &&
         updates.labelPositions.length === 0 &&
+        updates.commentPositions.length === 0 &&
         updates.portPositions.length === 0
       ) {
         return;
@@ -287,24 +300,81 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         const labelUpdates = new Map(
           updates.labelPositions.map((entry) => [entry.id, entry]),
         );
+        const commentUpdates = new Map(
+          updates.commentPositions.map((entry) => [entry.id, entry]),
+        );
         const portUpdates = new Map(
           updates.portPositions.map((entry) => [entry.id, entry]),
         );
+        const movedNodeIds = new Set(nodeUpdates.keys());
+        const movedPortIds = new Set(portUpdates.keys());
+        let moveDelta: XY | null = null;
 
         for (const node of sheet.nodes) {
           const next = nodeUpdates.get(node.id);
           if (!next) continue;
+          if (!moveDelta) {
+            moveDelta = {
+              x: next.x - node.position.x,
+              y: next.y - node.position.y,
+            };
+          }
           node.position = { x: next.x, y: next.y };
         }
         for (const label of sheet.labels) {
           const next = labelUpdates.get(label.id);
           if (!next) continue;
+          if (!moveDelta) {
+            moveDelta = {
+              x: next.x - label.position.x,
+              y: next.y - label.position.y,
+            };
+          }
           label.position = { x: next.x, y: next.y };
+        }
+        for (const comment of sheet.comments) {
+          const next = commentUpdates.get(comment.id);
+          if (!next) continue;
+          if (!moveDelta) {
+            moveDelta = {
+              x: next.x - comment.position.x,
+              y: next.y - comment.position.y,
+            };
+          }
+          comment.position = { x: next.x, y: next.y };
         }
         for (const port of sheet.ports) {
           const next = portUpdates.get(port.id);
           if (!next) continue;
+          if (!moveDelta) {
+            moveDelta = {
+              x: next.x - port.position.x,
+              y: next.y - port.position.y,
+            };
+          }
           port.position = { x: next.x, y: next.y };
+        }
+        if (
+          !moveDelta ||
+          (moveDelta.x === 0 && moveDelta.y === 0) ||
+          (movedNodeIds.size === 0 && movedPortIds.size === 0)
+        ) {
+          return;
+        }
+        for (const connection of sheet.directConnections) {
+          if (!connection.waypoints || connection.waypoints.length === 0) {
+            continue;
+          }
+          if (
+            !endpointMovesWithGroup(connection.a, movedNodeIds, movedPortIds) ||
+            !endpointMovesWithGroup(connection.b, movedNodeIds, movedPortIds)
+          ) {
+            continue;
+          }
+          connection.waypoints = connection.waypoints.map((point) => ({
+            x: point.x + moveDelta.x,
+            y: point.y + moveDelta.y,
+          }));
         }
       });
     },
