@@ -9,6 +9,8 @@ import {
 } from "./catalog";
 import {
   createMesaBitInputPins,
+  createMesaEncoderModuleParams,
+  createMesaEncoderModulePins,
   createMesaEncoderParams,
   createMesaEncoderPins,
   mergeMesaSchemaProfiles,
@@ -160,6 +162,20 @@ function splitHostPseudoComponents(directProfile: MesaSchemaProfile): {
     hostProfile: {
       ...directProfile,
       encoders: undefined,
+      explicitPins: [
+        ...(directProfile.explicitPins ?? []),
+        ...(directProfile.encoders && directProfile.encoders > 0
+          ? createMesaEncoderModulePins()
+          : []),
+      ],
+      explicitParams: [
+        ...(directProfile.explicitParams ?? []),
+        ...(directProfile.encoders && directProfile.encoders > 0
+          ? createMesaEncoderModuleParams({
+              includeTimerNumber: directProfile.dpll,
+            })
+          : []),
+      ],
     },
     pseudoComponents,
   };

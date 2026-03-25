@@ -9,6 +9,10 @@ export interface MesaEncoderPinOptions {
   namePrefix?: string;
 }
 
+export interface MesaEncoderParamOptions {
+  includeTimerNumber?: boolean;
+}
+
 export function createMesaDpllPins(): ComponentPinDefinition[] {
   return [
     ...Array.from({ length: 4 }, (_, index) => {
@@ -66,6 +70,58 @@ export function createMesaDpllPins(): ComponentPinDefinition[] {
   ];
 }
 
+export function createMesaEncoderModulePins(): ComponentPinDefinition[] {
+  return [
+    {
+      key: "encoder_sample_frequency",
+      name: "encoder.sample-frequency",
+      direction: "in",
+      type: "u32",
+      doc: "Global sample frequency for standard encoder channel digital filters.",
+    },
+    {
+      key: "encoder_muxed_sample_frequency",
+      name: "encoder.muxed-sample-frequency",
+      direction: "in",
+      type: "u32",
+      doc: "Global sample frequency for muxed encoder channels and multiplexing.",
+    },
+    {
+      key: "encoder_muxed_skew",
+      name: "encoder.muxed-skew",
+      direction: "in",
+      type: "float",
+      doc: "Muxed encoder sample time delay from the multiplex signal.",
+    },
+    {
+      key: "encoder_hires_timestamp",
+      name: "encoder.hires-timestamp",
+      direction: "in",
+      type: "bit",
+      doc: "Selects the higher-resolution encoder timestamp counter frequency.",
+    },
+  ];
+}
+
+export function createMesaEncoderModuleParams(
+  options: MesaEncoderParamOptions = {},
+): ComponentParamDefinition[] {
+  return [
+    ...(options.includeTimerNumber
+      ? [
+          {
+            key: "encoder_timer_number",
+            name: "encoder.timer-number",
+            direction: "rw" as const,
+            type: "s32" as const,
+            defaultValue: "-1",
+            doc: "DPLL timer instance used to latch encoder counts.",
+          },
+        ]
+      : []),
+  ];
+}
+
 function createIndexedPins(
   count: number | undefined,
   nameFactory: (index: number) => string,
@@ -89,8 +145,20 @@ export function createMesaEncoderPins(
   const namePrefix = options.namePrefix ? `${options.namePrefix}.` : "";
   return [
     {
+      key: `${keyPrefix}count`,
+      name: `${namePrefix}count`,
+      direction: "out",
+      type: "s32",
+    },
+    {
       key: `${keyPrefix}position`,
       name: `${namePrefix}position`,
+      direction: "out",
+      type: "float",
+    },
+    {
+      key: `${keyPrefix}position_latched`,
+      name: `${namePrefix}position-latched`,
       direction: "out",
       type: "float",
     },
@@ -101,9 +169,69 @@ export function createMesaEncoderPins(
       type: "float",
     },
     {
+      key: `${keyPrefix}velocity_rpm`,
+      name: `${namePrefix}velocity-rpm`,
+      direction: "out",
+      type: "float",
+    },
+    {
+      key: `${keyPrefix}reset`,
+      name: `${namePrefix}reset`,
+      direction: "in",
+      type: "bit",
+    },
+    {
       key: `${keyPrefix}index_enable`,
       name: `${namePrefix}index-enable`,
       direction: "io",
+      type: "bit",
+    },
+    {
+      key: `${keyPrefix}probe_enable`,
+      name: `${namePrefix}probe-enable`,
+      direction: "io",
+      type: "bit",
+    },
+    {
+      key: `${keyPrefix}probe_invert`,
+      name: `${namePrefix}probe-invert`,
+      direction: "io",
+      type: "bit",
+    },
+    {
+      key: `${keyPrefix}rawcounts`,
+      name: `${namePrefix}rawcounts`,
+      direction: "out",
+      type: "s32",
+    },
+    {
+      key: `${keyPrefix}input_a`,
+      name: `${namePrefix}input-a`,
+      direction: "out",
+      type: "bit",
+    },
+    {
+      key: `${keyPrefix}input_b`,
+      name: `${namePrefix}input-b`,
+      direction: "out",
+      type: "bit",
+    },
+    {
+      key: `${keyPrefix}input_index`,
+      name: `${namePrefix}input-index`,
+      direction: "out",
+      type: "bit",
+    },
+    {
+      key: `${keyPrefix}quad_error_enable`,
+      name: `${namePrefix}quad-error-enable`,
+      direction: "in",
+      type: "bit",
+    },
+    {
+      key: `${keyPrefix}quad_error`,
+      name: `${namePrefix}quad-error`,
+      direction: "out",
       type: "bit",
     },
   ];
@@ -292,6 +420,9 @@ export function pinsForMesaSchemaProfile(
   return [
     ...(spec.explicitPins ?? []),
     ...(spec.dpll ? createMesaDpllPins() : []),
+    ...(spec.encoders && spec.encoders > 0
+      ? createMesaEncoderModulePins()
+      : []),
     ...createIndexedEncoderPins(spec.encoders),
     ...createDigitalInputPins(spec.digitalInputs),
     ...createDigitalOutputPins(spec.digitalOutputs),
@@ -325,6 +456,11 @@ export function paramsForMesaSchemaProfile(
 ): ComponentParamDefinition[] {
   return [
     ...(profile.explicitParams ?? []),
+    ...(profile.encoders && profile.encoders > 0
+      ? createMesaEncoderModuleParams({
+          includeTimerNumber: profile.dpll,
+        })
+      : []),
     ...createIndexedAnalogOutputParams(profile.analogOutputs),
   ];
 }
