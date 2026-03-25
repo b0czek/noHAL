@@ -31,10 +31,14 @@ export interface ProjectPersistenceOptions {
   savedWith?: string;
 }
 
+export interface ProjectReadResult {
+  project: NoHALProject;
+  projectPath: string;
+  savedWith?: string;
+}
+
 export interface ProjectDirectoryApi {
-  readProjectPath(
-    projectPath: string,
-  ): Promise<{ project: NoHALProject; projectPath: string }>;
+  readProjectPath(projectPath: string): Promise<ProjectReadResult>;
   writeProjectDirectory(
     project: NoHALProject,
     targetPath: string,
@@ -266,7 +270,7 @@ async function readProjectDirectory(
   io: CoreIo,
   projectDir: string,
   manifest?: NoHALProjectDirManifest,
-): Promise<{ project: NoHALProject; projectPath: string }> {
+): Promise<ProjectReadResult> {
   const normalizedProjectDir = io.path.resolve(projectDir);
   const dirManifest =
     manifest ?? (await readProjectDirectoryManifest(io, normalizedProjectDir));
@@ -316,7 +320,11 @@ async function readProjectDirectory(
     }),
   );
 
-  return { project, projectPath: normalizedProjectDir };
+  return {
+    project,
+    projectPath: normalizedProjectDir,
+    savedWith: dirManifest.savedWith,
+  };
 }
 
 function createProjectDirManifest(
@@ -351,9 +359,7 @@ function createProjectDirManifest(
 
 export const readProjectPath =
   (io: CoreIo) =>
-  async (
-    projectPath: string,
-  ): Promise<{ project: NoHALProject; projectPath: string }> => {
+  async (projectPath: string): Promise<ProjectReadResult> => {
     const normalizedProjectPath = io.path.resolve(projectPath);
     const stat = await io.fs.lstat(normalizedProjectPath);
 

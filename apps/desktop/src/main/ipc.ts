@@ -15,6 +15,10 @@ import {
   projectBuild,
   projectDirectory,
 } from "./coreWrappers";
+import {
+  getProjectVersionWarning,
+  NOHAL_APP_VERSION,
+} from "./projectVersionWarning";
 import { listRecentProjects, touchRecentProject } from "./recentProjects";
 import {
   promptUnsavedChangesChoice,
@@ -68,19 +72,42 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("nohal:get-recent-projects", async () => listRecentProjects());
 
-  ipcMain.handle("nohal:open-project", async () => {
+  const maybeWarnAboutNewerProject = async (
+    win: BrowserWindow | null,
+    savedWith?: string,
+  ) => {
+    if (!win) return;
+    const warning = getProjectVersionWarning(savedWith);
+    if (!warning) return;
+    await dialog.showMessageBox(win, {
+      type: "warning",
+      buttons: ["Open Project"],
+      defaultId: 0,
+      cancelId: 0,
+      title: warning.title,
+      message: warning.message,
+      detail: warning.detail,
+      noLink: true,
+    });
+  };
+
+  ipcMain.handle("nohal:open-project", async (evt) => {
     const res = await dialog.showOpenDialog({
       title: "Open NoHAL Project",
       properties: ["openDirectory"],
     });
     if (res.canceled || res.filePaths.length === 0) return null;
     const result = await projectDirectory.readProjectPath(res.filePaths[0]);
+    const win = BrowserWindow.fromWebContents(evt.sender);
+    await maybeWarnAboutNewerProject(win, result.savedWith);
     await touchRecentProject(result.projectPath, result.project.name);
     return result;
   });
 
-  ipcMain.handle("nohal:open-project-at", async (_evt, projectPath: string) => {
+  ipcMain.handle("nohal:open-project-at", async (evt, projectPath: string) => {
     const result = await projectDirectory.readProjectPath(projectPath);
+    const win = BrowserWindow.fromWebContents(evt.sender);
+    await maybeWarnAboutNewerProject(win, result.savedWith);
     await touchRecentProject(result.projectPath, result.project.name);
     return result;
   });
@@ -101,6 +128,7 @@ export function registerIpcHandlers(): void {
       const savedProjectPath = await projectDirectory.writeProjectDirectory(
         project,
         target,
+        { savedWith: NOHAL_APP_VERSION },
       );
       await touchRecentProject(savedProjectPath, project.name);
       return { projectPath: savedProjectPath };

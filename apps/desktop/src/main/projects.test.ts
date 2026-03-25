@@ -187,6 +187,7 @@ describe("projects persistence (directory format)", () => {
     const loaded = await projectDirectory.readProjectPath(targetDir);
 
     expect(loaded.projectPath).toBe(targetDir);
+    expect(loaded.savedWith).toBe(NOHAL_APP_VERSION);
     expect(loaded.project).toEqual(project);
   });
 
@@ -249,6 +250,7 @@ describe("projects persistence (directory format)", () => {
     );
 
     expect(loaded.projectPath).toBe(targetDir);
+    expect(loaded.savedWith).toBe(NOHAL_APP_VERSION);
     expect(loaded.project).toEqual(project);
   });
 

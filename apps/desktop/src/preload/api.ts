@@ -1,3 +1,4 @@
+import type { ProjectReadResult } from "@nohal/core/src/project";
 import type {
   ComponentStore,
   ComponentStoreEntry,
@@ -23,10 +24,8 @@ export interface NoHALApi {
     linuxcncVersion?: LinuxCncVersion,
   ): Promise<{ project: NoHALProject } | null>;
   getRecentProjects(): Promise<RecentProjectEntry[]>;
-  openProject(): Promise<{ project: NoHALProject; projectPath: string } | null>;
-  openProjectAt(
-    projectPath: string,
-  ): Promise<{ project: NoHALProject; projectPath: string }>;
+  openProject(): Promise<ProjectReadResult | null>;
+  openProjectAt(projectPath: string): Promise<ProjectReadResult>;
   saveProject(
     project: NoHALProject,
     projectPath?: string | null,

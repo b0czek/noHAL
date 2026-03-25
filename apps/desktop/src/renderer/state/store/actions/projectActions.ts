@@ -10,6 +10,7 @@ import {
   syncMotmodManagedProjection,
   updateMotmodNumericConfig,
 } from "@nohal/core/src/motmod";
+import type { ProjectReadResult } from "@nohal/core/src/project";
 import { projectEdits } from "@nohal/core/src/project";
 import type {
   HalValueType,
@@ -29,11 +30,6 @@ type ProjectTransition = {
   warnings?: string[];
 };
 
-type OpenedProjectResult = {
-  project: NoHALProject;
-  projectPath: string;
-};
-
 function openedProjectPathStatus(
   deps: EditorStoreActionContext,
   projectPath: string,
@@ -43,7 +39,7 @@ function openedProjectPathStatus(
 
 function projectTransitionFromOpenedResult(
   deps: EditorStoreActionContext,
-  result: OpenedProjectResult,
+  result: ProjectReadResult,
 ): ProjectTransition {
   return {
     project: result.project,
