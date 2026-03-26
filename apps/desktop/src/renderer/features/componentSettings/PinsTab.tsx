@@ -3,9 +3,11 @@ import { HiOutlineEye, HiOutlineEyeSlash } from "solid-icons/hi";
 import { createMemo, createSignal, For, Index, Show } from "solid-js";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
+import { cloneProject } from "../../state/store/helpers";
+import HalValueInput from "./HalValueInput";
+import { buildIniReferenceSections } from "./iniReference";
 import {
   COMPONENT_SETTINGS_PIN_FILTER_MODES,
   type ComponentSettingsPinFilterMode,
@@ -17,6 +19,10 @@ export default function PinsTab(props: ComponentSettingsTabProps) {
   const { state, actions } = useEditorStore();
   const [pinFilter, setPinFilter] =
     createSignal<ComponentSettingsPinFilterMode>("all");
+  const projectSnapshot = createMemo(() => cloneProject(state.project));
+  const iniReferenceSections = createMemo(() =>
+    buildIniReferenceSections(projectSnapshot()),
+  );
   const fieldLabelClass =
     "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
   const pins = createMemo(() => {
@@ -95,7 +101,7 @@ export default function PinsTab(props: ComponentSettingsTabProps) {
         <div class="grid min-h-0 content-start gap-2 overflow-auto pr-1">
           <Index each={visiblePins()}>
             {(pin) => (
-              <div class="grid gap-3 rounded-xl bg-black/20 p-3 lg:grid-cols-[minmax(0,1fr)_120px_auto] lg:items-center">
+              <div class="grid gap-3 rounded-xl bg-black/20 p-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,280px)_auto] lg:items-center">
                 <div class="grid min-w-0 gap-2">
                   <span class="mono min-w-0 truncate">{pin().name}</span>
                   <div class="flex flex-wrap items-center gap-2">
@@ -117,16 +123,17 @@ export default function PinsTab(props: ComponentSettingsTabProps) {
                   <span class={`${fieldLabelClass} lg:hidden`}>
                     {t("componentDialog.pinInitialValues")}
                   </span>
-                  <Input
-                    class="w-full lg:w-[120px]"
+                  <HalValueInput
+                    class="w-full"
                     value={props.node()?.pinInitialValues?.[pin().key] ?? ""}
-                    onInput={(evt) => {
+                    iniReferenceSections={iniReferenceSections()}
+                    onInput={(value) => {
                       const currentNode = props.node();
                       if (!currentNode) return;
                       actions.updateNodePinInitialValue(
                         currentNode.id,
                         pin().key,
-                        evt.currentTarget.value,
+                        value,
                       );
                     }}
                     placeholder={t("componentDialog.optionalPlaceholder")}

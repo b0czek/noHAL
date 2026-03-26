@@ -1,12 +1,18 @@
 import { createMemo, Index, Show } from "solid-js";
-import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
+import { cloneProject } from "../../state/store/helpers";
+import HalValueInput from "./HalValueInput";
+import { buildIniReferenceSections } from "./iniReference";
 import type { ComponentSettingsTabProps } from "./types";
 
 export default function ParametersTab(props: ComponentSettingsTabProps) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
+  const projectSnapshot = createMemo(() => cloneProject(state.project));
+  const iniReferenceSections = createMemo(() =>
+    buildIniReferenceSections(projectSnapshot()),
+  );
   const componentParams = createMemo(() => {
     const currentNode = props.node();
     if (!currentNode) return [];
@@ -35,16 +41,13 @@ export default function ParametersTab(props: ComponentSettingsTabProps) {
                 <span class="mono text-sm text-muted-foreground">
                   {param().name}
                 </span>
-                <Input
+                <HalValueInput
                   value={props.node()?.paramValues[param().key] ?? ""}
-                  onInput={(evt) => {
+                  iniReferenceSections={iniReferenceSections()}
+                  onInput={(value) => {
                     const currentNode = props.node();
                     if (!currentNode) return;
-                    actions.updateNodeParam(
-                      currentNode.id,
-                      param().key,
-                      evt.currentTarget.value,
-                    );
+                    actions.updateNodeParam(currentNode.id, param().key, value);
                   }}
                   placeholder={param().defaultValue ?? ""}
                 />

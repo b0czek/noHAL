@@ -197,6 +197,41 @@ describe("exportProjectToHal connection signal names", () => {
     expect(text).not.toContain("loadrt manual_loader names=");
   });
 
+  it("preserves raw ini reference tokens in exported setp values", () => {
+    const project = createEmptyProject("INI Setp Export");
+    const sheet = project.sheets[project.rootSheetId];
+    project.library.components["comp:test-ini-ref"] = {
+      id: "comp:test-ini-ref",
+      name: "ini-ref",
+      halComponentName: "ini_ref",
+      source: "manual",
+      runtime: { kind: "rt" },
+      pins: [{ key: "gain", name: "gain", direction: "in", type: "float" }],
+      params: [
+        {
+          key: "offset",
+          name: "offset",
+          direction: "rw",
+          type: "float",
+        },
+      ],
+    };
+    sheet.nodes.push({
+      id: "node_ini_ref",
+      kind: "component",
+      componentId: "comp:test-ini-ref",
+      instanceName: "ini_ref.0",
+      position: { x: 0, y: 0 },
+      paramValues: { offset: "[DISPLAY]MAX_FEED_OVERRIDE" },
+      pinInitialValues: { gain: "[TRAJ]DEFAULT_LINEAR_VELOCITY" },
+    });
+
+    const { text } = exportProjectToHal(project);
+
+    expect(text).toContain("setp ini_ref.0.gain [TRAJ]DEFAULT_LINEAR_VELOCITY");
+    expect(text).toContain("setp ini_ref.0.offset [DISPLAY]MAX_FEED_OVERRIDE");
+  });
+
   it("emits nets for postgui-marked component instances into postgui output", () => {
     const project = makeConnectedProject("ui_sig");
     const sheet = project.sheets[project.rootSheetId];

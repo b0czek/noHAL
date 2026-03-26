@@ -130,6 +130,13 @@ export const en = {
   "componentDialog.pinFilter.in": "in",
   "componentDialog.pinFilter.out": "out",
   "componentDialog.pinFilter.io": "io",
+  "componentDialog.iniReferencePicker": "Insert INI reference",
+  "componentDialog.iniReferenceUnavailable":
+    "Project has no machine INI entries yet.",
+  "componentDialog.iniReferenceCurrentLabel": "INI:",
+  "componentDialog.iniReferenceEmptyValue": "(empty)",
+  "componentDialog.iniReferenceSearchPlaceholder": "Filter keys...",
+  "componentDialog.iniReferenceNoMatches": "No matching entries.",
 
   "threadsDialog.ariaLabel": "HAL Threads",
   "threadsDialog.title": "HAL Threads",
