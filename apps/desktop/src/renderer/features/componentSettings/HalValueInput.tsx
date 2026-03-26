@@ -1,5 +1,5 @@
 import { HiOutlineChevronDown } from "solid-icons/hi";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +15,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { cn } from "../../lib/utils";
+import BufferedInput from "./BufferedInput";
 import {
   type IniReferenceSection,
   matchIniReferenceToken,
@@ -26,7 +27,7 @@ interface HalValueInputProps {
   class?: string;
   inputClass?: string;
   iniReferenceSections: readonly IniReferenceSection[];
-  onInput: (value: string) => void;
+  onCommit: (value: string) => void;
 }
 
 interface IniReferenceSectionMenuProps {
@@ -69,8 +70,14 @@ export default function HalValueInput(props: HalValueInputProps) {
   const { t } = useI18n();
   const [query, setQuery] = createSignal("");
   const [isFocused, setIsFocused] = createSignal(false);
+  const [draftValue, setDraftValue] = createSignal(props.value);
+  createEffect(() => setDraftValue(props.value));
+  const selectReference = (value: string) => {
+    setDraftValue(value);
+    props.onCommit(value);
+  };
   const matchedReference = createMemo(() =>
-    matchIniReferenceToken(props.iniReferenceSections, props.value),
+    matchIniReferenceToken(props.iniReferenceSections, draftValue()),
   );
   const showInlineReferenceHint = createMemo(
     () => !isFocused() && matchedReference() !== null,
@@ -98,11 +105,13 @@ export default function HalValueInput(props: HalValueInputProps) {
   return (
     <div class={cn("grid gap-1.5", props.class)}>
       <div class="relative min-w-0">
-        <Input
+        <BufferedInput
           class={cn("min-w-0 pr-10", props.inputClass)}
           value={props.value}
+          draftValue={draftValue()}
+          onDraftChange={setDraftValue}
           placeholder={props.placeholder}
-          onInput={(evt) => props.onInput(evt.currentTarget.value)}
+          onCommit={props.onCommit}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
         />
@@ -112,7 +121,7 @@ export default function HalValueInput(props: HalValueInputProps) {
               class="pointer-events-none absolute inset-y-0 left-3 right-10 flex items-center overflow-hidden text-sm"
               aria-hidden="true"
             >
-              <span class="invisible whitespace-pre">{props.value}</span>
+              <span class="invisible whitespace-pre">{draftValue()}</span>
               <span class="shrink-0 text-muted-foreground">&nbsp;= </span>
               <span class="truncate text-muted-foreground">
                 {reference().value ||
@@ -159,7 +168,7 @@ export default function HalValueInput(props: HalValueInputProps) {
                       {(section) => (
                         <IniReferenceSectionMenu
                           section={section}
-                          onSelect={props.onInput}
+                          onSelect={selectReference}
                         />
                       )}
                     </For>
@@ -178,7 +187,7 @@ export default function HalValueInput(props: HalValueInputProps) {
                     <For each={filteredEntries()}>
                       {(entry) => (
                         <DropdownMenuItem
-                          onSelect={() => props.onInput(entry.token)}
+                          onSelect={() => selectReference(entry.token)}
                         >
                           <span class="mono">{entry.key}</span>
                           <DropdownMenuShortcut class="max-w-40 truncate">

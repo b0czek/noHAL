@@ -1,7 +1,6 @@
 import { createMemo, Index, Show } from "solid-js";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
-import { cloneProject } from "../../state/store/helpers";
 import HalValueInput from "./HalValueInput";
 import { buildIniReferenceSections } from "./iniReference";
 import type { ComponentSettingsTabProps } from "./types";
@@ -9,9 +8,8 @@ import type { ComponentSettingsTabProps } from "./types";
 export default function ParametersTab(props: ComponentSettingsTabProps) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
-  const projectSnapshot = createMemo(() => cloneProject(state.project));
   const iniReferenceSections = createMemo(() =>
-    buildIniReferenceSections(projectSnapshot()),
+    buildIniReferenceSections(state.project),
   );
   const componentParams = createMemo(() => {
     const currentNode = props.node();
@@ -44,7 +42,7 @@ export default function ParametersTab(props: ComponentSettingsTabProps) {
                 <HalValueInput
                   value={props.node()?.paramValues[param().key] ?? ""}
                   iniReferenceSections={iniReferenceSections()}
-                  onInput={(value) => {
+                  onCommit={(value) => {
                     const currentNode = props.node();
                     if (!currentNode) return;
                     actions.updateNodeParam(currentNode.id, param().key, value);

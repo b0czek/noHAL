@@ -5,7 +5,6 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
-import { cloneProject } from "../../state/store/helpers";
 import HalValueInput from "./HalValueInput";
 import { buildIniReferenceSections } from "./iniReference";
 import {
@@ -19,9 +18,8 @@ export default function PinsTab(props: ComponentSettingsTabProps) {
   const { state, actions } = useEditorStore();
   const [pinFilter, setPinFilter] =
     createSignal<ComponentSettingsPinFilterMode>("all");
-  const projectSnapshot = createMemo(() => cloneProject(state.project));
   const iniReferenceSections = createMemo(() =>
-    buildIniReferenceSections(projectSnapshot()),
+    buildIniReferenceSections(state.project),
   );
   const fieldLabelClass =
     "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
@@ -127,7 +125,7 @@ export default function PinsTab(props: ComponentSettingsTabProps) {
                     class="w-full"
                     value={props.node()?.pinInitialValues?.[pin().key] ?? ""}
                     iniReferenceSections={iniReferenceSections()}
-                    onInput={(value) => {
+                    onCommit={(value) => {
                       const currentNode = props.node();
                       if (!currentNode) return;
                       actions.updateNodePinInitialValue(

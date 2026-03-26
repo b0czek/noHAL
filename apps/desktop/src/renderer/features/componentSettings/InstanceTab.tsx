@@ -4,10 +4,10 @@ import {
 } from "@nohal/core/src/componentSystem";
 import { createMemo, Show } from "solid-js";
 import StringSelect from "../../components/form/StringSelect";
-import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 import { componentUsesLockedCanonicalInstanceNames } from "../../state/store/helpers";
+import BufferedInput from "./BufferedInput";
 import type { ComponentSettingsTabProps } from "./types";
 
 export default function InstanceTab(props: ComponentSettingsTabProps) {
@@ -39,13 +39,13 @@ export default function InstanceTab(props: ComponentSettingsTabProps) {
           <span class={fieldLabelClass}>
             {t("componentDialog.instanceName")}
           </span>
-          <Input
+          <BufferedInput
             value={props.node()?.instanceName ?? ""}
             disabled={instanceNameLocked()}
-            onInput={(evt) => {
+            onCommit={(value) => {
               const currentNode = props.node();
               if (!currentNode) return;
-              actions.renameNode(currentNode.id, evt.currentTarget.value);
+              actions.renameNode(currentNode.id, value);
             }}
           />
         </div>
