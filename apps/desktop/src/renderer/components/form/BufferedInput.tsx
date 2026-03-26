@@ -5,6 +5,7 @@ interface BufferedInputProps extends Omit<InputProps, "value" | "onInput"> {
   value: string;
   draftValue?: string;
   onDraftChange?: (value: string) => void;
+  onInput?: InputProps["onInput"];
   onCommit: (value: string) => void;
 }
 
@@ -13,6 +14,7 @@ export default function BufferedInput(props: BufferedInputProps) {
     "value",
     "draftValue",
     "onDraftChange",
+    "onInput",
     "onCommit",
     "onBlur",
     "onKeyDown",
@@ -50,7 +52,12 @@ export default function BufferedInput(props: BufferedInputProps) {
     <Input
       {...inputProps}
       value={draftValue()}
-      onInput={(evt) => updateDraftValue(evt.currentTarget.value)}
+      onInput={(evt) => {
+        updateDraftValue(evt.currentTarget.value);
+        if (typeof local.onInput === "function") {
+          local.onInput(evt);
+        }
+      }}
       onBlur={(evt) => {
         commitValue(draftValue());
         if (typeof local.onBlur === "function") {
