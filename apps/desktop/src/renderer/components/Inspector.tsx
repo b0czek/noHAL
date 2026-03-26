@@ -10,12 +10,12 @@ import { For, Show } from "solid-js";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
+import BufferedInput from "./form/BufferedInput";
+import BufferedTextarea from "./form/BufferedTextarea";
 import StringSelect, { type StringSelectOption } from "./form/StringSelect";
 import { Alert } from "./ui/alert";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
 
 const PORT_TYPE_OPTIONS: ReadonlyArray<StringSelectOption> = [
   { value: "bit", label: "bit" },
@@ -107,11 +107,11 @@ export default function Inspector() {
                     <div class="grid gap-3">
                       <div class="grid gap-2">
                         <FieldLabel>{t("common.name")}</FieldLabel>
-                        <Input
+                        <BufferedInput
                           value={label().name}
-                          onInput={(e) =>
+                          onCommit={(value) =>
                             actions.updateLabel(label().id, {
-                              name: e.currentTarget.value,
+                              name: value,
                             })
                           }
                         />
@@ -143,12 +143,12 @@ export default function Inspector() {
                     <div class="grid gap-3">
                       <div class="grid gap-2">
                         <FieldLabel>{t("common.text")}</FieldLabel>
-                        <Textarea
+                        <BufferedTextarea
                           rows={4}
                           value={comment().text}
-                          onInput={(e) =>
+                          onCommit={(value) =>
                             actions.updateComment(comment().id, {
-                              text: e.currentTarget.value,
+                              text: value,
                             })
                           }
                         />
@@ -168,11 +168,11 @@ export default function Inspector() {
                     <div class="grid gap-3">
                       <div class="grid gap-2">
                         <FieldLabel>{t("common.name")}</FieldLabel>
-                        <Input
+                        <BufferedInput
                           value={port().name}
-                          onInput={(e) =>
+                          onCommit={(value) =>
                             actions.updateSheetPort(port().id, {
-                              name: e.currentTarget.value,
+                              name: value,
                             })
                           }
                         />
@@ -216,13 +216,13 @@ export default function Inspector() {
                     <div class="grid gap-3">
                       <div class="grid gap-2">
                         <FieldLabel>{t("common.signalName")}</FieldLabel>
-                        <Input
+                        <BufferedInput
                           value={conn().signalName ?? ""}
                           placeholder={t("componentDialog.optionalPlaceholder")}
-                          onInput={(e) =>
+                          onCommit={(value) =>
                             actions.updateDirectConnectionSignalName(
                               conn().id,
-                              e.currentTarget.value,
+                              value,
                             )
                           }
                         />
@@ -300,13 +300,13 @@ function RotationEditor(props: {
         >
           -90
         </Button>
-        <Input
+        <BufferedInput
           type="number"
           step="15"
           class="mono"
-          value={Number.isFinite(props.value) ? props.value : 0}
-          onInput={(e) => {
-            const next = Number.parseFloat(e.currentTarget.value);
+          value={String(Number.isFinite(props.value) ? props.value : 0)}
+          onCommit={(value) => {
+            const next = Number.parseFloat(value);
             if (Number.isFinite(next)) props.onChange(next);
           }}
         />
@@ -365,9 +365,9 @@ function NodeInspector(props: {
         fallback={
           <div class="grid gap-2">
             <FieldLabel>{t("componentDialog.instanceName")}</FieldLabel>
-            <Input
+            <BufferedInput
               value={props.node.instanceName}
-              onInput={(e) => props.onRename(e.currentTarget.value)}
+              onCommit={props.onRename}
             />
           </div>
         }

@@ -1,5 +1,5 @@
 import { Show } from "solid-js";
-import { Input } from "../../components/ui/input";
+import BufferedInput from "../../components/form/BufferedInput";
 import { useI18n } from "../../i18n";
 import { useSheetSettings } from "./SheetSettingsContext";
 
@@ -36,11 +36,9 @@ export default function InstanceTab() {
               <span class={fieldLabelClass}>
                 {t("componentDialog.instanceName")}
               </span>
-              <Input
+              <BufferedInput
                 value={instanceNode().instanceName}
-                onInput={(evt) =>
-                  settings.renameInstance(evt.currentTarget.value)
-                }
+                onCommit={settings.renameInstance}
               />
             </div>
           )}

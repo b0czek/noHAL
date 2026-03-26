@@ -1,5 +1,6 @@
 import type { ComponentInstanceConfigFieldDefinition } from "@nohal/core/src/types";
 import { createMemo, Index, Show } from "solid-js";
+import BufferedInput from "../../components/form/BufferedInput";
 import {
   Switch,
   SwitchControl,
@@ -8,7 +9,6 @@ import {
 } from "../../components/ui/switch";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
-import BufferedInput from "./BufferedInput";
 import type { ComponentSettingsTabProps } from "./types";
 
 export default function InstanceConfigTab(props: ComponentSettingsTabProps) {

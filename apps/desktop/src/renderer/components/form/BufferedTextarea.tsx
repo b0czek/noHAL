@@ -1,21 +1,21 @@
 import { createEffect, createSignal, on, splitProps } from "solid-js";
-import { Input, type InputProps } from "../../components/ui/input";
+import { Textarea, type TextareaProps } from "../ui/textarea";
 
-interface BufferedInputProps extends Omit<InputProps, "value" | "onInput"> {
+interface BufferedTextareaProps
+  extends Omit<TextareaProps, "value" | "onInput"> {
   value: string;
   draftValue?: string;
   onDraftChange?: (value: string) => void;
   onCommit: (value: string) => void;
 }
 
-export default function BufferedInput(props: BufferedInputProps) {
-  const [local, inputProps] = splitProps(props, [
+export default function BufferedTextarea(props: BufferedTextareaProps) {
+  const [local, textareaProps] = splitProps(props, [
     "value",
     "draftValue",
     "onDraftChange",
     "onCommit",
     "onBlur",
-    "onKeyDown",
   ]);
   const [internalDraftValue, setInternalDraftValue] = createSignal(local.value);
   const [committedValue, setCommittedValue] = createSignal(local.value);
@@ -47,8 +47,8 @@ export default function BufferedInput(props: BufferedInputProps) {
   };
 
   return (
-    <Input
-      {...inputProps}
+    <Textarea
+      {...textareaProps}
       value={draftValue()}
       onInput={(evt) => updateDraftValue(evt.currentTarget.value)}
       onBlur={(evt) => {
@@ -56,14 +56,6 @@ export default function BufferedInput(props: BufferedInputProps) {
         if (typeof local.onBlur === "function") {
           local.onBlur(evt);
         }
-      }}
-      onKeyDown={(evt) => {
-        if (typeof local.onKeyDown === "function") {
-          local.onKeyDown(evt);
-        }
-        if (evt.defaultPrevented || evt.key !== "Enter") return;
-        evt.preventDefault();
-        evt.currentTarget.blur();
       }}
     />
   );

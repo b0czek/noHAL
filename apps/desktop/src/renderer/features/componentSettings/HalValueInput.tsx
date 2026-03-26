@@ -1,5 +1,6 @@
 import { HiOutlineChevronDown } from "solid-icons/hi";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import BufferedInput from "../../components/form/BufferedInput";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +16,6 @@ import {
 import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { cn } from "../../lib/utils";
-import BufferedInput from "./BufferedInput";
 import {
   type IniReferenceSection,
   matchIniReferenceToken,

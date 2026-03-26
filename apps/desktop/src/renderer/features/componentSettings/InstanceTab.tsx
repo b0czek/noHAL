@@ -3,11 +3,11 @@ import {
   fixedInstanceNameForComponent,
 } from "@nohal/core/src/componentSystem";
 import { createMemo, Show } from "solid-js";
+import BufferedInput from "../../components/form/BufferedInput";
 import StringSelect from "../../components/form/StringSelect";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 import { componentUsesLockedCanonicalInstanceNames } from "../../state/store/helpers";
-import BufferedInput from "./BufferedInput";
 import type { ComponentSettingsTabProps } from "./types";
 
 export default function InstanceTab(props: ComponentSettingsTabProps) {
