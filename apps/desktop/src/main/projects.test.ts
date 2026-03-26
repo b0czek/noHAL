@@ -9,7 +9,12 @@ import {
 import os from "node:os";
 import path from "node:path";
 import corePackageJson from "@nohal/core/package.json";
-import { createEmptyProject, createSheet } from "@nohal/core/src/project";
+import { buildManagedMachineConfigIniSections } from "@nohal/core/src/machineConfig/policy";
+import {
+  createEmptyProject,
+  createSheet,
+  reconcileProject,
+} from "@nohal/core/src/project";
 import {
   NOHAL_PROJECT_DIR_FORMAT,
   NOHAL_PROJECT_DIR_VERSION,
@@ -18,6 +23,7 @@ import {
   NOHAL_PROJECT_SHEET_FILE_FORMAT,
   NOHAL_PROJECT_SHEET_FILE_VERSION,
 } from "@nohal/core/src/project/formats";
+import { findSystemSheet } from "@nohal/core/src/sheet";
 import type { NoHALProject } from "@nohal/core/src/types";
 import { afterEach, describe, expect, it } from "vitest";
 import { projectDirectory } from "./coreWrappers";
@@ -252,6 +258,70 @@ describe("projects persistence (directory format)", () => {
     expect(loaded.projectPath).toBe(targetDir);
     expect(loaded.savedWith).toBe(NOHAL_APP_VERSION);
     expect(loaded.project).toEqual(project);
+  });
+
+  it("persists referenced system-derived custom overrides across save and reopen", async () => {
+    const project = createEmptyProject("Halui Override");
+    const systemSheet = findSystemSheet(project);
+    if (!systemSheet) throw new Error("expected system sheet");
+
+    const haluiNode = systemSheet.nodes.find(
+      (
+        node,
+      ): node is (typeof systemSheet.nodes)[number] & { kind: "component" } =>
+        node.kind === "component" && node.instanceName === "halui",
+    );
+    if (!haluiNode) throw new Error("expected halui node");
+
+    project.library.components["halimport:halui"] = {
+      id: "halimport:halui",
+      name: "halui",
+      halComponentName: "halui",
+      source: "manual",
+      runtime: { kind: "userspace" },
+      pins: [
+        {
+          key: "program_run",
+          name: "program.run",
+          direction: "in",
+          type: "bit",
+        },
+        {
+          key: "mode_is_manual",
+          name: "mode.is-manual",
+          direction: "out",
+          type: "bit",
+        },
+        {
+          key: "extra_status",
+          name: "extra-status",
+          direction: "out",
+          type: "bit",
+        },
+      ],
+      params: [],
+    };
+    haluiNode.componentId = "halimport:halui";
+    reconcileProject(project);
+
+    expect(haluiNode.componentId).toBe("halimport:halui");
+    expect(project.library.components["halimport:halui"]?.system?.manager).toBe(
+      "halui-custom",
+    );
+
+    const baseDir = await makeTempDir();
+    const targetDir = path.join(baseDir, "halui-override.nohal");
+
+    await projectDirectory.writeProjectDirectory(project, targetDir);
+    const loaded = await projectDirectory.readProjectPath(targetDir);
+
+    expect(loaded.project.library.components["halimport:halui"]).toBeDefined();
+    expect(
+      loaded.project.library.components["halimport:halui"]?.system?.manager,
+    ).toBe("halui-custom");
+    expect(() =>
+      buildManagedMachineConfigIniSections(loaded.project),
+    ).not.toThrow();
   });
 
   it("removes stale sheet files on subsequent saves after a sheet is deleted", async () => {

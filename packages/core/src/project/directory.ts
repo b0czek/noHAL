@@ -195,7 +195,11 @@ function getUsedComponentIds(project: NoHALProject): Set<string> {
     for (const node of sheet.nodes) {
       if (node.kind !== "component") continue;
       const component = project.library.components[node.componentId];
-      if (isSystemComponent(component)) continue;
+      if (
+        isSystemComponent(component) &&
+        node.componentId.startsWith("system:")
+      )
+        continue;
       used.add(node.componentId);
     }
   }
