@@ -8,13 +8,11 @@ import {
 } from "../../../components/ui/card";
 import { useI18n } from "../../../i18n";
 
-interface MachineImportWarningsCardProps {
+interface WarningsCardProps {
   warnings: string[];
 }
 
-export default function MachineImportWarningsCard(
-  props: MachineImportWarningsCardProps,
-) {
+export default function WarningsCard(props: WarningsCardProps) {
   const { t } = useI18n();
 
   return (

@@ -20,9 +20,9 @@ import {
 import { useI18n } from "../../../i18n";
 import { useEditorStore } from "../../../state/EditorStoreProvider";
 import type { MachineImportController } from "../useMachineImportFlow";
-import MachineImportWarningsCard from "./MachineImportWarningsCard";
+import WarningsCard from "./WarningsCard";
 
-interface MachineImportLinkStepProps {
+interface LinkStepProps {
   machineImport: MachineImportController;
   draft: HalImportDraft;
   onEditGeneratedGroup: (groupId: string) => void;
@@ -32,9 +32,7 @@ interface MachineImportLinkStepProps {
   }>;
 }
 
-export default function MachineImportLinkStep(
-  props: MachineImportLinkStepProps,
-) {
+export default function LinkStep(props: LinkStepProps) {
   const { t } = useI18n();
   const { state } = useEditorStore();
   const flow = () => props.machineImport.machineImportFlow;
@@ -362,7 +360,7 @@ export default function MachineImportLinkStep(
         </CardContent>
       </Card>
 
-      <MachineImportWarningsCard warnings={props.draft.warnings} />
+      <WarningsCard warnings={props.draft.warnings} />
 
       <div class="flex justify-end">
         <Button

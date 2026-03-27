@@ -12,15 +12,13 @@ import { useI18n } from "../../../i18n";
 import MesaConfigEditor from "../../projectSettings/mesa/MesaConfigEditor";
 import type { MachineImportController } from "../useMachineImportFlow";
 
-interface MachineImportMesaStepProps {
+interface MesaStepProps {
   machineImport: MachineImportController;
   mesaFatalIssueCount: number;
   canContinue: boolean;
 }
 
-export default function MachineImportMesaStep(
-  props: MachineImportMesaStepProps,
-) {
+export default function MesaStep(props: MesaStepProps) {
   const { t } = useI18n();
   const flow = () => props.machineImport.machineImportFlow;
 

@@ -14,7 +14,7 @@ import { useI18n } from "../../../i18n";
 import CustomComponentEditor from "../../projectSettings/CustomComponentEditor";
 import type { MachineImportController } from "../useMachineImportFlow";
 
-interface MachineImportGeneratedComponentDialogProps {
+interface GeneratedComponentDialogProps {
   machineImport: MachineImportController;
   editor:
     | {
@@ -25,8 +25,8 @@ interface MachineImportGeneratedComponentDialogProps {
   onClose: () => void;
 }
 
-export default function MachineImportGeneratedComponentDialog(
-  props: MachineImportGeneratedComponentDialogProps,
+export default function GeneratedComponentDialog(
+  props: GeneratedComponentDialogProps,
 ) {
   const { t } = useI18n();
 
