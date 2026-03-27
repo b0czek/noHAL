@@ -47,7 +47,15 @@ jobs:
 
   build-linux:
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runs_on: ubuntu-latest
+          - arch: arm64
+            runs_on: ubuntu-24.04-arm
     env:
       CI: true
 
@@ -69,13 +77,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Linux artifacts
-        run: pnpm dist:linux
+      - name: Build Linux artifacts for ${{ matrix.arch }}
+        run: pnpm --filter @nohal/desktop exec electron-builder --linux AppImage deb --${{ matrix.arch }}
 
-      - name: Upload Linux artifacts
+      - name: Upload Linux artifacts for ${{ matrix.arch }}
         uses: actions/upload-artifact@v4
         with:
-          name: release-linux
+          name: release-linux-${{ matrix.arch }}
           path: |
             apps/desktop/dist/*.AppImage
             apps/desktop/dist/*.deb
@@ -90,8 +98,9 @@ jobs:
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
         with:
-          name: release-linux
+          pattern: release-linux-*
           path: release-assets/linux
+          merge-multiple: true
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
