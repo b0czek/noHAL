@@ -2,16 +2,16 @@
 layout: home
 
 hero:
-  name: "NoHAL Manual"
-  text: "A practical guide to building LinuxCNC HAL projects visually"
-  tagline: "Use NoHAL to import existing machine configurations, organize large HAL graphs with sheets, and export generated HAL with clearer structure."
+  name: "NoHAL"
+  text: "Visual editor for LinuxCNC machine configuration"
+  tagline: "A clearer way to build HAL"
   image:
-    src: /screenshots/editor.png
-    alt: NoHAL editor
+    src: /screenshots/node.png
+    alt: Example NoHAL component graph
   actions:
     - theme: brand
       text: Get Started
-      link: /getting-started
+      link: /installation
     - theme: alt
       text: Quickstart
       link: /quickstart
@@ -20,51 +20,29 @@ hero:
       link: /importing-existing-hal
 
 features:
-  - title: Start from what you already have
-    details: Import a LinuxCNC machine configuration from an INI file plus selected HAL files, then review component linking before creating the project.
-  - title: Edit visually, keep HAL concepts intact
-    details: Work with components, pins, nets, ports, labels, sheet boundaries, and addf scheduling without losing track of HAL structure.
-  - title: Scale beyond a single canvas
-    details: Use sheets and local thread outputs to split large configurations into manageable parts while keeping export behavior explicit.
+  - title: Create or import a project
+    details: Start with a blank project or import a machine configuration from one `.ini` file and the HAL files you choose to include.
+  - title: Edit HAL as a graph
+    details: Place components, connect pins, add ports, labels, comments, and split larger designs into subsheets.
+  - title: Control scheduling before build
+    details: Define project HAL threads, sheet thread outputs, and per-sheet `addf` queues before generating output files.
 ---
 
 <div class="manual-callout">
-<strong>Who this manual is for</strong><br>
-This guide assumes you already know LinuxCNC and basic HAL concepts. It focuses on how those concepts map into NoHAL's editor, project model, and export flow.
+<strong>Before you proceed</strong><br>
+This guide assumes you already know LinuxCNC and basic HAL concepts. It focuses on how NoHAL maps those concepts into the editor and build output.
 </div>
 
 ## What You Can Do in NoHAL
 
-- Create a blank project and build a HAL network visually.
-- Import an existing machine configuration from LinuxCNC files.
-- Reuse built-in, stored, and project-local components.
-- Organize large networks with sheets, ports, labels, and comments.
-- Manage HAL threads, sheet thread outputs, and `addf` ordering.
-- Export generated HAL and supporting project output files.
+- Create a blank project or open an existing NoHAL project.
+- Import a LinuxCNC machine configuration from an `.ini` file and selected `.hal` files.
+- Use built-in components, component-store entries, and project-local custom components.
+- Organize the graph with sheets, subsheets, ports, labels, and comments.
+- Manage project HAL threads, sheet thread outputs, and `addf` ordering.
+- Build generated `.hal`, optional `-postgui.hal` and `-shutdown.hal`, and `.ini` files into the project's `build/` directory.
 
-## Start Here
+## Current Limits
 
-<div class="manual-grid">
-  <div class="manual-callout">
-    <strong>New to NoHAL</strong><br>
-    Read <a href="/getting-started">Getting Started</a>, then follow the <a href="/quickstart">Quickstart</a>.
-  </div>
-  <div class="manual-callout">
-    <strong>Bringing in an existing machine</strong><br>
-    Go straight to <a href="/importing-existing-hal">Import Existing HAL</a>.
-  </div>
-  <div class="manual-callout">
-    <strong>Trying to understand the model</strong><br>
-    Read <a href="/concepts">Core Concepts</a> before making structural changes.
-  </div>
-  <div class="manual-callout">
-    <strong>Preparing for production output</strong><br>
-    Review <a href="/threads-and-addf">Threads and addf</a> and <a href="/export">Export</a>.
-  </div>
-</div>
-
-## Current Scope
-
-NoHAL already covers a useful part of the LinuxCNC configuration workflow, especially around HAL graph editing, import, and export. It is still evolving, so you should expect some features to be more mature than others.
-
-Treat generated output as something you still verify against your machine intent, especially after import, scheduling changes, or larger sheet refactors.
+- Import is centered on `.ini` plus `.hal` files. `LIB:` references and non-`.hal` entries such as Tcl or HalTcl sources are not auto-loaded into the project.
+- Build output is generated from the current NoHAL project state. Review it after import, thread changes, or larger sheet refactors before treating it as machine-ready.

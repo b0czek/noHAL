@@ -1,49 +1,57 @@
 # Installation
 
-This page covers the practical setup needed to run NoHAL today.
+The main way to install NoHAL is from the GitHub releases page:
 
-## Supported Delivery
+[https://github.com/b0czek/noHAL/releases](https://github.com/b0czek/noHAL/releases)
 
-The repository currently packages the desktop app with `electron-builder`.
+## Install From A Release
 
-The release process in this repo produces Linux artifacts:
+The current repository is set up to produce Linux desktop release artifacts:
 
+- `.deb`
 - `AppImage`
-- `deb`
 
-If you are using GitHub releases, download the artifact that matches your system and install it the same way you would install other Linux desktop applications.
+Use `.deb` if you are on a Debian-based system such as Debian, Ubuntu, or Linux Mint and you want a normal installed application.
 
-## Running from Source
+Use `AppImage` if you want a portable build that does not install system-wide or if you are on another Linux distribution that can run AppImages.
 
-If you are working from the repository instead of a packaged build, use:
+### `.deb`
+
+Recommended for Debian-based systems.
+
+Install it with your package manager or desktop software installer. From a terminal, the usual pattern is:
+
+```bash
+sudo apt install ./NoHAL-<version>-linux-<arch>.deb
+```
+
+Use the actual file name you downloaded from the releases page.
+
+Choose this when you want the application installed in the normal way and integrated with your desktop.
+
+### `AppImage`
+
+Recommended when you want a portable build or do not want to install a package.
+
+An AppImage does not need to be installed. Make it executable and run it:
+
+```bash
+chmod +x NoHAL-<version>-linux-<arch>.AppImage
+./NoHAL-<version>-linux-<arch>.AppImage
+```
+
+## Build From Source Instead
+
+If you are working from the repository rather than a packaged release, you can run NoHAL from source:
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-The current repo expects:
+This is also the way to run NoHAL on Windows or macOS, since the release artifacts documented above are Linux-focused.
+
+The current repository expects:
 
 - Node.js 22
 - `pnpm`
-
-## First Launch Checklist
-
-After opening NoHAL:
-
-1. Confirm the window opens with the landing page.
-2. Choose the target LinuxCNC version you want the project to follow.
-3. Create a blank project or import a machine configuration.
-4. Open `General Settings` if you need to adjust interface scale.
-
-## If You Are Evaluating the Tool
-
-For a first pass, do not start with your most complex machine.
-
-Use one of these:
-
-- a small real machine configuration
-- a reduced copy of a larger config
-- a scratch project for testing sheets, ports, and scheduling
-
-That will let you verify the NoHAL model before you commit to a migration path.

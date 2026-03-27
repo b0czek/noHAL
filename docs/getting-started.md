@@ -1,61 +1,77 @@
 # Getting Started
 
-This page gives you the shortest possible orientation before you open NoHAL.
+This page is a short orientation to the actual NoHAL workflow before you start editing.
 
-## What NoHAL Edits
+## What NoHAL Is For
 
-NoHAL is a visual editor for LinuxCNC machine configuration, with a strong focus on HAL structure.
+NoHAL is a visual editor for LinuxCNC machine configuration, centered on HAL structure.
 
-In practice, that means you use it to work with:
+You use it to work with:
 
 - HAL components and instances
-- pins, parameters, and `setp`
-- nets and signal naming
-- sheet structure for larger designs
-- `addf` scheduling and thread routing
-- generated HAL output
+- pins, parameters, and pin initial values
+- connections, signal names, labels, and sheet ports
+- subsheets for larger designs
+- project HAL threads, sheet thread outputs, and `addf` ordering
+- generated build output
 
-NoHAL is not a generic node editor. The UI is designed around LinuxCNC concepts and export rules.
+It is not a generic node editor. The model, settings, and export behavior are tied to LinuxCNC concepts.
 
-## What You See First
+## Opening Your First Project
 
-The landing page gives you three main entry points:
+Use the landing page according to what you are trying to do:
 
-- `Create Blank` to start a new project
-- `Import Machine Configuration` to bring in an existing LinuxCNC setup
-- `Open Project` to reopen a saved NoHAL project
+- `Create Blank`
+  Starts a new unsaved NoHAL project for the selected LinuxCNC version.
+- `Import Machine Configuration`
+  Starts the machine import flow from an `.ini` file and the HAL files you choose.
+- `Open Project`
+  Opens an existing NoHAL project from disk.
+- `Recent Projects`
+  Reopens a project that NoHAL has tracked locally.
 
-You can also choose the target LinuxCNC version before creating or importing a project.
+## The Editor At A Glance
 
-## Main Areas of the App
+![NoHAL editor overview](/screenshots/editor.png)
 
-Once the editor is open, most work happens in these areas:
+Once a project is open, most work happens in five places:
 
-- Top bar
-  Use this for build/export, project settings, general settings, and placement tools.
-- Tree
-  Use the sheet tree to move between the root sheet and nested sheets.
-- Canvas
-  Place components, subsheets, text, ports, labels, and wires here.
-- Inspector and dialogs
-  Use settings dialogs to edit component details, sheet settings, project settings, and the Component Store.
+- Top bar for save, build, placement tools, and project-level dialogs
+- Left sidebar for moving between sheets
+- Canvas for placing nodes and wiring the graph
+- Right inspector for quick edits to the current selection
+- Bottom status bar for save state and status messages
 
-## Recommended First Workflow
+Project-wide configuration such as HAL threads, shutdown HAL, Mesa, custom components, and the INI editor lives in dialogs opened from the top bar.
 
-If you are evaluating NoHAL for the first time:
+## What To Do First In A Blank Project
 
-1. Open the [Quickstart](/quickstart).
-2. Create a blank project or import a small existing HAL setup.
-3. Place a few components and wires.
-4. Review `Project Settings`, `Sheet Settings`, and `Build`.
-5. Export and inspect the generated output.
+For a first blank project, the useful order is:
 
-## Before You Make Structural Changes
+1. Create the project from the landing page.
+2. Place a few components on the root sheet.
+3. Connect pins and give important connections explicit signal names.
+4. Review `Project Settings`, especially `General` and `HAL Threads`.
+5. Open `Sheet Settings` for the root sheet and review `Thread Outputs` and `addf Queue`.
+6. Save the project.
+7. Run `Build` and inspect the generated output.
 
-Read these pages first if you are about to reorganize a project:
+Do not start with heavy sheet restructuring. It is easier to sketch the root sheet first and split it later.
 
+## Save And Build Behavior
+
+Two behaviors matter early:
+
+- A new blank project starts unsaved.
+- `Build` requires a project folder. If the project has not been saved yet, NoHAL asks you to save it first.
+
+After build, review the generated files before treating them as machine-ready, especially after import or scheduling changes.
+
+## Read Next
+
+After this page, the next useful pages are:
+
+- [Quickstart](/quickstart)
 - [Core Concepts](/concepts)
-- [Sheets](/sheets)
-- [Threads and addf](/threads-and-addf)
-
-Those pages explain the model that drives export behavior. That matters more than the visual layout alone.
+- [Import Existing HAL](/importing-existing-hal)
+- [Build a Project](/building-a-project)

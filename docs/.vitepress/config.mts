@@ -1,7 +1,7 @@
 import { defineConfig } from "vitepress";
 
 export default defineConfig({
-  title: "NoHAL Manual",
+  title: "NoHAL",
   description: "User manual for NoHAL, a visual HAL IDE for LinuxCNC.",
   base: "/noHAL/",
   srcExclude: ["README.md"],
@@ -10,7 +10,7 @@ export default defineConfig({
   themeConfig: {
     logo: "/assets/icon.svg",
     nav: [
-      { text: "Guide", link: "/getting-started" },
+      { text: "Guide", link: "/installation" },
       { text: "Workflows", link: "/quickstart" },
       { text: "Advanced", link: "/sheets" },
       { text: "Help", link: "/troubleshooting" },
@@ -20,8 +20,8 @@ export default defineConfig({
         text: "Introduction",
         items: [
           { text: "Overview", link: "/" },
-          { text: "Getting Started", link: "/getting-started" },
           { text: "Installation", link: "/installation" },
+          { text: "Getting Started", link: "/getting-started" },
           { text: "Quickstart", link: "/quickstart" },
           { text: "Core Concepts", link: "/concepts" },
         ],
@@ -58,7 +58,7 @@ export default defineConfig({
     },
     footer: {
       message: "Built with VitePress. Written for NoHAL users.",
-      copyright: "Copyright © NoHAL contributors",
+      copyright: "Copyright © Dariusz Majnert",
     },
   },
 });
