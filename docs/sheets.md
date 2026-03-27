@@ -1,109 +1,64 @@
-# Sheets in NoHAL
+# Sheets
 
-This document describes how sheets work today in NoHAL and how they map to HAL
-export.
+Use sheets when a single canvas stops being a good representation of the machine.
 
-## What a Sheet Is
+## What Sheets Are For
 
-A sheet is a graph container with:
+Sheets help you:
 
-- nodes (component instances and subsheet instances)
-- sheet ports (`in` / `out` / `io`)
-- direct connections
-- labels (`local`, `global`)
-- comments
+- split a large design into smaller subsystems
+- expose cleaner interfaces through ports
+- keep scheduling manageable with local thread outputs
+- make the root sheet describe structure instead of raw detail
 
-The project has exactly one root sheet (`project.rootSheetId`). Any other sheet
-is used by placing a subsheet node that points to it.
+## Root Sheet vs Child Sheets
 
-## Nodes
+The root sheet is the top-level graph for the whole project.
 
-There are two node kinds:
+Other sheets are only active when they are placed through subsheet nodes. That means child sheets are not free-floating documents. They are part of the project graph when referenced.
 
-1. `component` node
-2. `sheet` node (subsheet instance)
+## Designing a Good Sheet Boundary
 
-Each placed node has its own `instanceName`, so export paths remain explicit and
-stable.
+A good sheet boundary has:
 
-Component nodes can also carry:
+- a clear responsibility
+- a small set of meaningful ports
+- internal details hidden inside the child sheet
+- naming that stays understandable after export
 
-- `paramValues` (exported as `setp instance.param value`)
-- `pinInitialValues` (exported as `setp instance.pin value`)
-- `exportStage` (`main` or `postgui`)
+If a sheet needs dozens of poorly named ports just to stay connected, it probably does not represent a real subsystem yet.
 
-`exportStage=postgui` means this instance's `setp` and any nets touching it are
-emitted in postgui output.
+## Ports on a Sheet
 
-## Subsheet Boundaries
+Ports are the sheet interface.
 
-Subsheet nodes expose the child sheet's ports as pins on the parent sheet.
+Use:
 
-Conceptually:
+- `in` when the signal flows into the sheet
+- `out` when the signal flows out
+- `io` when the boundary is bidirectional
 
-- child `in` port appears as an input on the parent-side subsheet pin
-- child `out` port appears as an output on the parent-side subsheet pin
-- child `io` remains bidirectional
+Port direction should reflect how the sheet is meant to be understood, not just what was convenient while drawing.
 
-This allows direct wiring between parent components and subsheet boundaries.
+## Subsheet Instances
 
-## Ports and Labels
+Each subsheet instance has its own instance name in the parent sheet.
 
-### Sheet Ports
+That matters because export paths and generated references need stable, explicit names. If you place the same child sheet more than once, treat those instances as distinct parts of the machine.
 
-Sheet ports are the explicit interface of a sheet.
+## When to Split a Sheet
 
-- `in` ports represent data entering the sheet
-- `out` ports represent data leaving the sheet
-- `io` ports are bidirectional
+Split a sheet when:
 
-### Labels
+- the root canvas is getting hard to scan
+- a subsystem has a meaningful interface
+- one section needs its own scheduling shape
+- you keep re-explaining the same cluster of nodes to yourself
 
-- `local`: connects label anchors only inside the current sheet
-- `global`: joins anchors with the same name across the full project graph
+Do not split just because the canvas is physically large. Split when a new boundary improves reasoning.
 
-## Direct Connections and Signal Names
+## Related Pages
 
-Connections join two endpoints (node pin or sheet port). A connection can
-optionally have `signalName`; if absent, export creates an `auto_net_*` name.
-
-Connections are type-checked during editing/export and warnings are produced for
-mixed endpoint types or multi-writer nets.
-
-## Threading and `addf`
-
-Sheets own local scheduling lanes via `sheet.hal.threadOutputs` and queue items
-via `sheet.hal.addfQueue`.
-
-Subsheets map child thread outputs into parent outputs using:
-
-- `sheetNode.hal.threadMap[childOutputId] = parentOutputId`
-
-Full details are documented in [threads.md](./threads.md).
-
-## Export Mapping
-
-During export:
-
-1. The full sheet hierarchy is traversed from root.
-2. Sheet boundary bridges and label scopes are resolved into connectivity
-   groups.
-3. Nets are emitted from resolved groups.
-4. `setp` lines are emitted from node parameter/pin initial values.
-5. `addf` is emitted from per-sheet queue expansion plus thread mapping.
-
-For `exportStage`:
-
-- `main` (default): `setp` and nets go to main HAL output
-- `postgui`: `setp` and nets touching postgui instances go to generated
-  postgui HAL output
-
-Runtime loading (`loadrt`/custom load) remains in the main HAL output.
-
-## Import Behavior (Current)
-
-When importing from a LinuxCNC machine config:
-
-- instances seen only in `POSTGUI_HALFILE` sources are auto-marked
-  `exportStage=postgui`
-- instances also present in main `HALFILE` sources stay `main`
+- [Core Concepts](/concepts)
+- [Threads and addf](/threads-and-addf)
+- [Edit Networks](/editing-networks)

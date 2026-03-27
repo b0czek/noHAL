@@ -1,0 +1,25 @@
+<svg width="680" height="680" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <radialGradient id="vig" cx="50%" cy="50%" r="70%">
+    <stop offset="30%"  stop-color="#0d1f17"/>
+    <stop offset="100%" stop-color="#010704"/>
+  </radialGradient>
+  <style>
+    .lnk { fill: none; stroke: #34d399; stroke-width: 58; stroke-linecap: round; }
+    .sd  { fill: #a7f3d0; }
+  </style>
+</defs>
+
+<rect fill="url(#vig)" x="0" y="0" width="680" height="680" rx="140"/>
+
+<line class="lnk" x1="235" y1="100" x2="235" y2="580"/>
+<line class="lnk" x1="445" y1="100" x2="445" y2="580"/>
+<path class="lnk" d="M 100,340 C 235,180 445,500 580,340"/>
+
+<circle class="sd" cx="235" cy="100" r="48"/>
+<circle class="sd" cx="235" cy="580" r="48"/>
+<circle class="sd" cx="445" cy="100" r="48"/>
+<circle class="sd" cx="445" cy="580" r="48"/>
+<circle class="sd" cx="100" cy="340" r="48"/>
+<circle class="sd" cx="580" cy="340" r="48"/>
+</svg>
