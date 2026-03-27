@@ -390,7 +390,14 @@ export const en = {
     "{instances} instances • {pins} pins • {params} params • runtime {runtime}",
   "projectCreation.autoReason": "Auto: {reason}",
   "projectCreation.linkTarget": "Link Target",
+  "projectCreation.linkReviewSectionTitle": "{count} group(s) need review",
   "projectCreation.editGeneratedComponent": "Edit generated component",
+  "projectCreation.allComponentGroupsResolved":
+    "All detected component groups are already resolved to existing system or store components.",
+  "projectCreation.resolvedComponentDrawerTitle":
+    "Resolved existing components ({count})",
+  "projectCreation.resolvedComponentDrawerHelp":
+    "Expand this section to inspect or change groups that already match an existing system or store component.",
   "projectCreation.noComponentGroups": "No component groups were detected.",
   "projectCreation.parserWarnings": "Parser Warnings",
   "projectCreation.parserWarningsTruncated":
