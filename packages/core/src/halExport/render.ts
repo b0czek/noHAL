@@ -34,13 +34,13 @@ export function renderHalOutput({
   lines.push(`#`);
   lines.push(`# Notes:`);
   lines.push(
-    `# - components with component.loadCommand emit that line verbatim and skip generated loadrt for that component.`,
+    `# - components may provide a custom load command; otherwise runtime load lines are generated automatically.`,
   );
   lines.push(
-    `# - addf is emitted per thread and expanded from per-sheet queues (sheet.hal.addfQueue), with subsheets acting as ordered blocks.`,
+    `# - realtime functions are scheduled per thread in the order configured in the project.`,
   );
   lines.push(
-    `# - nodes marked exportStage=postgui emit setp/net lines in a separate postgui output file.`,
+    `# - UI-stage parameters and signals are emitted to a separate postgui HAL file when needed.`,
   );
   lines.push("");
   lines.push(`# Runtime`);
