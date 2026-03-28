@@ -166,12 +166,14 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     selection: Selection,
   ): ContextMenuActionItem[] => {
     const sheet = currentSheet();
-    const selectedNodeIds =
-      selection?.kind === "node"
-        ? new Set([selection.id])
-        : selection?.kind === "multi"
-          ? new Set(selection.nodeIds)
-          : new Set<string>();
+    let selectedNodeIds: Set<string>;
+    if (selection?.kind === "node") {
+      selectedNodeIds = new Set([selection.id]);
+    } else if (selection?.kind === "multi") {
+      selectedNodeIds = new Set(selection.nodeIds);
+    } else {
+      selectedNodeIds = new Set<string>();
+    }
     const existingSheetItems = sheet.nodes
       .filter(
         (

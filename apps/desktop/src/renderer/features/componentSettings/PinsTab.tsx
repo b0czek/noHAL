@@ -61,6 +61,16 @@ export default function PinsTab(props: ComponentSettingsTabProps) {
         return t("componentDialog.pinFilter.io");
     }
   };
+  const pinDirectionVariant = (direction: "in" | "out" | "io") => {
+    switch (direction) {
+      case "in":
+        return "outline";
+      case "out":
+        return "warning";
+      case "io":
+        return "secondary";
+    }
+  };
 
   return (
     <section class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3">
@@ -103,15 +113,7 @@ export default function PinsTab(props: ComponentSettingsTabProps) {
                 <div class="grid min-w-0 gap-2">
                   <span class="mono min-w-0 truncate">{pin().name}</span>
                   <div class="flex flex-wrap items-center gap-2">
-                    <Badge
-                      variant={
-                        pin().direction === "in"
-                          ? "outline"
-                          : pin().direction === "out"
-                            ? "warning"
-                            : "secondary"
-                      }
-                    >
+                    <Badge variant={pinDirectionVariant(pin().direction)}>
                       {pin().direction}
                     </Badge>
                     <Badge variant="outline">{pin().type}</Badge>

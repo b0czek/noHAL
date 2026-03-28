@@ -259,14 +259,17 @@ export function useMachineImportFlow({
           unwrap(machineImportFlow.machineConfigImport.machineConfig),
         );
       }
+      let statusSuffix = "";
+      if (
+        machineImportFlow.machineConfigImport?.machineConfig.userIni.sourcePath
+      ) {
+        statusSuffix = `: ${machineImportFlow.machineConfigImport.machineConfig.userIni.sourcePath}`;
+      } else if (draft.sourcePath) {
+        statusSuffix = `: ${draft.sourcePath}`;
+      }
       const opened = await actions.openPreparedProject(result.project, {
         status: t("landing.importedMachineStatus", {
-          suffix: machineImportFlow.machineConfigImport?.machineConfig.userIni
-            .sourcePath
-            ? `: ${machineImportFlow.machineConfigImport.machineConfig.userIni.sourcePath}`
-            : draft.sourcePath
-              ? `: ${draft.sourcePath}`
-              : "",
+          suffix: statusSuffix,
         }),
         warnings: result.warnings,
       });

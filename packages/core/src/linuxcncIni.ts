@@ -108,14 +108,14 @@ export function collectLinuxCncHalReferences(
     if (section.name.toUpperCase() !== "HAL") continue;
     for (const entry of section.entries) {
       const keyUpper = entry.key.toUpperCase();
-      const kind =
-        keyUpper === "HALFILE"
-          ? "HALFILE"
-          : keyUpper === "POSTGUI_HALFILE"
-            ? "POSTGUI_HALFILE"
-            : keyUpper === "SHUTDOWN"
-              ? "SHUTDOWN"
-              : null;
+      let kind: "HALFILE" | "POSTGUI_HALFILE" | "SHUTDOWN" | null = null;
+      if (keyUpper === "HALFILE") {
+        kind = "HALFILE";
+      } else if (keyUpper === "POSTGUI_HALFILE") {
+        kind = "POSTGUI_HALFILE";
+      } else if (keyUpper === "SHUTDOWN") {
+        kind = "SHUTDOWN";
+      }
       if (!kind) continue;
       const tokens = tokenizeIniCommand(entry.value);
       const fileToken = tokens[0];

@@ -19,7 +19,9 @@ export function invertDirection(direction: PinDirection): PinDirection {
 }
 
 export function pinDirectionToSide(direction: PinDirection): PortSide {
-  return direction === "in" ? "left" : direction === "out" ? "right" : "bottom";
+  if (direction === "in") return "left";
+  if (direction === "out") return "right";
+  return "bottom";
 }
 
 export function getSheet(

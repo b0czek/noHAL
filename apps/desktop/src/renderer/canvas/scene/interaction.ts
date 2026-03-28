@@ -262,12 +262,12 @@ export function bindSceneInteractions(
     evt.evt.preventDefault();
 
     if (!(wheelEvt.ctrlKey || wheelEvt.metaKey)) {
-      const deltaScale =
-        wheelEvt.deltaMode === WheelEvent.DOM_DELTA_LINE
-          ? 16
-          : wheelEvt.deltaMode === WheelEvent.DOM_DELTA_PAGE
-            ? stage.height()
-            : 1;
+      let deltaScale = 1;
+      if (wheelEvt.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+        deltaScale = 16;
+      } else if (wheelEvt.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+        deltaScale = stage.height();
+      }
       panCamera(
         runtime.state.camera,
         -wheelEvt.deltaX * deltaScale,

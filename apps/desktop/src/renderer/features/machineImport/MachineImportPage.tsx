@@ -36,13 +36,17 @@ export default function MachineImportPage(props: MachineImportPageProps) {
     ),
   );
 
-  const pageSubtitle = createMemo(() =>
-    flow().step === "machine-files"
-      ? t("projectCreation.subtitleMachineFiles")
-      : flow().step === "mesa"
-        ? t("projectCreation.subtitleMesa")
-        : t("projectCreation.subtitleLink"),
-  );
+  const pageSubtitle = createMemo(() => {
+    const step = flow().step;
+    switch (step) {
+      case "machine-files":
+        return t("projectCreation.subtitleMachineFiles");
+      case "mesa":
+        return t("projectCreation.subtitleMesa");
+      case "link":
+        return t("projectCreation.subtitleLink");
+    }
+  });
 
   const mesaTopology = createMemo(() =>
     deriveMesaTopology(flow().mesaConfig ?? { hosts: [] }),

@@ -120,12 +120,12 @@ export default function ComponentSearchDialog(
     const count = list.length;
     if (count === 0) return;
     const current = activeIndex();
-    const target =
-      current < 0
-        ? step > 0
-          ? 0
-          : count - 1
-        : (current + step + count) % count;
+    let target = 0;
+    if (current < 0) {
+      target = step > 0 ? 0 : count - 1;
+    } else {
+      target = (current + step + count) % count;
+    }
     setActiveIndex(target);
     selectResult(list[target]);
   };

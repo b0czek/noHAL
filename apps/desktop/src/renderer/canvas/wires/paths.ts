@@ -111,18 +111,24 @@ function buildRightAngleWirePoints(points: Pt[]): Pt[] {
     }
 
     const prior = out[out.length - 2];
-    const elbow =
+    let elbow = { x: prev.x, y: next.y };
+    if (
       prior &&
       Math.abs(prev.x - prior.x) > 0.01 &&
       Math.abs(prev.y - prior.y) <= 0.01
-        ? { x: prev.x, y: next.y }
-        : prior &&
-            Math.abs(prev.y - prior.y) > 0.01 &&
-            Math.abs(prev.x - prior.x) <= 0.01
-          ? { x: next.x, y: prev.y }
-          : Math.abs(next.x - prev.x) >= Math.abs(next.y - prev.y)
-            ? { x: next.x, y: prev.y }
-            : { x: prev.x, y: next.y };
+    ) {
+      elbow = { x: prev.x, y: next.y };
+    } else if (
+      prior &&
+      Math.abs(prev.y - prior.y) > 0.01 &&
+      Math.abs(prev.x - prior.x) <= 0.01
+    ) {
+      elbow = { x: next.x, y: prev.y };
+    } else if (Math.abs(next.x - prev.x) >= Math.abs(next.y - prev.y)) {
+      elbow = { x: next.x, y: prev.y };
+    } else {
+      elbow = { x: prev.x, y: next.y };
+    }
 
     pushDistinct(elbow);
     pushDistinct(next);

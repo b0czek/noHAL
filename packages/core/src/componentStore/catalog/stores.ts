@@ -51,18 +51,21 @@ function materializeComponent(
 ): ImportedComponentDefinition {
   const idPrefix = `linuxcnc:${version}:`;
   const sourcePrefix = `git:${refName}:`;
+  let sourcePath = component.sourcePath;
+  if (
+    sourcePath != null &&
+    sourcePath !== "" &&
+    !sourcePath.startsWith("git:")
+  ) {
+    sourcePath = `${sourcePrefix}${sourcePath}`;
+  }
 
   return {
     ...component,
     id: component.id.startsWith(idPrefix)
       ? component.id
       : `${idPrefix}${component.id}`,
-    sourcePath:
-      component.sourcePath == null || component.sourcePath === ""
-        ? component.sourcePath
-        : component.sourcePath.startsWith("git:")
-          ? component.sourcePath
-          : `${sourcePrefix}${component.sourcePath}`,
+    sourcePath,
   };
 }
 

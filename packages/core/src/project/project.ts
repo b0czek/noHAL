@@ -64,6 +64,14 @@ export function createDefaultHalThreads(): HalThreadDefinition[] {
   ];
 }
 
+function defaultSheetPortSide(
+  direction: SheetPort["direction"],
+): SheetPort["side"] {
+  if (direction === "in") return "right";
+  if (direction === "out") return "left";
+  return "top";
+}
+
 function normalizeHalThreads(value: unknown): HalThreadDefinition[] {
   const rawList = Array.isArray(value) ? value : [];
   const out: HalThreadDefinition[] = [];
@@ -372,9 +380,7 @@ export function createSheetPortDraft(
     name: slugify(name).replace(/-/g, "_"),
     direction,
     type,
-    side:
-      side ??
-      (direction === "in" ? "right" : direction === "out" ? "left" : "top"),
+    side: side ?? defaultSheetPortSide(direction),
     position: { x: 0, y: 0 },
     rotation: 0,
   };

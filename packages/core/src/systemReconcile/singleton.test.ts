@@ -337,11 +337,13 @@ describe("systemReconcile singleton", () => {
   });
 
   it("does not promote imported members that already match by identity", () => {
+    const expectedDirections = ["out", "in", "io"] as const;
+    const expectedTypes = ["float", "u32", "s32"] as const;
     const matchingPins: ComponentPinDefinition[] =
       createImportedTestComponent().pins.map((pin, index) => ({
         ...pin,
-        direction: index === 0 ? "out" : index === 1 ? "in" : "io",
-        type: index === 0 ? "float" : index === 1 ? "u32" : "s32",
+        direction: expectedDirections[index] ?? "io",
+        type: expectedTypes[index] ?? "s32",
       }));
 
     const override = buildSystemOverrideDefinition(

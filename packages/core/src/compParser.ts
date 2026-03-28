@@ -581,11 +581,12 @@ function parseFunctionStatement(
 }
 
 function toComponentId(halComponentName: string, filePath?: string): string {
-  const base = filePath
-    ? filePath.endsWith(".comp")
+  let base = halComponentName;
+  if (filePath) {
+    base = filePath.endsWith(".comp")
       ? basename(filePath).slice(0, -".comp".length)
-      : basename(filePath)
-    : halComponentName;
+      : basename(filePath);
+  }
   return `comp:${slugify(base)}:${slugify(halComponentName)}`;
 }
 

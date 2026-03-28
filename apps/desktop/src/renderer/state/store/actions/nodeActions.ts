@@ -226,12 +226,12 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const used = new Set(sheet.ports.map((p) => p.name));
-        const base =
-          direction === "in"
-            ? "in_sig"
-            : direction === "out"
-              ? "out_sig"
-              : "io_sig";
+        let base = "io_sig";
+        if (direction === "in") {
+          base = "in_sig";
+        } else if (direction === "out") {
+          base = "out_sig";
+        }
         const name = nextName(base, used);
         const port = createSheetPortDraft(name, direction, type);
         port.position = position ?? defaultPortPosition(sheet, port.side);

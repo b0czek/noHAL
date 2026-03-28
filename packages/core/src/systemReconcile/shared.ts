@@ -212,17 +212,15 @@ function mergeSystemFunctions(
   const merged = expectedFunctions.map((fn) => {
     const current = currentByIdentity.get(functionIdentity(fn));
     if (!current) return fn;
+    const addfTargetTemplate =
+      current.addfTargetTemplate ?? fn.addfTargetTemplate;
     return {
       ...fn,
       key: current.key,
       declaredName: current.declaredName,
       halSuffix: current.halSuffix,
       ...(current.doc ? { doc: current.doc } : {}),
-      ...(current.addfTargetTemplate
-        ? { addfTargetTemplate: current.addfTargetTemplate }
-        : fn.addfTargetTemplate
-          ? { addfTargetTemplate: fn.addfTargetTemplate }
-          : {}),
+      ...(addfTargetTemplate ? { addfTargetTemplate } : {}),
     };
   });
 

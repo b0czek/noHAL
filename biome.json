@@ -21,6 +21,9 @@
       "complexity": {
         "noForEach": "error"
       },
+      "style": {
+        "noNestedTernary": "error"
+      },
       "suspicious": {
         "noUnknownAtRules": "off"
       }

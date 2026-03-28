@@ -68,6 +68,14 @@ function mergeDirections(values: Array<PinDirection>): PinDirection {
   return "io";
 }
 
+function importPinDirectionToSide(
+  direction: PinDirection | undefined,
+): "left" | "right" | "bottom" {
+  if (direction === "out") return "right";
+  if (direction === "in") return "left";
+  return "bottom";
+}
+
 function observedNameCandidates(value: string): string[] {
   const trimmed = value.trim();
   if (!trimmed) return [];
@@ -1227,12 +1235,7 @@ export function buildProjectFromHalImport(
       const dedupeKey = `${prepared.net.name}::${item.nodeId}::${item.pinKey}`;
       if (countedDemandAnchors.has(dedupeKey)) continue;
       countedDemandAnchors.add(dedupeKey);
-      const side =
-        item.direction === "out"
-          ? "right"
-          : item.direction === "in"
-            ? "left"
-            : "bottom";
+      const side = importPinDirectionToSide(item.direction);
       plannedImportedLabels.push({
         anchorKey: dedupeKey,
         netName: prepared.net.name,
@@ -1584,8 +1587,7 @@ export function buildProjectFromHalImport(
           endpointIndex * 4,
       };
     }
-    const side =
-      direction === "out" ? "right" : direction === "in" ? "left" : "bottom";
+    const side = importPinDirectionToSide(direction);
     const anchorKey = `${labelName}::${nodeId}::${pinKey}`;
     const placement = labelPlacementByAnchorKey.get(anchorKey);
     const slot = placement?.slot ?? endpointIndex;

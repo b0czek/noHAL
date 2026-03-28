@@ -15,12 +15,12 @@ function resolveCountConfigValue(
     typeof field?.defaultValue === "number"
       ? Math.round(field.defaultValue)
       : Number.parseInt(`${field?.defaultValue ?? ""}`, 10);
-  let count =
-    Number.isFinite(parsed) && parsed >= 0
-      ? parsed
-      : Number.isFinite(fallback) && fallback >= 0
-        ? fallback
-        : 0;
+  let count = 0;
+  if (Number.isFinite(parsed) && parsed >= 0) {
+    count = parsed;
+  } else if (Number.isFinite(fallback) && fallback >= 0) {
+    count = fallback;
+  }
   const min = field?.min;
   const max = field?.max;
   if (Number.isFinite(min)) count = Math.max(min ?? count, count);

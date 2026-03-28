@@ -120,14 +120,14 @@ export function defaultPositionForMotmodFamily(
   family: MotmodManagedFamily,
   index: number,
 ): { x: number; y: number } {
-  const baseX =
-    family === "motion"
-      ? 120
-      : family === "axis"
-        ? 420
-        : family === "joint"
-          ? 760
-          : 1100;
+  let baseX = 1100;
+  if (family === "motion") {
+    baseX = 120;
+  } else if (family === "axis") {
+    baseX = 420;
+  } else if (family === "joint") {
+    baseX = 760;
+  }
   const baseY = 120;
   const row = index % 9;
   const col = Math.floor(index / 9);

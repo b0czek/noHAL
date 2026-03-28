@@ -78,17 +78,22 @@ export function prepareLinkStepState(args: {
     if (isSystemGroup || isMesaSystemGroup) {
       systemLinkGroupIds.add(suggestion.groupId);
     }
-    nextSelections[suggestion.groupId] =
-      suggestion.selection.mode === "store"
-        ? `store:${suggestion.selection.componentId}`
-        : isSystemGroup || isMesaSystemGroup
-          ? "system"
-          : "local";
-    nextReasons[suggestion.groupId] = isSystemGroup
-      ? args.systemAutoReason
-      : isMesaSystemGroup
-        ? args.mesaSystemAutoReason
-        : suggestion.reason;
+    if (suggestion.selection.mode === "store") {
+      nextSelections[suggestion.groupId] =
+        `store:${suggestion.selection.componentId}`;
+    } else if (isSystemGroup || isMesaSystemGroup) {
+      nextSelections[suggestion.groupId] = "system";
+    } else {
+      nextSelections[suggestion.groupId] = "local";
+    }
+
+    if (isSystemGroup) {
+      nextReasons[suggestion.groupId] = args.systemAutoReason;
+    } else if (isMesaSystemGroup) {
+      nextReasons[suggestion.groupId] = args.mesaSystemAutoReason;
+    } else {
+      nextReasons[suggestion.groupId] = suggestion.reason;
+    }
   }
 
   return {

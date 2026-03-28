@@ -144,14 +144,21 @@ function setRenderedGroupPosition(
   target: DragSelectionTarget,
   pos: Pt,
 ): void {
-  const group =
-    target.kind === "node"
-      ? runtime.graph.nodeGroups.get(target.id)
-      : target.kind === "label"
-        ? runtime.graph.labelGroups.get(target.id)
-        : target.kind === "comment"
-          ? runtime.graph.commentGroups.get(target.id)
-          : runtime.graph.portGroups.get(target.id);
+  let group = null;
+  switch (target.kind) {
+    case "node":
+      group = runtime.graph.nodeGroups.get(target.id);
+      break;
+    case "label":
+      group = runtime.graph.labelGroups.get(target.id);
+      break;
+    case "comment":
+      group = runtime.graph.commentGroups.get(target.id);
+      break;
+    case "sheet-port":
+      group = runtime.graph.portGroups.get(target.id);
+      break;
+  }
   if (group) group.position(pos);
 }
 

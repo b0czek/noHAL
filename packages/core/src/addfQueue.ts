@@ -16,12 +16,13 @@ export function addfQueueEntryNodeId(
 export function addfQueueEntryKey(
   entry: SheetAddfQueueStoredEntry,
 ): string | null {
-  const threadSuffix =
-    typeof entry === "string"
-      ? ""
-      : entry.sheetThreadOutputId?.trim()
-        ? `@${entry.sheetThreadOutputId.trim()}`
-        : "";
+  let threadSuffix = "";
+  if (typeof entry !== "string") {
+    const threadOutputId = entry.sheetThreadOutputId?.trim();
+    if (threadOutputId) {
+      threadSuffix = `@${threadOutputId}`;
+    }
+  }
   const nodeId = addfQueueEntryNodeId(entry);
   if (!nodeId) return null;
   if (typeof entry === "string" || entry.kind === "node") {

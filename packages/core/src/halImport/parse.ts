@@ -593,8 +593,14 @@ export function parseHalImportDraft(
       for (let i = 0; i < endpoints.length; i += 1) {
         const endpoint = endpoints[i];
         const explicit = endpointRoles[i];
-        const direction =
-          explicit ?? (endpoints.length <= 1 ? "io" : i === 0 ? "out" : "in");
+        let direction = explicit;
+        if (!direction) {
+          if (endpoints.length <= 1) {
+            direction = "io";
+          } else {
+            direction = i === 0 ? "out" : "in";
+          }
+        }
         const record = ensureInstanceRecord(instances, endpoint.instanceName);
         addObservedPin(record, endpoint.pinName, direction);
       }
@@ -630,13 +636,14 @@ export function parseHalImportDraft(
   const componentGroups: HalImportComponentGroup[] = [...groupsByName.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([componentName, groupInstances]) => {
-      const runtimeHint = groupInstances.some(
-        (item) => item.runtimeHint === "rt",
-      )
-        ? "rt"
-        : groupInstances.some((item) => item.runtimeHint === "userspace")
-          ? "userspace"
-          : "unknown";
+      let runtimeHint: "rt" | "userspace" | "unknown" = "unknown";
+      if (groupInstances.some((item) => item.runtimeHint === "rt")) {
+        runtimeHint = "rt";
+      } else if (
+        groupInstances.some((item) => item.runtimeHint === "userspace")
+      ) {
+        runtimeHint = "userspace";
+      }
 
       const pinMap = new Map<string, HalImportObservedPin>();
       const paramMap = new Map<string, HalImportObservedParam>();
