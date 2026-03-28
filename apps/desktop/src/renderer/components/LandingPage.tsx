@@ -2,9 +2,9 @@ import {
   type LinuxCncVersion,
   SUPPORTED_LINUXCNC_VERSIONS,
 } from "@nohal/core/src/linuxcncVersion";
-import type { RecentProjectEntry } from "@nohal/core/src/types";
 import { HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
 import { createSignal, For, Show } from "solid-js";
+import type { RecentProjectEntry } from "../../shared/recentProjects";
 import type { LandingProjectFlowController } from "../app/useLandingProjectFlow";
 import GeneralSettingsDialog from "../features/generalSettings";
 import { useI18n } from "../i18n";
@@ -187,8 +187,17 @@ export default function LandingPage(props: LandingPageProps) {
                             {recentProjectPathTail(entry.projectPath)}
                           </div>
                         </div>
-                        <div class="justify-self-end text-xs text-muted-foreground max-sm:justify-self-start">
-                          {formatDateTime(entry.lastOpenedAt)}
+                        <div class="flex flex-col items-end gap-1 justify-self-end text-xs text-muted-foreground max-sm:items-start max-sm:justify-self-start">
+                          <Show when={entry.linuxCncVersion}>
+                            {(version) => (
+                              <div class="font-medium text-foreground/75">
+                                {t("landing.recentProjectVersion", {
+                                  version: version(),
+                                })}
+                              </div>
+                            )}
+                          </Show>
+                          <div>{formatDateTime(entry.lastOpenedAt)}</div>
                         </div>
                       </button>
                     )}

@@ -1,8 +1,6 @@
-import type {
-  LinuxCncVersion,
-  RecentProjectEntry,
-} from "@nohal/core/src/types";
+import type { LinuxCncVersion } from "@nohal/core/src/types";
 import { type Accessor, createSignal, onMount, type Setter } from "solid-js";
+import type { RecentProjectEntry } from "../../shared/recentProjects";
 import { useEditorStore } from "../state/EditorStoreProvider";
 
 interface UseLandingProjectFlowArgs {

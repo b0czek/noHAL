@@ -109,7 +109,11 @@ export function registerIpcHandlers(): void {
     const result = await projectDirectory.readProjectPath(res.filePaths[0]);
     const win = BrowserWindow.fromWebContents(evt.sender);
     await maybeWarnAboutNewerProject(win, result.savedWith);
-    await touchRecentProject(result.projectPath, result.project.name);
+    await touchRecentProject(
+      result.projectPath,
+      result.project.name,
+      result.project.target.linuxcncVersion,
+    );
     return result;
   });
 
@@ -117,7 +121,11 @@ export function registerIpcHandlers(): void {
     const result = await projectDirectory.readProjectPath(projectPath);
     const win = BrowserWindow.fromWebContents(evt.sender);
     await maybeWarnAboutNewerProject(win, result.savedWith);
-    await touchRecentProject(result.projectPath, result.project.name);
+    await touchRecentProject(
+      result.projectPath,
+      result.project.name,
+      result.project.target.linuxcncVersion,
+    );
     return result;
   });
 
@@ -139,7 +147,11 @@ export function registerIpcHandlers(): void {
         target,
         { savedWith: NOHAL_APP_VERSION },
       );
-      await touchRecentProject(savedProjectPath, project.name);
+      await touchRecentProject(
+        savedProjectPath,
+        project.name,
+        project.target.linuxcncVersion,
+      );
       return { projectPath: savedProjectPath };
     },
   );

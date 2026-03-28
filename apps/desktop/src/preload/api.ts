@@ -8,9 +8,9 @@ import type {
   MachineConfigImportDraft,
   MachineConfigImportSetupDraft,
   NoHALProject,
-  RecentProjectEntry,
 } from "@nohal/core/src/types";
 import type { AppSettings, AppSettingsPatch } from "../shared/appSettings";
+import type { RecentProjectEntry } from "../shared/recentProjects";
 
 export type UnsavedChangesChoice = "save" | "discard" | "cancel";
 

@@ -34,6 +34,7 @@ export const en = {
   "landing.noRecentProjectsHint":
     "No recent projects yet. Create a blank project, import a machine configuration, or open an existing project.",
   "landing.targetLinuxCncVersion": "Target LinuxCNC version",
+  "landing.recentProjectVersion": "LinuxCNC {version}",
   "landing.importedMachineStatus": "Imported machine configuration{suffix}",
   "landing.generalSettings": "General Settings",
 
