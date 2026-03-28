@@ -438,6 +438,14 @@ export function useMachineImportFlow({
       customComponentDefinitionEdits.loadCommand.update(component, value);
     });
 
+  const updateGeneratedLocalComponentMaxInstances = (
+    groupId: string,
+    value: number | undefined,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      customComponentDefinitionEdits.maxInstances.update(component, value);
+    });
+
   const addGeneratedLocalComponentPin = (groupId: string) =>
     updateGeneratedLocalComponent(groupId, (component) => {
       customComponentDefinitionEdits.pin.add(component);
@@ -553,6 +561,8 @@ export function useMachineImportFlow({
       updateGeneratedLocalComponentRuntimeKind(groupId, value),
     onLoadCommandChange: (value) =>
       updateGeneratedLocalComponentLoadCommand(groupId, value),
+    onMaxInstancesChange: (value) =>
+      updateGeneratedLocalComponentMaxInstances(groupId, value),
     onAddPin: () => addGeneratedLocalComponentPin(groupId),
     onRemovePin: (pinKey) => removeGeneratedLocalComponentPin(groupId, pinKey),
     onPinNameChange: (pinKey, value) =>
@@ -601,6 +611,7 @@ export function useMachineImportFlow({
     updateGeneratedLocalComponentHalComponentName,
     updateGeneratedLocalComponentRuntimeKind,
     updateGeneratedLocalComponentLoadCommand,
+    updateGeneratedLocalComponentMaxInstances,
     addGeneratedLocalComponentPin,
     removeGeneratedLocalComponentPin,
     updateGeneratedLocalComponentPinName,

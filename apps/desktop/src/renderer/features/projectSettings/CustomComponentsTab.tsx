@@ -187,6 +187,9 @@ export default function CustomComponentsTab() {
               onLoadCommandChange={(value) =>
                 actions.updateCustomComponentLoadCommand(component().id, value)
               }
+              onMaxInstancesChange={(value) =>
+                actions.updateCustomComponentMaxInstances(component().id, value)
+              }
               onAddPin={() => actions.addCustomComponentPin(component().id)}
               onRemovePin={(pinKey) =>
                 actions.removeCustomComponentPin(component().id, pinKey)

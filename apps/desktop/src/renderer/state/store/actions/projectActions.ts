@@ -425,6 +425,36 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       });
     },
 
+    updateCustomComponentMaxInstances(
+      componentId: string,
+      maxInstances: number | undefined,
+    ): void {
+      const component = deps.state.project.library.components[componentId];
+
+      if (!component || component.source === "comp") {
+        deps.setStatusT("store.status.selectedComponentNotCustom");
+        return;
+      }
+
+      let componentName = "";
+
+      deps.withProject((project) => {
+        const updated = customComponentEdits.maxInstances.update(
+          project,
+          componentId,
+          maxInstances,
+        );
+
+        if (!updated) return;
+
+        componentName = updated.halComponentName;
+      });
+
+      deps.setStatusT("store.status.updatedCustomComponent", {
+        componentName,
+      });
+    },
+
     addCustomComponentPin(componentId: string): void {
       let componentName = "";
       let added = false;

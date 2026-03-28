@@ -6,6 +6,7 @@ import {
   makeAddfQueueSubsheetOutputEntry,
 } from "../addfQueue";
 import { resolveAddfFunctionTarget } from "../componentFunctions";
+import { interpolateCustomLoadCommand } from "../customComponent/loadCommand";
 import { getSheet } from "../graph";
 import { isValidHalName } from "../halNames";
 import { interpolateLoadrt, interpolateLoadrtByStrategy } from "../loadrt";
@@ -26,6 +27,14 @@ interface AddfEntry {
   functionName: string;
   thread: string;
   parentSheetPath: string;
+}
+
+interface PreparedComponentRuntimeGroup {
+  componentName: string;
+  component: NoHALProject["library"]["components"][string] | undefined;
+  items: RuntimeInstanceRecord[];
+  sortedNames: string[];
+  instanceConfigByPath?: Record<string, Record<string, string>>;
 }
 
 function isCanonicalIndexedInstanceNames(
@@ -59,6 +68,65 @@ function replaceAddfTemplate(
     .replaceAll("{subsheet}", item.parentSheetPath || "top");
 }
 
+function buildInstanceConfigByPath(
+  items: RuntimeInstanceRecord[],
+): Record<string, Record<string, string>> | undefined {
+  const instanceConfigByPath: Record<string, Record<string, string>> = {};
+  for (const item of items) {
+    if (!item.instanceConfigValues) continue;
+    if (Object.keys(item.instanceConfigValues).length === 0) continue;
+    instanceConfigByPath[item.instancePath] = {
+      ...item.instanceConfigValues,
+    };
+  }
+  return Object.keys(instanceConfigByPath).length > 0
+    ? instanceConfigByPath
+    : undefined;
+}
+
+function prepareComponentRuntimeGroup(
+  project: NoHALProject,
+  ctx: ExportContext,
+  componentName: string,
+  items: RuntimeInstanceRecord[],
+): PreparedComponentRuntimeGroup | null {
+  const sortedNames = items
+    .map((item) => item.instancePath)
+    .sort((a, b) => a.localeCompare(b));
+  const component =
+    items.length > 0
+      ? project.library.components[items[0]?.componentId]
+      : undefined;
+  const namingPolicy = component?.runtime?.instanceNaming;
+  if (namingPolicy?.maxInstances && items.length > namingPolicy.maxInstances) {
+    pushFatal(
+      ctx,
+      `Component '${componentName}' supports at most ${namingPolicy.maxInstances} instances, but ${items.length} are present`,
+    );
+    return null;
+  }
+  if (
+    component?.runtime?.kind === "rt" &&
+    namingPolicy?.strategy === "canonical_indexed" &&
+    !isCanonicalIndexedInstanceNames(componentName, sortedNames)
+  ) {
+    const message = `Component '${componentName}' requires canonical instance names '${componentName}.N' for loadrt export`;
+    if (namingPolicy.lockToCanonical) {
+      pushFatal(ctx, message);
+      return null;
+    }
+    ctx.warnings.push(message);
+  }
+  const instanceConfigByPath = buildInstanceConfigByPath(items);
+  return {
+    componentName,
+    component,
+    items,
+    sortedNames,
+    ...(instanceConfigByPath ? { instanceConfigByPath } : {}),
+  };
+}
+
 export function buildRuntimeSections(
   project: NoHALProject,
   ctx: ExportContext,
@@ -90,6 +158,13 @@ export function buildRuntimeSections(
       seenInstancePaths.add(item.instancePath);
       return true;
     });
+  const itemsByComponentName = new Map<string, RuntimeInstanceRecord[]>();
+  for (const item of allInstances) {
+    const list = itemsByComponentName.get(item.componentName);
+    if (list) list.push(item);
+    else itemsByComponentName.set(item.componentName, [item]);
+  }
+
   const customLoadByComponentName = new Map<string, string>();
   for (const item of allInstances) {
     const loadCommand =
@@ -120,17 +195,31 @@ export function buildRuntimeSections(
     (item) => item.runtimeKind === "unknown" && !hasCustomLoad(item),
   );
 
+  const preparedByComponentName = new Map<
+    string,
+    PreparedComponentRuntimeGroup
+  >();
+  for (const [componentName, items] of itemsByComponentName) {
+    const prepared = prepareComponentRuntimeGroup(
+      project,
+      ctx,
+      componentName,
+      items,
+    );
+    if (prepared) preparedByComponentName.set(componentName, prepared);
+  }
+
   for (const item of unknownRuntimeInstances) {
     ctx.warnings.push(
       `Component '${item.instancePath}' (${item.componentName}) has unknown runtime kind; skipping loadrt/addf generation for it`,
     );
   }
 
-  const rtGroups = new Map<string, RuntimeInstanceRecord[]>();
+  const rtGroups = new Map<string, PreparedComponentRuntimeGroup>();
   for (const item of rtInstances) {
-    const list = rtGroups.get(item.componentName);
-    if (list) list.push(item);
-    else rtGroups.set(item.componentName, [item]);
+    const prepared = preparedByComponentName.get(item.componentName);
+    if (!prepared) continue;
+    rtGroups.set(item.componentName, prepared);
   }
 
   const sortedRtGroups = [...rtGroups.entries()].sort(([nameA], [nameB]) => {
@@ -165,7 +254,16 @@ export function buildRuntimeSections(
       if (prioA !== prioB) return prioA - prioB;
       return nameA.localeCompare(nameB);
     })
-    .map(([, line]) => line);
+    .flatMap(([componentName, line]) => {
+      const prepared = preparedByComponentName.get(componentName);
+      if (!prepared) return [];
+      const result = interpolateCustomLoadCommand({
+        componentName,
+        instancePaths: prepared.sortedNames,
+        loadCommand: line,
+      });
+      return [result.line];
+    });
 
   const loadrtLines: string[] = [];
   const projectHalThreads = (project.halThreads ?? []).filter(
@@ -177,11 +275,11 @@ export function buildRuntimeSections(
   const motmodExtraArgs = (motmodRule?.loadrtArgs ?? [])
     .map((arg) => `${arg}`.trim())
     .filter(Boolean);
-  const motmodItems = rtGroups.get("motmod") ?? [];
+  const motmodGroup = rtGroups.get("motmod");
   const emitMotmodLoadrt = (): void => {
     const motmodLoadrtResult = interpolateLoadrtByStrategy("motmod", {
       componentName: "motmod",
-      instancePaths: motmodItems.map((item) => item.instancePath),
+      instancePaths: motmodGroup?.sortedNames ?? [],
       extraArgs: motmodExtraArgs,
       runtime: { kind: "rt" },
       project: { halThreads: projectHalThreads, motmod: project.motmod },
@@ -227,7 +325,7 @@ export function buildRuntimeSections(
     }
   }
 
-  for (const [componentName, items] of sortedRtGroups) {
+  for (const [componentName, prepared] of sortedRtGroups) {
     const rule = rules[componentName];
     const extraArgs = (rule?.loadrtArgs ?? [])
       .map((arg) => `${arg}`.trim())
@@ -237,51 +335,14 @@ export function buildRuntimeSections(
       continue;
     }
 
-    const sortedNames = items
-      .map((item) => item.instancePath)
-      .sort((a, b) => a.localeCompare(b));
-    const component =
-      items.length > 0
-        ? project.library.components[items[0]?.componentId]
-        : undefined;
-    const namingPolicy = component?.runtime?.instanceNaming;
-    if (
-      namingPolicy?.maxInstances &&
-      items.length > namingPolicy.maxInstances
-    ) {
-      pushFatal(
-        ctx,
-        `Component '${componentName}' supports at most ${namingPolicy.maxInstances} instances, but ${items.length} are present`,
-      );
-      continue;
-    }
-    if (
-      namingPolicy?.strategy === "canonical_indexed" &&
-      !isCanonicalIndexedInstanceNames(componentName, sortedNames)
-    ) {
-      const message = `Component '${componentName}' requires canonical instance names '${componentName}.N' for loadrt export`;
-      if (namingPolicy.lockToCanonical) {
-        pushFatal(ctx, message);
-        continue;
-      }
-      ctx.warnings.push(message);
-    }
-    const instanceConfigByPath: Record<string, Record<string, string>> = {};
-    for (const item of items) {
-      if (!item.instanceConfigValues) continue;
-      if (Object.keys(item.instanceConfigValues).length === 0) continue;
-      instanceConfigByPath[item.instancePath] = {
-        ...item.instanceConfigValues,
-      };
-    }
     const loadrtResult = interpolateLoadrt({
       componentName,
-      instancePaths: sortedNames,
-      ...(Object.keys(instanceConfigByPath).length > 0
-        ? { instanceConfigByPath }
+      instancePaths: prepared.sortedNames,
+      ...(prepared.instanceConfigByPath
+        ? { instanceConfigByPath: prepared.instanceConfigByPath }
         : {}),
       extraArgs,
-      runtime: component?.runtime,
+      runtime: prepared.component?.runtime,
     });
     loadrtLines.push(...loadrtResult.lines);
     if (loadrtResult.warnings?.length) {

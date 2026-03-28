@@ -169,7 +169,7 @@ describe("exportProjectToHal connection signal names", () => {
     expect(warnings.some((w) => w.includes("Export aborted"))).toBe(true);
   });
 
-  it("emits custom component load strings and skips generated loadrt for those components", () => {
+  it("interpolates custom component load strings and skips generated loadrt for those components", () => {
     const project = createEmptyProject("Custom Load Test");
     const sheet = project.sheets[project.rootSheetId];
     project.library.components["custom:manual-loader"] = {
@@ -177,8 +177,11 @@ describe("exportProjectToHal connection signal names", () => {
       name: "manual-loader",
       halComponentName: "manual_loader",
       source: "manual",
-      runtime: { kind: "rt" },
-      loadCommand: "loadrt manual_loader cfg=demo",
+      runtime: {
+        kind: "rt",
+        instanceNaming: { strategy: "free", maxInstances: 2 },
+      },
+      loadCommand: "loadrt %{component} custom_names=%n count=%{count}",
       pins: [{ key: "out", name: "out", direction: "out", type: "bit" }],
       params: [],
     };
@@ -193,7 +196,9 @@ describe("exportProjectToHal connection signal names", () => {
 
     const { text } = exportProjectToHal(project);
 
-    expect(text).toContain("loadrt manual_loader cfg=demo");
+    expect(text).toContain(
+      "loadrt manual_loader custom_names=manual_loader.0 count=1",
+    );
     expect(text).not.toContain("loadrt manual_loader names=");
   });
 
@@ -230,6 +235,51 @@ describe("exportProjectToHal connection signal names", () => {
 
     expect(text).toContain("setp ini_ref.0.gain [TRAJ]DEFAULT_LINEAR_VELOCITY");
     expect(text).toContain("setp ini_ref.0.offset [DISPLAY]MAX_FEED_OVERRIDE");
+  });
+
+  it("applies custom-component max instance limits to custom loadusr exports", () => {
+    const project = createEmptyProject("Custom Loadusr Max");
+    const sheet = project.sheets[project.rootSheetId];
+    project.library.components["custom:manual-userspace"] = {
+      id: "custom:manual-userspace",
+      name: "manual-userspace",
+      halComponentName: "manual_userspace",
+      source: "manual",
+      runtime: {
+        kind: "userspace",
+        instanceNaming: { strategy: "free", maxInstances: 1 },
+      },
+      loadCommand: "loadusr -Wn %{first_instance} manual_userspace",
+      pins: [{ key: "out", name: "out", direction: "out", type: "bit" }],
+      params: [],
+    };
+    sheet.nodes.push(
+      {
+        id: "node_userspace_0",
+        kind: "component",
+        componentId: "custom:manual-userspace",
+        instanceName: "manual_userspace_0",
+        position: { x: 0, y: 0 },
+        paramValues: {},
+      },
+      {
+        id: "node_userspace_1",
+        kind: "component",
+        componentId: "custom:manual-userspace",
+        instanceName: "manual_userspace_1",
+        position: { x: 20, y: 20 },
+        paramValues: {},
+      },
+    );
+
+    const { text, warnings } = exportProjectToHal(project);
+
+    expect(text).toBe("");
+    expect(
+      warnings.some((warning) =>
+        warning.includes("supports at most 1 instances, but 2 are present"),
+      ),
+    ).toBe(true);
   });
 
   it("emits nets for postgui-marked component instances into postgui output", () => {

@@ -254,9 +254,15 @@ export const en = {
   "customComponents.runtimeRt": "rt",
   "customComponents.runtimeUserspace": "userspace",
   "customComponents.runtimeUnknown": "unknown",
+  "customComponents.maxInstances": "Max Instances",
   "customComponents.loadString": "Load string",
   "customComponents.loadStringPlaceholder":
-    "Example: loadusr -W hal_manualtoolchange",
+    "Example: loadrt custom_logic count=%{count} or loadusr -Wn %{first_instance} custom_logic",
+  "customComponents.loadStringHelpTitle": "Interpolation",
+  "customComponents.loadStringHelpSubtitle":
+    "Use instance placeholders when you need a custom load command.",
+  "customComponents.loadStringHelpTokens": "Tokens",
+  "customComponents.loadStringHelpAliases": "Short aliases",
   "customComponents.pinsTitle": "Pins",
   "customComponents.addPin": "Add Pin",
   "customComponents.noPins": "No pins.",

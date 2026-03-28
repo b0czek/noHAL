@@ -1,6 +1,10 @@
+import {
+  customLoadCommandInterpolationAliases,
+  customLoadCommandInterpolationTokens,
+} from "@nohal/core/src/customComponent";
 import type { ComponentDefinition, HalValueType } from "@nohal/core/src/types";
 import { HiOutlinePlus, HiOutlineTrash } from "solid-icons/hi";
-import { For, Show } from "solid-js";
+import { createMemo, For, Show } from "solid-js";
 import StringSelect from "../../components/form/StringSelect";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -12,6 +16,7 @@ export interface CustomComponentEditorProps {
   onHalComponentNameChange: (value: string) => void;
   onRuntimeKindChange: (value: "rt" | "userspace" | "unknown") => void;
   onLoadCommandChange: (value: string) => void;
+  onMaxInstancesChange: (value: number | undefined) => void;
   onAddPin: () => void;
   onRemovePin: (pinKey: string) => void;
   onPinNameChange: (pinKey: string, value: string) => void;
@@ -42,6 +47,10 @@ export default function CustomComponentEditor(
   props: CustomComponentEditorProps,
 ) {
   const { t } = useI18n();
+  const loadStringHint = createMemo(
+    () =>
+      `${t("customComponents.loadStringHelpTitle")}\n${t("customComponents.loadStringHelpSubtitle")}\n\n${t("customComponents.loadStringHelpTokens")}: ${customLoadCommandInterpolationTokens.join(", ")}\n${t("customComponents.loadStringHelpAliases")}: ${customLoadCommandInterpolationAliases.join(", ")}`,
+  );
 
   const fieldLabelClass =
     "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
@@ -115,10 +124,39 @@ export default function CustomComponentEditor(
           />
         </div>
 
-        <div class="grid gap-2 lg:col-span-2">
+        <div class="grid gap-2">
           <span class={fieldLabelClass}>
-            {t("customComponents.loadString")}
+            {t("customComponents.maxInstances")}
           </span>
+          <Input
+            type="number"
+            min="1"
+            step="1"
+            value={props.component.runtime?.instanceNaming?.maxInstances ?? ""}
+            placeholder={t("customComponents.optionalValue")}
+            onChange={(evt) => {
+              const raw = evt.currentTarget.value.trim();
+              props.onMaxInstancesChange(
+                raw ? Number.parseInt(raw, 10) : undefined,
+              );
+            }}
+          />
+        </div>
+
+        <div class="grid gap-2 lg:col-span-2">
+          <div class="flex items-center gap-2">
+            <span class={fieldLabelClass}>
+              {t("customComponents.loadString")}
+            </span>
+            <button
+              type="button"
+              class="inline-flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[11px] font-semibold text-muted-foreground transition hover:bg-white/[0.08] hover:text-foreground"
+              title={loadStringHint()}
+              aria-label={loadStringHint()}
+            >
+              ?
+            </button>
+          </div>
           <Textarea
             class="mono min-h-[80px]"
             rows={2}

@@ -5,6 +5,14 @@ import type {
 } from "../types";
 import { createCustomComponentParam, createCustomComponentPin } from "./shared";
 
+function normalizeMaxInstances(
+  maxInstances: number | undefined,
+): number | undefined {
+  if (!Number.isFinite(maxInstances)) return undefined;
+  const normalized = Math.trunc(maxInstances ?? 0);
+  return normalized > 0 ? normalized : undefined;
+}
+
 function updateHalComponentName(
   component: ComponentDefinition,
   halComponentName: string,
@@ -36,6 +44,35 @@ function updateLoadCommand(
   if ((component.loadCommand ?? "").trim() === normalized) return false;
   if (normalized) component.loadCommand = normalized;
   else delete component.loadCommand;
+  return true;
+}
+
+function updateMaxInstances(
+  component: ComponentDefinition,
+  maxInstances: number | undefined,
+): boolean {
+  const normalized = normalizeMaxInstances(maxInstances);
+  const existing = component.runtime?.instanceNaming?.maxInstances;
+
+  if (existing === normalized) return false;
+
+  component.runtime ??= { kind: "unknown" };
+
+  if (normalized !== undefined) {
+    // Keep any existing naming mode and only apply the placement limit.
+    component.runtime.instanceNaming = {
+      ...(component.runtime.instanceNaming ?? { strategy: "free" }),
+      maxInstances: normalized,
+    };
+  } else if (component.runtime.instanceNaming) {
+    delete component.runtime.instanceNaming.maxInstances;
+
+    // Drop the helper object once it no longer carries any custom state.
+    if (component.runtime.instanceNaming.strategy === "free") {
+      delete component.runtime.instanceNaming;
+    }
+  }
+
   return true;
 }
 
@@ -174,6 +211,9 @@ export const customComponentDefinitionEdits = {
   },
   loadCommand: {
     update: updateLoadCommand,
+  },
+  maxInstances: {
+    update: updateMaxInstances,
   },
   pin: {
     add: addPin,

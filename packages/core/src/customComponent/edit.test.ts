@@ -70,11 +70,25 @@ describe("custom component edits", () => {
       component,
       " imported_comp ",
     );
+    customComponentDefinitionEdits.runtimeKind.update(component, "rt");
+    customComponentDefinitionEdits.maxInstances.update(component, 4);
+    customComponentDefinitionEdits.loadCommand.update(
+      component,
+      "loadrt imported_comp count=%{count}",
+    );
     const addedPin = customComponentDefinitionEdits.pin.add(component);
     const addedParam = customComponentDefinitionEdits.param.add(component);
 
     expect(component.halComponentName).toBe("imported_comp");
     expect(component.name).toBe("imported_comp");
+    expect(component.runtime).toMatchObject({
+      kind: "rt",
+      instanceNaming: {
+        strategy: "free",
+        maxInstances: 4,
+      },
+    });
+    expect(component.loadCommand).toBe("loadrt imported_comp count=%{count}");
     expect(addedPin.name).toBe("pin_2");
     expect(addedPin.key).toBe("pin_2");
     expect(addedParam.name).toBe("param_2");
