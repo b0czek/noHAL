@@ -18,6 +18,9 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "complexity": {
+        "noForEach": "error"
+      },
       "suspicious": {
         "noUnknownAtRules": "off"
       }

@@ -1546,15 +1546,15 @@ export function buildProjectFromHalImport(
     }
   } else {
     const gridPlan = planNodeGrid(nodeIdsInOrder);
-    nodeIdsInOrder.forEach((nodeId) => {
+    for (const nodeId of nodeIdsInOrder) {
       const node = nodeRefById.get(nodeId);
       const localPos = gridPlan.localPosByNodeId.get(nodeId);
-      if (!node || !localPos) return;
+      if (!node || !localPos) continue;
       node.position = {
         x: IMPORT_LAYOUT.originX + localPos.x,
         y: IMPORT_LAYOUT.originY + localPos.y,
       };
-    });
+    }
   }
 
   const nodePosById = new Map(
