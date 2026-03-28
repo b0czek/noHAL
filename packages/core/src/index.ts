@@ -1,4 +1,5 @@
 export * from "./componentFunctions";
+export * from "./componentNaming";
 export * from "./componentStore";
 export * from "./componentSystem";
 export * from "./componentVisibility";

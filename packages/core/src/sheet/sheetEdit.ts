@@ -1,5 +1,6 @@
 import { addfQueueEntryNodeId, normalizeAddfQueueEntries } from "../addfQueue";
-import { createId, slugify } from "../id";
+import { ensureInstanceName } from "../componentNaming";
+import { createId } from "../id";
 import { createSheet } from "../project";
 import type {
   NoHALProject,
@@ -23,11 +24,6 @@ function defaultNodePosition(sheet: SheetDefinition): { x: number; y: number } {
     x: 120 + (index % 4) * 280,
     y: 100 + Math.floor(index / 4) * 180,
   };
-}
-
-function ensureInstanceName(sheet: SheetDefinition, preferred: string): string {
-  const used = new Set(sheet.nodes.map((node) => node.instanceName));
-  return nextUniqueName(slugify(preferred).replace(/-/g, "_"), used);
 }
 
 function pruneSheetNodeReferences(

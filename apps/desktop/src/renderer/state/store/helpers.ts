@@ -3,15 +3,19 @@ import {
   normalizeAddfQueueEntries,
 } from "@nohal/core/src/addfQueue";
 import {
+  componentPrefersCanonicalInstanceNames,
+  componentUsesLockedCanonicalInstanceNames,
+  ensureInstanceName,
+  nextComponentInstanceName,
+} from "@nohal/core/src/componentNaming";
+import {
   createEmptyComponentStore,
   isStoreEntryCompatibleWithLinuxCncVersion,
   listStoreEntriesForLinuxCncVersion,
 } from "@nohal/core/src/componentStore";
 import { reconcileComponentNodesForDefinition } from "@nohal/core/src/customComponent";
 import { endpointKey } from "@nohal/core/src/graph";
-import { slugify } from "@nohal/core/src/id";
 import type {
-  ComponentDefinition,
   ComponentStore,
   NoHALProject,
   SheetDefinition,
@@ -22,6 +26,12 @@ import type {
 import { unwrap } from "solid-js/store";
 
 export { createEmptyComponentStore };
+export {
+  ensureInstanceName,
+  nextComponentInstanceName,
+  componentPrefersCanonicalInstanceNames,
+  componentUsesLockedCanonicalInstanceNames,
+};
 
 export function cloneProject(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
@@ -162,46 +172,6 @@ export function findNode(
   nodeId: string,
 ): SheetNodeInstance | undefined {
   return sheet.nodes.find((n) => n.id === nodeId);
-}
-
-export function ensureInstanceName(
-  sheet: SheetDefinition,
-  preferred: string,
-): string {
-  const used = new Set(sheet.nodes.map((n) => n.instanceName));
-  return nextName(slugify(preferred).replace(/-/g, "_"), used);
-}
-
-export function componentUsesLockedCanonicalInstanceNames(
-  component: ComponentDefinition | undefined,
-): boolean {
-  if (!component) return false;
-  const naming = component.runtime?.instanceNaming;
-  return (
-    naming?.strategy === "canonical_indexed" && naming.lockToCanonical === true
-  );
-}
-
-export function nextComponentInstanceName(
-  sheet: SheetDefinition,
-  component: ComponentDefinition,
-): string | undefined {
-  if (!componentUsesLockedCanonicalInstanceNames(component)) {
-    return ensureInstanceName(sheet, component.halComponentName);
-  }
-
-  const used = new Set(sheet.nodes.map((n) => n.instanceName));
-  const base = component.halComponentName;
-  const maxConfigured = component.runtime?.instanceNaming?.maxInstances;
-  const maxInstances =
-    Number.isFinite(maxConfigured) && (maxConfigured ?? 0) > 0
-      ? Math.max(1, Math.trunc(maxConfigured ?? 1))
-      : 10_000;
-  for (let index = 0; index < maxInstances; index += 1) {
-    const candidate = `${base}.${index}`;
-    if (!used.has(candidate)) return candidate;
-  }
-  return undefined;
 }
 
 export function sheetContainsSheet(
