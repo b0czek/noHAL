@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createEmptyComponentStore } from "../componentStore";
-import { getNodePins } from "../graph";
-import { findSystemSheet, findSystemSheetNode } from "../sheet";
-import type { ComponentDefinition } from "../types";
-import { buildProjectFromHalImport } from "./build";
-import { parseHalImportDraft } from "./parse";
+import { createEmptyComponentStore } from "../../componentStore";
+import { getNodePins } from "../../graph";
+import { findSystemSheet, findSystemSheetNode } from "../../sheet";
+import type { ComponentDefinition } from "../../types";
+import { parseHalImportDraft } from "../parse";
+import { buildProjectFromHalImport } from "./index";
 
 const EXPECTED_MOTION_DIGITAL_PIN_COUNT = 64;
 
