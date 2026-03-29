@@ -16,6 +16,9 @@ export type CanvasSearchResult = {
   searchText: string;
 };
 
+const COMMENT_TITLE_MAX_LENGTH = 72;
+const COMMENT_TITLE_PREVIEW_LENGTH = 69;
+
 export function normalizeSearchText(value: string): string {
   return value.trim().toLowerCase();
 }
@@ -23,8 +26,8 @@ export function normalizeSearchText(value: string): string {
 function formatCommentTitle(text: string): string {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) return "Text";
-  return normalized.length > 72
-    ? `${normalized.slice(0, 69).trimEnd()}...`
+  return normalized.length > COMMENT_TITLE_MAX_LENGTH
+    ? `${normalized.slice(0, COMMENT_TITLE_PREVIEW_LENGTH).trimEnd()}...`
     : normalized;
 }
 

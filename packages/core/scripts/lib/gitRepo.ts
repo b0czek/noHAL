@@ -1,9 +1,11 @@
 import { spawnSync } from "node:child_process";
 
+const GIT_MAX_BUFFER_BYTES = 67_108_864;
+
 export function runGit(repoPath: string, args: string[]): string {
   const result = spawnSync("git", ["-C", repoPath, ...args], {
     encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
+    maxBuffer: GIT_MAX_BUFFER_BYTES,
   });
   if (result.status === 0) return result.stdout ?? "";
   const stderr = result.stderr || result.error?.message || "unknown git error";

@@ -339,6 +339,8 @@ function buildComponentHistories(
   return histories;
 }
 
+const STORE_REVISION_PREVIEW_LENGTH = 12;
+
 function main(): void {
   const repoPath = findRepoPath();
   const outputDir = path.resolve(
@@ -357,7 +359,7 @@ function main(): void {
     snapshots[version] = snapshot;
     metadata[version] = snapshot.meta;
     process.stdout.write(
-      `[linuxcnc-store] ${version} (${snapshot.meta.refName}, ${snapshot.meta.revision.slice(0, 12)}): ${snapshot.components.length} components (.comp files=${stats.compFiles}, synthetic conv files=${stats.syntheticCompFiles}, parsed components=${stats.compComponents})\n`,
+      `[linuxcnc-store] ${version} (${snapshot.meta.refName}, ${snapshot.meta.revision.slice(0, STORE_REVISION_PREVIEW_LENGTH)}): ${snapshot.components.length} components (.comp files=${stats.compFiles}, synthetic conv files=${stats.syntheticCompFiles}, parsed components=${stats.compComponents})\n`,
     );
   }
 

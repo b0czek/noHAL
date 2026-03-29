@@ -6,6 +6,8 @@ import type { ComponentDefinition } from "../types";
 import { buildProjectFromHalImport } from "./build";
 import { parseHalImportDraft } from "./parse";
 
+const EXPECTED_MOTION_DIGITAL_PIN_COUNT = 64;
+
 describe("buildProjectFromHalImport", () => {
   it("applies selected LinuxCNC version before motmod reconciliation", () => {
     const result = buildProjectFromHalImport({
@@ -134,10 +136,10 @@ describe("buildProjectFromHalImport", () => {
     );
     expect(
       motionPins.filter((name) => name.startsWith("digital-in-")).length,
-    ).toBe(64);
+    ).toBe(EXPECTED_MOTION_DIGITAL_PIN_COUNT);
     expect(
       motionPins.filter((name) => name.startsWith("digital-out-")).length,
-    ).toBe(64);
+    ).toBe(EXPECTED_MOTION_DIGITAL_PIN_COUNT);
     expect(
       result.project.library.components["halimport:motion"],
     ).toBeUndefined();

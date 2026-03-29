@@ -7,6 +7,7 @@ import type {
   SheetDefinition,
   SheetNode,
 } from "../types";
+import { defaultNodePositionForIndex } from "./layout";
 import { moveSelectionIntoSubsheet } from "./subsheetMove";
 import {
   createDefaultSheetThreadOutputs,
@@ -49,14 +50,6 @@ function nextUniqueName(base: string, used: ReadonlySet<string>): string {
   let index = 2;
   while (used.has(`${base}${index}`)) index += 1;
   return `${base}${index}`;
-}
-
-function defaultNodePosition(sheet: SheetDefinition): { x: number; y: number } {
-  const index = sheet.nodes.length;
-  return {
-    x: 120 + (index % 4) * 280,
-    y: 100 + Math.floor(index / 4) * 180,
-  };
 }
 
 function ensureSystemInstanceName(rootSheet: SheetDefinition): string {
@@ -150,7 +143,9 @@ export function ensureSystemSheet(
       kind: "sheet",
       sheetId: systemSheet.id,
       instanceName: ensureSystemInstanceName(rootSheet),
-      position: preferredPosition ?? defaultNodePosition(rootSheet),
+      position:
+        preferredPosition ??
+        defaultNodePositionForIndex(rootSheet.nodes.length),
     };
     rootSheet.nodes.push(systemSheetNode);
   } else if (preferredPosition && systemSheetNode.instanceName === "system") {

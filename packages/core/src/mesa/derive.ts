@@ -16,6 +16,7 @@ import {
   mergeMesaSchemaProfiles,
   schemaProfileSummary,
 } from "./schema";
+import { formatMesaGpioIndex } from "./shared";
 import type {
   ProjectMesaConfig,
   ProjectMesaDb25CardAssignment,
@@ -26,6 +27,28 @@ import type {
 import { MESA_RAW_GPIO_CARD_KIND } from "./types";
 
 export type MesaDerivedNodeFamily = "host" | "pseudo" | "db25" | "sserial";
+
+const mesaLayout = {
+  groupX: {
+    start: 120,
+    step: 760,
+  },
+  groupY: 120,
+  offsetX: {
+    encoder: 220,
+    db25: 260,
+    sserial: 520,
+  },
+  spacingY: {
+    connector: 180,
+    fragment: 96,
+    directChannel: 120,
+    directPort: 24,
+  },
+  width: {
+    encoderSuffix: 2,
+  },
+} as const;
 
 export interface MesaValidationIssue {
   severity: "warning" | "fatal";
@@ -122,11 +145,7 @@ function hm2InstanceNameForHost(
 }
 
 function baseGroupX(groupIndex: number): number {
-  return 120 + groupIndex * 760;
-}
-
-function formatMesaGpioIndex(index: number): string {
-  return `${index}`.padStart(3, "0");
+  return mesaLayout.groupX.start + groupIndex * mesaLayout.groupX.step;
 }
 
 function buildEncoderPseudoComponentSpecs(
@@ -134,7 +153,7 @@ function buildEncoderPseudoComponentSpecs(
 ): MesaPseudoComponentSpec[] {
   if (count <= 0) return [];
   return Array.from({ length: count }, (_, index) => {
-    const suffix = `${index}`.padStart(2, "0");
+    const suffix = `${index}`.padStart(mesaLayout.width.encoderSuffix, "0");
     return {
       key: `encoder:${suffix}`,
       subfamily: "encoder",
@@ -145,7 +164,10 @@ function buildEncoderPseudoComponentSpecs(
         explicitPins: createMesaEncoderPins(),
         explicitParams: createMesaEncoderParams(),
       },
-      preferredOffset: { x: 220, y: index * 96 },
+      preferredOffset: {
+        x: mesaLayout.offsetX.encoder,
+        y: index * mesaLayout.spacingY.fragment,
+      },
       summary: schemaProfileSummary({ encoders: 1 }),
     };
   });
@@ -462,7 +484,7 @@ export function deriveMesaTopology(
       hostIndexByKind,
     );
     const groupX = baseGroupX(groupIndex);
-    const groupOrigin = { x: groupX, y: 120 };
+    const groupOrigin = { x: groupX, y: mesaLayout.groupY };
 
     nodes.push({
       key: host.id,
@@ -537,8 +559,11 @@ export function deriveMesaTopology(
           displayName: `${card.displayName} ${connector.label} ${fragment.displayName}`,
           schemaProfile: fragment.schemaProfile,
           preferredPosition: {
-            x: groupX + 260,
-            y: 120 + connector.order * 180 + fragmentIndex * 96,
+            x: groupX + mesaLayout.offsetX.db25,
+            y:
+              mesaLayout.groupY +
+              connector.order * mesaLayout.spacingY.connector +
+              fragmentIndex * mesaLayout.spacingY.fragment,
           },
           summary: schemaProfileSummary(fragment.schemaProfile),
         });
@@ -596,12 +621,13 @@ export function deriveMesaTopology(
           displayName: `${card.displayName} ${connector.label} ${port.label} ch${nestedChannel}`,
           schemaProfile: card.peripheralProfile,
           preferredPosition: {
-            x: groupX + 520,
+            x: groupX + mesaLayout.offsetX.sserial,
             y:
-              120 +
-              connector.order * 180 +
-              connectorCard.sserial.peripheralFragments.length * 96 +
-              assignment.channel * 96,
+              mesaLayout.groupY +
+              connector.order * mesaLayout.spacingY.connector +
+              connectorCard.sserial.peripheralFragments.length *
+                mesaLayout.spacingY.fragment +
+              assignment.channel * mesaLayout.spacingY.fragment,
           },
           summary: schemaProfileSummary(card.peripheralProfile),
         });
@@ -639,8 +665,11 @@ export function deriveMesaTopology(
         displayName: `${card.displayName} ${port.label} ch${assignment.channel}`,
         schemaProfile: card.peripheralProfile,
         preferredPosition: {
-          x: groupX + 520,
-          y: 120 + assignment.channel * 120 + port.order * 24,
+          x: groupX + mesaLayout.offsetX.sserial,
+          y:
+            mesaLayout.groupY +
+            assignment.channel * mesaLayout.spacingY.directChannel +
+            port.order * mesaLayout.spacingY.directPort,
         },
         summary: schemaProfileSummary(card.peripheralProfile),
       });

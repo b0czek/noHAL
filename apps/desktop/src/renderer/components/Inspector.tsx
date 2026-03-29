@@ -26,6 +26,7 @@ const PORT_TYPE_OPTIONS: ReadonlyArray<StringSelectOption> = [
   { value: "u64", label: "u64" },
   { value: "port", label: "port" },
 ];
+const ROTATION_STEP_DEGREES = 90;
 
 export default function Inspector() {
   const { t } = useI18n();
@@ -295,7 +296,9 @@ function RotationEditor(props: {
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => props.onChange((props.value || 0) - 90)}
+          onClick={() =>
+            props.onChange((props.value || 0) - ROTATION_STEP_DEGREES)
+          }
           title={t("inspector.rotateNeg90")}
         >
           -90
@@ -314,7 +317,9 @@ function RotationEditor(props: {
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => props.onChange((props.value || 0) + 90)}
+          onClick={() =>
+            props.onChange((props.value || 0) + ROTATION_STEP_DEGREES)
+          }
           title={t("inspector.rotatePos90")}
         >
           +90

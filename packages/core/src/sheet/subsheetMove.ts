@@ -13,6 +13,7 @@ import type {
   SheetNode,
   SheetThreadOutputDefinition,
 } from "../types";
+import { defaultPortPositionForIndex } from "./layout";
 import { firstSheetThreadOutputId, getSheetThreadOutputs } from "./threads";
 
 function cloneEndpoint(endpoint: SheetEndpointRef): SheetEndpointRef {
@@ -28,17 +29,6 @@ function directConnectionPairKey(
   const aKey = endpointKey(a);
   const bKey = endpointKey(b);
   return aKey < bKey ? `${aKey}|${bKey}` : `${bKey}|${aKey}`;
-}
-
-function defaultPortPosition(
-  sheet: SheetDefinition,
-  side: "left" | "right" | "top" | "bottom",
-): { x: number; y: number } {
-  const count = sheet.ports.filter((port) => port.side === side).length;
-  if (side === "left") return { x: 20, y: 120 + count * 50 };
-  if (side === "right") return { x: 1380, y: 120 + count * 50 };
-  if (side === "top") return { x: 220 + count * 120, y: 20 };
-  return { x: 220 + count * 120, y: 740 };
 }
 
 function nextUniqueName(base: string, used: ReadonlySet<string>): string {
@@ -158,7 +148,10 @@ export function moveSelectionIntoSubsheet(
       port.name = nextUniqueName(port.name, childPortNames);
     }
     childPortNames.add(port.name);
-    port.position = defaultPortPosition(childSheet, port.side);
+    port.position = defaultPortPositionForIndex(
+      childSheet.ports.filter((item) => item.side === port.side).length,
+      port.side,
+    );
     childSheet.ports.push(port);
     const result = { id: port.id };
     childPortsByEndpointKey.set(key, result);

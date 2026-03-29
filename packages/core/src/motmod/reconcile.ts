@@ -22,6 +22,7 @@ import type {
   NoHALProject,
   ProjectMotmodConfig,
 } from "../types";
+import { normalizeProjectMotmodConfigValue } from "./config";
 
 const MOTMOD_MANAGED_FAMILY_SET = new Set<MotmodManagedFamily>(
   MOTMOD_MANAGED_FAMILIES,
@@ -33,15 +34,6 @@ const MOTMOD_FAMILY_BY_SYSTEM_COMPONENT_ID = Object.fromEntries(
     family as MotmodManagedFamily,
   ]),
 ) as Record<string, MotmodManagedFamily>;
-
-const DEFAULT_MOTMOD_CONFIG: ProjectMotmodConfig = {
-  numJoints: 3,
-  numDio: 4,
-  numAio: 4,
-  numSpindles: 1,
-  numMiscError: 0,
-  trajPeriodNs: 0,
-};
 
 export interface MotmodReconcileEnsureComponentAction {
   family: MotmodManagedFamily;
@@ -89,47 +81,10 @@ export interface MotmodReconcilePlan {
   updateNodeConfigs: MotmodReconcileUpdateNodeConfigAction[];
 }
 
-function clampInt(
-  n: unknown,
-  fallback: number,
-  min = 0,
-  max = Number.MAX_SAFE_INTEGER,
-): number {
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(min, Math.min(max, Math.round(n as number)));
-}
-
 function normalizeMotmodConfig(
   value: Partial<ProjectMotmodConfig> | undefined,
 ): ProjectMotmodConfig {
-  return {
-    numJoints: clampInt(
-      value?.numJoints,
-      DEFAULT_MOTMOD_CONFIG.numJoints,
-      1,
-      64,
-    ),
-    numDio: clampInt(value?.numDio, DEFAULT_MOTMOD_CONFIG.numDio, 0, 256),
-    numAio: clampInt(value?.numAio, DEFAULT_MOTMOD_CONFIG.numAio, 0, 256),
-    numSpindles: clampInt(
-      value?.numSpindles,
-      DEFAULT_MOTMOD_CONFIG.numSpindles,
-      1,
-      16,
-    ),
-    numMiscError: clampInt(
-      value?.numMiscError,
-      DEFAULT_MOTMOD_CONFIG.numMiscError,
-      0,
-      256,
-    ),
-    trajPeriodNs: clampInt(
-      value?.trajPeriodNs,
-      DEFAULT_MOTMOD_CONFIG.trajPeriodNs,
-      0,
-      100_000_000,
-    ),
-  };
+  return normalizeProjectMotmodConfigValue(value);
 }
 
 function isSameMotmodConfig(

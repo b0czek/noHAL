@@ -1,6 +1,8 @@
 import { slugify } from "./id";
 import type { ComponentDefinition, SheetDefinition } from "./types";
 
+const DEFAULT_CANONICAL_INSTANCE_LIMIT = 10_000;
+
 function nextUniqueName(base: string, used: ReadonlySet<string>): string {
   if (!used.has(base)) return base;
   let index = 2;
@@ -46,7 +48,7 @@ export function nextComponentInstanceName(
   const maxInstances =
     Number.isFinite(maxConfigured) && (maxConfigured ?? 0) > 0
       ? Math.max(1, Math.trunc(maxConfigured ?? 1))
-      : 10_000;
+      : DEFAULT_CANONICAL_INSTANCE_LIMIT;
   for (let index = 0; index < maxInstances; index += 1) {
     const candidate = `${base}.${index}`;
     if (!used.has(candidate)) return candidate;

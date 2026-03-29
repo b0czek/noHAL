@@ -15,6 +15,10 @@ import {
 } from "../mesa";
 import { reconcileMotmodManagedNodes } from "../motmod";
 import {
+  DEFAULT_MOTMOD_CONFIG,
+  normalizeProjectMotmodConfigValue,
+} from "../motmod/config";
+import {
   createDefaultSheetThreadOutputs,
   moveRootSystemComponentsToSystemSheet,
   normalizeSheetThreadOutputs,
@@ -34,6 +38,7 @@ import { NOHAL_PROJECT_FORMAT, NOHAL_PROJECT_VERSION } from "./formats";
 import { migrateProjectDocumentToCurrentVersion } from "./migrations";
 
 export const REQUIRED_HAL_THREAD_NAME = "servo-thread";
+const DEFAULT_HAL_THREAD_PERIOD_NS = 1_000_000;
 
 export function isRequiredHalThreadName(name: string): boolean {
   return name.trim() === REQUIRED_HAL_THREAD_NAME;
@@ -61,7 +66,7 @@ export function createDefaultHalThreads(): HalThreadDefinition[] {
     {
       id: createId("thread"),
       name: REQUIRED_HAL_THREAD_NAME,
-      periodNs: 1_000_000,
+      periodNs: DEFAULT_HAL_THREAD_PERIOD_NS,
       floatMode: "fp",
     },
   ];
@@ -87,7 +92,7 @@ function normalizeHalThreads(value: unknown): HalThreadDefinition[] {
     if (!name || usedNames.has(name)) continue;
     const periodNs = Number.isFinite(candidate.periodNs)
       ? Math.max(1, Math.round(candidate.periodNs as number))
-      : 1_000_000;
+      : DEFAULT_HAL_THREAD_PERIOD_NS;
     out.push({
       id:
         typeof candidate.id === "string" && candidate.id.trim()
@@ -107,7 +112,7 @@ function normalizeHalThreads(value: unknown): HalThreadDefinition[] {
     out.unshift({
       id: createId("thread"),
       name: REQUIRED_HAL_THREAD_NAME,
-      periodNs: 1_000_000,
+      periodNs: DEFAULT_HAL_THREAD_PERIOD_NS,
       floatMode: "fp",
     });
   }
@@ -125,14 +130,7 @@ export function createEmptyMachineConfig(): ProjectMachineConfig {
 }
 
 export function createDefaultMotmodConfig(): ProjectMotmodConfig {
-  return {
-    numJoints: 3,
-    numDio: 4,
-    numAio: 4,
-    numSpindles: 1,
-    numMiscError: 0,
-    trajPeriodNs: 0,
-  };
+  return { ...DEFAULT_MOTMOD_CONFIG };
 }
 
 export function createDefaultProjectUi(activeSheetId: string): ProjectUiConfig {
@@ -167,30 +165,7 @@ export function reconcileProject(project: NoHALProject): NoHALProject {
 
 function normalizeMotmodConfig(value: unknown): ProjectMotmodConfig {
   const raw = value && typeof value === "object" ? value : {};
-  const candidate = raw as Partial<ProjectMotmodConfig>;
-  const defaults = createDefaultMotmodConfig();
-  const clampInt = (n: unknown, fallback: number, min = 0, max = 9999) => {
-    if (!Number.isFinite(n)) return fallback;
-    return Math.max(min, Math.min(max, Math.round(n as number)));
-  };
-  return {
-    numJoints: clampInt(candidate.numJoints, defaults.numJoints, 1, 64),
-    numDio: clampInt(candidate.numDio, defaults.numDio, 0, 256),
-    numAio: clampInt(candidate.numAio, defaults.numAio, 0, 256),
-    numSpindles: clampInt(candidate.numSpindles, defaults.numSpindles, 1, 16),
-    numMiscError: clampInt(
-      candidate.numMiscError,
-      defaults.numMiscError,
-      0,
-      256,
-    ),
-    trajPeriodNs: clampInt(
-      candidate.trajPeriodNs,
-      defaults.trajPeriodNs,
-      0,
-      100_000_000,
-    ),
-  };
+  return normalizeProjectMotmodConfigValue(raw as Partial<ProjectMotmodConfig>);
 }
 
 function normalizeProjectUi(

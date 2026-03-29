@@ -1,8 +1,17 @@
+const ID_STRING_RADIX = 36;
+const ID_RANDOM_SLICE_START = 2;
+const ID_RANDOM_SLICE_END = 10;
+
 export function createId(prefix: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return `${prefix}_${crypto.randomUUID().replace(/-/g, "")}`;
   }
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+  return `${prefix}_${Math.random()
+    .toString(ID_STRING_RADIX)
+    .slice(
+      ID_RANDOM_SLICE_START,
+      ID_RANDOM_SLICE_END,
+    )}${Date.now().toString(ID_STRING_RADIX)}`;
 }
 
 export function slugify(input: string): string {

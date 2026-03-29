@@ -7,6 +7,13 @@ import {
 } from "./halValueAutocomplete";
 import { formatIniReferenceToken } from "./iniReference";
 
+const DISPLAY_FRAGMENT = "[DIS";
+const DISPLAY_EDITOR_REFERENCE = "setp foo [DISPLAY]ED";
+const NON_REFERENCE_VALUE = "setp foo 123";
+const NON_REFERENCE_EXPRESSION = "[DISPLAY]EDITOR + 1";
+const FILTER_FRAGMENT = "[disp";
+const REPLACE_FRAGMENT = "setp foo [DIS";
+
 describe("halValueAutocomplete helpers", () => {
   const entries = flattenIniReferenceSections([
     {
@@ -37,26 +44,46 @@ describe("halValueAutocomplete helpers", () => {
   ]);
 
   it("detects the active ini token fragment around the caret", () => {
-    expect(getActiveIniReferenceQuery("[DIS", 4)).toEqual({
+    expect(
+      getActiveIniReferenceQuery(DISPLAY_FRAGMENT, DISPLAY_FRAGMENT.length),
+    ).toEqual({
       start: 0,
       end: 4,
-      text: "[DIS",
-      normalizedText: "[DIS",
+      text: DISPLAY_FRAGMENT,
+      normalizedText: DISPLAY_FRAGMENT,
     });
 
-    expect(getActiveIniReferenceQuery("setp foo [DISPLAY]ED", 20)).toEqual({
+    expect(
+      getActiveIniReferenceQuery(
+        DISPLAY_EDITOR_REFERENCE,
+        DISPLAY_EDITOR_REFERENCE.length,
+      ),
+    ).toEqual({
       start: 9,
       end: 20,
       text: "[DISPLAY]ED",
       normalizedText: "[DISPLAY]ED",
     });
 
-    expect(getActiveIniReferenceQuery("setp foo 123", 12)).toBeNull();
-    expect(getActiveIniReferenceQuery("[DISPLAY]EDITOR + 1", 18)).toBeNull();
+    expect(
+      getActiveIniReferenceQuery(
+        NON_REFERENCE_VALUE,
+        NON_REFERENCE_VALUE.length,
+      ),
+    ).toBeNull();
+    expect(
+      getActiveIniReferenceQuery(
+        NON_REFERENCE_EXPRESSION,
+        NON_REFERENCE_EXPRESSION.lastIndexOf("1"),
+      ),
+    ).toBeNull();
   });
 
   it("filters suggestions using the active token fragment", () => {
-    const query = getActiveIniReferenceQuery("[disp", 5);
+    const query = getActiveIniReferenceQuery(
+      FILTER_FRAGMENT,
+      FILTER_FRAGMENT.length,
+    );
     const suggestions = filterIniReferenceSuggestions(entries, query);
 
     expect(suggestions).toHaveLength(2);
@@ -67,14 +94,17 @@ describe("halValueAutocomplete helpers", () => {
   });
 
   it("replaces only the active token fragment when applying a suggestion", () => {
-    const query = getActiveIniReferenceQuery("setp foo [DIS", 13);
+    const query = getActiveIniReferenceQuery(
+      REPLACE_FRAGMENT,
+      REPLACE_FRAGMENT.length,
+    );
     expect(query).not.toBeNull();
     if (!query) {
       throw new Error("Expected an active ini query");
     }
 
     const applied = applyIniReferenceSuggestion(
-      "setp foo [DIS",
+      REPLACE_FRAGMENT,
       query,
       "[DISPLAY]EDITOR",
     );

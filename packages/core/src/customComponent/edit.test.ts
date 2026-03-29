@@ -56,6 +56,7 @@ describe("custom component edits", () => {
   });
 
   it("edits standalone component definitions for import flows", () => {
+    const UPDATED_MAX_INSTANCES = 4;
     const component: ComponentDefinition = {
       id: "manual:test",
       name: "test",
@@ -71,7 +72,10 @@ describe("custom component edits", () => {
       " imported_comp ",
     );
     customComponentDefinitionEdits.runtimeKind.update(component, "rt");
-    customComponentDefinitionEdits.maxInstances.update(component, 4);
+    customComponentDefinitionEdits.maxInstances.update(
+      component,
+      UPDATED_MAX_INSTANCES,
+    );
     customComponentDefinitionEdits.loadCommand.update(
       component,
       "loadrt imported_comp count=%{count}",
@@ -85,7 +89,7 @@ describe("custom component edits", () => {
       kind: "rt",
       instanceNaming: {
         strategy: "free",
-        maxInstances: 4,
+        maxInstances: UPDATED_MAX_INSTANCES,
       },
     });
     expect(component.loadCommand).toBe("loadrt imported_comp count=%{count}");

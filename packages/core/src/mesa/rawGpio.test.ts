@@ -9,13 +9,28 @@ import {
 } from "./edit";
 import { MESA_RAW_GPIO_CARD_KIND } from "./types";
 
+const FIRST_RAW_GPIO_PIN_INDEX = 1;
+const SECOND_RAW_GPIO_OUTPUT_PIN_INDEX = 4;
+
 function makeRawGpioProject() {
   const project = createEmptyProject("Mesa Raw GPIO");
   const hostId = addMesaHost(project, "7i92t");
   updateMesaHostIp(project, hostId, "192.168.1.121");
   setMesaConnectorCard(project, hostId, "p2", MESA_RAW_GPIO_CARD_KIND);
-  setMesaRawGpioPinDirection(project, hostId, "p2", 1, "output");
-  setMesaRawGpioPinDirection(project, hostId, "p2", 4, "output");
+  setMesaRawGpioPinDirection(
+    project,
+    hostId,
+    "p2",
+    FIRST_RAW_GPIO_PIN_INDEX,
+    "output",
+  );
+  setMesaRawGpioPinDirection(
+    project,
+    hostId,
+    "p2",
+    SECOND_RAW_GPIO_OUTPUT_PIN_INDEX,
+    "output",
+  );
   return project;
 }
 

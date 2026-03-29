@@ -1,5 +1,8 @@
 import type { ComponentDefinition, ComponentPinDefinition } from "./types";
 
+const COMPONENT_INDEX_WIDTH_THREE_DIGITS = 3;
+const COMPONENT_INDEX_WIDTH_TWO_DIGITS = 2;
+
 function resolveCountConfigValue(
   component: ComponentDefinition,
   countConfigKey: string,
@@ -31,8 +34,14 @@ function resolveCountConfigValue(
 // Supports plain and zero-padded index placeholders used by pin templates.
 function replaceIndexTemplate(template: string, index: number): string {
   return template
-    .replaceAll("{index3}", `${index}`.padStart(3, "0"))
-    .replaceAll("{index2}", `${index}`.padStart(2, "0"))
+    .replaceAll(
+      "{index3}",
+      `${index}`.padStart(COMPONENT_INDEX_WIDTH_THREE_DIGITS, "0"),
+    )
+    .replaceAll(
+      "{index2}",
+      `${index}`.padStart(COMPONENT_INDEX_WIDTH_TWO_DIGITS, "0"),
+    )
     .replaceAll("{index}", `${index}`);
 }
 

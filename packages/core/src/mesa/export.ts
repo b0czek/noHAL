@@ -2,7 +2,7 @@ import type { ExportContext } from "../halExport/context";
 import type { NoHALProject } from "../types";
 import { getMesaHostCatalogEntry } from "./catalog";
 import { deriveMesaTopology } from "./derive";
-import { normalizeProjectMesaConfig } from "./shared";
+import { formatMesaGpioIndex, normalizeProjectMesaConfig } from "./shared";
 import { MESA_RAW_GPIO_CARD_KIND } from "./types";
 
 export interface MesaRuntimeContribution {
@@ -11,10 +11,6 @@ export interface MesaRuntimeContribution {
 
 export interface MesaParamContribution {
   mainSetpLines: string[];
-}
-
-function formatMesaGpioIndex(index: number): string {
-  return `${index}`.padStart(3, "0");
 }
 
 function buildMesaRawGpioSetpLines(

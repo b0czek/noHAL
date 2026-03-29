@@ -22,6 +22,9 @@ interface LinkGroupCardProps {
   onEditGeneratedGroup: () => void;
 }
 
+const SYSTEM_OVERRIDE_ITEM_LIMIT = 4;
+const VISIBLE_INSTANCE_NAME_COUNT = 3;
+
 export default function LinkGroupCard(props: LinkGroupCardProps) {
   const { t } = useI18n();
   const { state } = useEditorStore();
@@ -108,10 +111,12 @@ export default function LinkGroupCard(props: LinkGroupCardProps) {
       ...analysis.extraParams.map((name) => `param:${name}`),
       ...analysis.extraFunctions.map((name) => `fn:${name}`),
     ];
-    if (items.length <= 4) return items.join(", ");
+    if (items.length <= SYSTEM_OVERRIDE_ITEM_LIMIT) {
+      return items.join(", ");
+    }
     return t("projectCreation.systemOverrideItemsTruncated", {
-      items: items.slice(0, 4).join(", "),
-      count: items.length - 4,
+      items: items.slice(0, SYSTEM_OVERRIDE_ITEM_LIMIT).join(", "),
+      count: items.length - SYSTEM_OVERRIDE_ITEM_LIMIT,
     });
   });
 
@@ -138,10 +143,12 @@ export default function LinkGroupCard(props: LinkGroupCardProps) {
         </Show>
         <div class="mono text-xs text-muted-foreground">
           {props.group.instances
-            .slice(0, 3)
+            .slice(0, VISIBLE_INSTANCE_NAME_COUNT)
             .map((item) => item.instanceName)
             .join(", ")}
-          {props.group.instances.length > 3 ? " ..." : ""}
+          {props.group.instances.length > VISIBLE_INSTANCE_NAME_COUNT
+            ? " ..."
+            : ""}
         </div>
       </div>
       <div class="grid gap-2">

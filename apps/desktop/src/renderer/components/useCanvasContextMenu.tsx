@@ -25,6 +25,8 @@ interface UseCanvasContextMenuArgs {
   getScene: () => SheetScene | null;
 }
 
+const CONTEXT_MENU_VIEWPORT_PADDING = 8;
+
 export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
@@ -115,10 +117,10 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     menuH: number,
   ) => {
     const rect = args.getHostEl().getBoundingClientRect();
-    const minX = rect.left + 8;
-    const minY = rect.top + 8;
-    const maxX = rect.right - menuW - 8;
-    const maxY = rect.bottom - menuH - 8;
+    const minX = rect.left + CONTEXT_MENU_VIEWPORT_PADDING;
+    const minY = rect.top + CONTEXT_MENU_VIEWPORT_PADDING;
+    const maxX = rect.right - menuW - CONTEXT_MENU_VIEWPORT_PADDING;
+    const maxY = rect.bottom - menuH - CONTEXT_MENU_VIEWPORT_PADDING;
     return {
       x: Math.max(minX, Math.min(clientX, Math.max(minX, maxX))),
       y: Math.max(minY, Math.min(clientY, Math.max(minY, maxY))),

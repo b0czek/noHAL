@@ -21,6 +21,8 @@ import { pushFatal } from "./context";
 import { collectGeneratedRuntimeContributions } from "./contributions";
 import { joinInstancePath, resolveExportedInstancePath } from "./naming";
 
+const HAL_THREADS_LOADRT_CHUNK_SIZE = 3;
+
 type RuntimeInstanceRecord = ExportContext["componentInstances"][number];
 
 interface AddfEntry {
@@ -312,8 +314,15 @@ export function buildRuntimeSections(
         `HAL thread definitions were reordered fastest-to-slowest for 'loadrt threads' export (threads(9) requirement)`,
       );
     }
-    for (let offset = 0; offset < sortedHalThreads.length; offset += 3) {
-      const chunk = sortedHalThreads.slice(offset, offset + 3);
+    for (
+      let offset = 0;
+      offset < sortedHalThreads.length;
+      offset += HAL_THREADS_LOADRT_CHUNK_SIZE
+    ) {
+      const chunk = sortedHalThreads.slice(
+        offset,
+        offset + HAL_THREADS_LOADRT_CHUNK_SIZE,
+      );
       const args: string[] = [];
       for (const [index, thread] of chunk.entries()) {
         const slot = index + 1;

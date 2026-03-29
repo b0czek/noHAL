@@ -179,6 +179,7 @@ describe("motmod-managed obligatory components", () => {
   });
 
   it("uses LinuxCNC 2.7 mapping (motion + axis.N only)", () => {
+    const EXPECTED_AXIS_COUNT = 4;
     const project = createEmptyProject("motmod 2.7");
     project.target.linuxcncVersion = "2.7";
     project.motmod = {
@@ -196,7 +197,7 @@ describe("motmod-managed obligatory components", () => {
     reconcileMotmodManagedNodes(project);
 
     expect(managedInstanceNames(project)).toEqual(
-      [...expectedAxisInstances27(4), "motion"].sort((a, b) =>
+      [...expectedAxisInstances27(EXPECTED_AXIS_COUNT), "motion"].sort((a, b) =>
         a.localeCompare(b),
       ),
     );

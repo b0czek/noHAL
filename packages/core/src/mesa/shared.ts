@@ -20,6 +20,11 @@ import type {
 import { MESA_RAW_GPIO_CARD_KIND } from "./types";
 
 export const DEFAULT_MESA_HOST_KIND: ProjectMesaHostKind = "7i92t";
+export const MESA_GPIO_INDEX_WIDTH = 3;
+
+export function formatMesaGpioIndex(index: number): string {
+  return `${index}`.padStart(MESA_GPIO_INDEX_WIDTH, "0");
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);

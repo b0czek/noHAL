@@ -35,6 +35,14 @@ const HAL_TYPES = new Set([
   "s64",
   "port",
 ]);
+const TRIPLE_QUOTE_DELIMITER_LENGTH = 3;
+const RAW_TRIPLE_QUOTE_PREFIX_LENGTH = 4;
+const MAX_OCTAL_ESCAPE_DIGITS = 3;
+const SHORT_UNICODE_ESCAPE_HEX_PATTERN = /^[0-9a-fA-F]{4}$/;
+const SHORT_UNICODE_ESCAPE_LENGTH = 6;
+const LONG_UNICODE_ESCAPE_HEX_PATTERN = /^[0-9a-fA-F]{8}$/;
+const LONG_UNICODE_ESCAPE_LENGTH = 10;
+const MIN_PIN_OR_PARAM_TOKENS = 4;
 
 function basename(input: string): string {
   const normalized = input.replaceAll("\\", "/");
@@ -85,17 +93,20 @@ function scanString(
   start: number,
 ): { token: string; end: number } {
   if (input.startsWith('r"""', start) || input.startsWith('R"""', start)) {
-    const end = input.indexOf('"""', start + 4);
+    const end = input.indexOf('"""', start + RAW_TRIPLE_QUOTE_PREFIX_LENGTH);
     if (end < 0) throw new Error("Unterminated raw triple string");
-    return { token: input.slice(start, end + 3), end: end + 3 };
+    return {
+      token: input.slice(start, end + TRIPLE_QUOTE_DELIMITER_LENGTH),
+      end: end + TRIPLE_QUOTE_DELIMITER_LENGTH,
+    };
   }
   if (input.startsWith('"""', start)) {
-    const i = start + 3;
-    while (i < input.length) {
-      const hit = input.indexOf('"""', i);
-      if (hit < 0) break;
-      return { token: input.slice(start, hit + 3), end: hit + 3 };
-    }
+    const hit = input.indexOf('"""', start + TRIPLE_QUOTE_DELIMITER_LENGTH);
+    if (hit >= 0)
+      return {
+        token: input.slice(start, hit + TRIPLE_QUOTE_DELIMITER_LENGTH),
+        end: hit + TRIPLE_QUOTE_DELIMITER_LENGTH,
+      };
     throw new Error("Unterminated triple string");
   }
   if (input[start] !== '"') {
@@ -268,7 +279,8 @@ function decodeCompDoubleQuotedString(token: string): string {
       continue;
     }
     if (next === "\r") {
-      if (i + 2 < last && token[i + 2] === "\n") i += 3;
+      if (i + 2 < last && token[i + 2] === "\n")
+        i += TRIPLE_QUOTE_DELIMITER_LENGTH;
       else i += 2;
       continue;
     }
@@ -290,7 +302,11 @@ function decodeCompDoubleQuotedString(token: string): string {
     if (/[0-7]/.test(next)) {
       let j = i + 1;
       let count = 0;
-      while (j < last && /[0-7]/.test(token[j]) && count < 3) {
+      while (
+        j < last &&
+        /[0-7]/.test(token[j]) &&
+        count < MAX_OCTAL_ESCAPE_DIGITS
+      ) {
         j += 1;
         count += 1;
       }
@@ -302,23 +318,33 @@ function decodeCompDoubleQuotedString(token: string): string {
 
     if (
       next === "u" &&
-      i + 6 <= last &&
-      /^[0-9a-fA-F]{4}$/.test(token.slice(i + 2, i + 6))
+      i + SHORT_UNICODE_ESCAPE_LENGTH <= last &&
+      SHORT_UNICODE_ESCAPE_HEX_PATTERN.test(
+        token.slice(i + 2, i + SHORT_UNICODE_ESCAPE_LENGTH),
+      )
     ) {
-      const value = Number.parseInt(token.slice(i + 2, i + 6), 16);
+      const value = Number.parseInt(
+        token.slice(i + 2, i + SHORT_UNICODE_ESCAPE_LENGTH),
+        16,
+      );
       out += String.fromCodePoint(value);
-      i += 6;
+      i += SHORT_UNICODE_ESCAPE_LENGTH;
       continue;
     }
 
     if (
       next === "U" &&
-      i + 10 <= last &&
-      /^[0-9a-fA-F]{8}$/.test(token.slice(i + 2, i + 10))
+      i + LONG_UNICODE_ESCAPE_LENGTH <= last &&
+      LONG_UNICODE_ESCAPE_HEX_PATTERN.test(
+        token.slice(i + 2, i + LONG_UNICODE_ESCAPE_LENGTH),
+      )
     ) {
-      const value = Number.parseInt(token.slice(i + 2, i + 10), 16);
+      const value = Number.parseInt(
+        token.slice(i + 2, i + LONG_UNICODE_ESCAPE_LENGTH),
+        16,
+      );
       out += String.fromCodePoint(value);
-      i += 10;
+      i += LONG_UNICODE_ESCAPE_LENGTH;
       continue;
     }
 
@@ -368,10 +394,16 @@ function decodeCompString(token: string): string {
     (token.startsWith('r"""') || token.startsWith('R"""')) &&
     token.endsWith('"""')
   ) {
-    return token.slice(4, -3);
+    return token.slice(
+      RAW_TRIPLE_QUOTE_PREFIX_LENGTH,
+      -TRIPLE_QUOTE_DELIMITER_LENGTH,
+    );
   }
   if (token.startsWith('"""') && token.endsWith('"""')) {
-    return token.slice(3, -3);
+    return token.slice(
+      TRIPLE_QUOTE_DELIMITER_LENGTH,
+      -TRIPLE_QUOTE_DELIMITER_LENGTH,
+    );
   }
   if (token.startsWith('"') && token.endsWith('"')) {
     return decodeCompDoubleQuotedString(token);
@@ -426,7 +458,7 @@ function parsePinOrParam(
   warnings: string[],
 ): ComponentPinDefinition | ComponentParamDefinition {
   const { tokens, raw } = stmt;
-  if (tokens.length < 4)
+  if (tokens.length < MIN_PIN_OR_PARAM_TOKENS)
     throw new Error(`Malformed ${kind} declaration: ${raw}`);
 
   const direction = tokens[1] as PinDirection | ParamDirection;

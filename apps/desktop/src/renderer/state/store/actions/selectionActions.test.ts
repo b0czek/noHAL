@@ -5,6 +5,7 @@ import { createEditorStore } from "../../store";
 
 const TEST_COMPONENT_ID = "comp:test-and2";
 const SYSTEM_COMPONENT_ID = "system:test:motion";
+const EXPECTED_DIRECT_CONNECTION_COUNT_AFTER_PASTE = 3;
 
 function createProjectFixture() {
   const project = createEmptyProject("Selection Action Fixture");
@@ -211,7 +212,9 @@ describe("selection actions", () => {
     expect(rootSheet.labels).toHaveLength(2);
     expect(rootSheet.comments).toHaveLength(2);
     expect(rootSheet.ports).toHaveLength(2);
-    expect(rootSheet.directConnections).toHaveLength(3);
+    expect(rootSheet.directConnections).toHaveLength(
+      EXPECTED_DIRECT_CONNECTION_COUNT_AFTER_PASTE,
+    );
     expect(rootSheet.labelAnchors).toHaveLength(2);
 
     const pastedNode = componentNodes.find(

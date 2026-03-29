@@ -25,6 +25,7 @@
         "noProcessGlobal": "error"
       },
       "style": {
+        "noMagicNumbers": "error",
         "noNestedTernary": "error",
         "noRestrictedImports": {
           "level": "error",

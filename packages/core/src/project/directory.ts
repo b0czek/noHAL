@@ -26,6 +26,9 @@ const NOHAL_CORE_VERSION =
   typeof corePackageJson.version === "string"
     ? corePackageJson.version
     : "0.0.0";
+const ATOMIC_WRITE_RANDOM_SUFFIX_RADIX = 36;
+const ATOMIC_WRITE_RANDOM_SUFFIX_START = 2;
+const ATOMIC_WRITE_RANDOM_SUFFIX_END = 10;
 
 export interface ProjectPersistenceOptions {
   savedWith?: string;
@@ -84,7 +87,9 @@ let atomicWriteCounter = 0;
 
 function atomicTempPathFor(filePath: string): string {
   atomicWriteCounter += 1;
-  const randomSuffix = Math.random().toString(36).slice(2, 10);
+  const randomSuffix = Math.random()
+    .toString(ATOMIC_WRITE_RANDOM_SUFFIX_RADIX)
+    .slice(ATOMIC_WRITE_RANDOM_SUFFIX_START, ATOMIC_WRITE_RANDOM_SUFFIX_END);
   return `${filePath}.tmp-${Date.now()}-${atomicWriteCounter}-${randomSuffix}`;
 }
 

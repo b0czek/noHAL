@@ -15,6 +15,13 @@ import {
 } from "@nohal/core/componentStore";
 import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
 import { endpointKey } from "@nohal/core/graph";
+import {
+  defaultCommentPositionForIndex,
+  defaultLabelPositionForIndex,
+  defaultNodePositionForIndex,
+  defaultPortPositionForIndex,
+  normalizeRotationDegrees,
+} from "@nohal/core/sheet";
 import type {
   ComponentStore,
   NoHALProject,
@@ -32,6 +39,7 @@ export {
   componentPrefersCanonicalInstanceNames,
   componentUsesLockedCanonicalInstanceNames,
 };
+export { normalizeRotationDegrees };
 
 export function cloneProject(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
@@ -43,12 +51,6 @@ export function cloneComponentStore(store: ComponentStore): ComponentStore {
 
 export function snapshotProjectForIpc(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
-}
-
-export function normalizeRotationDegrees(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  const normalized = value % 360;
-  return Object.is(normalized, -0) ? 0 : normalized;
 }
 
 export function applyComponentStoreToProject(
@@ -125,27 +127,21 @@ export function defaultNodePosition(sheet: SheetDefinition): {
   x: number;
   y: number;
 } {
-  const index = sheet.nodes.length;
-  return {
-    x: 120 + (index % 4) * 280,
-    y: 100 + Math.floor(index / 4) * 180,
-  };
+  return defaultNodePositionForIndex(sheet.nodes.length);
 }
 
 export function defaultLabelPosition(sheet: SheetDefinition): {
   x: number;
   y: number;
 } {
-  const index = sheet.labels.length;
-  return { x: 160 + (index % 5) * 160, y: 520 + Math.floor(index / 5) * 70 };
+  return defaultLabelPositionForIndex(sheet.labels.length);
 }
 
 export function defaultCommentPosition(sheet: SheetDefinition): {
   x: number;
   y: number;
 } {
-  const index = sheet.comments.length;
-  return { x: 180 + (index % 4) * 220, y: 620 + Math.floor(index / 4) * 90 };
+  return defaultCommentPositionForIndex(sheet.comments.length);
 }
 
 export function defaultPortPosition(
@@ -153,10 +149,7 @@ export function defaultPortPosition(
   side: "left" | "right" | "top" | "bottom",
 ): { x: number; y: number } {
   const count = sheet.ports.filter((p) => p.side === side).length;
-  if (side === "left") return { x: 20, y: 120 + count * 50 };
-  if (side === "right") return { x: 1380, y: 120 + count * 50 };
-  if (side === "top") return { x: 220 + count * 120, y: 20 };
-  return { x: 220 + count * 120, y: 740 };
+  return defaultPortPositionForIndex(count, side);
 }
 
 export function forcedPortSideForDirection(

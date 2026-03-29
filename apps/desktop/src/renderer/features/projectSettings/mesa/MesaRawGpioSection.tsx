@@ -1,4 +1,7 @@
-import type { ProjectMesaGpioDirection } from "@nohal/core/mesa";
+import {
+  formatMesaGpioIndex,
+  type ProjectMesaGpioDirection,
+} from "@nohal/core/mesa";
 import { For } from "solid-js";
 import { Button } from "../../../components/ui/button";
 import { useI18n } from "../../../i18n";
@@ -22,8 +25,6 @@ interface MesaRawGpioSectionProps {
 
 export default function MesaRawGpioSection(props: MesaRawGpioSectionProps) {
   const { t } = useI18n();
-  const formatMesaGpioIndex = (index: number) => `${index}`.padStart(3, "0");
-
   const outputPins = () => new Set(props.outputPins);
 
   return (

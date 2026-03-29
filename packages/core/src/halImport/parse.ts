@@ -9,6 +9,8 @@ import type {
   PinDirection,
 } from "../types";
 
+const HAL_INSTANCE_FIELD_SEGMENT_COUNT = 3;
+
 interface ParsedLine {
   line: number;
   text: string;
@@ -127,7 +129,10 @@ function splitHalPath(
       fieldName: segments.slice(1).join("."),
     };
   }
-  if (segments.length >= 3 && /^\d+$/.test(segments[1] ?? "")) {
+  if (
+    segments.length >= HAL_INSTANCE_FIELD_SEGMENT_COUNT &&
+    /^\d+$/.test(segments[1] ?? "")
+  ) {
     return {
       instanceName: `${segments[0]}.${segments[1]}`,
       fieldName: segments.slice(2).join("."),
@@ -180,7 +185,10 @@ function splitAddfFunctionTarget(
   if (segments.length === 2 && /^\d+$/.test(segments[1] ?? "")) {
     return { instanceName: rawTarget };
   }
-  if (segments.length >= 3 && /^\d+$/.test(segments[1] ?? "")) {
+  if (
+    segments.length >= HAL_INSTANCE_FIELD_SEGMENT_COUNT &&
+    /^\d+$/.test(segments[1] ?? "")
+  ) {
     const functionSuffix = segments.slice(2).join(".");
     return {
       instanceName: `${segments[0]}.${segments[1]}`,

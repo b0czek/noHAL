@@ -12,6 +12,9 @@ import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 import { useCanvasContextMenu } from "./useCanvasContextMenu";
 
+const GRID_MINOR_SPACING = 24;
+const GRID_MAJOR_SPACING_MULTIPLIER = 5;
+
 export default function Canvas() {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
@@ -30,8 +33,8 @@ export default function Canvas() {
 
   const gridStyle = createMemo(() => {
     const { x, y, scale } = camera();
-    const minorSpace = 24 * scale;
-    const majorSpace = minorSpace * 5;
+    const minorSpace = GRID_MINOR_SPACING * scale;
+    const majorSpace = minorSpace * GRID_MAJOR_SPACING_MULTIPLIER;
     return [
       `--grid-space:${minorSpace}px`,
       `--grid-major-space:${majorSpace}px`,

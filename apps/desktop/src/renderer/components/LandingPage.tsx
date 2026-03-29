@@ -27,6 +27,8 @@ interface LandingPageProps {
   onImportMachineConfiguration: () => void;
 }
 
+const RECENT_PROJECT_VISIBLE_PATH_SEGMENTS = 3;
+
 function recentProjectName(entry: RecentProjectEntry): string {
   if (entry.name?.trim()) return entry.name;
   return entry.projectPath.split(/[\\/]/).pop() ?? entry.projectPath;
@@ -34,8 +36,12 @@ function recentProjectName(entry: RecentProjectEntry): string {
 
 function recentProjectPathTail(projectPath: string): string {
   const segments = projectPath.split(/[\\/]/).filter(Boolean);
-  if (segments.length <= 3) return projectPath;
-  return `.../${segments.slice(-3).join("/")}`;
+  if (segments.length <= RECENT_PROJECT_VISIBLE_PATH_SEGMENTS) {
+    return projectPath;
+  }
+  return `.../${segments
+    .slice(-RECENT_PROJECT_VISIBLE_PATH_SEGMENTS)
+    .join("/")}`;
 }
 
 export default function LandingPage(props: LandingPageProps) {
