@@ -21,6 +21,9 @@
       "complexity": {
         "noForEach": "error"
       },
+      "correctness": {
+        "noProcessGlobal": "error"
+      },
       "style": {
         "noNestedTernary": "error",
         "noRestrictedImports": {
