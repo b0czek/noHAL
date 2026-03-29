@@ -1,11 +1,11 @@
-import { getSheet } from "@nohal/core/src/graph";
+import { getSheet } from "@nohal/core/graph";
 import type {
   ComponentStore,
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
   XY,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { createStore, reconcile, unwrap } from "solid-js/store";
 import type { TranslationKey } from "../i18n";
 import { createComponentStoreActions } from "./store/actions/componentStoreActions";

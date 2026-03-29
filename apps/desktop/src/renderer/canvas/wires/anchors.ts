@@ -1,4 +1,4 @@
-import type { SplitConnectionLabelPositions } from "@nohal/core/src/sheet";
+import type { SplitConnectionLabelPositions } from "@nohal/core/sheet";
 import type { Pt } from "../layout";
 import { measureLabelBoxForLabel } from "../measurements";
 import type { SceneRuntime } from "../scene/types";

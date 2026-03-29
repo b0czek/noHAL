@@ -3,16 +3,16 @@ import {
   buildMesaImportPlan,
   isSystemHalImportComponentGroup,
   suggestHalImportLinks,
-} from "@nohal/core/src/halImport";
-import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
-import type { ProjectMesaConfig } from "@nohal/core/src/mesa";
+} from "@nohal/core/halImport";
+import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
+import type { ProjectMesaConfig } from "@nohal/core/mesa";
 import type {
   ComponentDefinition,
   ComponentStore,
   HalImportDraft,
   HalImportLinkSelection,
   MachineConfigImportDraft,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 
 export function toLinkSelections(
   draft: HalImportDraft,

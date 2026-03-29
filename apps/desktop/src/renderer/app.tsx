@@ -1,4 +1,4 @@
-import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
+import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
 import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import EditorScreen from "./app/EditorScreen";
 import { useLandingProjectFlow } from "./app/useLandingProjectFlow";

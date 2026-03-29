@@ -1,4 +1,4 @@
-import { createEmptyProject, createSheet } from "@nohal/core/src/project";
+import { createEmptyProject, createSheet } from "@nohal/core/project";
 import { describe, expect, it } from "vitest";
 import { createEditorStore } from "../../store";
 

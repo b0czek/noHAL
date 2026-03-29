@@ -1,7 +1,7 @@
 import {
   type LinuxCncVersion,
   SUPPORTED_LINUXCNC_VERSIONS,
-} from "@nohal/core/src/linuxcncVersion";
+} from "@nohal/core/linuxcncVersion";
 import { HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
 import { createSignal, For, Show } from "solid-js";
 import type { RecentProjectEntry } from "../../shared/recentProjects";

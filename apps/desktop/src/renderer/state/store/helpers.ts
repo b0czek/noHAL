@@ -1,20 +1,20 @@
 import {
   addfQueueEntryNodeId,
   normalizeAddfQueueEntries,
-} from "@nohal/core/src/addfQueue";
+} from "@nohal/core/addfQueue";
 import {
   componentPrefersCanonicalInstanceNames,
   componentUsesLockedCanonicalInstanceNames,
   ensureInstanceName,
   nextComponentInstanceName,
-} from "@nohal/core/src/componentNaming";
+} from "@nohal/core/componentNaming";
 import {
   createEmptyComponentStore,
   isStoreEntryCompatibleWithLinuxCncVersion,
   listStoreEntriesForLinuxCncVersion,
-} from "@nohal/core/src/componentStore";
-import { reconcileComponentNodesForDefinition } from "@nohal/core/src/customComponent";
-import { endpointKey } from "@nohal/core/src/graph";
+} from "@nohal/core/componentStore";
+import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
+import { endpointKey } from "@nohal/core/graph";
 import type {
   ComponentStore,
   NoHALProject,
@@ -22,7 +22,7 @@ import type {
   SheetEndpointRef,
   SheetNodeInstance,
   XY,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { unwrap } from "solid-js/store";
 
 export { createEmptyComponentStore };

@@ -1,9 +1,9 @@
-import { getSheet } from "@nohal/core/src/graph";
+import { getSheet } from "@nohal/core/graph";
 import {
   isProtectedSystemNode,
   isProtectedSystemSheet,
-} from "@nohal/core/src/sheet";
-import type { XY } from "@nohal/core/src/types";
+} from "@nohal/core/sheet";
+import type { XY } from "@nohal/core/types";
 import { createSelectionClipboard } from "../../../clipboard/selection";
 import {
   cloneProject,

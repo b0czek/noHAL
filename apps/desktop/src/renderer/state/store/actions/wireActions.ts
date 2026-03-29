@@ -1,8 +1,8 @@
-import { getSheet, resolveEndpointInSheet } from "@nohal/core/src/graph";
-import { isValidHalName } from "@nohal/core/src/halNames";
-import { sheetEdits } from "@nohal/core/src/sheet";
-import type { SheetEndpointRef, XY } from "@nohal/core/src/types";
-import { validateDirectConnection } from "@nohal/core/src/validation";
+import { getSheet, resolveEndpointInSheet } from "@nohal/core/graph";
+import { isValidHalName } from "@nohal/core/halNames";
+import { sheetEdits } from "@nohal/core/sheet";
+import type { SheetEndpointRef, XY } from "@nohal/core/types";
+import { validateDirectConnection } from "@nohal/core/validation";
 import type { EditorStoreActionContext } from "./types";
 
 export function createWireActions(deps: EditorStoreActionContext) {

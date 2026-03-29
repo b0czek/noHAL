@@ -1,4 +1,4 @@
-import type { ComponentDefinition } from "@nohal/core/src/types";
+import type { ComponentDefinition } from "@nohal/core/types";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { useI18n } from "../i18n";
 import { Input } from "./ui/input";

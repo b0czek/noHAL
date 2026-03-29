@@ -2,8 +2,8 @@ import {
   endpointKey,
   getNodeTitle,
   getVisibleNodePins,
-} from "@nohal/core/src/graph";
-import type { SheetEndpointRef } from "@nohal/core/src/types";
+} from "@nohal/core/graph";
+import type { SheetEndpointRef } from "@nohal/core/types";
 import Konva from "konva";
 import {
   BASE_STROKE_WIDTH,

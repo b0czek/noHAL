@@ -1,5 +1,5 @@
-import { planMotmodReconcile } from "@nohal/core/src/motmod";
-import { createDefaultMotmodConfig } from "@nohal/core/src/project";
+import { planMotmodReconcile } from "@nohal/core/motmod";
+import { createDefaultMotmodConfig } from "@nohal/core/project";
 import { Show } from "solid-js";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";

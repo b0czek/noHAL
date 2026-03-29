@@ -1,4 +1,4 @@
-import type { SheetAddfQueueStoredEntry } from "@nohal/core/src/types";
+import type { SheetAddfQueueStoredEntry } from "@nohal/core/types";
 
 export interface SheetQueueRow {
   rowKey: string;

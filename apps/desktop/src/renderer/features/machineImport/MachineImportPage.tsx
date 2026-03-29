@@ -1,5 +1,5 @@
-import { deriveMesaTopology } from "@nohal/core/src/mesa";
-import type { HalImportPlacementHeuristic } from "@nohal/core/src/types";
+import { deriveMesaTopology } from "@nohal/core/mesa";
+import type { HalImportPlacementHeuristic } from "@nohal/core/types";
 import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";

@@ -1,8 +1,8 @@
 import {
   customLoadCommandInterpolationAliases,
   customLoadCommandInterpolationTokens,
-} from "@nohal/core/src/customComponent";
-import type { ComponentDefinition, HalValueType } from "@nohal/core/src/types";
+} from "@nohal/core/customComponent";
+import type { ComponentDefinition, HalValueType } from "@nohal/core/types";
 import { HiOutlinePlus, HiOutlineTrash } from "solid-icons/hi";
 import { createMemo, For, Show } from "solid-js";
 import StringSelect from "../../components/form/StringSelect";

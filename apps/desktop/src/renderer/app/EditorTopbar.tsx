@@ -1,7 +1,7 @@
 import {
   isComponentPlaceable,
   isComponentSearchable,
-} from "@nohal/core/src/componentVisibility";
+} from "@nohal/core/componentVisibility";
 import {
   HiOutlineArchiveBoxArrowDown,
   HiOutlineArrowsRightLeft,

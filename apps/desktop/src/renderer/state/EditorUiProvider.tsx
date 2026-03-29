@@ -1,5 +1,5 @@
-import { getSheet } from "@nohal/core/src/graph";
-import type { LabelScope, XY } from "@nohal/core/src/types";
+import { getSheet } from "@nohal/core/graph";
+import type { LabelScope, XY } from "@nohal/core/types";
 import {
   createContext,
   createEffect,

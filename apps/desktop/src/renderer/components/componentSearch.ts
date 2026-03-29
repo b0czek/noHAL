@@ -1,5 +1,5 @@
-import { getNodeTitle } from "@nohal/core/src/graph";
-import type { NoHALProject } from "@nohal/core/src/types";
+import { getNodeTitle } from "@nohal/core/graph";
+import type { NoHALProject } from "@nohal/core/types";
 
 export type CanvasSearchTarget = {
   kind: "node" | "label" | "comment" | "sheet-port";

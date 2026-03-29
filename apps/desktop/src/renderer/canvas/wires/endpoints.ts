@@ -1,4 +1,4 @@
-import type { SheetEndpointRef } from "@nohal/core/src/types";
+import type { SheetEndpointRef } from "@nohal/core/types";
 import type { Pt } from "../layout";
 import { clampRuntimePos } from "../scene/bounds";
 import { screenToWorld } from "../scene/camera";

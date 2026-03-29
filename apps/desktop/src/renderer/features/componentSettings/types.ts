@@ -1,4 +1,4 @@
-import type { ComponentNode } from "@nohal/core/src/types";
+import type { ComponentNode } from "@nohal/core/types";
 import type { Accessor } from "solid-js";
 
 export type ComponentSettingsTab =

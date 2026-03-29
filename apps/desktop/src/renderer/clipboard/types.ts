@@ -5,7 +5,7 @@ import type {
   SheetLabel,
   SheetNodeInstance,
   SheetPort,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 
 export type SelectionClipboardSnapshot = {
   nodes: SheetNodeInstance[];

@@ -1,5 +1,5 @@
-import { endpointKey } from "@nohal/core/src/graph";
-import type { ProjectWireLayerPosition } from "@nohal/core/src/types";
+import { endpointKey } from "@nohal/core/graph";
+import type { ProjectWireLayerPosition } from "@nohal/core/types";
 import { buildSheetSceneLayout, type Pt } from "../layout";
 import {
   type DragSelectionTarget,

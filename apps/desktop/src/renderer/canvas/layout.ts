@@ -1,10 +1,10 @@
-import { endpointKey, getVisibleNodePins } from "@nohal/core/src/graph";
+import { endpointKey, getVisibleNodePins } from "@nohal/core/graph";
 import type {
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
   SheetNodeInstance,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import {
   BOTTOM_H,
   BOTTOM_PIN_COLUMN_STEP,

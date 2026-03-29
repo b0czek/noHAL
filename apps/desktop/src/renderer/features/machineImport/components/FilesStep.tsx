@@ -1,4 +1,4 @@
-import type { MachineConfigImportSetupDraft } from "@nohal/core/src/types";
+import type { MachineConfigImportSetupDraft } from "@nohal/core/types";
 import {
   HiOutlineFolderOpen,
   HiOutlinePlus,

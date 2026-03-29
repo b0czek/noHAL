@@ -1,4 +1,4 @@
-import { createEmptyProject } from "@nohal/core/src/project";
+import { createEmptyProject } from "@nohal/core/project";
 import { describe, expect, it } from "vitest";
 import type { NoHALApi } from "../../../../preload/api";
 import { createEditorStore } from "../../store";

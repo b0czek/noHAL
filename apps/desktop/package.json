@@ -22,7 +22,7 @@
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
     "generate:linuxcnc-stores": "pnpm --filter @nohal/core generate:linuxcnc-stores",
-    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+    "typecheck": "tsc --noEmit -p tsconfig.renderer.json && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.1",

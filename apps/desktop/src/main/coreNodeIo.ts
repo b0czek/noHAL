@@ -9,11 +9,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
-import type {
-  CoreFileSystemApi,
-  CoreIo,
-  CorePathApi,
-} from "@nohal/core/src/types";
+import type { CoreFileSystemApi, CoreIo, CorePathApi } from "@nohal/core/types";
 
 export const nodePathApi: CorePathApi = {
   resolve: (...paths) => path.resolve(...paths),

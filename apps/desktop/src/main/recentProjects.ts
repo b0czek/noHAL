@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { normalizeLinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
+import { normalizeLinuxCncVersion } from "@nohal/core/linuxcncVersion";
 import { app } from "electron";
 import type { RecentProjectEntry } from "../shared/recentProjects";
 

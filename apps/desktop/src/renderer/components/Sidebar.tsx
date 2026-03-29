@@ -1,4 +1,4 @@
-import type { SheetDefinition } from "@nohal/core/src/types";
+import type { SheetDefinition } from "@nohal/core/types";
 import { HiOutlineChevronDown, HiOutlineChevronRight } from "solid-icons/hi";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { useI18n } from "../i18n";

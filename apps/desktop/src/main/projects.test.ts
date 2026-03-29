@@ -8,23 +8,21 @@ import {
 } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { buildManagedMachineConfigIniSections } from "@nohal/core/machineConfig";
 import corePackageJson from "@nohal/core/package.json";
-import { buildManagedMachineConfigIniSections } from "@nohal/core/src/machineConfig/policy";
 import {
   createEmptyProject,
   createSheet,
-  reconcileProject,
-} from "@nohal/core/src/project";
-import {
   NOHAL_PROJECT_DIR_FORMAT,
   NOHAL_PROJECT_DIR_VERSION,
   NOHAL_PROJECT_LIBRARY_FILE_FORMAT,
   NOHAL_PROJECT_LIBRARY_FILE_VERSION,
   NOHAL_PROJECT_SHEET_FILE_FORMAT,
   NOHAL_PROJECT_SHEET_FILE_VERSION,
-} from "@nohal/core/src/project/formats";
-import { findSystemSheet } from "@nohal/core/src/sheet";
-import type { NoHALProject } from "@nohal/core/src/types";
+  reconcileProject,
+} from "@nohal/core/project";
+import { findSystemSheet } from "@nohal/core/sheet";
+import type { NoHALProject } from "@nohal/core/types";
 import { afterEach, describe, expect, it } from "vitest";
 import { projectDirectory } from "./coreWrappers";
 

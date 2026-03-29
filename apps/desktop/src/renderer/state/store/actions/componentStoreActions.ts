@@ -1,4 +1,4 @@
-import type { ComponentStore } from "@nohal/core/src/types";
+import type { ComponentStore } from "@nohal/core/types";
 import type { TranslationKey } from "../../../i18n";
 import { getComponentSourceDisplayPath, toErrorMessage } from "../helpers";
 import type { EditorStoreActionContext } from "./types";

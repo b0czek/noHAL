@@ -1,12 +1,12 @@
 import {
   createComponentStoreApi,
   type StoreSourceRefreshResult,
-} from "@nohal/core/src/componentStore";
+} from "@nohal/core/componentStore";
 import type {
   ComponentStore,
   ComponentStoreEntry,
   ImportedComponentDefinition,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { app, dialog } from "electron";
 import { nodeIo } from "./coreNodeIo";
 

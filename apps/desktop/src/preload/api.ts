@@ -1,5 +1,5 @@
-import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
-import type { ProjectReadResult } from "@nohal/core/src/project";
+import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
+import type { ProjectReadResult } from "@nohal/core/project";
 import type {
   ComponentStore,
   ComponentStoreEntry,
@@ -8,7 +8,7 @@ import type {
   MachineConfigImportDraft,
   MachineConfigImportSetupDraft,
   NoHALProject,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import type { AppSettings, AppSettingsPatch } from "../shared/appSettings";
 import type { RecentProjectEntry } from "../shared/recentProjects";
 

@@ -2,7 +2,7 @@ import type {
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 
 export type WireAttrs = {
   stroke: string | CanvasGradient;

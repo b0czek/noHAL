@@ -1,24 +1,23 @@
-import { customComponentEdits } from "@nohal/core/src/customComponent";
+import { customComponentEdits } from "@nohal/core/customComponent";
 import {
   addHalThread,
   removeHalThread,
   updateHalThreadFloatMode,
   updateHalThreadName,
   updateHalThreadPeriodNs,
-} from "@nohal/core/src/halThread";
-import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
+} from "@nohal/core/halThread";
+import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
 import {
   syncMotmodManagedProjection,
   updateMotmodNumericConfig,
-} from "@nohal/core/src/motmod";
-import type { ProjectReadResult } from "@nohal/core/src/project";
-import { projectEdits } from "@nohal/core/src/project";
+} from "@nohal/core/motmod";
+import { type ProjectReadResult, projectEdits } from "@nohal/core/project";
 import type {
   HalValueType,
   NoHALProject,
   ProjectWireLayerPosition,
   ProjectWireStyle,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import type { TranslationKey } from "../../../i18n";
 import { toErrorMessage } from "../helpers";
 import type { EditorStoreActionContext } from "./types";

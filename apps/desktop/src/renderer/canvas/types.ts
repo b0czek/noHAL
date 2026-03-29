@@ -3,7 +3,7 @@ import type {
   SheetDefinition,
   SheetEndpointRef,
   XY,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import type { Selection } from "../state/store/selectionTypes";
 
 export type SceneSelection = Selection;

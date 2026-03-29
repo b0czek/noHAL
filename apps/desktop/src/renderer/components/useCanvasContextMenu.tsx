@@ -1,9 +1,9 @@
-import { isSystemComponent } from "@nohal/core/src/componentSystem";
+import { isSystemComponent } from "@nohal/core/componentSystem";
 import {
   isComponentPlaceable,
   isComponentSearchable,
-} from "@nohal/core/src/componentVisibility";
-import { getSheet } from "@nohal/core/src/graph";
+} from "@nohal/core/componentVisibility";
+import { getSheet } from "@nohal/core/graph";
 import { HiOutlineDocumentDuplicate } from "solid-icons/hi";
 import { RiDocumentClipboardLine } from "solid-icons/ri";
 import { createMemo } from "solid-js";

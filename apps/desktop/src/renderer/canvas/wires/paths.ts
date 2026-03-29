@@ -1,4 +1,4 @@
-import type { ProjectWireStyle, SheetEndpointRef } from "@nohal/core/src/types";
+import type { ProjectWireStyle, SheetEndpointRef } from "@nohal/core/types";
 import Konva from "konva";
 import {
   WIRE_BEZIER_PULL,

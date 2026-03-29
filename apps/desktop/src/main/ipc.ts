@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises";
-import { parseCompComponentDefinition } from "@nohal/core/src/compParser";
-import { normalizeLinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
-import { createEmptyProject, reconcileProject } from "@nohal/core/src/project";
+import { parseCompComponentDefinition } from "@nohal/core/compParser";
+import { normalizeLinuxCncVersion } from "@nohal/core/linuxcncVersion";
+import { createEmptyProject, reconcileProject } from "@nohal/core/project";
 import type {
   MachineConfigHalFileSelection,
   NoHALProject,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { BrowserWindow, clipboard, dialog, ipcMain } from "electron";
 import { appSettings } from "./appSettings";
 import { applyChangedAppSettings } from "./appSettingsEffects";

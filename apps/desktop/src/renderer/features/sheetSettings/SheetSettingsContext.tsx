@@ -1,8 +1,5 @@
-import { getSheetThreadOutputs } from "@nohal/core/src/sheet";
-import type {
-  SheetNode,
-  SheetThreadOutputDefinition,
-} from "@nohal/core/src/types";
+import { getSheetThreadOutputs } from "@nohal/core/sheet";
+import type { SheetNode, SheetThreadOutputDefinition } from "@nohal/core/types";
 import {
   createContext,
   createMemo,

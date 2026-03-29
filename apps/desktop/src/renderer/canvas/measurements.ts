@@ -1,4 +1,4 @@
-import type { SheetDefinition } from "@nohal/core/src/types";
+import type { SheetDefinition } from "@nohal/core/types";
 import Konva from "konva";
 import { FONT_MONO, FONT_SANS } from "./constants";
 import type { Pt } from "./layout";

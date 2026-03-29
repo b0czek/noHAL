@@ -1,4 +1,4 @@
-import { getSheet } from "@nohal/core/src/graph";
+import { getSheet } from "@nohal/core/graph";
 import {
   createEffect,
   createMemo,

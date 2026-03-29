@@ -1,9 +1,9 @@
-import { listStoreEntriesForLinuxCncVersion } from "@nohal/core/src/componentStore";
+import { listStoreEntriesForLinuxCncVersion } from "@nohal/core/componentStore";
 import {
   type LinuxCncVersion,
   SUPPORTED_LINUXCNC_VERSIONS,
-} from "@nohal/core/src/linuxcncVersion";
-import type { ComponentStore } from "@nohal/core/src/types";
+} from "@nohal/core/linuxcncVersion";
+import type { ComponentStore } from "@nohal/core/types";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import StringSelect from "../../components/form/StringSelect";
 import { Badge } from "../../components/ui/badge";

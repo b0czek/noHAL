@@ -1,7 +1,7 @@
 import type {
   ComponentDefinition,
   HalImportComponentGroup,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { Show } from "solid-js";
 import {
   Dialog,

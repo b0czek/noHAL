@@ -1,9 +1,9 @@
-import { customComponentDefinitionEdits } from "@nohal/core/src/customComponent";
+import { customComponentDefinitionEdits } from "@nohal/core/customComponent";
 import {
   buildProjectFromHalImport as buildImportedProject,
   detectMesaHalImport,
-} from "@nohal/core/src/halImport";
-import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
+} from "@nohal/core/halImport";
+import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
 import {
   createDefaultMesaConfig,
   type ProjectMesaConnectorCardKind,
@@ -11,12 +11,12 @@ import {
   type ProjectMesaHostKind,
   type ProjectMesaSmartSerialCardKind,
   type ProjectMesaSmartSerialTarget,
-} from "@nohal/core/src/mesa";
+} from "@nohal/core/mesa";
 import type {
   ComponentDefinition,
   HalImportPlacementHeuristic,
   HalValueType,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import type { Accessor } from "solid-js";
 import { createStore, unwrap } from "solid-js/store";
 import { useI18n } from "../../i18n";

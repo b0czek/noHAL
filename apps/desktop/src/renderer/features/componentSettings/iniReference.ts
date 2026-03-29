@@ -1,5 +1,5 @@
-import { buildEffectiveMachineConfigIni } from "@nohal/core/src/machineConfig/policy";
-import type { NoHALProject } from "@nohal/core/src/types";
+import { buildEffectiveMachineConfigIni } from "@nohal/core/machineConfig";
+import type { NoHALProject } from "@nohal/core/types";
 
 /**
  * A single selectable INI entry exposed in the component-settings picker.

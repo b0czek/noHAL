@@ -1,11 +1,11 @@
-import { getNodeTitle, getSheet } from "@nohal/core/src/graph";
+import { getNodeTitle, getSheet } from "@nohal/core/graph";
 import type {
   ComponentStore,
   HalValueType,
   LabelScope,
   NoHALProject,
   SheetNodeInstance,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { For, Show } from "solid-js";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";

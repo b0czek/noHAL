@@ -1,4 +1,4 @@
-import { getNodePins, isNodePinConnected } from "@nohal/core/src/graph";
+import { getNodePins, isNodePinConnected } from "@nohal/core/graph";
 import { HiOutlineEye, HiOutlineEyeSlash } from "solid-icons/hi";
 import { createMemo, createSignal, For, Index, Show } from "solid-js";
 import { Badge } from "../../components/ui/badge";

@@ -1,14 +1,14 @@
-import { resolveComponentPinsForInstance } from "@nohal/core/src/componentInstance";
+import { resolveComponentPinsForInstance } from "@nohal/core/componentInstance";
 import {
   fixedExportStageForComponent,
   fixedInstanceNameForComponent,
-} from "@nohal/core/src/componentSystem";
-import { isComponentPlaceable } from "@nohal/core/src/componentVisibility";
-import { reconcileComponentNodesForDefinition } from "@nohal/core/src/customComponent";
-import { getSheet, isNodePinConnected } from "@nohal/core/src/graph";
-import { isValidHalName } from "@nohal/core/src/halNames";
-import { createId } from "@nohal/core/src/id";
-import { createSheetPortDraft } from "@nohal/core/src/project";
+} from "@nohal/core/componentSystem";
+import { isComponentPlaceable } from "@nohal/core/componentVisibility";
+import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
+import { getSheet, isNodePinConnected } from "@nohal/core/graph";
+import { isValidHalName } from "@nohal/core/halNames";
+import { createId } from "@nohal/core/id";
+import { createSheetPortDraft } from "@nohal/core/project";
 import type {
   ComponentNode,
   HalValueType,
@@ -17,7 +17,7 @@ import type {
   SheetEndpointRef,
   SheetNode,
   XY,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import {
   componentUsesLockedCanonicalInstanceNames,
   defaultCommentPosition,

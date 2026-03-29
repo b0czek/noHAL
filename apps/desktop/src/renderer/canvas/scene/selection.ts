@@ -1,4 +1,4 @@
-import type { SheetEndpointRef } from "@nohal/core/src/types";
+import type { SheetEndpointRef } from "@nohal/core/types";
 import {
   estimateCommentSize,
   estimatePortBox,

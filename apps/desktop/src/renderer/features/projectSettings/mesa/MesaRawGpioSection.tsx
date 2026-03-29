@@ -1,4 +1,4 @@
-import type { ProjectMesaGpioDirection } from "@nohal/core/src/mesa";
+import type { ProjectMesaGpioDirection } from "@nohal/core/mesa";
 import { For } from "solid-js";
 import { Button } from "../../../components/ui/button";
 import { useI18n } from "../../../i18n";

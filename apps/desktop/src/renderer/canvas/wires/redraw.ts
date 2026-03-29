@@ -1,4 +1,4 @@
-import type { DirectConnection, SheetEndpointRef } from "@nohal/core/src/types";
+import type { DirectConnection, SheetEndpointRef } from "@nohal/core/types";
 import Konva from "konva";
 import type { Selection } from "../../state/store/selectionTypes";
 import {

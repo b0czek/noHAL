@@ -1,9 +1,9 @@
-import { listStoreEntriesForLinuxCncVersion } from "@nohal/core/src/componentStore";
-import { analyzeSystemHalImportOverride } from "@nohal/core/src/halImport";
+import { listStoreEntriesForLinuxCncVersion } from "@nohal/core/componentStore";
+import { analyzeSystemHalImportOverride } from "@nohal/core/halImport";
 import type {
   HalImportDraft,
   HalImportPlacementHeuristic,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { createMemo, For, Show } from "solid-js";
 import StringSelect from "../../../components/form/StringSelect";
 import { Alert } from "../../../components/ui/alert";

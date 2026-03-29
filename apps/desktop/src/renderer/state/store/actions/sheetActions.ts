@@ -1,17 +1,17 @@
-import { getSheet } from "@nohal/core/src/graph";
-import { createId } from "@nohal/core/src/id";
-import { createSheet } from "@nohal/core/src/project";
+import { getSheet } from "@nohal/core/graph";
+import { createId } from "@nohal/core/id";
+import { createSheet } from "@nohal/core/project";
 import {
   isProtectedSystemNode,
   isProtectedSystemSheet,
   moveSelectionIntoSubsheet,
   sheetModelEdits,
-} from "@nohal/core/src/sheet";
+} from "@nohal/core/sheet";
 import type {
   SheetAddfQueueStoredEntry,
   SheetNode,
   XY,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import {
   cloneProject,
   ensureInstanceName,

@@ -1,4 +1,4 @@
-import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
+import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
 import { type Accessor, createSignal, onMount, type Setter } from "solid-js";
 import type { RecentProjectEntry } from "../../shared/recentProjects";
 import { useEditorStore } from "../state/EditorStoreProvider";

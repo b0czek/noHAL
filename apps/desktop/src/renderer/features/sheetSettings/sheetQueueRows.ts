@@ -4,13 +4,13 @@ import {
   makeAddfQueueFunctionEntry,
   makeAddfQueueNodeEntry,
   makeAddfQueueSubsheetOutputEntry,
-} from "@nohal/core/src/addfQueue";
-import { resolveAddfFunctionTarget } from "@nohal/core/src/componentFunctions";
+} from "@nohal/core/addfQueue";
+import { resolveAddfFunctionTarget } from "@nohal/core/componentFunctions";
 import {
   firstSheetThreadOutputId,
   getSheetThreadOutputs,
-} from "@nohal/core/src/sheet";
-import type { NoHALProject, SheetNodeInstance } from "@nohal/core/src/types";
+} from "@nohal/core/sheet";
+import type { NoHALProject, SheetNodeInstance } from "@nohal/core/types";
 import type { SheetQueueRow } from "./types";
 
 interface SheetQueueLabels {

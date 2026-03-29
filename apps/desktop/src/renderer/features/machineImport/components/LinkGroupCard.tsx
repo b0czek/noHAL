@@ -1,9 +1,9 @@
-import { analyzeSystemHalImportOverride } from "@nohal/core/src/halImport";
+import { analyzeSystemHalImportOverride } from "@nohal/core/halImport";
 import type {
   ComponentStoreEntry,
   HalImportComponentGroup,
   HalImportDraft,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { HiOutlinePencilSquare } from "solid-icons/hi";
 import { createMemo, Show } from "solid-js";
 import StringSelect from "../../../components/form/StringSelect";

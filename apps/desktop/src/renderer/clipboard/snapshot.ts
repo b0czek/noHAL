@@ -1,4 +1,4 @@
-import type { XY } from "@nohal/core/src/types";
+import type { XY } from "@nohal/core/types";
 import type { EditorSelection } from "../state/store/actions/types";
 import type { PastedSelectionIds, SelectionClipboardSnapshot } from "./types";
 

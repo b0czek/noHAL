@@ -1,5 +1,5 @@
-import { endpointKey } from "@nohal/core/src/graph";
-import type { SheetEndpointRef } from "@nohal/core/src/types";
+import { endpointKey } from "@nohal/core/graph";
+import type { SheetEndpointRef } from "@nohal/core/types";
 import Konva from "konva";
 import {
   CORNER_RADIUS_MD,

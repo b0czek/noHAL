@@ -1,4 +1,4 @@
-import { isComponentShownInCustomComponents } from "@nohal/core/src/componentVisibility";
+import { isComponentShownInCustomComponents } from "@nohal/core/componentVisibility";
 import { HiOutlineArrowLeft, HiOutlinePlus } from "solid-icons/hi";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Button } from "../../components/ui/button";

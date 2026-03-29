@@ -1,7 +1,7 @@
 import {
   addfQueueEntryKey,
   makeAddfQueueNodeEntry,
-} from "@nohal/core/src/addfQueue";
+} from "@nohal/core/addfQueue";
 import { HiOutlineChevronDown, HiOutlineChevronUp } from "solid-icons/hi";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { Badge } from "../../components/ui/badge";

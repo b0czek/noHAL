@@ -1,10 +1,10 @@
-import { isSystemComponent } from "@nohal/core/src/componentSystem";
+import { isSystemComponent } from "@nohal/core/componentSystem";
 import type {
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
   SheetNodeInstance,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import Konva from "konva";
 import {
   BASE_STROKE_WIDTH,
