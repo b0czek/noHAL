@@ -3,6 +3,15 @@ import type { Pt } from "../layout";
 
 export type EndpointSide = "left" | "right" | "top" | "bottom";
 
+const SEGMENT_EPSILON_SQ = 1e-9;
+const VECTOR_EPSILON = 1e-6;
+const SIDE_AXIS_THRESHOLD = 0.5;
+const APPROX_LABEL_WIDTH = 116;
+const LABEL_WIDTH_CENTERING = 0.5;
+const ENDPOINT_EDGE_GAP = 24;
+const LABEL_TANGENT_NUDGE = 18;
+const VERTICAL_LABEL_OFFSET = 32;
+
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -29,7 +38,7 @@ export function distSqPointToSegment(p: Pt, a: Pt, b: Pt): number {
   const apx = p.x - a.x;
   const apy = p.y - a.y;
   const abLenSq = abx * abx + aby * aby;
-  if (abLenSq <= 1e-9) return apx * apx + apy * apy;
+  if (abLenSq <= SEGMENT_EPSILON_SQ) return apx * apx + apy * apy;
   const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLenSq));
   const cx = a.x + abx * t;
   const cy = a.y + aby * t;
@@ -53,7 +62,7 @@ export function findNearestSegmentIndex(routePoints: Pt[], point: Pt): number {
 
 export function normalizeVector(x: number, y: number): Pt | null {
   const length = Math.hypot(x, y);
-  if (length <= 1e-6) return null;
+  if (length <= VECTOR_EPSILON) return null;
   return { x: x / length, y: y / length };
 }
 
@@ -66,24 +75,28 @@ function getLabelPositionNearEndpoint(args: {
   const outward = normal ?? wireDirection ?? { x: 1, y: 0 };
   const tangent =
     wireDirection ??
-    (Math.abs(outward.x) > 0.5 ? { x: 0, y: 1 } : { x: 1, y: 0 });
-  const approxLabelWidth = 116;
-  const edgeGap = 24;
-  const tangentNudge = 18;
+    (Math.abs(outward.x) > SIDE_AXIS_THRESHOLD
+      ? { x: 0, y: 1 }
+      : { x: 1, y: 0 });
 
   if (Math.abs(outward.x) >= Math.abs(outward.y)) {
     return {
       x:
         outward.x < 0
-          ? endpoint.x - approxLabelWidth - edgeGap
-          : endpoint.x + edgeGap,
-      y: endpoint.y + tangent.y * tangentNudge,
+          ? endpoint.x - APPROX_LABEL_WIDTH - ENDPOINT_EDGE_GAP
+          : endpoint.x + ENDPOINT_EDGE_GAP,
+      y: endpoint.y + tangent.y * LABEL_TANGENT_NUDGE,
     };
   }
 
   return {
-    x: endpoint.x - approxLabelWidth * 0.5 + tangent.x * tangentNudge,
-    y: endpoint.y + (outward.y < 0 ? -32 : 32),
+    x:
+      endpoint.x -
+      APPROX_LABEL_WIDTH * LABEL_WIDTH_CENTERING +
+      tangent.x * LABEL_TANGENT_NUDGE,
+    y:
+      endpoint.y +
+      (outward.y < 0 ? -VERTICAL_LABEL_OFFSET : VERTICAL_LABEL_OFFSET),
   };
 }
 

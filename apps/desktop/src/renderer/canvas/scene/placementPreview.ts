@@ -1,27 +1,17 @@
 import Konva from "konva";
+import { comment } from "../constants/comments";
+import { label } from "../constants/labels";
+import { node } from "../constants/nodes";
+import { port } from "../constants/ports";
+import { surface } from "../constants/surfaces";
+import { typography } from "../constants/typography";
+import { wire } from "../constants/wires";
 import {
-  BASE_STROKE_WIDTH,
-  CORNER_RADIUS_MD,
-  FONT_MONO,
-  FONT_SANS,
-  HEADER_H,
-  NODE_FILL,
-  NODE_WIDTH,
-  PIN_HALO_FILL,
-  PIN_HALO_RADIUS_PAD,
-  PIN_R,
-  PIN_STROKE,
-  PORT_LABEL_H,
-  PORT_PANEL_FILL,
-  SELECTED_BORDER,
-  SELECTED_LABEL_BORDER,
-  SHEET_NODE_FILL,
-  SIDE_ROW_H,
-  TEXT_MUTED,
-  TEXT_PRIMARY,
-  TEXT_SOFT,
-} from "../constants";
-import { estimateCommentSize, measureLabelBox } from "../measurements";
+  estimateCommentSize,
+  estimatePortLabelWidth,
+  measureLabelBox,
+  measureLabelScopeWidth,
+} from "../measurements";
 import { dirStroke, labelFill, typeFill } from "../theme";
 import type { ScenePlacement, SceneRenderState } from "../types";
 
@@ -55,95 +45,97 @@ export function buildPlacementPreview(args: {
 
   if (placement.kind === "component") {
     const component = state?.project.library.components[placement.componentId];
-    const width = NODE_WIDTH;
-    const height = HEADER_H + SIDE_ROW_H + 12;
+    const width = node.width;
+    const height =
+      node.header.height + node.side.rowHeight + node.body.bottomPadding;
     group.add(
       new Konva.Rect({
         x: 0,
         y: 0,
         width,
         height,
-        cornerRadius: 14,
-        fill: NODE_FILL,
-        stroke: SELECTED_BORDER,
+        cornerRadius: node.cornerRadius,
+        fill: surface.node.fill,
+        stroke: surface.border.selected,
         strokeWidth: 2,
-        dash: [8, 6],
+        dash: wire.pending.dash,
       }),
     );
     group.add(
       new Konva.Text({
-        x: 10,
-        y: 8,
-        width: width - 58,
+        x: node.title.x,
+        y: node.title.y,
+        width: width - node.title.rightPadding,
         text: component?.halComponentName ?? "Component",
-        fontFamily: FONT_SANS,
-        fontSize: 12,
-        fill: TEXT_PRIMARY,
+        fontFamily: typography.family.sans,
+        fontSize: node.title.fontSize,
+        fill: typography.color.primary,
       }),
     );
     group.add(
       new Konva.Text({
-        x: width - 46,
-        y: 8,
-        width: 40,
+        x: width - node.kind.rightX,
+        y: node.title.y,
+        width: node.kind.width,
         align: "right",
         text: "comp",
-        fontFamily: FONT_SANS,
-        fontSize: 11,
-        fill: TEXT_MUTED,
+        fontFamily: typography.family.sans,
+        fontSize: node.kind.fontSize,
+        fill: typography.color.muted,
       }),
     );
     group.add(
       new Konva.Text({
-        x: 10,
-        y: HEADER_H + 8,
-        width: width - 20,
+        x: node.title.x,
+        y: node.header.height + node.title.y,
+        width: width - node.subtitle.rightPadding,
         text: component?.source ?? "component",
-        fontFamily: FONT_MONO,
-        fontSize: 11,
-        fill: TEXT_SOFT,
+        fontFamily: typography.family.mono,
+        fontSize: node.subtitle.fontSize,
+        fill: typography.color.soft,
       }),
     );
     return group;
   }
 
   if (placement.kind === "subsheet") {
-    const width = NODE_WIDTH;
-    const height = HEADER_H + SIDE_ROW_H + 12;
+    const width = node.width;
+    const height =
+      node.header.height + node.side.rowHeight + node.body.bottomPadding;
     group.add(
       new Konva.Rect({
         x: 0,
         y: 0,
         width,
         height,
-        cornerRadius: 14,
-        fill: SHEET_NODE_FILL,
-        stroke: SELECTED_BORDER,
+        cornerRadius: node.cornerRadius,
+        fill: surface.sheetNode.fill,
+        stroke: surface.border.selected,
         strokeWidth: 2,
-        dash: [8, 6],
+        dash: wire.pending.dash,
       }),
     );
     group.add(
       new Konva.Text({
-        x: 10,
-        y: 8,
-        width: width - 58,
+        x: node.title.x,
+        y: node.title.y,
+        width: width - node.title.rightPadding,
         text: "Sheet",
-        fontFamily: FONT_SANS,
-        fontSize: 12,
-        fill: TEXT_PRIMARY,
+        fontFamily: typography.family.sans,
+        fontSize: node.title.fontSize,
+        fill: typography.color.primary,
       }),
     );
     group.add(
       new Konva.Text({
-        x: width - 46,
-        y: 8,
-        width: 40,
+        x: width - node.kind.rightX,
+        y: node.title.y,
+        width: node.kind.width,
         align: "right",
         text: "sheet",
-        fontFamily: FONT_SANS,
-        fontSize: 11,
-        fill: TEXT_MUTED,
+        fontFamily: typography.family.sans,
+        fontSize: node.kind.fontSize,
+        fill: typography.color.muted,
       }),
     );
     return group;
@@ -158,11 +150,11 @@ export function buildPlacementPreview(args: {
         y: 0,
         width: size.width,
         height: size.height,
-        cornerRadius: CORNER_RADIUS_MD,
-        fill: "rgba(12, 24, 28, 0.72)",
-        stroke: SELECTED_BORDER,
+        cornerRadius: surface.radius.md,
+        fill: comment.box.fill,
+        stroke: surface.border.selected,
         strokeWidth: 2,
-        dash: [8, 6],
+        dash: wire.pending.dash,
       }),
     );
     group.add(
@@ -170,11 +162,11 @@ export function buildPlacementPreview(args: {
         x: 0,
         y: 0,
         text: content,
-        fontFamily: FONT_SANS,
-        fontSize: 14,
-        lineHeight: 1.25,
-        fill: TEXT_PRIMARY,
-        padding: 10,
+        fontFamily: typography.family.sans,
+        fontSize: comment.font.size,
+        lineHeight: comment.font.lineHeight,
+        fill: typography.color.primary,
+        padding: comment.box.padding,
         listening: false,
       }),
     );
@@ -184,39 +176,39 @@ export function buildPlacementPreview(args: {
   if (placement.kind === "label") {
     const name = placement.scope === "global" ? "global_sig" : "sig";
     const size = measureLabelBox(placement.scope, name);
-    const scopeWidth = Math.ceil(placement.scope.length * 5.8);
+    const scopeWidth = measureLabelScopeWidth(placement.scope);
     group.add(
       new Konva.Rect({
         x: 0,
         y: -size.height / 2,
         width: size.width,
         height: size.height,
-        cornerRadius: CORNER_RADIUS_MD,
+        cornerRadius: surface.radius.md,
         fill: labelFill(placement.scope),
-        stroke: SELECTED_LABEL_BORDER,
+        stroke: surface.border.selectedLabel,
         strokeWidth: 2,
-        dash: [8, 6],
+        dash: wire.pending.dash,
       }),
     );
     group.add(
       new Konva.Text({
-        x: 8,
-        y: -4,
+        x: label.scope.text.x,
+        y: label.scope.text.y,
         text: placement.scope,
-        fontFamily: FONT_SANS,
-        fontSize: 10,
-        fill: TEXT_SOFT,
+        fontFamily: typography.family.sans,
+        fontSize: label.scope.fontSize,
+        fill: typography.color.soft,
         listening: false,
       }),
     );
     group.add(
       new Konva.Text({
-        x: 14 + scopeWidth + 6,
-        y: -2,
+        x: label.name.text.baseX + scopeWidth + label.name.text.gap,
+        y: label.name.text.y,
         text: name,
-        fontFamily: FONT_MONO,
-        fontSize: 12,
-        fill: TEXT_PRIMARY,
+        fontFamily: typography.family.mono,
+        fontSize: label.name.fontSize,
+        fill: typography.color.primary,
         listening: false,
       }),
     );
@@ -224,36 +216,36 @@ export function buildPlacementPreview(args: {
   }
 
   const name = previewPortName(placement.direction);
-  const width = Math.ceil(name.length * 7.2) + 20;
+  const width = estimatePortLabelWidth(name);
   const side = previewPortSide(placement.direction);
-  let labelRectX = 12;
-  let labelRectY = -PORT_LABEL_H / 2;
-  if (side === "right") labelRectX = -width - 12;
+  let labelRectX = port.label.offset;
+  let labelRectY = -port.label.height / 2;
+  if (side === "right") labelRectX = -width - port.label.offset;
   if (side === "top") {
     labelRectX = -width / 2;
-    labelRectY = 12;
+    labelRectY = port.label.offset;
   }
   group.add(
     new Konva.Rect({
       x: labelRectX,
       y: labelRectY,
       width,
-      height: PORT_LABEL_H,
-      cornerRadius: CORNER_RADIUS_MD,
-      fill: PORT_PANEL_FILL,
+      height: port.label.height,
+      cornerRadius: surface.radius.md,
+      fill: surface.portPanelFill,
       stroke: dirStroke(placement.direction),
       strokeWidth: 2,
-      dash: [8, 6],
+      dash: wire.pending.dash,
     }),
   );
   group.add(
     new Konva.Text({
-      x: labelRectX + 9,
-      y: labelRectY + 5,
+      x: labelRectX + port.text.x,
+      y: labelRectY + port.text.y,
       text: name,
-      fontFamily: FONT_MONO,
-      fontSize: 12,
-      fill: TEXT_PRIMARY,
+      fontFamily: typography.family.mono,
+      fontSize: port.text.fontSize,
+      fill: typography.color.primary,
       listening: false,
     }),
   );
@@ -261,8 +253,8 @@ export function buildPlacementPreview(args: {
     new Konva.Circle({
       x: 0,
       y: 0,
-      radius: PIN_R + PIN_HALO_RADIUS_PAD,
-      fill: PIN_HALO_FILL,
+      radius: surface.pin.radius + surface.pin.haloRadiusPadding,
+      fill: surface.pin.haloFill,
       listening: false,
     }),
   );
@@ -270,10 +262,10 @@ export function buildPlacementPreview(args: {
     new Konva.Circle({
       x: 0,
       y: 0,
-      radius: PIN_R,
+      radius: surface.pin.radius,
       fill: typeFill(placement.type),
-      stroke: PIN_STROKE,
-      strokeWidth: BASE_STROKE_WIDTH,
+      stroke: surface.pin.stroke,
+      strokeWidth: surface.baseStrokeWidth,
       listening: false,
     }),
   );

@@ -7,6 +7,7 @@ import type { RecentProjectEntry } from "../shared/recentProjects";
 
 const RECENT_PROJECTS_FILENAME = "recent-projects.json";
 const PROJECT_MANIFEST_FILENAME = "project.nohal.json";
+const MAX_RECENT_PROJECTS = 20;
 
 async function getRecentProjectsFilePath(): Promise<string> {
   const userDataDir = app.getPath("userData");
@@ -127,6 +128,6 @@ export async function touchRecentProject(
     ...current.filter(
       (entry) => path.resolve(entry.projectPath) !== normalizedProjectPath,
     ),
-  ].slice(0, 20);
+  ].slice(0, MAX_RECENT_PROJECTS);
   await writeRecentProjectsFile(next);
 }

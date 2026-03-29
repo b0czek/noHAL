@@ -5,24 +5,10 @@ import {
 } from "@nohal/core/graph";
 import type { SheetEndpointRef } from "@nohal/core/types";
 import Konva from "konva";
-import {
-  BASE_STROKE_WIDTH,
-  BOTTOM_H,
-  BOTTOM_PIN_PILL_W,
-  BOTTOM_PIN_TEXT_PAD,
-  CHIP_FILL,
-  CORNER_RADIUS_MD,
-  FONT_MONO,
-  FONT_SANS,
-  HEADER_H,
-  NEUTRAL_BORDER,
-  PENDING_BORDER,
-  PILL_RADIUS,
-  PIN_R,
-  SIDE_ROW_H,
-  TEXT_MUTED,
-  TEXT_PRIMARY,
-} from "../constants";
+import { node } from "../constants/nodes";
+import { pin as pinConst } from "../constants/pins";
+import { surface } from "../constants/surfaces";
+import { typography } from "../constants/typography";
 import {
   addPinDot,
   bindDraggableRenderable,
@@ -31,6 +17,10 @@ import {
   type RenderNodesArgs,
   type RenderSceneContext,
 } from "./shared";
+
+function minimumHorizontalBandHeight(): number {
+  return node.bottom.height - pinConst.band.inset + surface.pin.radius;
+}
 
 export function renderNodes(
   ctx: RenderSceneContext,
@@ -49,18 +39,18 @@ export function renderNodes(
     nodeGroups,
   } = args;
 
-  for (const node of sheet.nodes) {
-    const layout = nodeLayouts.get(node.id);
+  for (const sheetNode of sheet.nodes) {
+    const layout = nodeLayouts.get(sheetNode.id);
     if (!layout) continue;
-    const selected = selectedNodeIds.has(node.id);
-    const tint = componentNodeTint(project, node);
+    const selected = selectedNodeIds.has(sheetNode.id);
+    const tint = componentNodeTint(project, sheetNode);
     const nodeGroup = new Konva.Group({
-      x: node.position.x,
-      y: node.position.y,
+      x: sheetNode.position.x,
+      y: sheetNode.position.y,
       draggable: true,
       dragBoundFunc: (pos) => clampPos(pos),
     });
-    nodeGroups.set(node.id, nodeGroup);
+    nodeGroups.set(sheetNode.id, nodeGroup);
 
     nodeGroup.add(
       new Konva.Rect({
@@ -68,87 +58,94 @@ export function renderNodes(
         y: 0,
         width: layout.width,
         height: layout.height,
-        cornerRadius: 14,
+        cornerRadius: node.cornerRadius,
         fill: tint.bodyFill,
-        stroke: selected ? PENDING_BORDER : tint.idleBorder,
+        stroke: selected ? surface.border.pending : tint.idleBorder,
         strokeWidth: selected ? 2 : 1,
       }),
     );
     nodeGroup.add(
       new Konva.Text({
-        x: 10,
-        y: 8,
-        width: layout.width - 58,
-        text: getNodeTitle(project, node),
-        fontFamily: FONT_SANS,
-        fontSize: 12,
-        fill: TEXT_PRIMARY,
+        x: node.title.x,
+        y: node.title.y,
+        width: layout.width - node.title.rightPadding,
+        text: getNodeTitle(project, sheetNode),
+        fontFamily: typography.family.sans,
+        fontSize: node.title.fontSize,
+        fill: typography.color.primary,
       }),
     );
     nodeGroup.add(
       new Konva.Text({
-        x: layout.width - 46,
-        y: 8,
-        width: 40,
+        x: layout.width - node.kind.rightX,
+        y: node.title.y,
+        width: node.kind.width,
         align: "right",
-        text: node.kind === "component" ? "comp" : node.kind,
-        fontFamily: FONT_SANS,
-        fontSize: 11,
-        fill: TEXT_MUTED,
+        text: sheetNode.kind === "component" ? "comp" : sheetNode.kind,
+        fontFamily: typography.family.sans,
+        fontSize: node.kind.fontSize,
+        fill: typography.color.muted,
       }),
     );
 
-    const pins = getVisibleNodePins(project, sheet, node);
-    const leftPins = pins.filter((p) => p.side === "left");
-    const rightPins = pins.filter((p) => p.side === "right");
-    const topPins = pins.filter((p) => p.side === "top");
-    const bottomPins = pins.filter((p) => p.side === "bottom");
+    const visiblePins = getVisibleNodePins(project, sheet, sheetNode);
+    const leftPins = visiblePins.filter((p) => p.side === "left");
+    const rightPins = visiblePins.filter((p) => p.side === "right");
+    const topPins = visiblePins.filter((p) => p.side === "top");
+    const bottomPins = visiblePins.filter((p) => p.side === "bottom");
     const rows = Math.max(leftPins.length, rightPins.length, 1);
-    const topHeight = topPins.length > 0 ? layout.topBandHeight + 10 : 0;
+    const topHeight =
+      topPins.length > 0 ? layout.topBandHeight + node.sectionGap : 0;
 
     if (topPins.length > 0) {
-      const bandBottom = HEADER_H + topHeight;
+      const bandBottom = node.header.height + topHeight;
       const bandHeight = Math.max(
         layout.topBandHeight,
         layout.topLabelMode === "vertical"
-          ? BOTTOM_PIN_PILL_W + PIN_R
-          : BOTTOM_H - 4 + PIN_R,
+          ? pinConst.bottom.width + surface.pin.radius
+          : minimumHorizontalBandHeight(),
       );
       for (const pin of topPins) {
         const p = layout.pinPositionsLocal[pin.key];
-        const hasSetp = getNodePinSetpValue(node, pin.key) !== null;
+        const hasSetp = getNodePinSetpValue(sheetNode, pin.key) !== null;
         const endpoint: SheetEndpointRef = {
           kind: "node-pin",
-          nodeId: node.id,
+          nodeId: sheetNode.id,
           pinKey: pin.key,
         };
         const pending = pendingKey === endpointKey(endpoint);
         const measure = new Konva.Text({
           text: pin.name,
-          fontFamily: FONT_MONO,
-          fontSize: 11,
+          fontFamily: typography.family.mono,
+          fontSize: pinConst.label.fontSize,
         });
         const textW = Math.ceil(measure.width());
         const textH = Math.ceil(measure.height());
         const dotY = p.y;
         if (layout.topLabelMode === "vertical") {
-          const pillW = BOTTOM_PIN_PILL_W;
+          const pillW = pinConst.bottom.width;
           const pillH = Math.min(
-            bandHeight - 6,
-            Math.max(BOTTOM_PIN_PILL_W, textW + BOTTOM_PIN_TEXT_PAD),
+            bandHeight - pinConst.pill.clearance,
+            Math.max(
+              pinConst.bottom.width,
+              textW + pinConst.bottom.textPadding,
+            ),
           );
           const pillX = p.x - pillW / 2;
-          const pillY = Math.min(bandBottom - pillH, dotY + 6);
+          const pillY = Math.min(
+            bandBottom - pillH,
+            dotY + pinConst.pill.clearance,
+          );
           nodeGroup.add(
             new Konva.Rect({
               x: pillX,
               y: pillY,
               width: pillW,
               height: pillH,
-              cornerRadius: CORNER_RADIUS_MD,
-              fill: CHIP_FILL,
-              stroke: pending ? PENDING_BORDER : NEUTRAL_BORDER,
-              strokeWidth: BASE_STROKE_WIDTH,
+              cornerRadius: surface.radius.md,
+              fill: surface.chipFill,
+              stroke: pending ? surface.border.pending : surface.border.neutral,
+              strokeWidth: surface.baseStrokeWidth,
               listening: false,
             }),
           );
@@ -159,39 +156,45 @@ export function renderNodes(
               x: textX,
               y: textY,
               text: pin.name,
-              fontFamily: FONT_MONO,
-              fontSize: 11,
-              fill: TEXT_PRIMARY,
+              fontFamily: typography.family.mono,
+              fontSize: pinConst.label.fontSize,
+              fill: typography.color.primary,
               rotation: -90,
               listening: false,
             }),
           );
         } else {
-          const pillH = Math.min(bandHeight - 6, BOTTOM_H - 4);
-          const pillW = textW + 16;
+          const pillH = Math.min(
+            bandHeight - pinConst.pill.clearance,
+            minimumHorizontalBandHeight() - surface.pin.radius,
+          );
+          const pillW = textW + pinConst.pill.widthPadding;
           const pillX = p.x - pillW / 2;
-          const pillY = Math.min(bandBottom - pillH, dotY + 6);
+          const pillY = Math.min(
+            bandBottom - pillH,
+            dotY + pinConst.pill.clearance,
+          );
           nodeGroup.add(
             new Konva.Rect({
               x: pillX,
               y: pillY,
               width: pillW,
               height: pillH,
-              cornerRadius: PILL_RADIUS,
-              fill: CHIP_FILL,
-              stroke: pending ? PENDING_BORDER : NEUTRAL_BORDER,
-              strokeWidth: BASE_STROKE_WIDTH,
+              cornerRadius: surface.radius.pill,
+              fill: surface.chipFill,
+              stroke: pending ? surface.border.pending : surface.border.neutral,
+              strokeWidth: surface.baseStrokeWidth,
               listening: false,
             }),
           );
           nodeGroup.add(
             new Konva.Text({
-              x: pillX + 8,
-              y: pillY + 4,
+              x: pillX + pinConst.pill.text.x,
+              y: pillY + pinConst.pill.text.y,
               text: pin.name,
-              fontFamily: FONT_MONO,
-              fontSize: 11,
-              fill: TEXT_PRIMARY,
+              fontFamily: typography.family.mono,
+              fontSize: pinConst.label.fontSize,
+              fill: typography.color.primary,
               listening: false,
             }),
           );
@@ -211,32 +214,32 @@ export function renderNodes(
 
     for (const pin of leftPins) {
       const p = layout.pinPositionsLocal[pin.key];
-      const hasSetp = getNodePinSetpValue(node, pin.key) !== null;
+      const hasSetp = getNodePinSetpValue(sheetNode, pin.key) !== null;
       const endpoint: SheetEndpointRef = {
         kind: "node-pin",
-        nodeId: node.id,
+        nodeId: sheetNode.id,
         pinKey: pin.key,
       };
       const pending = pendingKey === endpointKey(endpoint);
       const measure = new Konva.Text({
         text: pin.name,
-        fontFamily: FONT_MONO,
-        fontSize: 12,
+        fontFamily: typography.family.mono,
+        fontSize: node.title.fontSize,
       });
-      const bubbleH = SIDE_ROW_H - 6;
-      const bubbleX = p.x + 8;
+      const bubbleH = node.side.rowHeight - pinConst.bubble.heightReduction;
+      const bubbleX = p.x + pinConst.bubble.offsetX;
       const bubbleY = p.y - bubbleH / 2;
-      const bubbleW = Math.ceil(measure.width()) + 14;
+      const bubbleW = Math.ceil(measure.width()) + pinConst.bubble.widthPadding;
       nodeGroup.add(
         new Konva.Rect({
           x: bubbleX,
           y: bubbleY,
           width: bubbleW,
           height: bubbleH,
-          cornerRadius: PILL_RADIUS,
-          fill: CHIP_FILL,
-          stroke: pending ? PENDING_BORDER : NEUTRAL_BORDER,
-          strokeWidth: BASE_STROKE_WIDTH,
+          cornerRadius: surface.radius.pill,
+          fill: surface.chipFill,
+          stroke: pending ? surface.border.pending : surface.border.neutral,
+          strokeWidth: surface.baseStrokeWidth,
           listening: false,
         }),
       );
@@ -254,12 +257,12 @@ export function renderNodes(
 
       nodeGroup.add(
         new Konva.Text({
-          x: bubbleX + 7,
-          y: p.y - 7,
+          x: bubbleX + pinConst.bubble.text.x,
+          y: p.y - pinConst.bubble.text.y,
           text: pin.name,
-          fontFamily: FONT_MONO,
-          fontSize: 12,
-          fill: TEXT_PRIMARY,
+          fontFamily: typography.family.mono,
+          fontSize: node.title.fontSize,
+          fill: typography.color.primary,
           listening: false,
         }),
       );
@@ -267,10 +270,10 @@ export function renderNodes(
 
     for (const pin of rightPins) {
       const p = layout.pinPositionsLocal[pin.key];
-      const hasSetp = getNodePinSetpValue(node, pin.key) !== null;
+      const hasSetp = getNodePinSetpValue(sheetNode, pin.key) !== null;
       const endpoint: SheetEndpointRef = {
         kind: "node-pin",
-        nodeId: node.id,
+        nodeId: sheetNode.id,
         pinKey: pin.key,
       };
       const pending = pendingKey === endpointKey(endpoint);
@@ -288,12 +291,12 @@ export function renderNodes(
 
       const measure = new Konva.Text({
         text: pin.name,
-        fontFamily: FONT_MONO,
-        fontSize: 12,
+        fontFamily: typography.family.mono,
+        fontSize: node.title.fontSize,
       });
-      const bubbleH = SIDE_ROW_H - 6;
-      const bubbleW = Math.ceil(measure.width()) + 14;
-      const bubbleX = p.x - 8 - bubbleW;
+      const bubbleH = node.side.rowHeight - pinConst.bubble.heightReduction;
+      const bubbleW = Math.ceil(measure.width()) + pinConst.bubble.widthPadding;
+      const bubbleX = p.x - pinConst.bubble.offsetX - bubbleW;
       const bubbleY = p.y - bubbleH / 2;
       nodeGroup.add(
         new Konva.Rect({
@@ -301,69 +304,79 @@ export function renderNodes(
           y: bubbleY,
           width: bubbleW,
           height: bubbleH,
-          cornerRadius: PILL_RADIUS,
-          fill: CHIP_FILL,
-          stroke: pending ? PENDING_BORDER : NEUTRAL_BORDER,
-          strokeWidth: BASE_STROKE_WIDTH,
+          cornerRadius: surface.radius.pill,
+          fill: surface.chipFill,
+          stroke: pending ? surface.border.pending : surface.border.neutral,
+          strokeWidth: surface.baseStrokeWidth,
           listening: false,
         }),
       );
       nodeGroup.add(
         new Konva.Text({
-          x: bubbleX + 7,
-          y: p.y - 7,
+          x: bubbleX + pinConst.bubble.text.x,
+          y: p.y - pinConst.bubble.text.y,
           text: pin.name,
-          fontFamily: FONT_MONO,
-          fontSize: 12,
-          fill: TEXT_PRIMARY,
+          fontFamily: typography.family.mono,
+          fontSize: node.title.fontSize,
+          fill: typography.color.primary,
           listening: false,
         }),
       );
     }
 
     if (bottomPins.length > 0) {
-      const bandTop = HEADER_H + topHeight + rows * SIDE_ROW_H + 8;
+      const bandTop =
+        node.header.height +
+        topHeight +
+        rows * node.side.rowHeight +
+        node.bottom.sectionGap;
       const bandHeight = Math.max(
         layout.bottomBandHeight,
         layout.bottomLabelMode === "vertical"
-          ? BOTTOM_PIN_PILL_W + PIN_R
-          : BOTTOM_H - 4 + PIN_R,
+          ? pinConst.bottom.width + surface.pin.radius
+          : minimumHorizontalBandHeight(),
       );
       for (const pin of bottomPins) {
         const p = layout.pinPositionsLocal[pin.key];
-        const hasSetp = getNodePinSetpValue(node, pin.key) !== null;
+        const hasSetp = getNodePinSetpValue(sheetNode, pin.key) !== null;
         const endpoint: SheetEndpointRef = {
           kind: "node-pin",
-          nodeId: node.id,
+          nodeId: sheetNode.id,
           pinKey: pin.key,
         };
         const pending = pendingKey === endpointKey(endpoint);
         const measure = new Konva.Text({
           text: pin.name,
-          fontFamily: FONT_MONO,
-          fontSize: 11,
+          fontFamily: typography.family.mono,
+          fontSize: pinConst.label.fontSize,
         });
         const textW = Math.ceil(measure.width());
         const textH = Math.ceil(measure.height());
         const dotY = p.y;
         if (layout.bottomLabelMode === "vertical") {
-          const pillW = BOTTOM_PIN_PILL_W;
+          const pillW = pinConst.bottom.width;
           const pillH = Math.min(
-            bandHeight - 6,
-            Math.max(BOTTOM_PIN_PILL_W, textW + BOTTOM_PIN_TEXT_PAD),
+            bandHeight - pinConst.pill.clearance,
+            Math.max(
+              pinConst.bottom.width,
+              textW + pinConst.bottom.textPadding,
+            ),
           );
           const pillX = p.x - pillW / 2;
-          const pillY = Math.max(bandTop, dotY - 6 - pillH);
+          const pillY = Math.max(
+            bandTop,
+            dotY - pinConst.pill.clearance - pillH,
+          );
           nodeGroup.add(
             new Konva.Rect({
               x: pillX,
               y: pillY,
               width: pillW,
               height: pillH,
-              cornerRadius: CORNER_RADIUS_MD,
-              fill: CHIP_FILL,
-              stroke: pending ? PENDING_BORDER : NEUTRAL_BORDER,
-              strokeWidth: BASE_STROKE_WIDTH,
+              cornerRadius: surface.radius.md,
+              fill: surface.chipFill,
+              stroke: pending ? surface.border.pending : surface.border.neutral,
+              strokeWidth: surface.baseStrokeWidth,
               listening: false,
             }),
           );
@@ -374,39 +387,45 @@ export function renderNodes(
               x: textX,
               y: textY,
               text: pin.name,
-              fontFamily: FONT_MONO,
-              fontSize: 11,
-              fill: TEXT_PRIMARY,
+              fontFamily: typography.family.mono,
+              fontSize: pinConst.label.fontSize,
+              fill: typography.color.primary,
               rotation: -90,
               listening: false,
             }),
           );
         } else {
-          const pillH = Math.min(bandHeight - 6, BOTTOM_H - 4);
-          const pillW = textW + 16;
+          const pillH = Math.min(
+            bandHeight - pinConst.pill.clearance,
+            minimumHorizontalBandHeight() - surface.pin.radius,
+          );
+          const pillW = textW + pinConst.pill.widthPadding;
           const pillX = p.x - pillW / 2;
-          const pillY = Math.max(bandTop, dotY - 6 - pillH);
+          const pillY = Math.max(
+            bandTop,
+            dotY - pinConst.pill.clearance - pillH,
+          );
           nodeGroup.add(
             new Konva.Rect({
               x: pillX,
               y: pillY,
               width: pillW,
               height: pillH,
-              cornerRadius: PILL_RADIUS,
-              fill: CHIP_FILL,
-              stroke: pending ? PENDING_BORDER : NEUTRAL_BORDER,
-              strokeWidth: BASE_STROKE_WIDTH,
+              cornerRadius: surface.radius.pill,
+              fill: surface.chipFill,
+              stroke: pending ? surface.border.pending : surface.border.neutral,
+              strokeWidth: surface.baseStrokeWidth,
               listening: false,
             }),
           );
           nodeGroup.add(
             new Konva.Text({
-              x: pillX + 8,
-              y: pillY + 4,
+              x: pillX + pinConst.pill.text.x,
+              y: pillY + pinConst.pill.text.y,
               text: pin.name,
-              fontFamily: FONT_MONO,
-              fontSize: 11,
-              fill: TEXT_PRIMARY,
+              fontFamily: typography.family.mono,
+              fontSize: pinConst.label.fontSize,
+              fill: typography.color.primary,
               listening: false,
             }),
           );
@@ -426,20 +445,20 @@ export function renderNodes(
 
     bindDraggableRenderable({
       group: nodeGroup,
-      target: { kind: "node", id: node.id },
+      target: { kind: "node", id: sheetNode.id },
       clampPos,
       setLivePosition: (pos) => {
-        liveNodePositions.set(node.id, pos);
+        liveNodePositions.set(sheetNode.id, pos);
       },
       dragSelection,
       redrawWires,
       persistMove: (pos) => {
-        callbacks.onMoveNode(node.id, pos.x, pos.y);
+        callbacks.onMoveNode(sheetNode.id, pos.x, pos.y);
       },
     });
     nodeGroup.on("click tap", (evt) => {
       callbacks.onSelect(
-        { kind: "node", id: node.id },
+        { kind: "node", id: sheetNode.id },
         {
           mode:
             evt.evt instanceof MouseEvent && evt.evt.shiftKey
@@ -458,16 +477,16 @@ export function renderNodes(
           clientY: evt.evt.clientY,
           target: {
             kind: "node",
-            id: node.id,
-            nodeKind: node.kind === "sheet" ? "sheet" : "component",
+            id: sheetNode.id,
+            nodeKind: sheetNode.kind === "sheet" ? "sheet" : "component",
           },
         });
       }
     });
     nodeGroup.on("dblclick dbltap", (evt) => {
       evt.cancelBubble = true;
-      callbacks.onSelect({ kind: "node", id: node.id });
-      callbacks.onOpenNode(node.id);
+      callbacks.onSelect({ kind: "node", id: sheetNode.id });
+      callbacks.onOpenNode(sheetNode.id);
     });
     mainWorld.add(nodeGroup);
   }

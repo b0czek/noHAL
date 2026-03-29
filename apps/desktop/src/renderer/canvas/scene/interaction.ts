@@ -12,6 +12,8 @@ import type { SceneRuntime } from "./types";
 
 const EVENT_NS = ".sceneInteraction";
 const BACKGROUND_TAP_THRESHOLD_PX = 4;
+const KEYBOARD_ZOOM_FACTOR = 1.08;
+const WHEEL_LINE_DELTA_PX = 16;
 
 type SceneInteractionOps = {
   syncPlacementPreview: () => void;
@@ -56,7 +58,9 @@ export function bindSceneInteractions(
       const isZoomIn = isZoomInShortcut(evt);
       const isZoomOut = isZoomOutShortcut(evt);
       if (isZoomIn || isZoomOut) {
-        zoomByFactor(isZoomIn ? 1.08 : 1 / 1.08);
+        zoomByFactor(
+          isZoomIn ? KEYBOARD_ZOOM_FACTOR : 1 / KEYBOARD_ZOOM_FACTOR,
+        );
         evt.preventDefault();
         evt.stopPropagation();
         evt.stopImmediatePropagation();
@@ -264,7 +268,7 @@ export function bindSceneInteractions(
     if (!(wheelEvt.ctrlKey || wheelEvt.metaKey)) {
       let deltaScale = 1;
       if (wheelEvt.deltaMode === WheelEvent.DOM_DELTA_LINE) {
-        deltaScale = 16;
+        deltaScale = WHEEL_LINE_DELTA_PX;
       } else if (wheelEvt.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
         deltaScale = stage.height();
       }
@@ -280,7 +284,10 @@ export function bindSceneInteractions(
 
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
-    zoomByFactor(wheelEvt.deltaY > 0 ? 1 / 1.08 : 1.08, pointer);
+    zoomByFactor(
+      wheelEvt.deltaY > 0 ? 1 / KEYBOARD_ZOOM_FACTOR : KEYBOARD_ZOOM_FACTOR,
+      pointer,
+    );
   });
 
   return () => {

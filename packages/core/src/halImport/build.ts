@@ -33,6 +33,13 @@ import type {
   SheetAddfQueueStoredEntry,
 } from "../types";
 import {
+  buildGroup,
+  buildLabel,
+  buildLayout,
+  buildNode,
+  buildText,
+} from "./buildConstants";
+import {
   buildMesaImportPlan,
   resolveMesaImportTarget,
   shouldIgnoreMesaImportSetp,
@@ -553,58 +560,24 @@ export function buildProjectFromHalImport(
     );
   const postguiOnlyInstanceNames = new Set(draft.postguiOnlyInstances ?? []);
 
-  const IMPORT_LAYOUT = {
-    maxColumns: 4,
-    originX: 120,
-    originY: 120,
-    columnGap: 70,
-    rowGap: 70,
-    sideLabelGapX: 14,
-    sideLabelStartY: 44,
-    sideLabelStepY: 28,
-    sideLabelHalfHeight: 11,
-    bottomLabelStartX: 20,
-    bottomLabelStepX: 58,
-    bottomLabelsPerRow: 4,
-    bottomLabelGapY: 14,
-    bottomLabelStepY: 28,
-    bottomLabelHalfHeight: 11,
-    fallbackLabelOriginX: 90,
-    fallbackLabelOriginY: 80,
-    fallbackLabelColumnPitch: 280,
-    fallbackLabelRowPitch: 70,
-  } as const;
-  const IMPORT_GROUP_LAYOUT = {
-    groupGapX: 150,
-    groupGapY: 130,
-    groupRowWidthMin: 1100,
-    groupRowWidthBias: 1.3,
-    maxNetFanoutForGrouping: 6,
-  } as const;
-  const IMPORT_NODE_BASE_W = 240;
-  const IMPORT_NODE_HEADER_H = 28;
-  const IMPORT_NODE_SIDE_ROW_H = 24;
-  const IMPORT_NODE_BOTTOM_H = 26;
-  const IMPORT_NODE_PIN_R = 6;
-  const IMPORT_NODE_BOTTOM_PIN_COLUMN_STEP = 30;
-  const IMPORT_NODE_BOTTOM_PIN_PILL_W = 22;
-  const IMPORT_NODE_BOTTOM_PIN_TEXT_PAD = 10;
-  const IMPORT_NODE_BOTTOM_PIN_DOT_GAP = 6;
-  const IMPORT_MONO_CHAR_W_AT_12 = 7.2;
-  const IMPORT_SANS_CHAR_W_AT_10 = 5.8;
-  const IMPORT_SIDE_LABEL_CLEARANCE = 50;
-  const IMPORT_SIDE_LABEL_GAP = 16;
-
   const estimateMonoTextWidth = (text: string, fontSize: number) =>
-    Math.ceil(text.length * IMPORT_MONO_CHAR_W_AT_12 * (fontSize / 12));
+    Math.ceil(
+      text.length *
+        buildText.mono.charWidthAt12 *
+        (fontSize / buildText.mono.baseFontSize),
+    );
   const estimateSansTextWidth = (text: string, fontSize: number) =>
-    Math.ceil(text.length * IMPORT_SANS_CHAR_W_AT_10 * (fontSize / 10));
+    Math.ceil(
+      text.length *
+        buildText.sans.charWidthAt10 *
+        (fontSize / buildText.sans.baseFontSize),
+    );
   const estimateImportedLabelWidth = (name: string) =>
-    16 +
-    estimateSansTextWidth("global", 10) +
-    8 +
-    estimateMonoTextWidth(name, 12) +
-    10;
+    buildLabel.scope.leftPadding +
+    estimateSansTextWidth("global", buildText.sans.baseFontSize) +
+    buildLabel.scope.gap +
+    estimateMonoTextWidth(name, buildText.mono.baseFontSize) +
+    buildLabel.rightPadding;
 
   const computeEstimatedBodySize = (pins: ComponentPinDefinition[]) => {
     const leftNames = pins
@@ -619,41 +592,52 @@ export function buildProjectFromHalImport(
 
     const leftMax = Math.max(
       0,
-      ...leftNames.map((name) => estimateMonoTextWidth(name, 12)),
+      ...leftNames.map((name) =>
+        estimateMonoTextWidth(name, buildText.mono.baseFontSize),
+      ),
     );
     const rightMax = Math.max(
       0,
-      ...rightNames.map((name) => estimateMonoTextWidth(name, 12)),
+      ...rightNames.map((name) =>
+        estimateMonoTextWidth(name, buildText.mono.baseFontSize),
+      ),
     );
     const sideWidth =
-      leftMax + rightMax + IMPORT_SIDE_LABEL_CLEARANCE + IMPORT_SIDE_LABEL_GAP;
+      leftMax +
+      rightMax +
+      buildNode.side.labelClearance +
+      buildNode.side.labelGap;
 
     const rows = Math.max(leftNames.length, rightNames.length, 1);
-    const sideHeight = rows * IMPORT_NODE_SIDE_ROW_H;
+    const sideHeight = rows * buildNode.side.rowHeight;
 
     let bottomWidth = 0;
     let bottomBandHeight = 0;
     if (bottomNames.length > 0) {
       const verticalWidth = Math.ceil(
-        IMPORT_NODE_BOTTOM_PIN_COLUMN_STEP * (bottomNames.length + 1),
+        buildNode.bottom.pin.columnStep * (bottomNames.length + 1),
       );
 
       const horizontalPillWidths = bottomNames.map(
-        (name) => estimateMonoTextWidth(name, 11) + 16,
+        (name) =>
+          estimateMonoTextWidth(name, buildNode.bottom.pin.fontSize) +
+          buildNode.pill.horizontalPadding,
       );
       let horizontalWidth = 0;
       if (horizontalPillWidths.length === 1) {
-        horizontalWidth = (horizontalPillWidths[0] ?? 0) + 20;
+        horizontalWidth =
+          (horizontalPillWidths[0] ?? 0) + buildNode.pill.horizontalSingleExtra;
       } else if (horizontalPillWidths.length > 1) {
         const maxPill = Math.max(...horizontalPillWidths);
-        let requiredStep = maxPill / 2 + 6;
+        let requiredStep =
+          maxPill / 2 + buildNode.pill.horizontalStepBasePadding;
         for (let i = 0; i < horizontalPillWidths.length - 1; i += 1) {
           requiredStep = Math.max(
             requiredStep,
             ((horizontalPillWidths[i] ?? 0) +
               (horizontalPillWidths[i + 1] ?? 0)) /
               2 +
-              8,
+              buildNode.pill.horizontalStepGap,
           );
         }
         horizontalWidth = Math.ceil(
@@ -663,31 +647,41 @@ export function buildProjectFromHalImport(
 
       const verticalBandHeight =
         Math.max(
-          IMPORT_NODE_BOTTOM_PIN_PILL_W,
+          buildNode.bottom.pin.pillWidth,
           Math.max(
             0,
-            ...bottomNames.map((name) => estimateMonoTextWidth(name, 11)),
-          ) + IMPORT_NODE_BOTTOM_PIN_TEXT_PAD,
+            ...bottomNames.map((name) =>
+              estimateMonoTextWidth(name, buildNode.bottom.pin.fontSize),
+            ),
+          ) + buildNode.bottom.pin.textPadding,
         ) +
-        IMPORT_NODE_BOTTOM_PIN_DOT_GAP +
-        IMPORT_NODE_PIN_R;
+        buildNode.bottom.pin.dotGap +
+        buildNode.bottom.pin.radius;
 
       const horizontalBandHeight =
-        IMPORT_NODE_BOTTOM_H -
-        4 +
-        IMPORT_NODE_BOTTOM_PIN_DOT_GAP +
-        IMPORT_NODE_PIN_R;
+        buildNode.bottom.height -
+        buildNode.pill.bandInset +
+        buildNode.bottom.pin.dotGap +
+        buildNode.bottom.pin.radius;
 
       const verticalCandidate = {
-        width: Math.max(IMPORT_NODE_BASE_W, sideWidth, verticalWidth),
+        width: Math.max(buildNode.width, sideWidth, verticalWidth),
         height:
-          IMPORT_NODE_HEADER_H + sideHeight + verticalBandHeight + 10 + 12,
+          buildNode.header.height +
+          sideHeight +
+          verticalBandHeight +
+          buildNode.bottom.bandGap +
+          buildNode.bottom.padding,
         bandHeight: verticalBandHeight,
       };
       const horizontalCandidate = {
-        width: Math.max(IMPORT_NODE_BASE_W, sideWidth, horizontalWidth),
+        width: Math.max(buildNode.width, sideWidth, horizontalWidth),
         height:
-          IMPORT_NODE_HEADER_H + sideHeight + horizontalBandHeight + 10 + 12,
+          buildNode.header.height +
+          sideHeight +
+          horizontalBandHeight +
+          buildNode.bottom.bandGap +
+          buildNode.bottom.padding,
         bandHeight: horizontalBandHeight,
       };
       const best =
@@ -697,18 +691,23 @@ export function buildProjectFromHalImport(
           : verticalCandidate;
       bottomWidth = Math.max(
         0,
-        best.width - Math.max(IMPORT_NODE_BASE_W, sideWidth),
+        best.width - Math.max(buildNode.width, sideWidth),
       );
       bottomBandHeight = best.bandHeight;
     }
 
     const bodyWidth = Math.max(
-      IMPORT_NODE_BASE_W,
+      buildNode.width,
       sideWidth,
-      IMPORT_NODE_BASE_W + bottomWidth,
+      buildNode.width + bottomWidth,
     );
-    const bottomHeight = bottomNames.length > 0 ? bottomBandHeight + 10 : 0;
-    const bodyHeight = IMPORT_NODE_HEADER_H + sideHeight + bottomHeight + 12;
+    const bottomHeight =
+      bottomNames.length > 0 ? bottomBandHeight + buildNode.bottom.bandGap : 0;
+    const bodyHeight =
+      buildNode.header.height +
+      sideHeight +
+      bottomHeight +
+      buildNode.bottom.padding;
     return { bodyWidth, bodyHeight };
   };
 
@@ -1017,7 +1016,7 @@ export function buildProjectFromHalImport(
         new Set(prepared.resolvedEndpoints.map((endpoint) => endpoint.nodeId)),
       );
       if (uniqueNodeIds.length < 2) continue;
-      if (uniqueNodeIds.length > IMPORT_GROUP_LAYOUT.maxNetFanoutForGrouping) {
+      if (uniqueNodeIds.length > buildGroup.maxNetFanout) {
         continue;
       }
       const edgeWeight = 1 / Math.max(1, uniqueNodeIds.length - 1);
@@ -1290,9 +1289,11 @@ export function buildProjectFromHalImport(
   for (const [groupKey, list] of plannedLabelsByNodeSide.entries()) {
     list.sort((a, b) => {
       const aPinIdx =
-        pinSideIndexByNodePin.get(`${a.nodeId}::${a.pinKey}`) ?? 9999;
+        pinSideIndexByNodePin.get(`${a.nodeId}::${a.pinKey}`) ??
+        buildLabel.pinSortFallbackIndex;
       const bPinIdx =
-        pinSideIndexByNodePin.get(`${b.nodeId}::${b.pinKey}`) ?? 9999;
+        pinSideIndexByNodePin.get(`${b.nodeId}::${b.pinKey}`) ??
+        buildLabel.pinSortFallbackIndex;
       if (aPinIdx !== bPinIdx) return aPinIdx - bPinIdx;
       const pinCmp = a.pinKey.localeCompare(b.pinKey);
       if (pinCmp !== 0) return pinCmp;
@@ -1324,7 +1325,7 @@ export function buildProjectFromHalImport(
           const prev = siblings[i];
           if (!prev) continue;
           bottomStackOffsetY += estimateImportedLabelWidth(prev.netName);
-          bottomStackOffsetY += IMPORT_LAYOUT.bottomLabelGapY;
+          bottomStackOffsetY += buildLayout.bottomLabel.gapY;
         }
       }
       labelPlacementByAnchorKey.set(item.anchorKey, {
@@ -1360,12 +1361,12 @@ export function buildProjectFromHalImport(
 
     const leftLaneWidth =
       leftLabelWidths.length > 0
-        ? Math.max(...leftLabelWidths) + IMPORT_LAYOUT.sideLabelGapX
+        ? Math.max(...leftLabelWidths) + buildLayout.sideLabel.gapX
         : 0;
-    const sideRightOffsetX = bodyWidth + IMPORT_LAYOUT.sideLabelGapX;
+    const sideRightOffsetX = bodyWidth + buildLayout.sideLabel.gapX;
     const rightLaneWidth =
       rightLabelWidths.length > 0
-        ? Math.max(...rightLabelWidths) + IMPORT_LAYOUT.sideLabelGapX
+        ? Math.max(...rightLabelWidths) + buildLayout.sideLabel.gapX
         : 0;
 
     let bottomExtraRight = 0;
@@ -1375,26 +1376,26 @@ export function buildProjectFromHalImport(
       const xStart =
         pinIndex !== undefined && bottomPinCount > 0
           ? (bodyWidth / (bottomPinCount + 1)) * (pinIndex + 1)
-          : IMPORT_LAYOUT.bottomLabelStartX +
-            ((placement?.slot ?? 0) % IMPORT_LAYOUT.bottomLabelsPerRow) *
-              IMPORT_LAYOUT.bottomLabelStepX;
+          : buildLayout.bottomLabel.startX +
+            ((placement?.slot ?? 0) % buildLayout.bottomLabel.perRow) *
+              buildLayout.bottomLabel.stepX;
       bottomExtraRight = Math.max(
         bottomExtraRight,
-        xStart + IMPORT_LAYOUT.bottomLabelHalfHeight - bodyWidth,
+        xStart + buildLayout.bottomLabel.halfHeight - bodyWidth,
       );
     }
 
     const leftStackHeight =
       demand.left.length > 0
-        ? IMPORT_LAYOUT.sideLabelStartY +
-          (demand.left.length - 1) * IMPORT_LAYOUT.sideLabelStepY +
-          IMPORT_LAYOUT.sideLabelHalfHeight
+        ? buildLayout.sideLabel.startY +
+          (demand.left.length - 1) * buildLayout.sideLabel.stepY +
+          buildLayout.sideLabel.halfHeight
         : 0;
     const rightStackHeight =
       demand.right.length > 0
-        ? IMPORT_LAYOUT.sideLabelStartY +
-          (demand.right.length - 1) * IMPORT_LAYOUT.sideLabelStepY +
-          IMPORT_LAYOUT.sideLabelHalfHeight
+        ? buildLayout.sideLabel.startY +
+          (demand.right.length - 1) * buildLayout.sideLabel.stepY +
+          buildLayout.sideLabel.halfHeight
         : 0;
     const sideStackHeight = Math.max(leftStackHeight, rightStackHeight);
 
@@ -1409,7 +1410,7 @@ export function buildProjectFromHalImport(
     }
     const bottomLabelBottomY =
       bottomStackMaxHeight > 0
-        ? bodyHeight + IMPORT_LAYOUT.bottomLabelGapY + bottomStackMaxHeight
+        ? bodyHeight + buildLayout.bottomLabel.gapY + bottomStackMaxHeight
         : 0;
 
     const rightExtent = Math.max(rightLaneWidth, bottomExtraRight, 0);
@@ -1426,14 +1427,14 @@ export function buildProjectFromHalImport(
       leftLaneWidth,
       rightLaneWidth: rightExtent,
       sideRightOffsetX,
-      sideLabelGapX: IMPORT_LAYOUT.sideLabelGapX,
-      sideLabelStartY: IMPORT_LAYOUT.sideLabelStartY,
-      sideLabelStepY: IMPORT_LAYOUT.sideLabelStepY,
-      bottomLabelStartX: IMPORT_LAYOUT.bottomLabelStartX,
-      bottomLabelGapY: IMPORT_LAYOUT.bottomLabelGapY,
-      bottomLabelStepX: IMPORT_LAYOUT.bottomLabelStepX,
-      bottomLabelStepY: IMPORT_LAYOUT.bottomLabelStepY,
-      bottomLabelsPerRow: IMPORT_LAYOUT.bottomLabelsPerRow,
+      sideLabelGapX: buildLayout.sideLabel.gapX,
+      sideLabelStartY: buildLayout.sideLabel.startY,
+      sideLabelStepY: buildLayout.sideLabel.stepY,
+      bottomLabelStartX: buildLayout.bottomLabel.startX,
+      bottomLabelGapY: buildLayout.bottomLabel.gapY,
+      bottomLabelStepX: buildLayout.bottomLabel.stepX,
+      bottomLabelStepY: buildLayout.bottomLabel.stepY,
+      bottomLabelsPerRow: buildLayout.bottomLabel.perRow,
       bottomPinCount,
       cellWidth,
       cellHeight,
@@ -1444,7 +1445,7 @@ export function buildProjectFromHalImport(
     const computedColumns = Math.max(
       1,
       Math.min(
-        IMPORT_LAYOUT.maxColumns,
+        buildLayout.maxColumns,
         Math.ceil(Math.sqrt(Math.max(1, orderedNodeIds.length))),
       ),
     );
@@ -1467,13 +1468,13 @@ export function buildProjectFromHalImport(
     let runningX = 0;
     for (const width of colWidths) {
       colStarts.push(runningX);
-      runningX += width + IMPORT_LAYOUT.columnGap;
+      runningX += width + buildLayout.gap.column;
     }
     const rowStarts: number[] = [];
     let runningY = 0;
     for (const height of rowHeights) {
       rowStarts.push(runningY);
-      runningY += height + IMPORT_LAYOUT.rowGap;
+      runningY += height + buildLayout.gap.row;
     }
 
     const localPosByNodeId = new Map<string, { x: number; y: number }>();
@@ -1490,10 +1491,10 @@ export function buildProjectFromHalImport(
 
     const width =
       colWidths.reduce((sum, value) => sum + value, 0) +
-      Math.max(0, colWidths.length - 1) * IMPORT_LAYOUT.columnGap;
+      Math.max(0, colWidths.length - 1) * buildLayout.gap.column;
     const height =
       rowHeights.reduce((sum, value) => sum + value, 0) +
-      Math.max(0, rowHeights.length - 1) * IMPORT_LAYOUT.rowGap;
+      Math.max(0, rowHeights.length - 1) * buildLayout.gap.row;
 
     return {
       localPosByNodeId,
@@ -1513,11 +1514,8 @@ export function buildProjectFromHalImport(
       0,
     );
     const targetRowWidth = Math.max(
-      IMPORT_GROUP_LAYOUT.groupRowWidthMin,
-      Math.ceil(
-        Math.sqrt(Math.max(1, totalArea)) *
-          IMPORT_GROUP_LAYOUT.groupRowWidthBias,
-      ),
+      buildGroup.row.widthMin,
+      Math.ceil(Math.sqrt(Math.max(1, totalArea)) * buildGroup.row.widthBias),
     );
 
     let cursorX = 0;
@@ -1530,7 +1528,7 @@ export function buildProjectFromHalImport(
         rowHeight > 0
       ) {
         cursorX = 0;
-        cursorY += rowHeight + IMPORT_GROUP_LAYOUT.groupGapY;
+        cursorY += rowHeight + buildGroup.gap.y;
         rowHeight = 0;
       }
 
@@ -1539,12 +1537,12 @@ export function buildProjectFromHalImport(
         const localPos = group.localPosByNodeId.get(nodeId);
         if (!node || !localPos) continue;
         node.position = {
-          x: IMPORT_LAYOUT.originX + cursorX + localPos.x,
-          y: IMPORT_LAYOUT.originY + cursorY + localPos.y,
+          x: buildLayout.origin.x + cursorX + localPos.x,
+          y: buildLayout.origin.y + cursorY + localPos.y,
         };
       }
 
-      cursorX += group.width + IMPORT_GROUP_LAYOUT.groupGapX;
+      cursorX += group.width + buildGroup.gap.x;
       rowHeight = Math.max(rowHeight, group.height);
     }
   } else {
@@ -1554,8 +1552,8 @@ export function buildProjectFromHalImport(
       const localPos = gridPlan.localPosByNodeId.get(nodeId);
       if (!node || !localPos) continue;
       node.position = {
-        x: IMPORT_LAYOUT.originX + localPos.x,
-        y: IMPORT_LAYOUT.originY + localPos.y,
+        x: buildLayout.origin.x + localPos.x,
+        y: buildLayout.origin.y + localPos.y,
       };
     }
   }
@@ -1579,12 +1577,14 @@ export function buildProjectFromHalImport(
     if (!pos || !layout) {
       return {
         x:
-          IMPORT_LAYOUT.fallbackLabelOriginX +
-          (netIndex % 6) * IMPORT_LAYOUT.fallbackLabelColumnPitch,
+          buildLayout.fallbackLabel.origin.x +
+          (netIndex % buildLabel.fallback.columns) *
+            buildLayout.fallbackLabel.pitch.column,
         y:
-          IMPORT_LAYOUT.fallbackLabelOriginY +
-          Math.floor(netIndex / 6) * IMPORT_LAYOUT.fallbackLabelRowPitch +
-          endpointIndex * 4,
+          buildLayout.fallbackLabel.origin.y +
+          Math.floor(netIndex / buildLabel.fallback.columns) *
+            buildLayout.fallbackLabel.pitch.row +
+          endpointIndex * buildLabel.fallback.rowJitter,
       };
     }
     const side = importPinDirectionToSide(direction);
@@ -1595,13 +1595,14 @@ export function buildProjectFromHalImport(
       const pinCenterY =
         placement?.pinSideIndex !== undefined
           ? pos.y +
-            IMPORT_NODE_HEADER_H +
-            placement.pinSideIndex * IMPORT_NODE_SIDE_ROW_H +
-            IMPORT_NODE_SIDE_ROW_H / 2
+            buildNode.header.height +
+            placement.pinSideIndex * buildNode.side.rowHeight +
+            buildNode.side.rowHeight / 2
           : pos.y + layout.sideLabelStartY + slot * layout.sideLabelStepY;
       const dupOffset =
         placement && placement.peerCountOnPin > 1
-          ? (placement.peerIndexOnPin - (placement.peerCountOnPin - 1) / 2) * 12
+          ? (placement.peerIndexOnPin - (placement.peerCountOnPin - 1) / 2) *
+            buildLabel.duplicateOffset
           : 0;
       return {
         x: pos.x - layout.sideLabelGapX - estimateImportedLabelWidth(labelName),
@@ -1612,13 +1613,14 @@ export function buildProjectFromHalImport(
       const pinCenterY =
         placement?.pinSideIndex !== undefined
           ? pos.y +
-            IMPORT_NODE_HEADER_H +
-            placement.pinSideIndex * IMPORT_NODE_SIDE_ROW_H +
-            IMPORT_NODE_SIDE_ROW_H / 2
+            buildNode.header.height +
+            placement.pinSideIndex * buildNode.side.rowHeight +
+            buildNode.side.rowHeight / 2
           : pos.y + layout.sideLabelStartY + slot * layout.sideLabelStepY;
       const dupOffset =
         placement && placement.peerCountOnPin > 1
-          ? (placement.peerIndexOnPin - (placement.peerCountOnPin - 1) / 2) * 12
+          ? (placement.peerIndexOnPin - (placement.peerCountOnPin - 1) / 2) *
+            buildLabel.duplicateOffset
           : 0;
       return {
         x: pos.x + layout.sideRightOffsetX,
@@ -1682,7 +1684,7 @@ export function buildProjectFromHalImport(
           id: labelId,
           name: net.name,
           scope: "global",
-          rotation: item.direction === "io" ? 90 : 0,
+          rotation: item.direction === "io" ? buildLabel.io.rotation : 0,
           position: nextImportedLabelPosition(
             item.nodeId,
             item.direction,

@@ -21,6 +21,7 @@ const pendingSaveBeforeCloseRequests = new Map<
   PendingSaveBeforeCloseRequest
 >();
 let nextSaveBeforeCloseRequestId = 1;
+const SAVE_BEFORE_CLOSE_TIMEOUT_MS = 60_000;
 
 export function setWindowDirtyState(
   win: BrowserWindow,
@@ -64,7 +65,7 @@ async function requestRendererSaveBeforeClose(
     const timeout = setTimeout(() => {
       pendingSaveBeforeCloseRequests.delete(requestId);
       resolve(false);
-    }, 60_000);
+    }, SAVE_BEFORE_CLOSE_TIMEOUT_MS);
     pendingSaveBeforeCloseRequests.set(requestId, {
       senderWebContentsId,
       resolve,

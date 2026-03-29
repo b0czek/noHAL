@@ -1,6 +1,7 @@
 import type { SplitConnectionLabelPositions } from "@nohal/core/sheet";
 import type { Pt } from "../layout";
 import { measureLabelBoxForLabel } from "../measurements";
+import { DEGREES_TO_RADIANS } from "../scene/geometry";
 import type { SceneRuntime } from "../scene/types";
 import { getEndpointNormal, getEndpointPoint } from "./endpoints";
 import { clamp, computeSplitLabelPositions, rotateVec } from "./geometry";
@@ -68,7 +69,7 @@ export function getLabelAnchorPoint(
     top: -height / 2,
     bottom: height / 2,
   };
-  const rotationRad = ((labelForBounds.rotation ?? 0) * Math.PI) / 180;
+  const rotationRad = (labelForBounds.rotation ?? 0) * DEGREES_TO_RADIANS;
   const towardLocal =
     rotationRad === 0
       ? {

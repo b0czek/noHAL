@@ -6,22 +6,7 @@ import type {
   SheetNodeInstance,
 } from "@nohal/core/types";
 import Konva from "konva";
-import {
-  BASE_STROKE_WIDTH,
-  NEUTRAL_BORDER,
-  NODE_FILL,
-  PIN_HALO_FILL,
-  PIN_HALO_RADIUS_PAD,
-  PIN_HIT_STROKE_WIDTH,
-  PIN_R,
-  PIN_STROKE,
-  SETP_PIN_RING,
-  SETP_PIN_RING_FILL,
-  SHEET_NODE_BORDER,
-  SHEET_NODE_FILL,
-  SYSTEM_NODE_BORDER,
-  SYSTEM_NODE_FILL,
-} from "../constants";
+import { surface } from "../constants/surfaces";
 import type { NodeLayout, Pt } from "../layout";
 import { typeFill } from "../theme";
 import type { SceneCallbacks } from "../types";
@@ -164,8 +149,8 @@ export function addPinDot(args: {
       new Konva.Circle({
         x: args.x,
         y: args.y,
-        radius: PIN_R + PIN_HALO_RADIUS_PAD,
-        fill: PIN_HALO_FILL,
+        radius: surface.pin.radius + surface.pin.haloRadiusPadding,
+        fill: surface.pin.haloFill,
         listening: false,
       }),
     );
@@ -176,10 +161,10 @@ export function addPinDot(args: {
       new Konva.Circle({
         x: args.x,
         y: args.y,
-        radius: PIN_R + 2.5,
-        fill: SETP_PIN_RING_FILL,
-        stroke: SETP_PIN_RING,
-        strokeWidth: BASE_STROKE_WIDTH,
+        radius: surface.pin.radius + surface.pin.setpRing.radiusPadding,
+        fill: surface.pin.setpRing.fill,
+        stroke: surface.pin.setpRing.stroke,
+        strokeWidth: surface.baseStrokeWidth,
         listening: false,
       }),
     );
@@ -188,11 +173,11 @@ export function addPinDot(args: {
   const bead = new Konva.Circle({
     x: args.x,
     y: args.y,
-    radius: PIN_R,
+    radius: surface.pin.radius,
     fill: typeFill(args.type),
-    stroke: PIN_STROKE,
-    strokeWidth: BASE_STROKE_WIDTH,
-    hitStrokeWidth: PIN_HIT_STROKE_WIDTH,
+    stroke: surface.pin.stroke,
+    strokeWidth: surface.baseStrokeWidth,
+    hitStrokeWidth: surface.pin.hitStrokeWidth,
   });
 
   bead.on("click tap", (evt) => {
@@ -223,21 +208,21 @@ export function componentNodeTint(
 } {
   if (node.kind === "sheet") {
     return {
-      bodyFill: SHEET_NODE_FILL,
-      idleBorder: SHEET_NODE_BORDER,
+      bodyFill: surface.sheetNode.fill,
+      idleBorder: surface.sheetNode.border,
     };
   }
 
   const component = project.library.components[node.componentId];
   if (isSystemComponent(component)) {
     return {
-      bodyFill: SYSTEM_NODE_FILL,
-      idleBorder: SYSTEM_NODE_BORDER,
+      bodyFill: surface.systemNode.fill,
+      idleBorder: surface.systemNode.border,
     };
   }
 
   return {
-    bodyFill: NODE_FILL,
-    idleBorder: NEUTRAL_BORDER,
+    bodyFill: surface.node.fill,
+    idleBorder: surface.border.neutral,
   };
 }

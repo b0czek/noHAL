@@ -1,5 +1,5 @@
 import Konva from "konva";
-import { SCENE_HEIGHT, SCENE_WIDTH } from "../constants";
+import { scene } from "../constants/scene";
 import type { SceneCallbacks } from "../types";
 import type { SceneRuntime } from "./types";
 
@@ -9,8 +9,14 @@ export function createSceneRuntime(
 ): SceneRuntime {
   const stage = new Konva.Stage({
     container,
-    width: Math.max(320, container.clientWidth || 320),
-    height: Math.max(240, container.clientHeight || 240),
+    width: Math.max(
+      scene.stage.minWidth,
+      container.clientWidth || scene.stage.minWidth,
+    ),
+    height: Math.max(
+      scene.stage.minHeight,
+      container.clientHeight || scene.stage.minHeight,
+    ),
   });
   const wireLayer = new Konva.Layer();
   const mainLayer = new Konva.Layer();
@@ -21,7 +27,7 @@ export function createSceneRuntime(
     width: stage.width(),
     height: stage.height(),
     visible: false,
-    fill: "rgba(0,0,0,0.001)",
+    fill: scene.placementHitFill,
   });
   const previewWorld = new Konva.Group({
     listening: false,
@@ -32,11 +38,11 @@ export function createSceneRuntime(
   const marqueeRect = new Konva.Rect({
     visible: false,
     listening: false,
-    fill: "rgba(120, 180, 255, 0.16)",
-    stroke: "rgba(120, 180, 255, 0.92)",
-    strokeWidth: 1,
-    dash: [6, 4],
-    cornerRadius: 2,
+    fill: scene.marquee.fill,
+    stroke: scene.marquee.stroke,
+    strokeWidth: scene.marquee.strokeWidth,
+    dash: scene.marquee.dash,
+    cornerRadius: scene.marquee.cornerRadius,
   });
 
   wireLayer.add(wireWorld);
@@ -87,8 +93,8 @@ export function createSceneRuntime(
       sceneBounds: {
         minX: 0,
         minY: 0,
-        maxX: SCENE_WIDTH,
-        maxY: SCENE_HEIGHT,
+        maxX: scene.width,
+        maxY: scene.height,
       },
       interactionCleanup: null,
       interaction: {

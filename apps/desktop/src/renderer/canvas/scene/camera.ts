@@ -3,6 +3,9 @@ import { clampRuntimePos, sceneWorldExtents } from "./bounds";
 import type { CameraState, SceneBounds, SceneRuntime } from "./types";
 
 const CAMERA_OVERSCROLL_PX = 220;
+const CAMERA_MIN_SCALE = 0.35;
+const CAMERA_MAX_SCALE = 2.8;
+const CAMERA_SCALE_EPSILON = 1e-6;
 
 export function clientToWorld(
   runtime: SceneRuntime,
@@ -92,8 +95,11 @@ export function zoomCameraByFactor(args: {
     y: stageHeight / 2,
   };
   const oldScale = camera.scale;
-  const nextScale = Math.max(0.35, Math.min(2.8, oldScale * zoomFactor));
-  if (Math.abs(nextScale - oldScale) < 1e-6) return false;
+  const nextScale = Math.max(
+    CAMERA_MIN_SCALE,
+    Math.min(CAMERA_MAX_SCALE, oldScale * zoomFactor),
+  );
+  if (Math.abs(nextScale - oldScale) < CAMERA_SCALE_EPSILON) return false;
   const worldAtPointer = screenToWorld(camera, anchor);
   camera.scale = nextScale;
   camera.x = anchor.x - worldAtPointer.x * nextScale;

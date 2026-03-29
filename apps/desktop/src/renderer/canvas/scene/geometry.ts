@@ -1,6 +1,11 @@
 import type { Pt } from "../layout";
 import type { CullModel, Rect, SceneBounds } from "./types";
 
+const HALF_TURN_DEGREES = 180;
+
+export const DEGREES_TO_RADIANS = Math.PI / HALF_TURN_DEGREES;
+export const ROTATION_EPSILON = 1e-6;
+
 export function normalizedRect(a: Pt, b: Pt): Rect {
   const x1 = Math.min(a.x, b.x);
   const y1 = Math.min(a.y, b.y);
@@ -33,7 +38,7 @@ export function expandBoundsWithRotatedRect(
   rotationDeg: number,
   pivot: Pt,
 ): void {
-  const rad = (rotationDeg * Math.PI) / 180;
+  const rad = rotationDeg * DEGREES_TO_RADIANS;
   const c = Math.cos(rad);
   const s = Math.sin(rad);
   const corners: Pt[] = [
@@ -81,7 +86,7 @@ export function worldBoundsFromLocalRect(pos: Pt, model: CullModel): Rect {
     width: model.localRect.width,
     height: model.localRect.height,
   };
-  if (Math.abs(model.rotationDeg) < 1e-6) return worldRect;
+  if (Math.abs(model.rotationDeg) < ROTATION_EPSILON) return worldRect;
   return rotatedRectBounds(worldRect, model.rotationDeg, pos);
 }
 

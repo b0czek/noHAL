@@ -1,5 +1,5 @@
 import type Konva from "konva";
-import { SCENE_HEIGHT, SCENE_WIDTH } from "../constants";
+import { scene } from "../constants/scene";
 import type { NodeLayout, Pt } from "../layout";
 import {
   estimateCommentSize,
@@ -8,6 +8,7 @@ import {
 } from "../measurements";
 import type { SceneRenderState } from "../types";
 import {
+  DEGREES_TO_RADIANS,
   expandBoundsWithRotatedRect,
   rectIntersects,
   worldBoundsFromLocalRect,
@@ -19,6 +20,8 @@ import type {
   SceneBounds,
   SceneGraphState,
 } from "./types";
+
+const SCENE_BOUNDS_MARGIN = 160;
 
 export function focusCenterFromCullModel(
   id: string,
@@ -34,7 +37,7 @@ export function focusCenterFromCullModel(
     x: model.localRect.x + model.localRect.width / 2,
     y: model.localRect.y + model.localRect.height / 2,
   };
-  const rad = (model.rotationDeg * Math.PI) / 180;
+  const rad = model.rotationDeg * DEGREES_TO_RADIANS;
   const c = Math.cos(rad);
   const s = Math.sin(rad);
   return {
@@ -154,10 +157,10 @@ export function computeSceneBounds(args: {
   const bounds: SceneBounds = {
     minX: 0,
     minY: 0,
-    maxX: SCENE_WIDTH,
-    maxY: SCENE_HEIGHT,
+    maxX: scene.width,
+    maxY: scene.height,
   };
-  const margin = 160;
+  const margin = SCENE_BOUNDS_MARGIN;
 
   for (const node of state.sheet.nodes) {
     const layout = nodeLayouts.get(node.id);

@@ -1,5 +1,6 @@
 import { endpointKey } from "@nohal/core/graph";
 import type { ProjectWireLayerPosition } from "@nohal/core/types";
+import { scene } from "../constants/scene";
 import { buildSheetSceneLayout, type Pt } from "../layout";
 import {
   type DragSelectionTarget,
@@ -126,8 +127,8 @@ export function createKonvaSheetScene(
     },
 
     resize(width: number, height: number): void {
-      const w = Math.max(320, Math.floor(width));
-      const h = Math.max(240, Math.floor(height));
+      const w = Math.max(scene.stage.minWidth, Math.floor(width));
+      const h = Math.max(scene.stage.minHeight, Math.floor(height));
       if (
         runtime.view.stage.width() === w &&
         runtime.view.stage.height() === h

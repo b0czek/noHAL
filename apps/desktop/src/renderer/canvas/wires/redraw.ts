@@ -1,30 +1,17 @@
 import type { DirectConnection, SheetEndpointRef } from "@nohal/core/types";
 import Konva from "konva";
 import type { Selection } from "../../state/store/selectionTypes";
-import {
-  LABEL_ANCHOR_DASH,
-  LABEL_ANCHOR_STROKE,
-  LABEL_ANCHOR_STROKE_WIDTH,
-  WAYPOINT_HANDLE_FILL,
-  WAYPOINT_HANDLE_HIT_STROKE_WIDTH,
-  WAYPOINT_HANDLE_RADIUS,
-  WAYPOINT_HANDLE_SELECTED_FILL,
-  WAYPOINT_HANDLE_SELECTED_RADIUS,
-  WAYPOINT_HANDLE_STROKE,
-  WAYPOINT_HANDLE_STROKE_WIDTH,
-  WIRE_DEFAULT_STROKE,
-  WIRE_DEFAULT_STROKE_WIDTH,
-  WIRE_HIT_STROKE_WIDTH,
-  WIRE_PENDING_DASH,
-  WIRE_PENDING_STROKE,
-  WIRE_PENDING_STROKE_WIDTH,
-  WIRE_SELECTED_STROKE,
-  WIRE_SELECTED_STROKE_WIDTH,
-} from "../constants";
+import { wire } from "../constants/wires";
 import type { Pt } from "../layout";
 import { clampRuntimePos } from "../scene/bounds";
 import type { SceneRuntime } from "../scene/types";
 import { getLabelAnchorPoint } from "./anchors";
+import {
+  boundsFromPoints,
+  getLabelAnchorCullPadding,
+  getWaypointCullPadding,
+  setCullBounds,
+} from "./culling";
 import {
   getCursorPos,
   getEndpointPoint,
@@ -34,12 +21,19 @@ import {
 import { insertWaypointOnConnection } from "./interaction";
 import { getSheetLookup } from "./lookup";
 import {
-  boundsFromPoints,
   buildDisplayWirePoints,
   drawWirePath,
-  setCullBounds,
   updateWirePathShape,
 } from "./paths";
+
+const WAYPOINT_CULL_PADDING = getWaypointCullPadding({
+  strokeWidth: wire.waypoint.strokeWidth,
+  hitStrokeWidth: wire.waypoint.hitStrokeWidth,
+});
+
+const LABEL_ANCHOR_CULL_PADDING = getLabelAnchorCullPadding(
+  wire.labelAnchor.strokeWidth,
+);
 
 export function redraw(runtime: SceneRuntime): void {
   const state = runtime.state.lastState;
@@ -100,16 +94,16 @@ export function redraw(runtime: SceneRuntime): void {
     const selected = activeSelectedConnectionId === conn.id;
     const waypointsVisible =
       selected || connectionWaypointsVisibleForSelection(state.selection, conn);
-    const wire = drawWirePath(runtime, displayRoutePoints, wireStyle, {
-      stroke: selected ? WIRE_SELECTED_STROKE : WIRE_DEFAULT_STROKE,
+    const wireLine = drawWirePath(runtime, displayRoutePoints, wireStyle, {
+      stroke: selected ? wire.line.stroke.selected : wire.line.stroke.default,
       strokeWidth: selected
-        ? WIRE_SELECTED_STROKE_WIDTH
-        : WIRE_DEFAULT_STROKE_WIDTH,
+        ? wire.line.width.selected
+        : wire.line.width.default,
       listening: true,
-      hitStrokeWidth: WIRE_HIT_STROKE_WIDTH,
+      hitStrokeWidth: wire.line.width.hit,
     });
 
-    wire?.on("click tap", (evt) => {
+    wireLine?.on("click tap", (evt) => {
       evt.cancelBubble = true;
       if (evt.evt instanceof MouseEvent && evt.evt.detail >= 2) {
         const point = getPointerWorldPos(runtime);
@@ -123,14 +117,14 @@ export function redraw(runtime: SceneRuntime): void {
       redraw(runtime);
     });
 
-    wire?.on("dbltap", (evt) => {
+    wireLine?.on("dbltap", (evt) => {
       evt.cancelBubble = true;
       const point = getPointerWorldPos(runtime);
       if (!point) return;
       insertWaypointOnConnection(runtime, conn.id, routePoints, point);
     });
 
-    wire?.on("contextmenu", (evt) => {
+    wireLine?.on("contextmenu", (evt) => {
       evt.cancelBubble = true;
       if ("preventDefault" in evt.evt) evt.evt.preventDefault();
       if ("stopPropagation" in evt.evt) evt.evt.stopPropagation();
@@ -146,7 +140,7 @@ export function redraw(runtime: SceneRuntime): void {
       }
     });
 
-    if (waypointsVisible && waypoints.length > 0 && wire) {
+    if (waypointsVisible && waypoints.length > 0 && wireLine) {
       for (let i = 0; i < waypoints.length; i += 1) {
         const isSelectedWaypoint = activeSelectedWaypointIndex === i;
         const waypointIndex = i + 1;
@@ -155,21 +149,18 @@ export function redraw(runtime: SceneRuntime): void {
           x: p.x,
           y: p.y,
           radius: isSelectedWaypoint
-            ? WAYPOINT_HANDLE_SELECTED_RADIUS
-            : WAYPOINT_HANDLE_RADIUS,
+            ? wire.waypoint.selectedRadius
+            : wire.waypoint.radius,
           fill: isSelectedWaypoint
-            ? WAYPOINT_HANDLE_SELECTED_FILL
-            : WAYPOINT_HANDLE_FILL,
-          stroke: WAYPOINT_HANDLE_STROKE,
-          strokeWidth: WAYPOINT_HANDLE_STROKE_WIDTH,
+            ? wire.waypoint.selectedFill
+            : wire.waypoint.fill,
+          stroke: wire.waypoint.stroke,
+          strokeWidth: wire.waypoint.strokeWidth,
           draggable: true,
-          hitStrokeWidth: WAYPOINT_HANDLE_HIT_STROKE_WIDTH,
+          hitStrokeWidth: wire.waypoint.hitStrokeWidth,
           dragBoundFunc: (pos) => clampRuntimePos(runtime, pos),
         });
-        setCullBounds(
-          handle,
-          boundsFromPoints([p], WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12),
-        );
+        setCullBounds(handle, boundsFromPoints([p], WAYPOINT_CULL_PADDING));
 
         handle.on("click tap", (evt) => {
           evt.cancelBubble = true;
@@ -205,18 +196,12 @@ export function redraw(runtime: SceneRuntime): void {
         handle.on("dragmove", () => {
           const pos = clampRuntimePos(runtime, handle.position());
           handle.position(pos);
-          setCullBounds(
-            handle,
-            boundsFromPoints(
-              [pos],
-              WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12,
-            ),
-          );
+          setCullBounds(handle, boundsFromPoints([pos], WAYPOINT_CULL_PADDING));
           runtime.state.selectedConnectionId = conn.id;
           runtime.state.selectedWaypointIndex = i;
           routePoints[waypointIndex] = pos;
           updateWirePathShape(
-            wire,
+            wireLine,
             buildDisplayWirePoints({
               lookup,
               rawPoints: routePoints,
@@ -231,18 +216,12 @@ export function redraw(runtime: SceneRuntime): void {
         handle.on("dragend", () => {
           const pos = clampRuntimePos(runtime, handle.position());
           handle.position(pos);
-          setCullBounds(
-            handle,
-            boundsFromPoints(
-              [pos],
-              WAYPOINT_HANDLE_HIT_STROKE_WIDTH * 0.5 + 12,
-            ),
-          );
+          setCullBounds(handle, boundsFromPoints([pos], WAYPOINT_CULL_PADDING));
           runtime.state.selectedConnectionId = conn.id;
           runtime.state.selectedWaypointIndex = i;
           routePoints[waypointIndex] = pos;
           updateWirePathShape(
-            wire,
+            wireLine,
             buildDisplayWirePoints({
               lookup,
               rawPoints: routePoints,
@@ -273,14 +252,14 @@ export function redraw(runtime: SceneRuntime): void {
       (() => {
         const line = new Konva.Line({
           points: [ep.x, ep.y, labelPos.x, labelPos.y],
-          stroke: LABEL_ANCHOR_STROKE,
-          strokeWidth: LABEL_ANCHOR_STROKE_WIDTH,
-          dash: LABEL_ANCHOR_DASH,
+          stroke: wire.labelAnchor.stroke,
+          strokeWidth: wire.labelAnchor.strokeWidth,
+          dash: wire.labelAnchor.dash,
           listening: false,
         });
         setCullBounds(
           line,
-          boundsFromPoints([ep, labelPos], LABEL_ANCHOR_STROKE_WIDTH * 0.5 + 8),
+          boundsFromPoints([ep, labelPos], LABEL_ANCHOR_CULL_PADDING),
         );
         return line;
       })(),
@@ -299,9 +278,9 @@ export function redraw(runtime: SceneRuntime): void {
         endEndpoint: null,
       });
       drawWirePath(runtime, pendingDisplayPoints, wireStyle, {
-        stroke: WIRE_PENDING_STROKE,
-        strokeWidth: WIRE_PENDING_STROKE_WIDTH,
-        dash: WIRE_PENDING_DASH,
+        stroke: wire.line.stroke.pending,
+        strokeWidth: wire.line.width.pending,
+        dash: wire.pending.dash,
         listening: false,
       });
     }

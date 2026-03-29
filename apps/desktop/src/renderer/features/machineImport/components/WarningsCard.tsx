@@ -12,6 +12,8 @@ interface WarningsCardProps {
   warnings: string[];
 }
 
+const MAX_VISIBLE_WARNINGS = 20;
+
 export default function WarningsCard(props: WarningsCardProps) {
   const { t } = useI18n();
 
@@ -22,14 +24,14 @@ export default function WarningsCard(props: WarningsCardProps) {
           <CardTitle>{t("projectCreation.parserWarnings")}</CardTitle>
         </CardHeader>
         <CardContent class="grid gap-2">
-          <For each={props.warnings.slice(0, 20)}>
+          <For each={props.warnings.slice(0, MAX_VISIBLE_WARNINGS)}>
             {(warning) => (
               <Alert class="border-warning/30 bg-warning/10 text-foreground">
                 {warning}
               </Alert>
             )}
           </For>
-          <Show when={props.warnings.length > 20}>
+          <Show when={props.warnings.length > MAX_VISIBLE_WARNINGS}>
             <div class="text-sm text-muted-foreground">
               {t("projectCreation.parserWarningsTruncated", {
                 count: props.warnings.length,
