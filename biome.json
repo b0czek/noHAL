@@ -22,7 +22,17 @@
         "noForEach": "error"
       },
       "style": {
-        "noNestedTernary": "error"
+        "noNestedTernary": "error",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["@nohal/core/src/**"]
+              }
+            ]
+          }
+        }
       },
       "suspicious": {
         "noUnknownAtRules": "off"
