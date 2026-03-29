@@ -1,4 +1,4 @@
-import type { LinuxCncVersion } from "@nohal/core/src/types";
+import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
 
 export interface RecentProjectEntry {
   projectPath: string;

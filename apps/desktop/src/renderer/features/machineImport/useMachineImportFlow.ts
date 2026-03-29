@@ -3,19 +3,19 @@ import {
   buildProjectFromHalImport as buildImportedProject,
   detectMesaHalImport,
 } from "@nohal/core/src/halImport";
-import type {
-  ProjectMesaConnectorCardKind,
-  ProjectMesaGpioDirection,
-  ProjectMesaHostKind,
-  ProjectMesaSmartSerialCardKind,
-  ProjectMesaSmartSerialTarget,
+import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
+import {
+  createDefaultMesaConfig,
+  type ProjectMesaConnectorCardKind,
+  type ProjectMesaGpioDirection,
+  type ProjectMesaHostKind,
+  type ProjectMesaSmartSerialCardKind,
+  type ProjectMesaSmartSerialTarget,
 } from "@nohal/core/src/mesa";
-import { createDefaultMesaConfig } from "@nohal/core/src/project";
 import type {
   ComponentDefinition,
   HalImportPlacementHeuristic,
   HalValueType,
-  LinuxCncVersion,
 } from "@nohal/core/src/types";
 import type { Accessor } from "solid-js";
 import { createStore, unwrap } from "solid-js/store";

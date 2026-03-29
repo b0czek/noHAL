@@ -30,7 +30,7 @@ export default function AddfQueueTab() {
         return t("sheetSettings.kindSheet");
       case "function":
         return t("sheetSettings.kindFunction");
-      case "rt":
+      case "component":
         return t("sheetSettings.kindRt");
     }
   };

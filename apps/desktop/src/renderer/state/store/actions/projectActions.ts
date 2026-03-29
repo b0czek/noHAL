@@ -6,6 +6,7 @@ import {
   updateHalThreadName,
   updateHalThreadPeriodNs,
 } from "@nohal/core/src/halThread";
+import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
 import {
   syncMotmodManagedProjection,
   updateMotmodNumericConfig,
@@ -14,7 +15,6 @@ import type { ProjectReadResult } from "@nohal/core/src/project";
 import { projectEdits } from "@nohal/core/src/project";
 import type {
   HalValueType,
-  LinuxCncVersion,
   NoHALProject,
   ProjectWireLayerPosition,
   ProjectWireStyle,

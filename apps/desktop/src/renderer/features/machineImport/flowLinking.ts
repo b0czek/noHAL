@@ -4,13 +4,13 @@ import {
   isSystemHalImportComponentGroup,
   suggestHalImportLinks,
 } from "@nohal/core/src/halImport";
+import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
 import type { ProjectMesaConfig } from "@nohal/core/src/mesa";
 import type {
   ComponentDefinition,
   ComponentStore,
   HalImportDraft,
   HalImportLinkSelection,
-  LinuxCncVersion,
   MachineConfigImportDraft,
 } from "@nohal/core/src/types";
 

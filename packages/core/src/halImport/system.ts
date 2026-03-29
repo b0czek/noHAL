@@ -10,10 +10,10 @@ import {
   type MotmodManagedFamily,
   managedInstanceConfigValuesForFamily,
 } from "../componentStore/catalog/system/motmod";
+import type { LinuxCncVersion } from "../linuxcncVersion";
 import type {
   ComponentDefinition,
   HalImportComponentGroup,
-  LinuxCncVersion,
   ProjectMotmodConfig,
 } from "../types";
 

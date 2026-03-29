@@ -1,8 +1,8 @@
+import type { LinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
 import type {
   ComponentStore,
   ComponentStoreEntry,
   ImportedComponentDefinition,
-  LinuxCncVersion,
   MachineConfigImportDraft,
   MachineConfigImportSetupDraft,
   NoHALProject,

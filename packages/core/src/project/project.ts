@@ -8,8 +8,11 @@ import {
   createEmptyLinuxCncIniDocument,
   normalizeProjectMachineConfig,
 } from "../machineConfig/shared";
-import { normalizeProjectMesaConfig, reconcileMesaManagedNodes } from "../mesa";
-import type { ProjectMesaConfig } from "../mesa/types";
+import {
+  createDefaultMesaConfig,
+  normalizeProjectMesaConfig,
+  reconcileMesaManagedNodes,
+} from "../mesa";
 import { reconcileMotmodManagedNodes } from "../motmod";
 import {
   createDefaultSheetThreadOutputs,
@@ -129,12 +132,6 @@ export function createDefaultMotmodConfig(): ProjectMotmodConfig {
     numSpindles: 1,
     numMiscError: 0,
     trajPeriodNs: 0,
-  };
-}
-
-export function createDefaultMesaConfig(): ProjectMesaConfig {
-  return {
-    hosts: [],
   };
 }
 

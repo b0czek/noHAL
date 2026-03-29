@@ -1,4 +1,3 @@
-export type { LinuxCncVersion } from "../linuxcncVersion";
 export * from "./base";
 export * from "./componentStore";
 export * from "./components";
