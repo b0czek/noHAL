@@ -63,6 +63,7 @@ export const en = {
   "canvasContext.component": "Component",
   "canvasContext.subsheet": "Subsheet",
   "canvasContext.label": "Label",
+  "canvasContext.labelAnchor": "Label Anchor",
   "canvasContext.comment": "Text",
   "canvasContext.sheetPort": "Sheet Port",
   "canvasContext.connection": "Connection",
@@ -74,6 +75,7 @@ export const en = {
   "canvasContext.putEverythingIntoSubsheet": "Into Subsheet",
   "canvasContext.splitConnectionIntoLabels": "Split Into Labels",
   "canvasContext.removeConnection": "Remove Connection",
+  "canvasContext.removeLabelAnchor": "Remove Label Anchor",
   "canvasContext.deleteWaypoint": "Delete Waypoint",
 
   "canvasComponentMenu.ariaLabel": "Place Component",

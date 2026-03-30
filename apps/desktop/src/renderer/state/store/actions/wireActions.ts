@@ -170,6 +170,12 @@ export function createWireActions(deps: EditorStoreActionContext) {
         return sheetEdits.labelAnchor.remove(sheet, anchorId);
       });
       if (!removed) return;
+      if (
+        deps.state.selection?.kind === "label-anchor" &&
+        deps.state.selection.id === anchorId
+      ) {
+        deps.setState("selection", null);
+      }
       deps.setStatusT("store.status.removedLabelAnchor");
     },
   };

@@ -41,9 +41,12 @@ export function getWaypointCullPadding(args: {
   });
 }
 
-export function getLabelAnchorCullPadding(strokeWidth: number): number {
+export function getLabelAnchorCullPadding(args: {
+  strokeWidth: number;
+  hitStrokeWidth?: number;
+}): number {
   return getStrokeCullPadding({
-    strokeWidth,
+    ...args,
     extraPadding: wireCullExtraPadding.labelAnchor,
   });
 }

@@ -21,6 +21,17 @@ function createSelectionIdBuckets(args?: {
   };
 }
 
+function isExclusiveSelection(
+  selection: EditorSelection,
+): selection is Extract<
+  NonNullable<EditorSelection>,
+  { kind: "wire-connection" | "label-anchor" }
+> {
+  return (
+    selection?.kind === "wire-connection" || selection?.kind === "label-anchor"
+  );
+}
+
 export function selectionIdBuckets(
   selection: EditorSelection,
 ): SelectionIdBuckets | null {
@@ -31,6 +42,8 @@ export function selectionIdBuckets(
       return createSelectionIdBuckets({ nodeIds: [selection.id] });
     case "label":
       return createSelectionIdBuckets({ labelIds: [selection.id] });
+    case "label-anchor":
+      return null;
     case "comment":
       return createSelectionIdBuckets({ commentIds: [selection.id] });
     case "sheet-port":
@@ -80,7 +93,7 @@ export function extendSelection(
 ): EditorSelection {
   if (!current) return added;
   if (!added) return current;
-  if (current.kind === "wire-connection" || added.kind === "wire-connection") {
+  if (isExclusiveSelection(current) || isExclusiveSelection(added)) {
     return added;
   }
 
@@ -103,14 +116,16 @@ export function toggleSelection(
   if (!toggled) return current;
   if (!current) return toggled;
 
-  if (toggled.kind === "wire-connection") {
-    if (current.kind === "wire-connection" && current.id === toggled.id) {
+  if (isExclusiveSelection(toggled)) {
+    if (current.kind === toggled.kind && current.id === toggled.id) {
       return null;
     }
     return toggled;
   }
 
-  if (current.kind === "wire-connection") return toggled;
+  if (isExclusiveSelection(current)) {
+    return toggled;
+  }
 
   const currentBuckets = selectionIdBuckets(current);
   const toggledBuckets = selectionIdBuckets(toggled);

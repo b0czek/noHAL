@@ -23,6 +23,7 @@ import type { EditorSelection, EditorStoreActionContext } from "./types";
 type SelectionActionLinks = {
   deleteSheetDefinition: (sheetId: string) => void;
   removeDirectConnection: (connectionId: string) => void;
+  removeLabelAnchor: (anchorId: string) => void;
 };
 
 export function createSelectionActions(
@@ -175,6 +176,12 @@ export function createSelectionActions(
 
       if (sel.kind === "wire-connection") {
         links.removeDirectConnection(sel.id);
+        deps.clearPendingConnectionUi();
+        return;
+      }
+
+      if (sel.kind === "label-anchor") {
+        links.removeLabelAnchor(sel.id);
         deps.clearPendingConnectionUi();
         return;
       }

@@ -179,6 +179,36 @@ describe("selection actions", () => {
     expect(store.state.selection).toBe(null);
   });
 
+  it("treats label-anchor selection as a standalone selection", () => {
+    const { project } = createProjectFixture();
+    const store = createEditorStore(project, (key) => key);
+
+    store.actions.select({ kind: "node", id: "node_component" });
+    store.actions.extendSelection({
+      kind: "label-anchor",
+      id: "anchor_signal",
+    });
+
+    expect(store.state.selection).toEqual({
+      kind: "label-anchor",
+      id: "anchor_signal",
+    });
+  });
+
+  it("removes a selected label anchor", () => {
+    const { project } = createProjectFixture();
+    const store = createEditorStore(project, (key) => key);
+
+    store.actions.select({ kind: "label-anchor", id: "anchor_signal" });
+    store.actions.removeSelection();
+
+    const rootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    expect(rootSheet.labelAnchors).toHaveLength(0);
+    expect(store.state.selection).toBe(null);
+    expect(store.state.status).toBe("store.status.removedLabelAnchor");
+  });
+
   it("copies and pastes selected items while skipping protected system nodes", () => {
     const { project } = createProjectFixture();
     const clipboard = installClipboardMock();

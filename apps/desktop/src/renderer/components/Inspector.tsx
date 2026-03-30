@@ -54,6 +54,22 @@ export default function Inspector() {
       if (!selection || selection.kind !== "label") return undefined;
       return currentSheet().labels.find((l) => l.id === selection.id);
     })();
+  // Label anchors don't have their own inspector UI, but we still want to show some info about them in the inspector when they're selected
+  const selectedLabelAnchor = () =>
+    (() => {
+      const selection = state.selection;
+      if (!selection || selection.kind !== "label-anchor") return undefined;
+      return currentSheet().labelAnchors.find(
+        (anchor) => anchor.id === selection.id,
+      );
+    })();
+  // For label anchors, also show the associated label in the inspector
+  const selectedLabelAnchorLabel = () =>
+    (() => {
+      const anchor = selectedLabelAnchor();
+      if (!anchor) return undefined;
+      return currentSheet().labels.find((label) => label.id === anchor.labelId);
+    })();
   const selectedPort = () =>
     (() => {
       const selection = state.selection;
@@ -135,6 +151,31 @@ export default function Inspector() {
                           actions.updateLabel(label().id, { rotation })
                         }
                       />
+                    </div>
+                  )}
+                </Show>
+
+                <Show when={selectedLabelAnchor()}>
+                  {(anchor) => (
+                    <div class="grid gap-3">
+                      <div class="grid gap-2">
+                        <FieldLabel>
+                          {t("canvasContext.labelAnchor")}
+                        </FieldLabel>
+                        <div class="mono break-all px-1 text-sm text-muted-foreground">
+                          {anchor().id}
+                        </div>
+                      </div>
+                      <Show when={selectedLabelAnchorLabel()}>
+                        {(label) => (
+                          <div class="grid gap-2">
+                            <FieldLabel>{t("canvasContext.label")}</FieldLabel>
+                            <div class="mono break-all px-1 text-sm text-muted-foreground">
+                              {label().name}
+                            </div>
+                          </div>
+                        )}
+                      </Show>
                     </div>
                   )}
                 </Show>

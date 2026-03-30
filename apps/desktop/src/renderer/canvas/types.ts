@@ -43,6 +43,10 @@ export type SceneContextMenuNodeTarget = {
   nodeKind: "component" | "sheet";
 };
 export type SceneLabelContextMenuTarget = { kind: "label"; id: string };
+export type SceneLabelAnchorContextMenuTarget = {
+  kind: "label-anchor";
+  anchorId: string;
+};
 export type SceneCommentContextMenuTarget = { kind: "comment"; id: string };
 export type SceneSheetPortContextMenuTarget = {
   kind: "sheet-port";
@@ -64,6 +68,7 @@ export type SceneWireContextMenuTarget =
 export type SceneContextMenuTarget =
   | SceneContextMenuNodeTarget
   | SceneLabelContextMenuTarget
+  | SceneLabelAnchorContextMenuTarget
   | SceneCommentContextMenuTarget
   | SceneSheetPortContextMenuTarget
   | SceneWireContextMenuTarget;

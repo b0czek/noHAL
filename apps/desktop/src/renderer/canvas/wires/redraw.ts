@@ -41,9 +41,10 @@ const WAYPOINT_CULL_PADDING = getWaypointCullPadding({
   hitStrokeWidth: wire.waypoint.hitStrokeWidth,
 });
 
-const LABEL_ANCHOR_CULL_PADDING = getLabelAnchorCullPadding(
-  wire.labelAnchor.strokeWidth,
-);
+const LABEL_ANCHOR_CULL_PADDING = getLabelAnchorCullPadding({
+  strokeWidth: wire.labelAnchor.strokeWidth.selected,
+  hitStrokeWidth: wire.labelAnchor.strokeWidth.hit,
+});
 
 function selectConnection(
   runtime: SceneRuntime,
@@ -53,6 +54,12 @@ function selectConnection(
   runtime.callbacks.onSelect?.({ kind: "wire-connection", id: connectionId });
   runtime.state.selectedConnectionId = connectionId;
   runtime.state.selectedWaypointIndex = waypointIndex;
+}
+
+function selectLabelAnchor(runtime: SceneRuntime, anchorId: string): void {
+  runtime.callbacks.onSelect?.({ kind: "label-anchor", id: anchorId });
+  runtime.state.selectedConnectionId = null;
+  runtime.state.selectedWaypointIndex = null;
 }
 
 function syncSelectedConnectionState(runtime: SceneRuntime): void {
@@ -275,6 +282,7 @@ function renderLabelAnchors(
   runtime: SceneRuntime,
   sheet: SheetDefinition,
   lookup: SheetLookup,
+  selectedAnchorId: string | null,
 ): void {
   for (const anchor of sheet.labelAnchors) {
     const ep = getEndpointPoint(runtime, lookup, anchor.endpoint);
@@ -282,14 +290,39 @@ function renderLabelAnchors(
       ? getLabelAnchorPoint(runtime, lookup, anchor.labelId, ep)
       : getLabelPosition(runtime, lookup, anchor.labelId);
     if (!ep || !labelPos) continue;
+    const selected = anchor.id === selectedAnchorId;
     runtime.view.wireWorld.add(
       (() => {
         const line = new Konva.Line({
           points: [ep.x, ep.y, labelPos.x, labelPos.y],
-          stroke: wire.labelAnchor.stroke,
-          strokeWidth: wire.labelAnchor.strokeWidth,
+          stroke: selected
+            ? wire.labelAnchor.stroke.selected
+            : wire.labelAnchor.stroke.default,
+          strokeWidth: selected
+            ? wire.labelAnchor.strokeWidth.selected
+            : wire.labelAnchor.strokeWidth.default,
           dash: wire.labelAnchor.dash,
-          listening: false,
+          listening: true,
+          hitStrokeWidth: wire.labelAnchor.strokeWidth.hit,
+        });
+        line.on("click tap", (evt) => {
+          evt.cancelBubble = true;
+          selectLabelAnchor(runtime, anchor.id);
+          redraw(runtime);
+        });
+        line.on("contextmenu", (evt) => {
+          evt.cancelBubble = true;
+          if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+          if ("stopPropagation" in evt.evt) evt.evt.stopPropagation();
+          selectLabelAnchor(runtime, anchor.id);
+          redraw(runtime);
+          if (evt.evt instanceof MouseEvent) {
+            runtime.callbacks.onContextMenuRequest?.({
+              clientX: evt.evt.clientX,
+              clientY: evt.evt.clientY,
+              target: { kind: "label-anchor", anchorId: anchor.id },
+            });
+          }
         });
         setCullBounds(
           line,
@@ -339,6 +372,8 @@ export function redraw(runtime: SceneRuntime): void {
 
   const activeSelectedConnectionId = runtime.state.selectedConnectionId;
   const activeSelectedWaypointIndex = runtime.state.selectedWaypointIndex;
+  const activeSelectedLabelAnchorId =
+    state.selection?.kind === "label-anchor" ? state.selection.id : null;
   runtime.view.wireWorld.destroyChildren();
 
   for (const conn of sheet.directConnections) {
@@ -389,7 +424,7 @@ export function redraw(runtime: SceneRuntime): void {
     }
   }
 
-  renderLabelAnchors(runtime, sheet, lookup);
+  renderLabelAnchors(runtime, sheet, lookup, activeSelectedLabelAnchorId);
 
   if (pendingEndpoint) {
     drawPendingWire({

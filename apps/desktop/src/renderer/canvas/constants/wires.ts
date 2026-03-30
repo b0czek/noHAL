@@ -31,8 +31,15 @@ export const wire = {
     hitStrokeWidth: 14,
   },
   labelAnchor: {
-    stroke: "rgba(242, 185, 75, 0.72)",
-    strokeWidth: 1.7,
+    stroke: {
+      default: "rgba(242, 185, 75, 0.72)",
+      selected: "rgba(255, 214, 122, 0.98)",
+    },
+    strokeWidth: {
+      default: 1.7,
+      selected: 2.5,
+      hit: 12,
+    },
     // biome-ignore lint/style/noMagicNumbers: Dash patterns are clearer inline than as single-use aliases.
     dash: [7, 5] as number[],
   },

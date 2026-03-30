@@ -146,6 +146,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     if (!selection || selection.kind !== "multi") return false;
     if (target.kind === "node") return selection.nodeIds.includes(target.id);
     if (target.kind === "label") return selection.labelIds.includes(target.id);
+    if (target.kind === "label-anchor") return false;
     if (target.kind === "comment") return false;
     if (target.kind === "sheet-port")
       return selection.portIds.includes(target.id);
@@ -167,6 +168,9 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     }
     if (target.kind === "node") return { kind: "node", id: target.id };
     if (target.kind === "label") return { kind: "label", id: target.id };
+    if (target.kind === "label-anchor") {
+      return { kind: "label-anchor", id: target.anchorId };
+    }
     if (target.kind === "comment") return { kind: "comment", id: target.id };
     if (target.kind === "sheet-port")
       return { kind: "sheet-port", id: target.id };
@@ -395,6 +399,18 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       };
     }
 
+    if (target.kind === "label-anchor") {
+      return {
+        title: t("canvasContext.labelAnchor"),
+        items: [
+          {
+            label: t("canvasContext.removeLabelAnchor"),
+            onSelect: () => actions.removeLabelAnchor(target.anchorId),
+          },
+        ],
+      };
+    }
+
     if (target.kind === "comment") {
       return {
         title: t("canvasContext.comment"),
@@ -471,6 +487,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     if (
       (request.target.kind === "node" ||
         request.target.kind === "label" ||
+        request.target.kind === "label-anchor" ||
         request.target.kind === "comment" ||
         request.target.kind === "sheet-port") &&
       selectionContainsContextTarget(selection, request.target)
@@ -483,6 +500,8 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       actions.select({ kind: "node", id: request.target.id });
     } else if (request.target.kind === "label") {
       actions.select({ kind: "label", id: request.target.id });
+    } else if (request.target.kind === "label-anchor") {
+      actions.select({ kind: "label-anchor", id: request.target.anchorId });
     } else if (request.target.kind === "comment") {
       actions.select({ kind: "comment", id: request.target.id });
     } else if (request.target.kind === "sheet-port") {
