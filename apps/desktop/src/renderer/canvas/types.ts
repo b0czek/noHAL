@@ -1,5 +1,8 @@
 import type {
+  HalValueType,
+  LabelScope,
   NoHALProject,
+  PinDirection,
   SheetDefinition,
   SheetEndpointRef,
   XY,
@@ -11,24 +14,59 @@ export type SceneSelectOptions = {
   mode?: "add" | "toggle";
 };
 
+export type SceneComponentPlacement = {
+  kind: "component";
+  componentId: string;
+};
+export type SceneSubsheetPlacement = { kind: "subsheet" };
+export type SceneCommentPlacement = { kind: "comment" };
+export type SceneLabelPlacement = {
+  kind: "label";
+  scope: LabelScope;
+};
+export type SceneSheetPortPlacement = {
+  kind: "sheet-port";
+  direction: PinDirection;
+  type: HalValueType;
+};
+
 export type ScenePlacement =
-  | { kind: "component"; componentId: string }
-  | { kind: "subsheet" }
-  | { kind: "comment" }
-  | { kind: "label"; scope: "local" | "global" }
-  | {
-      kind: "sheet-port";
-      direction: "in" | "out" | "io";
-      type: "bit" | "float" | "s32" | "u32" | "s64" | "u64" | "port";
-    };
+  | SceneComponentPlacement
+  | SceneSubsheetPlacement
+  | SceneCommentPlacement
+  | SceneLabelPlacement
+  | SceneSheetPortPlacement;
+
+export type SceneContextMenuNodeTarget = {
+  kind: "node";
+  id: string;
+  nodeKind: "component" | "sheet";
+};
+export type SceneLabelContextMenuTarget = { kind: "label"; id: string };
+export type SceneCommentContextMenuTarget = { kind: "comment"; id: string };
+export type SceneSheetPortContextMenuTarget = {
+  kind: "sheet-port";
+  id: string;
+};
+export type SceneWireConnectionContextMenuTarget = {
+  kind: "wire-connection";
+  connectionId: string;
+};
+export type SceneWireWaypointContextMenuTarget = {
+  kind: "wire-waypoint";
+  connectionId: string;
+  waypointIndex: number;
+};
+export type SceneWireContextMenuTarget =
+  | SceneWireConnectionContextMenuTarget
+  | SceneWireWaypointContextMenuTarget;
 
 export type SceneContextMenuTarget =
-  | { kind: "node"; id: string; nodeKind: "component" | "sheet" }
-  | { kind: "label"; id: string }
-  | { kind: "comment"; id: string }
-  | { kind: "sheet-port"; id: string }
-  | { kind: "wire-connection"; connectionId: string }
-  | { kind: "wire-waypoint"; connectionId: string; waypointIndex: number };
+  | SceneContextMenuNodeTarget
+  | SceneLabelContextMenuTarget
+  | SceneCommentContextMenuTarget
+  | SceneSheetPortContextMenuTarget
+  | SceneWireContextMenuTarget;
 
 export interface SceneContextMenuRequest {
   clientX: number;

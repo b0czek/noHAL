@@ -2,7 +2,7 @@ import { resolveComponentPinsForInstance } from "../componentInstance";
 import { resolveNodeExportStage } from "../componentSystem";
 import { getSheet } from "../graph";
 import { isValidHalName } from "../halNames";
-import type { NoHALProject } from "../types";
+import type { ComponentNode, NoHALProject } from "../types";
 import type { ExportContext } from "./context";
 import { pushFatal } from "./context";
 import { collectGeneratedParamContributions } from "./contributions";
@@ -11,6 +11,32 @@ import { resolveExportedInstancePath } from "./naming";
 export interface ParamLines {
   mainSetpLines: string[];
   postguiSetpLines: string[];
+}
+
+type ResolvedValueTarget = {
+  instanceName: string;
+  instancePath: string;
+  targetLines: string[];
+  warnings: string[];
+};
+
+function emitResolvedValueLines(
+  entries: Record<string, string>,
+  defsByKey: ReadonlyMap<string, string>,
+  warningLabel: "pin" | "param",
+  target: ResolvedValueTarget,
+): void {
+  for (const [key, value] of Object.entries(entries)) {
+    const name = defsByKey.get(key);
+    if (!name) {
+      target.warnings.push(
+        `Unknown ${warningLabel} '${key}' on node '${target.instanceName}'`,
+      );
+      continue;
+    }
+    if (!value.trim()) continue;
+    target.targetLines.push(`setp ${target.instancePath}.${name} ${value}`);
+  }
 }
 
 export function collectParamLines(
@@ -22,6 +48,51 @@ export function collectParamLines(
   const postguiSetpLines = [...generated.postguiSetpLines];
   const seenSheets = new Set<string>();
 
+  const emitComponentParams = (
+    pathParts: string[],
+    node: ComponentNode,
+  ): void => {
+    const component = project.library.components[node.componentId];
+    if (!component) return;
+    const instancePath = resolveExportedInstancePath(
+      pathParts,
+      node.instanceName,
+      component,
+    );
+    if (!isValidHalName(instancePath)) {
+      pushFatal(
+        ctx,
+        `Skipping setp export for invalid instance path '${instancePath}'`,
+      );
+      return;
+    }
+    const exportStage = resolveNodeExportStage(component, node.exportStage);
+    const setpTargetLines =
+      exportStage === "postgui" ? postguiSetpLines : mainSetpLines;
+    const resolvedValueTarget: ResolvedValueTarget = {
+      instanceName: node.instanceName,
+      instancePath,
+      targetLines: setpTargetLines,
+      warnings: ctx.warnings,
+    };
+    const resolvedPins = resolveComponentPinsForInstance(
+      component,
+      node.instanceConfigValues,
+    );
+    emitResolvedValueLines(
+      node.pinInitialValues ?? {},
+      new Map(resolvedPins.map((pin) => [pin.key, pin.name])),
+      "pin",
+      resolvedValueTarget,
+    );
+    emitResolvedValueLines(
+      node.paramValues,
+      new Map(component.params.map((param) => [param.key, param.name])),
+      "param",
+      resolvedValueTarget,
+    );
+  };
+
   function emitParams(sheetId: string, pathParts: string[]): void {
     const cycleKey = `${sheetId}|${pathParts.join(".")}`;
     if (seenSheets.has(cycleKey)) return;
@@ -30,56 +101,10 @@ export function collectParamLines(
     const sheet = getSheet(project, sheetId);
     for (const node of sheet.nodes) {
       if (node.kind === "component") {
-        const component = project.library.components[node.componentId];
-        if (!component) continue;
-        const instancePath = resolveExportedInstancePath(
-          pathParts,
-          node.instanceName,
-          component,
-        );
-        if (!isValidHalName(instancePath)) {
-          pushFatal(
-            ctx,
-            `Skipping setp export for invalid instance path '${instancePath}'`,
-          );
-          continue;
-        }
-        const exportStage = resolveNodeExportStage(component, node.exportStage);
-        const setpTargetLines =
-          exportStage === "postgui" ? postguiSetpLines : mainSetpLines;
-        const resolvedPins = resolveComponentPinsForInstance(
-          component,
-          node.instanceConfigValues,
-        );
-        for (const [pinKey, value] of Object.entries(
-          node.pinInitialValues ?? {},
-        )) {
-          const pinDef = resolvedPins.find((p) => p.key === pinKey);
-          if (!pinDef) {
-            ctx.warnings.push(
-              `Unknown pin '${pinKey}' on node '${node.instanceName}'`,
-            );
-            continue;
-          }
-          if (!value.trim()) continue;
-          setpTargetLines.push(`setp ${instancePath}.${pinDef.name} ${value}`);
-        }
-        for (const [paramKey, value] of Object.entries(node.paramValues)) {
-          const paramDef = component.params.find((p) => p.key === paramKey);
-          if (!paramDef) {
-            ctx.warnings.push(
-              `Unknown param '${paramKey}' on node '${node.instanceName}'`,
-            );
-            continue;
-          }
-          if (!value.trim()) continue;
-          setpTargetLines.push(
-            `setp ${instancePath}.${paramDef.name} ${value}`,
-          );
-        }
-      } else {
-        emitParams(node.sheetId, [...pathParts, node.instanceName]);
+        emitComponentParams(pathParts, node);
+        continue;
       }
+      emitParams(node.sheetId, [...pathParts, node.instanceName]);
     }
   }
 

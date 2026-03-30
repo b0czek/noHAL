@@ -1,9 +1,10 @@
 import path from "node:path";
+import type { HalValueType } from "../../src/types/index.ts";
 
 export const COMPONENTS_SUBMAKEFILE_PATH = "src/hal/components/Submakefile";
 export const CONV_TEMPLATE_PATH = "src/hal/components/conv.comp.in";
 
-type ConvType = "bit" | "s32" | "u32" | "s64" | "u64" | "float";
+type ConvType = Exclude<HalValueType, "port">;
 
 export function parseConvCompTypesFromPath(
   filePath: string,

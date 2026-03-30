@@ -25,6 +25,7 @@ import {
 } from "../sheet";
 import type {
   ComponentDefinition,
+  ComponentNode,
   HalThreadDefinition,
   NoHALProject,
   ProjectMachineConfig,
@@ -258,6 +259,51 @@ function assertProjectShape(input: unknown): asserts input is NoHALProject {
   }
 }
 
+function normalizeParsedComponentNode(node: ComponentNode): void {
+  if (Array.isArray(node.hiddenPinKeys)) {
+    const hiddenPinKeys = [...new Set(node.hiddenPinKeys)].filter(
+      (key): key is string => typeof key === "string" && key.trim().length > 0,
+    );
+    if (hiddenPinKeys.length > 0) {
+      node.hiddenPinKeys = hiddenPinKeys;
+    } else {
+      delete node.hiddenPinKeys;
+    }
+  } else {
+    delete node.hiddenPinKeys;
+  }
+
+  if (node.exportStage === "main" || node.exportStage === "postgui") return;
+  delete node.exportStage;
+}
+
+function normalizeParsedSheet(sheet: SheetDefinition): void {
+  if (!Array.isArray((sheet as Partial<SheetDefinition>).comments)) {
+    sheet.comments = [];
+  }
+  for (const node of sheet.nodes) {
+    if (node.kind !== "component") continue;
+    normalizeParsedComponentNode(node);
+  }
+  if (!sheet.hal) sheet.hal = {};
+  sheet.hal.threadOutputs = normalizeSheetThreadOutputs(
+    sheet.hal.threadOutputs,
+  );
+}
+
+function inferRootSheetThreadOutputIds(project: NoHALProject): void {
+  const rootSheet = project.sheets[project.rootSheetId];
+  const halThreads = project.halThreads ?? [];
+  const halThreadIdByName = new Map(
+    halThreads.map((thread) => [thread.name, thread.id]),
+  );
+  for (const output of rootSheet.hal?.threadOutputs ?? []) {
+    if (output.halThreadId) continue;
+    const inferred = halThreadIdByName.get(output.name);
+    if (inferred) output.halThreadId = inferred;
+  }
+}
+
 export function parseNoHALProject(content: string): NoHALProject {
   const parsed = JSON.parse(content) as unknown;
   const migrated = migrateProjectDocumentToCurrentVersion(parsed);
@@ -274,44 +320,9 @@ export function parseNoHALProject(content: string): NoHALProject {
     project.rootSheetId,
     project.sheets,
   );
-  for (const sheet of Object.values(project.sheets)) {
-    if (!Array.isArray((sheet as Partial<SheetDefinition>).comments)) {
-      (sheet as SheetDefinition).comments = [];
-    }
-    for (const node of sheet.nodes) {
-      if (node.kind !== "component") continue;
-      if (Array.isArray(node.hiddenPinKeys)) {
-        const hiddenPinKeys = [...new Set(node.hiddenPinKeys)].filter(
-          (key): key is string =>
-            typeof key === "string" && key.trim().length > 0,
-        );
-        if (hiddenPinKeys.length > 0) {
-          node.hiddenPinKeys = hiddenPinKeys;
-        } else {
-          delete node.hiddenPinKeys;
-        }
-      } else {
-        delete node.hiddenPinKeys;
-      }
-      if (node.exportStage === "main" || node.exportStage === "postgui") {
-        continue;
-      }
-      delete node.exportStage;
-    }
-    if (!sheet.hal) sheet.hal = {};
-    sheet.hal.threadOutputs = normalizeSheetThreadOutputs(
-      sheet.hal.threadOutputs,
-    );
-  }
-  const rootSheet = project.sheets[project.rootSheetId];
-  const halThreadIdByName = new Map(
-    project.halThreads.map((thread) => [thread.name, thread.id]),
-  );
-  for (const output of rootSheet.hal?.threadOutputs ?? []) {
-    if (output.halThreadId) continue;
-    const inferred = halThreadIdByName.get(output.name);
-    if (inferred) output.halThreadId = inferred;
-  }
+  for (const sheet of Object.values(project.sheets))
+    normalizeParsedSheet(sheet);
+  inferRootSheetThreadOutputIds(project);
   moveRootSystemComponentsToSystemSheet(project);
   return reconcileProject(project);
 }

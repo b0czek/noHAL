@@ -1,4 +1,5 @@
 import type { SheetEndpointRef } from "@nohal/core/types";
+import type { MultiSelection } from "../../state/store/selectionTypes";
 import {
   estimateCommentSize,
   estimatePortBox,
@@ -8,6 +9,158 @@ import type { DragSelectionTarget } from "../renderables";
 import type { SceneRenderState, SceneSelection } from "../types";
 import { rectContainsRect, rotatedRectBounds } from "./geometry";
 import type { GroupDragSession, Rect, SelectionSets } from "./types";
+
+function populateStartPositions<
+  T extends { id: string; position: { x: number; y: number } },
+>(
+  ids: readonly string[],
+  entries: readonly T[],
+  livePositions: Map<string, { x: number; y: number }>,
+  output: Map<string, { x: number; y: number }>,
+): void {
+  for (const id of ids) {
+    const entry = entries.find((item) => item.id === id);
+    if (!entry) continue;
+    output.set(id, livePositions.get(id) ?? entry.position);
+  }
+}
+
+function collectSelectionWaypointStartPositions(
+  state: SceneRenderState,
+  selection: MultiSelection,
+): Map<string, { x: number; y: number }[]> {
+  const output = new Map<string, { x: number; y: number }[]>();
+
+  for (const connection of state.sheet.directConnections) {
+    const waypoints = connection.waypoints;
+    if (!waypoints || waypoints.length === 0) continue;
+    if (
+      !endpointMovesWithSelection(connection.a, selection) ||
+      !endpointMovesWithSelection(connection.b, selection)
+    ) {
+      continue;
+    }
+    output.set(
+      connection.id,
+      waypoints.map((point) => ({ x: point.x, y: point.y })),
+    );
+  }
+
+  return output;
+}
+
+function buildSingleRectSelection(args: {
+  nodeIds: string[];
+  labelIds: string[];
+  commentIds: string[];
+  portIds: string[];
+}): SceneSelection {
+  const { nodeIds, labelIds, commentIds, portIds } = args;
+  if (nodeIds.length === 1) return { kind: "node", id: nodeIds[0] };
+  if (labelIds.length === 1) return { kind: "label", id: labelIds[0] };
+  if (commentIds.length === 1) return { kind: "comment", id: commentIds[0] };
+  return { kind: "sheet-port", id: portIds[0] };
+}
+
+function collectNodeIdsInRect(args: {
+  rect: Rect;
+  state: SceneRenderState;
+  nodeLayouts: Map<string, { width: number; height: number }>;
+  liveNodePositions: Map<string, { x: number; y: number }>;
+}): string[] {
+  const { rect, state, nodeLayouts, liveNodePositions } = args;
+  const nodeIds: string[] = [];
+
+  for (const node of state.sheet.nodes) {
+    const layout = nodeLayouts.get(node.id);
+    if (!layout) continue;
+    const pos = liveNodePositions.get(node.id) ?? node.position;
+    const nodeRect = {
+      x: pos.x,
+      y: pos.y,
+      width: layout.width,
+      height: layout.height,
+    };
+    if (rectContainsRect(rect, nodeRect)) nodeIds.push(node.id);
+  }
+
+  return nodeIds;
+}
+
+function collectLabelIdsInRect(args: {
+  rect: Rect;
+  state: SceneRenderState;
+  liveLabelPositions: Map<string, { x: number; y: number }>;
+}): string[] {
+  const { rect, state, liveLabelPositions } = args;
+  const labelIds: string[] = [];
+
+  for (const label of state.sheet.labels) {
+    const pos = liveLabelPositions.get(label.id) ?? label.position;
+    const size = measureLabelBox(label.scope, label.name);
+    const labelRect = rotatedRectBounds(
+      {
+        x: pos.x,
+        y: pos.y - size.height / 2,
+        width: size.width,
+        height: size.height,
+      },
+      label.rotation ?? 0,
+      pos,
+    );
+    if (rectContainsRect(rect, labelRect)) labelIds.push(label.id);
+  }
+
+  return labelIds;
+}
+
+function collectCommentIdsInRect(args: {
+  rect: Rect;
+  state: SceneRenderState;
+  liveCommentPositions: Map<string, { x: number; y: number }>;
+}): string[] {
+  const { rect, state, liveCommentPositions } = args;
+  const commentIds: string[] = [];
+
+  for (const comment of state.sheet.comments) {
+    const pos = liveCommentPositions.get(comment.id) ?? comment.position;
+    const size = estimateCommentSize(comment.text);
+    const commentRect = rotatedRectBounds(
+      {
+        x: pos.x,
+        y: pos.y,
+        width: size.width,
+        height: size.height,
+      },
+      comment.rotation ?? 0,
+      pos,
+    );
+    if (rectContainsRect(rect, commentRect)) commentIds.push(comment.id);
+  }
+
+  return commentIds;
+}
+
+function collectPortIdsInRect(args: {
+  rect: Rect;
+  state: SceneRenderState;
+  livePortPositions: Map<string, { x: number; y: number }>;
+}): string[] {
+  const { rect, state, livePortPositions } = args;
+  const portIds: string[] = [];
+
+  for (const port of state.sheet.ports) {
+    const pos = livePortPositions.get(port.id) ?? port.position;
+    const portRect = rotatedRectBounds(
+      estimatePortBox(port, pos),
+      port.rotation ?? 0,
+      pos,
+    );
+    if (rectContainsRect(rect, portRect)) portIds.push(port.id);
+  }
+
+  return portIds;
+}
 
 export function buildSelectionSets(
   selection: SceneRenderState["selection"],
@@ -85,65 +238,32 @@ export function buildGroupDragSession(args: {
   const labelStartPositions = new Map<string, { x: number; y: number }>();
   const commentStartPositions = new Map<string, { x: number; y: number }>();
   const portStartPositions = new Map<string, { x: number; y: number }>();
-  const connectionWaypointStartPositions = new Map<
-    string,
-    { x: number; y: number }[]
-  >();
-
-  for (const nodeId of selection.nodeIds) {
-    const node = state.sheet.nodes.find((entry) => entry.id === nodeId);
-    if (!node) continue;
-    nodeStartPositions.set(
-      nodeId,
-      liveNodePositions.get(nodeId) ?? node.position,
-    );
-  }
-
-  for (const labelId of selection.labelIds) {
-    const label = state.sheet.labels.find((entry) => entry.id === labelId);
-    if (!label) continue;
-    labelStartPositions.set(
-      labelId,
-      liveLabelPositions.get(labelId) ?? label.position,
-    );
-  }
-
-  for (const commentId of selection.commentIds) {
-    const comment = state.sheet.comments.find(
-      (entry) => entry.id === commentId,
-    );
-    if (!comment) continue;
-    commentStartPositions.set(
-      commentId,
-      liveCommentPositions.get(commentId) ?? comment.position,
-    );
-  }
-
-  for (const portId of selection.portIds) {
-    const port = state.sheet.ports.find((entry) => entry.id === portId);
-    if (!port) continue;
-    portStartPositions.set(
-      portId,
-      livePortPositions.get(portId) ?? port.position,
-    );
-  }
-
-  // Treat connection waypoints as part of the dragged group when both endpoints
-  // are already included in the multi-selection.
-  for (const connection of state.sheet.directConnections) {
-    const waypoints = connection.waypoints;
-    if (!waypoints || waypoints.length === 0) continue;
-    if (
-      !endpointMovesWithSelection(connection.a, selection) ||
-      !endpointMovesWithSelection(connection.b, selection)
-    ) {
-      continue;
-    }
-    connectionWaypointStartPositions.set(
-      connection.id,
-      waypoints.map((point) => ({ x: point.x, y: point.y })),
-    );
-  }
+  populateStartPositions(
+    selection.nodeIds,
+    state.sheet.nodes,
+    liveNodePositions,
+    nodeStartPositions,
+  );
+  populateStartPositions(
+    selection.labelIds,
+    state.sheet.labels,
+    liveLabelPositions,
+    labelStartPositions,
+  );
+  populateStartPositions(
+    selection.commentIds,
+    state.sheet.comments,
+    liveCommentPositions,
+    commentStartPositions,
+  );
+  populateStartPositions(
+    selection.portIds,
+    state.sheet.ports,
+    livePortPositions,
+    portStartPositions,
+  );
+  const connectionWaypointStartPositions =
+    collectSelectionWaypointStartPositions(state, selection);
 
   if (
     nodeStartPositions.size +
@@ -237,7 +357,7 @@ export function collectGroupDragUpdates(args: {
 
 function endpointMovesWithSelection(
   endpoint: SheetEndpointRef,
-  selection: Extract<SceneSelection, { kind: "multi" }>,
+  selection: MultiSelection,
 ): boolean {
   return endpoint.kind === "node-pin"
     ? selection.nodeIds.includes(endpoint.nodeId)
@@ -262,74 +382,30 @@ export function selectItemsInWorldRect(args: {
     liveCommentPositions,
     livePortPositions,
   } = args;
-  const nodeIds: string[] = [];
-  const labelIds: string[] = [];
-  const commentIds: string[] = [];
-  const portIds: string[] = [];
-
-  for (const node of state.sheet.nodes) {
-    const layout = nodeLayouts.get(node.id);
-    if (!layout) continue;
-    const pos = liveNodePositions.get(node.id) ?? node.position;
-    const nodeRect = {
-      x: pos.x,
-      y: pos.y,
-      width: layout.width,
-      height: layout.height,
-    };
-    if (rectContainsRect(rect, nodeRect)) nodeIds.push(node.id);
-  }
-
-  for (const label of state.sheet.labels) {
-    const pos = liveLabelPositions.get(label.id) ?? label.position;
-    const size = measureLabelBox(label.scope, label.name);
-    const labelRect = rotatedRectBounds(
-      {
-        x: pos.x,
-        y: pos.y - size.height / 2,
-        width: size.width,
-        height: size.height,
-      },
-      label.rotation ?? 0,
-      pos,
-    );
-    if (rectContainsRect(rect, labelRect)) labelIds.push(label.id);
-  }
-
-  for (const comment of state.sheet.comments) {
-    const pos = liveCommentPositions.get(comment.id) ?? comment.position;
-    const size = estimateCommentSize(comment.text);
-    const commentRect = rotatedRectBounds(
-      {
-        x: pos.x,
-        y: pos.y,
-        width: size.width,
-        height: size.height,
-      },
-      comment.rotation ?? 0,
-      pos,
-    );
-    if (rectContainsRect(rect, commentRect)) commentIds.push(comment.id);
-  }
-
-  for (const port of state.sheet.ports) {
-    const pos = livePortPositions.get(port.id) ?? port.position;
-    const portRect = rotatedRectBounds(
-      estimatePortBox(port, pos),
-      port.rotation ?? 0,
-      pos,
-    );
-    if (rectContainsRect(rect, portRect)) portIds.push(port.id);
-  }
+  const nodeIds = collectNodeIdsInRect({
+    rect,
+    state,
+    nodeLayouts,
+    liveNodePositions,
+  });
+  const labelIds = collectLabelIdsInRect({ rect, state, liveLabelPositions });
+  const commentIds = collectCommentIdsInRect({
+    rect,
+    state,
+    liveCommentPositions,
+  });
+  const portIds = collectPortIdsInRect({ rect, state, livePortPositions });
 
   const total =
     nodeIds.length + labelIds.length + commentIds.length + portIds.length;
   if (total === 0) return null;
   if (total === 1) {
-    if (nodeIds.length === 1) return { kind: "node", id: nodeIds[0] };
-    if (labelIds.length === 1) return { kind: "label", id: labelIds[0] };
-    if (commentIds.length === 1) return { kind: "comment", id: commentIds[0] };
-    return { kind: "sheet-port", id: portIds[0] };
+    return buildSingleRectSelection({
+      nodeIds,
+      labelIds,
+      commentIds,
+      portIds,
+    });
   }
 
   return {

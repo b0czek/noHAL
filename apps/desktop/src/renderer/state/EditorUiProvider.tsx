@@ -1,5 +1,10 @@
 import { getSheet } from "@nohal/core/graph";
-import type { LabelScope, XY } from "@nohal/core/types";
+import type {
+  HalValueType,
+  LabelScope,
+  PinDirection,
+  XY,
+} from "@nohal/core/types";
 import {
   createContext,
   createEffect,
@@ -23,15 +28,29 @@ export type CanvasPlacement =
   | { kind: "label"; scope: LabelScope }
   | {
       kind: "sheet-port";
-      direction: "in" | "out" | "io";
-      type: "bit" | "float" | "s32" | "u32" | "s64" | "u64" | "port";
+      direction: PinDirection;
+      type: HalValueType;
     };
+export type ComponentEditorOverlay = {
+  kind: "component-editor";
+  nodeId: string;
+};
+export type GeneralSettingsOverlay = {
+  kind: "general-settings";
+  initialTab?: GeneralSettingsTab;
+};
+export type ProjectSettingsOverlay = { kind: "project-settings" };
+export type SheetSettingsOverlay = { kind: "sheet-settings"; sheetId: string };
+export type ComponentSearchOverlay = {
+  kind: "component-search";
+  scope: ComponentSearchScope;
+};
 export type EditorOverlay =
-  | { kind: "component-editor"; nodeId: string }
-  | { kind: "general-settings"; initialTab?: GeneralSettingsTab }
-  | { kind: "project-settings" }
-  | { kind: "sheet-settings"; sheetId: string }
-  | { kind: "component-search"; scope: ComponentSearchScope };
+  | ComponentEditorOverlay
+  | GeneralSettingsOverlay
+  | ProjectSettingsOverlay
+  | SheetSettingsOverlay
+  | ComponentSearchOverlay;
 
 type CanvasFocusRequest = {
   requestId: number;

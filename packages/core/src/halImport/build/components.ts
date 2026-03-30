@@ -6,6 +6,7 @@ import type {
   HalImportBuildOptions,
   HalImportComponentGroup,
   HalImportLinkSelection,
+  HalImportNet,
   HalValueType,
   PinDirection,
 } from "../../types";
@@ -144,8 +145,7 @@ function buildMappedStorePinTypes(
   );
   const storeComponentsById = createStoreComponentMap(componentStore);
   const mappedStorePinTypes = new Map<string, HalValueType[]>();
-
-  for (const net of draft.nets) {
+  const collectKnownStorePinTypes = (net: HalImportNet) => {
     const knownTypes: HalValueType[] = [];
     for (const endpoint of net.endpoints) {
       const group = groupByInstance.get(endpoint.instanceName);
@@ -160,6 +160,11 @@ function buildMappedStorePinTypes(
       );
       if (pin) knownTypes.push(pin.type);
     }
+    return knownTypes;
+  };
+
+  for (const net of draft.nets) {
+    const knownTypes = collectKnownStorePinTypes(net);
     if (knownTypes.length === 0) continue;
 
     for (const endpoint of net.endpoints) {

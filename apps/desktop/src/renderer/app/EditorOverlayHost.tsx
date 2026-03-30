@@ -4,21 +4,13 @@ import ComponentSettings from "../features/componentSettings";
 import GeneralSettingsDialog from "../features/generalSettings";
 import ProjectSettingsDialog from "../features/projectSettings";
 import SheetSettingsDialog from "../features/sheetSettings";
-import { type EditorOverlay, useEditorUi } from "../state/EditorUiProvider";
-
-type ComponentEditorOverlay = Extract<
-  EditorOverlay,
-  { kind: "component-editor" }
->;
-type ComponentSearchOverlay = Extract<
-  EditorOverlay,
-  { kind: "component-search" }
->;
-type GeneralSettingsOverlay = Extract<
-  EditorOverlay,
-  { kind: "general-settings" }
->;
-type SheetSettingsOverlay = Extract<EditorOverlay, { kind: "sheet-settings" }>;
+import {
+  type ComponentEditorOverlay,
+  type ComponentSearchOverlay,
+  type GeneralSettingsOverlay,
+  type SheetSettingsOverlay,
+  useEditorUi,
+} from "../state/EditorUiProvider";
 
 export default function EditorOverlayHost() {
   const editorUi = useEditorUi();

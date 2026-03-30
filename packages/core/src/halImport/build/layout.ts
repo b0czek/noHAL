@@ -1,4 +1,5 @@
 import type {
+  ComponentNode,
   ComponentPinDefinition,
   HalImportPlacementHeuristic,
   SheetDefinition,
@@ -85,6 +86,12 @@ function planDirectConnectionEdgesForNet(options: {
     return [];
   }
 
+  return buildClusterDirectConnectionEdges(endpoints);
+}
+
+function buildClusterDirectConnectionEdges(
+  endpoints: ImportPreparedEndpoint[],
+): Array<{ a: ImportPreparedEndpoint; b: ImportPreparedEndpoint }> {
   const outEndpoints = endpoints.filter((item) => item.direction === "out");
   const ioEndpoints = endpoints.filter((item) => item.direction === "io");
   const inEndpoints = endpoints.filter((item) => item.direction === "in");
@@ -110,6 +117,102 @@ function planDirectConnectionEdgesForNet(options: {
     edges.push({ a: root, b: endpoint });
   }
   return edges;
+}
+
+function buildPinSideIndexMap(options: {
+  nodeIds: string[];
+  resolvedPinsByNodeId: Map<string, ComponentPinDefinition[]>;
+}): Map<string, number> {
+  const pinSideIndexByNodePin = new Map<string, number>();
+
+  for (const nodeId of options.nodeIds) {
+    const pins = options.resolvedPinsByNodeId.get(nodeId);
+    if (!pins) continue;
+    let leftIndex = 0;
+    let rightIndex = 0;
+    let bottomIndex = 0;
+    for (const pin of pins) {
+      const key = `${nodeId}::${pin.key}`;
+      if (pin.direction === "in") {
+        pinSideIndexByNodePin.set(key, leftIndex);
+        leftIndex += 1;
+        continue;
+      }
+      if (pin.direction === "out") {
+        pinSideIndexByNodePin.set(key, rightIndex);
+        rightIndex += 1;
+        continue;
+      }
+      pinSideIndexByNodePin.set(key, bottomIndex);
+      bottomIndex += 1;
+    }
+  }
+
+  return pinSideIndexByNodePin;
+}
+
+function applyRelatedGroupLayout(args: {
+  placementNodeGroups: string[][];
+  importNodeLayoutById: Map<string, ImportNodeLayoutMetrics>;
+  nodeRefById: Map<string, ComponentNode>;
+}): void {
+  const groupPlans = args.placementNodeGroups.map((groupNodeIds) => ({
+    nodeIds: groupNodeIds,
+    ...planNodeGrid(groupNodeIds, args.importNodeLayoutById),
+  }));
+  const totalArea = groupPlans.reduce(
+    (sum, group) => sum + Math.max(1, group.width) * Math.max(1, group.height),
+    0,
+  );
+  const targetRowWidth = Math.max(
+    buildGroup.row.widthMin,
+    Math.ceil(Math.sqrt(Math.max(1, totalArea)) * buildGroup.row.widthBias),
+  );
+
+  let cursorX = 0;
+  let cursorY = 0;
+  let rowHeight = 0;
+  for (const group of groupPlans) {
+    if (
+      cursorX > 0 &&
+      cursorX + group.width > targetRowWidth &&
+      rowHeight > 0
+    ) {
+      cursorX = 0;
+      cursorY += rowHeight + buildGroup.gap.y;
+      rowHeight = 0;
+    }
+
+    for (const nodeId of group.nodeIds) {
+      const node = args.nodeRefById.get(nodeId);
+      const localPos = group.localPosByNodeId.get(nodeId);
+      if (!node || !localPos) continue;
+      node.position = {
+        x: buildLayout.origin.x + cursorX + localPos.x,
+        y: buildLayout.origin.y + cursorY + localPos.y,
+      };
+    }
+
+    cursorX += group.width + buildGroup.gap.x;
+    rowHeight = Math.max(rowHeight, group.height);
+  }
+}
+
+function applyGridLayout(args: {
+  nodeIds: string[];
+  importNodeLayoutById: Map<string, ImportNodeLayoutMetrics>;
+  nodeRefById: Map<string, ComponentNode>;
+}): void {
+  const gridPlan = planNodeGrid(args.nodeIds, args.importNodeLayoutById);
+  for (const nodeId of args.nodeIds) {
+    const node = args.nodeRefById.get(nodeId);
+    const localPos = gridPlan.localPosByNodeId.get(nodeId);
+    if (!node || !localPos) continue;
+    node.position = {
+      x: buildLayout.origin.x + localPos.x,
+      y: buildLayout.origin.y + localPos.y,
+    };
+  }
 }
 
 function buildLabelPlacementMaps(options: {
@@ -389,27 +492,10 @@ export function buildImportedSheetLayoutPlan(options: {
     });
   }
 
-  const pinSideIndexByNodePin = new Map<string, number>();
-  for (const nodeId of alphabeticalNodeIds) {
-    const pins = options.resolvedPinsByNodeId.get(nodeId);
-    if (!pins) continue;
-    let leftIndex = 0;
-    let rightIndex = 0;
-    let bottomIndex = 0;
-    for (const pin of pins) {
-      const key = `${nodeId}::${pin.key}`;
-      if (pin.direction === "in") {
-        pinSideIndexByNodePin.set(key, leftIndex);
-        leftIndex += 1;
-      } else if (pin.direction === "out") {
-        pinSideIndexByNodePin.set(key, rightIndex);
-        rightIndex += 1;
-      } else {
-        pinSideIndexByNodePin.set(key, bottomIndex);
-        bottomIndex += 1;
-      }
-    }
-  }
+  const pinSideIndexByNodePin = buildPinSideIndexMap({
+    nodeIds: alphabeticalNodeIds,
+    resolvedPinsByNodeId: options.resolvedPinsByNodeId,
+  });
 
   const {
     labelDemandByNodeId,
@@ -428,58 +514,17 @@ export function buildImportedSheetLayoutPlan(options: {
   });
 
   if (options.placementHeuristic === "related-groups") {
-    const groupPlans = placementNodeGroups.map((groupNodeIds) => ({
-      nodeIds: groupNodeIds,
-      ...planNodeGrid(groupNodeIds, importNodeLayoutById),
-    }));
-    const totalArea = groupPlans.reduce(
-      (sum, group) =>
-        sum + Math.max(1, group.width) * Math.max(1, group.height),
-      0,
-    );
-    const targetRowWidth = Math.max(
-      buildGroup.row.widthMin,
-      Math.ceil(Math.sqrt(Math.max(1, totalArea)) * buildGroup.row.widthBias),
-    );
-
-    let cursorX = 0;
-    let cursorY = 0;
-    let rowHeight = 0;
-    for (const group of groupPlans) {
-      if (
-        cursorX > 0 &&
-        cursorX + group.width > targetRowWidth &&
-        rowHeight > 0
-      ) {
-        cursorX = 0;
-        cursorY += rowHeight + buildGroup.gap.y;
-        rowHeight = 0;
-      }
-
-      for (const nodeId of group.nodeIds) {
-        const node = nodeRefById.get(nodeId);
-        const localPos = group.localPosByNodeId.get(nodeId);
-        if (!node || !localPos) continue;
-        node.position = {
-          x: buildLayout.origin.x + cursorX + localPos.x,
-          y: buildLayout.origin.y + cursorY + localPos.y,
-        };
-      }
-
-      cursorX += group.width + buildGroup.gap.x;
-      rowHeight = Math.max(rowHeight, group.height);
-    }
+    applyRelatedGroupLayout({
+      placementNodeGroups,
+      importNodeLayoutById,
+      nodeRefById,
+    });
   } else {
-    const gridPlan = planNodeGrid(alphabeticalNodeIds, importNodeLayoutById);
-    for (const nodeId of alphabeticalNodeIds) {
-      const node = nodeRefById.get(nodeId);
-      const localPos = gridPlan.localPosByNodeId.get(nodeId);
-      if (!node || !localPos) continue;
-      node.position = {
-        x: buildLayout.origin.x + localPos.x,
-        y: buildLayout.origin.y + localPos.y,
-      };
-    }
+    applyGridLayout({
+      nodeIds: alphabeticalNodeIds,
+      importNodeLayoutById,
+      nodeRefById,
+    });
   }
 
   const nodePosById = new Map(

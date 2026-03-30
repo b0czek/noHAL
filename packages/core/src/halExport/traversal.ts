@@ -107,25 +107,13 @@ function localEndpointRefToId(
   return value;
 }
 
-export function traverseSheetInstance(
+function validateSheetNodeInstanceNames(
   ctx: ExportContext,
-  project: NoHALProject,
-  sheetId: string,
-  pathParts: string[],
-  sheetStack: string[] = [],
-): TraversalResult {
-  if (sheetStack.includes(sheetId)) {
-    ctx.warnings.push(
-      `Recursive sheet hierarchy detected at '${[...pathParts].join(".") || "Top"}' (${sheetId}); skipping nested expansion`,
-    );
-    return { boundaryPortEndpointIds: {} };
-  }
-
-  const nextStack = [...sheetStack, sheetId];
-  const sheet = getSheet(project, sheetId);
-  const localIds = createLocalEndpointIdMap(ctx, project, sheet, pathParts);
+  sheet: SheetDefinition,
+): void {
   const duplicateNodeInstanceNames = new Set<string>();
   const nodeInstanceNames = new Set<string>();
+
   for (const node of sheet.nodes) {
     if (!isValidHalName(node.instanceName)) {
       pushFatal(
@@ -135,68 +123,87 @@ export function traverseSheetInstance(
     }
     if (nodeInstanceNames.has(node.instanceName)) {
       duplicateNodeInstanceNames.add(node.instanceName);
-    } else {
-      nodeInstanceNames.add(node.instanceName);
+      continue;
     }
+    nodeInstanceNames.add(node.instanceName);
   }
+
   for (const name of duplicateNodeInstanceNames) {
     pushFatal(
       ctx,
       `Duplicate instance name '${name}' in sheet '${sheet.name}' can produce ambiguous HAL paths`,
     );
   }
+}
 
+function collectComponentInstances(
+  ctx: ExportContext,
+  project: NoHALProject,
+  sheet: SheetDefinition,
+  pathParts: string[],
+): void {
   for (const node of sheet.nodes) {
-    if (node.kind === "component") {
-      const component = project.library.components[node.componentId];
-      if (component) {
-        if (!isSystemComponent(component)) {
-          ctx.componentInstances.push({
-            componentName: component.halComponentName,
-            componentId: node.componentId,
-            instancePath: resolveExportedInstancePath(
-              pathParts,
-              node.instanceName,
-              component,
-            ),
-            ...(node.instanceConfigValues
-              ? { instanceConfigValues: { ...node.instanceConfigValues } }
-              : {}),
-            parentSheetPath: joinInstancePath(pathParts),
-            runtimeKind: component.runtime?.kind ?? "unknown",
-            exportStage: resolveNodeExportStage(component, node.exportStage),
-          });
-        }
-        for (const pin of resolveComponentPinsForInstance(
+    if (node.kind !== "component") continue;
+    const component = project.library.components[node.componentId];
+    if (!component) {
+      ctx.warnings.push(
+        `Missing component definition '${node.componentId}' for node '${node.instanceName}'`,
+      );
+      continue;
+    }
+    if (!isSystemComponent(component)) {
+      ctx.componentInstances.push({
+        componentName: component.halComponentName,
+        componentId: node.componentId,
+        instancePath: resolveExportedInstancePath(
+          pathParts,
+          node.instanceName,
           component,
-          node.instanceConfigValues,
-        )) {
-          if (pin.arrayLen !== undefined || pin.name.includes("#")) {
-            ctx.warnings.push(
-              `Array pin export is not expanded yet (${component.halComponentName}.${pin.name}) on ${node.instanceName}`,
-            );
-          }
-        }
-      } else {
-        ctx.warnings.push(
-          `Missing component definition '${node.componentId}' for node '${node.instanceName}'`,
-        );
-      }
+        ),
+        ...(node.instanceConfigValues
+          ? { instanceConfigValues: { ...node.instanceConfigValues } }
+          : {}),
+        parentSheetPath: joinInstancePath(pathParts),
+        runtimeKind: component.runtime?.kind ?? "unknown",
+        exportStage: resolveNodeExportStage(component, node.exportStage),
+      });
+    }
+    for (const pin of resolveComponentPinsForInstance(
+      component,
+      node.instanceConfigValues,
+    )) {
+      if (pin.arrayLen === undefined && !pin.name.includes("#")) continue;
+      ctx.warnings.push(
+        `Array pin export is not expanded yet (${component.halComponentName}.${pin.name}) on ${node.instanceName}`,
+      );
     }
   }
+}
 
+function connectSheetDirectConnections(
+  ctx: ExportContext,
+  localIds: Map<string, string>,
+  sheet: SheetDefinition,
+): void {
   for (const conn of sheet.directConnections) {
     const a = localEndpointRefToId(ctx, localIds, sheet.name, conn.a);
     const b = localEndpointRefToId(ctx, localIds, sheet.name, conn.b);
     if (!a || !b) continue;
     ctx.union.union(a, b);
     const explicitSignalName = conn.signalName?.trim();
-    if (explicitSignalName) {
-      addHint(ctx, a, { kind: "connection", name: explicitSignalName });
-      addHint(ctx, b, { kind: "connection", name: explicitSignalName });
-    }
+    if (!explicitSignalName) continue;
+    addHint(ctx, a, { kind: "connection", name: explicitSignalName });
+    addHint(ctx, b, { kind: "connection", name: explicitSignalName });
   }
+}
 
+function connectSheetLabels(args: {
+  ctx: ExportContext;
+  localIds: Map<string, string>;
+  sheet: SheetDefinition;
+  pathParts: string[];
+}): void {
+  const { ctx, localIds, sheet, pathParts } = args;
   const labelsById = new Map(sheet.labels.map((label) => [label.id, label]));
   const localBuckets = new Map<string, string[]>();
 
@@ -215,7 +222,6 @@ export function traverseSheetInstance(
       anchor.endpoint,
     );
     if (!endpoint) continue;
-    const scopeKey = label.name;
 
     if (label.scope === "global") {
       addHint(ctx, endpoint, { kind: "global", name: label.name });
@@ -227,16 +233,27 @@ export function traverseSheetInstance(
       kind: "local",
       name: chooseBoundarySignalName(pathParts, label.name),
     });
-    const list = localBuckets.get(scopeKey);
+    const list = localBuckets.get(label.name);
     if (list) list.push(endpoint);
-    else localBuckets.set(scopeKey, [endpoint]);
+    else localBuckets.set(label.name, [endpoint]);
   }
 
   for (const endpoints of localBuckets.values()) {
-    for (let i = 1; i < endpoints.length; i += 1)
+    for (let i = 1; i < endpoints.length; i += 1) {
       ctx.union.union(endpoints[0], endpoints[i]);
+    }
   }
+}
 
+function connectChildSheetBoundaries(args: {
+  ctx: ExportContext;
+  project: NoHALProject;
+  sheet: SheetDefinition;
+  localIds: Map<string, string>;
+  pathParts: string[];
+  nextStack: string[];
+}): void {
+  const { ctx, project, sheet, localIds, pathParts, nextStack } = args;
   for (const node of sheet.nodes) {
     if (node.kind !== "sheet") continue;
 
@@ -260,11 +277,50 @@ export function traverseSheetInstance(
       ctx.union.union(parentPinId, childBoundaryId);
     }
   }
+}
 
+function buildBoundaryPortEndpointIds(
+  localIds: Map<string, string>,
+  sheet: SheetDefinition,
+): Record<string, string> {
   const boundaryPortEndpointIds: Record<string, string> = {};
   for (const port of sheet.ports) {
     const id = localIds.get(`port:${port.id}`);
     if (id) boundaryPortEndpointIds[port.id] = id;
   }
-  return { boundaryPortEndpointIds };
+  return boundaryPortEndpointIds;
+}
+
+export function traverseSheetInstance(
+  ctx: ExportContext,
+  project: NoHALProject,
+  sheetId: string,
+  pathParts: string[],
+  sheetStack: string[] = [],
+): TraversalResult {
+  if (sheetStack.includes(sheetId)) {
+    ctx.warnings.push(
+      `Recursive sheet hierarchy detected at '${[...pathParts].join(".") || "Top"}' (${sheetId}); skipping nested expansion`,
+    );
+    return { boundaryPortEndpointIds: {} };
+  }
+
+  const nextStack = [...sheetStack, sheetId];
+  const sheet = getSheet(project, sheetId);
+  const localIds = createLocalEndpointIdMap(ctx, project, sheet, pathParts);
+  validateSheetNodeInstanceNames(ctx, sheet);
+  collectComponentInstances(ctx, project, sheet, pathParts);
+  connectSheetDirectConnections(ctx, localIds, sheet);
+  connectSheetLabels({ ctx, localIds, sheet, pathParts });
+  connectChildSheetBoundaries({
+    ctx,
+    project,
+    sheet,
+    localIds,
+    pathParts,
+    nextStack,
+  });
+  return {
+    boundaryPortEndpointIds: buildBoundaryPortEndpointIds(localIds, sheet),
+  };
 }

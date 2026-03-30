@@ -6,6 +6,7 @@ export type HalValueType =
   | "s64"
   | "u64"
   | "port";
+
 export type PinDirection = "in" | "out" | "io";
 export type ParamDirection = "r" | "rw";
 export type PortSide = "left" | "right" | "top" | "bottom";

@@ -72,6 +72,33 @@ export function reconcileSystemSingleton(
   let managedNodeSeen = false;
   const removeNodeIds = new Set<string>();
 
+  function syncManagedNodeState(
+    node: ComponentNode,
+    keepCustomOverride: boolean,
+  ): void {
+    if (!keepCustomOverride) {
+      node.componentId = systemComponentId;
+    }
+
+    if (
+      syncInstanceConfig &&
+      !sameInstanceConfigValues(
+        node.instanceConfigValues,
+        expectedInstanceConfigValues,
+      )
+    ) {
+      if (expectedInstanceConfigValues) {
+        node.instanceConfigValues = { ...expectedInstanceConfigValues };
+      } else {
+        delete node.instanceConfigValues;
+      }
+    }
+
+    if (fixedExportStage && node.exportStage !== fixedExportStage) {
+      node.exportStage = fixedExportStage;
+    }
+  }
+
   for (const node of systemSheet.nodes) {
     if (node.kind !== "component") continue;
     if (!isLikeNode(project, node)) continue;
@@ -101,28 +128,7 @@ export function reconcileSystemSingleton(
       continue;
     }
     managedNodeSeen = true;
-
-    if (!keepCustomOverride) {
-      node.componentId = systemComponentId;
-    }
-
-    if (
-      syncInstanceConfig &&
-      !sameInstanceConfigValues(
-        node.instanceConfigValues,
-        expectedInstanceConfigValues,
-      )
-    ) {
-      if (expectedInstanceConfigValues) {
-        node.instanceConfigValues = { ...expectedInstanceConfigValues };
-      } else {
-        delete node.instanceConfigValues;
-      }
-    }
-
-    if (fixedExportStage && node.exportStage !== fixedExportStage) {
-      node.exportStage = fixedExportStage;
-    }
+    syncManagedNodeState(node, keepCustomOverride);
   }
 
   if (removeNodeIds.size > 0) {

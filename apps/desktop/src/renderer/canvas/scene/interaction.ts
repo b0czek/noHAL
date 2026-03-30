@@ -27,6 +27,152 @@ type SceneInteractionOps = {
   updateMarqueeRect: () => void;
 };
 
+function resetBackgroundTapState(runtime: SceneRuntime): void {
+  runtime.state.interaction.backgroundTapStartScreenPos = null;
+  runtime.state.interaction.backgroundTapAdditive = false;
+}
+
+function preventCancelableEvent(
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+): void {
+  if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+}
+
+function handlePendingEndpointBackgroundClick(args: {
+  runtime: SceneRuntime;
+  stage: Konva.Stage;
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+  toClampedWorld: (pos: Pt) => Pt;
+}): boolean {
+  const { runtime, stage, evt, toClampedWorld } = args;
+  const pos = stage.getPointerPosition();
+  if (
+    !pos ||
+    !runtime.state.lastState?.pendingEndpoint ||
+    !(evt.evt instanceof MouseEvent) ||
+    evt.evt.button !== 0 ||
+    runtime.state.interaction.spacePressed ||
+    !isBackgroundTarget(stage, evt.target)
+  ) {
+    return false;
+  }
+
+  evt.cancelBubble = true;
+  evt.evt.preventDefault();
+  runtime.callbacks.onBackgroundClick?.(toClampedWorld({ x: pos.x, y: pos.y }));
+  resetBackgroundTapState(runtime);
+  return true;
+}
+
+function handleMarqueeStart(args: {
+  runtime: SceneRuntime;
+  stage: Konva.Stage;
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+  startMarqueeSelection: SceneInteractionOps["startMarqueeSelection"];
+}): boolean {
+  const { runtime, stage, evt, startMarqueeSelection } = args;
+  if (
+    !shouldStartMarquee(
+      stage,
+      evt,
+      runtime.state.lastState,
+      runtime.state.interaction.spacePressed,
+    )
+  ) {
+    return false;
+  }
+
+  const pos = stage.getPointerPosition();
+  if (!pos) return true;
+  evt.cancelBubble = true;
+  startMarqueeSelection(
+    { x: pos.x, y: pos.y },
+    evt.evt instanceof MouseEvent && evt.evt.shiftKey,
+  );
+  resetBackgroundTapState(runtime);
+  preventCancelableEvent(evt);
+  return true;
+}
+
+function handlePanStart(args: {
+  runtime: SceneRuntime;
+  stage: Konva.Stage;
+  container: HTMLDivElement;
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+}): boolean {
+  const { runtime, stage, container, evt } = args;
+  if (!shouldStartPan(stage, evt, runtime.state.interaction.spacePressed)) {
+    return false;
+  }
+
+  const pos = stage.getPointerPosition();
+  if (!pos) return true;
+  evt.cancelBubble = true;
+  runtime.state.interaction.isPanning = true;
+  runtime.state.interaction.panLastScreenPos = { x: pos.x, y: pos.y };
+  runtime.state.interaction.backgroundTapStartScreenPos = null;
+  container.style.cursor = "grabbing";
+  preventCancelableEvent(evt);
+  return true;
+}
+
+function handleTouchBackgroundTapTracking(args: {
+  runtime: SceneRuntime;
+  stage: Konva.Stage;
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+}): boolean {
+  const { runtime, stage, evt } = args;
+  if (
+    !shouldTrackBackgroundTap(
+      stage,
+      evt,
+      runtime.state.lastState,
+      runtime.state.interaction.spacePressed,
+    )
+  ) {
+    return false;
+  }
+
+  const pos = stage.getPointerPosition();
+  if (!pos) return true;
+  runtime.state.interaction.backgroundTapStartScreenPos = {
+    x: pos.x,
+    y: pos.y,
+  };
+  runtime.state.interaction.backgroundTapAdditive = false;
+  preventCancelableEvent(evt);
+  return true;
+}
+
+function handlePlainBackgroundTapTracking(args: {
+  runtime: SceneRuntime;
+  stage: Konva.Stage;
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+}): boolean {
+  const { runtime, stage, evt } = args;
+  if (
+    runtime.state.lastState?.pendingEndpoint ||
+    runtime.state.lastState?.placement ||
+    !(evt.evt instanceof MouseEvent) ||
+    evt.evt.button !== 0 ||
+    runtime.state.interaction.spacePressed ||
+    !isBackgroundTarget(stage, evt.target)
+  ) {
+    return false;
+  }
+
+  const pos = stage.getPointerPosition();
+  if (!pos) return true;
+  runtime.state.interaction.backgroundTapStartScreenPos = {
+    x: pos.x,
+    y: pos.y,
+  };
+  runtime.state.interaction.backgroundTapAdditive = evt.evt.shiftKey;
+  evt.cancelBubble = true;
+  evt.evt.preventDefault();
+  return true;
+}
+
 export function bindSceneInteractions(
   runtime: SceneRuntime,
   ops: SceneInteractionOps,
@@ -148,96 +294,23 @@ export function bindSceneInteractions(
   });
 
   stage.on(`mousedown${EVENT_NS} touchstart${EVENT_NS}`, (evt) => {
-    const pos = stage.getPointerPosition();
     if (
-      pos &&
-      runtime.state.lastState?.pendingEndpoint &&
-      evt.evt instanceof MouseEvent &&
-      evt.evt.button === 0 &&
-      !runtime.state.interaction.spacePressed &&
-      isBackgroundTarget(stage, evt.target)
-    ) {
-      evt.cancelBubble = true;
-      evt.evt.preventDefault();
-      runtime.callbacks.onBackgroundClick?.(
-        toClampedWorld({ x: pos.x, y: pos.y }),
-      );
-      runtime.state.interaction.backgroundTapStartScreenPos = null;
-      return;
-    }
-
-    if (
-      shouldStartMarquee(
+      handlePendingEndpointBackgroundClick({
+        runtime,
         stage,
         evt,
-        runtime.state.lastState,
-        runtime.state.interaction.spacePressed,
-      )
+        toClampedWorld,
+      })
     ) {
-      if (!pos) return;
-      evt.cancelBubble = true;
-      startMarqueeSelection(
-        { x: pos.x, y: pos.y },
-        evt.evt instanceof MouseEvent && evt.evt.shiftKey,
-      );
-      runtime.state.interaction.backgroundTapStartScreenPos = null;
-      runtime.state.interaction.backgroundTapAdditive = false;
-      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
       return;
     }
-
-    if (shouldStartPan(stage, evt, runtime.state.interaction.spacePressed)) {
-      if (!pos) return;
-      evt.cancelBubble = true;
-      runtime.state.interaction.isPanning = true;
-      runtime.state.interaction.panLastScreenPos = { x: pos.x, y: pos.y };
-      runtime.state.interaction.backgroundTapStartScreenPos = null;
-      container.style.cursor = "grabbing";
-      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+    if (handleMarqueeStart({ runtime, stage, evt, startMarqueeSelection })) {
       return;
     }
-
-    if (
-      shouldTrackBackgroundTap(
-        stage,
-        evt,
-        runtime.state.lastState,
-        runtime.state.interaction.spacePressed,
-      )
-    ) {
-      if (!pos) return;
-      runtime.state.interaction.backgroundTapStartScreenPos = {
-        x: pos.x,
-        y: pos.y,
-      };
-      runtime.state.interaction.backgroundTapAdditive = false;
-      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
-      return;
-    }
-
-    // Track plain background clicks so mouseup can clear selection, but keep
-    // Shift-background clicks non-destructive for additive selection flows.
-    if (
-      !runtime.state.lastState?.pendingEndpoint &&
-      !runtime.state.lastState?.placement &&
-      evt.evt instanceof MouseEvent &&
-      evt.evt.button === 0 &&
-      !runtime.state.interaction.spacePressed &&
-      isBackgroundTarget(stage, evt.target)
-    ) {
-      if (!pos) return;
-      runtime.state.interaction.backgroundTapStartScreenPos = {
-        x: pos.x,
-        y: pos.y,
-      };
-      runtime.state.interaction.backgroundTapAdditive = evt.evt.shiftKey;
-      evt.cancelBubble = true;
-      evt.evt.preventDefault();
-      return;
-    }
-
-    runtime.state.interaction.backgroundTapStartScreenPos = null;
-    runtime.state.interaction.backgroundTapAdditive = false;
+    if (handlePanStart({ runtime, stage, container, evt })) return;
+    if (handleTouchBackgroundTapTracking({ runtime, stage, evt })) return;
+    if (handlePlainBackgroundTapTracking({ runtime, stage, evt })) return;
+    resetBackgroundTapState(runtime);
   });
 
   stage.on(`mouseup${EVENT_NS} touchend${EVENT_NS}`, () => {

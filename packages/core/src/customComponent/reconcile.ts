@@ -1,6 +1,43 @@
 import { resolveComponentPinsForInstance } from "../componentInstance";
 import type { ComponentDefinition, NoHALProject } from "../types";
 
+function mergeKnownValuesWithDefaults(
+  currentValues: Record<string, string>,
+  validKeys: ReadonlySet<string>,
+  defaultValues: Record<string, string>,
+): Record<string, string> {
+  const nextValues: Record<string, string> = {};
+  for (const [key, value] of Object.entries(currentValues)) {
+    if (validKeys.has(key)) nextValues[key] = value;
+  }
+  for (const [key, value] of Object.entries(defaultValues)) {
+    if (!(key in nextValues)) nextValues[key] = value;
+  }
+  return nextValues;
+}
+
+function prunePinInitialValues(
+  currentValues: Record<string, string> | undefined,
+  validPinKeys: ReadonlySet<string>,
+): Record<string, string> | undefined {
+  const nextValues: Record<string, string> = {};
+  for (const [key, value] of Object.entries(currentValues ?? {})) {
+    if (!validPinKeys.has(key) || !value.trim()) continue;
+    nextValues[key] = value;
+  }
+  return Object.keys(nextValues).length > 0 ? nextValues : undefined;
+}
+
+function pruneHiddenPinKeys(
+  currentValues: string[] | undefined,
+  validPinKeys: ReadonlySet<string>,
+): string[] | undefined {
+  const nextValues = (currentValues ?? []).filter((key) =>
+    validPinKeys.has(key),
+  );
+  return nextValues.length > 0 ? [...new Set(nextValues)] : undefined;
+}
+
 export function reconcileComponentNodesForDefinition(
   project: NoHALProject,
   componentId: string,
@@ -27,32 +64,21 @@ export function reconcileComponentNodesForDefinition(
         continue;
       }
 
-      const nextValues: Record<string, string> = {};
-      for (const [key, value] of Object.entries(node.paramValues)) {
-        if (validParamKeys.has(key)) nextValues[key] = value;
-      }
-      for (const [key, value] of Object.entries(defaultParams)) {
-        if (!(key in nextValues)) nextValues[key] = value;
-      }
-      node.paramValues = nextValues;
+      node.paramValues = mergeKnownValuesWithDefaults(
+        node.paramValues,
+        validParamKeys,
+        defaultParams,
+      );
 
-      const nextInstanceConfigValues: Record<string, string> = {};
-      for (const [key, value] of Object.entries(
+      const nextInstanceConfigValues = mergeKnownValuesWithDefaults(
         node.instanceConfigValues ?? {},
-      )) {
-        if (validInstanceConfigKeys.has(key)) {
-          nextInstanceConfigValues[key] = value;
-        }
-      }
-      for (const [key, value] of Object.entries(defaultInstanceConfigValues)) {
-        if (!(key in nextInstanceConfigValues)) {
-          nextInstanceConfigValues[key] = value;
-        }
-      }
-      if (Object.keys(nextInstanceConfigValues).length > 0) {
-        node.instanceConfigValues = nextInstanceConfigValues;
-      } else {
+        validInstanceConfigKeys,
+        defaultInstanceConfigValues,
+      );
+      if (Object.keys(nextInstanceConfigValues).length === 0) {
         delete node.instanceConfigValues;
+      } else {
+        node.instanceConfigValues = nextInstanceConfigValues;
       }
 
       const validPinKeys = new Set(
@@ -61,25 +87,24 @@ export function reconcileComponentNodesForDefinition(
           node.instanceConfigValues,
         ).map((pin) => pin.key),
       );
-      const currentPinInitialValues = node.pinInitialValues ?? {};
-      const nextPinInitialValues: Record<string, string> = {};
-      for (const [key, value] of Object.entries(currentPinInitialValues)) {
-        if (!validPinKeys.has(key) || !value.trim()) continue;
-        nextPinInitialValues[key] = value;
-      }
-      if (Object.keys(nextPinInitialValues).length > 0) {
-        node.pinInitialValues = nextPinInitialValues;
-      } else {
+      const nextPinInitialValues = prunePinInitialValues(
+        node.pinInitialValues,
+        validPinKeys,
+      );
+      if (!nextPinInitialValues) {
         delete node.pinInitialValues;
+      } else {
+        node.pinInitialValues = nextPinInitialValues;
       }
 
-      const nextHiddenPinKeys = (node.hiddenPinKeys ?? []).filter((key) =>
-        validPinKeys.has(key),
+      const nextHiddenPinKeys = pruneHiddenPinKeys(
+        node.hiddenPinKeys,
+        validPinKeys,
       );
-      if (nextHiddenPinKeys.length > 0) {
-        node.hiddenPinKeys = [...new Set(nextHiddenPinKeys)];
-      } else {
+      if (!nextHiddenPinKeys) {
         delete node.hiddenPinKeys;
+      } else {
+        node.hiddenPinKeys = nextHiddenPinKeys;
       }
     }
   }

@@ -13,9 +13,11 @@ import {
   measureLabelScopeWidth,
 } from "../measurements";
 import { dirStroke, labelFill, typeFill } from "../theme";
-import type { ScenePlacement, SceneRenderState } from "../types";
-
-type SceneSheetPortPlacement = Extract<ScenePlacement, { kind: "sheet-port" }>;
+import type {
+  ScenePlacement,
+  SceneRenderState,
+  SceneSheetPortPlacement,
+} from "../types";
 
 function previewPortName(
   direction: SceneSheetPortPlacement["direction"],

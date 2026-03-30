@@ -7,6 +7,8 @@ import { endpointKey, getSheet, resolveEndpointInSheet } from "../graph";
 import { createId } from "../id";
 import { createSheetPortDraft } from "../project";
 import type {
+  DirectConnection,
+  LabelAnchor,
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
@@ -157,34 +159,17 @@ export function moveSelectionIntoSubsheet(
     childPortsByEndpointKey.set(key, result);
     return result;
   };
+  const connectionState = (() => {
+    const parentConnectionsNext: DirectConnection[] = [];
+    const childConnectionsNext = [...childSheet.directConnections];
+    const childConnectionPairs = new Set(
+      childConnectionsNext.map((conn) =>
+        directConnectionPairKey(conn.a, conn.b),
+      ),
+    );
+    const parentConnectionPairs = new Set<string>();
 
-  const parentConnectionsNext: SheetDefinition["directConnections"] = [];
-  const childConnectionsNext = [...childSheet.directConnections];
-  const childConnectionPairs = new Set(
-    childConnectionsNext.map((conn) => directConnectionPairKey(conn.a, conn.b)),
-  );
-  const parentConnectionPairs = new Set<string>();
-  const parentLabelsById = new Map(
-    parentSheet.labels.map((label) => [label.id, label]),
-  );
-  for (const conn of parentSheet.directConnections) {
-    const aMoved = isMovedNodeEndpoint(conn.a, movedNodeIdSet);
-    const bMoved = isMovedNodeEndpoint(conn.b, movedNodeIdSet);
-
-    if (aMoved && bMoved) {
-      childConnectionsNext.push({
-        id: conn.id,
-        a: cloneEndpoint(conn.a),
-        b: cloneEndpoint(conn.b),
-        ...(conn.signalName ? { signalName: conn.signalName } : {}),
-        ...(conn.waypoints
-          ? { waypoints: conn.waypoints.map((point) => ({ ...point })) }
-          : {}),
-      });
-      continue;
-    }
-
-    if (!aMoved && !bMoved) {
+    const pushCopiedParentConnection = (conn: DirectConnection) => {
       parentConnectionsNext.push({
         id: conn.id,
         a: cloneEndpoint(conn.a),
@@ -195,217 +180,295 @@ export function moveSelectionIntoSubsheet(
           : {}),
       });
       parentConnectionPairs.add(directConnectionPairKey(conn.a, conn.b));
-      continue;
-    }
-
-    const movedEndpoint = aMoved ? conn.a : conn.b;
-    const boundaryPort = ensureBoundaryPortForEndpoint(movedEndpoint);
-    const subsheetEndpoint = subsheetEndpointForPort(boundaryPort.id);
-    const parentConnection = {
-      id: conn.id,
-      a: aMoved ? subsheetEndpoint : cloneEndpoint(conn.a),
-      b: bMoved ? subsheetEndpoint : cloneEndpoint(conn.b),
-      ...(conn.signalName ? { signalName: conn.signalName } : {}),
     };
-    const pairKey = directConnectionPairKey(
-      parentConnection.a,
-      parentConnection.b,
-    );
-    if (!parentConnectionPairs.has(pairKey)) {
-      parentConnectionPairs.add(pairKey);
-      parentConnectionsNext.push(parentConnection);
+
+    const pushCopiedChildConnection = (conn: DirectConnection) => {
+      childConnectionsNext.push({
+        id: conn.id,
+        a: cloneEndpoint(conn.a),
+        b: cloneEndpoint(conn.b),
+        ...(conn.signalName ? { signalName: conn.signalName } : {}),
+        ...(conn.waypoints
+          ? { waypoints: conn.waypoints.map((point) => ({ ...point })) }
+          : {}),
+      });
+    };
+
+    const pushSplitBoundaryConnections = (
+      conn: DirectConnection,
+      aMoved: boolean,
+      bMoved: boolean,
+    ) => {
+      const movedEndpoint = aMoved ? conn.a : conn.b;
+      const boundaryPort = ensureBoundaryPortForEndpoint(movedEndpoint);
+      const subsheetEndpoint = subsheetEndpointForPort(boundaryPort.id);
+      const parentConnection = {
+        id: conn.id,
+        a: aMoved ? subsheetEndpoint : cloneEndpoint(conn.a),
+        b: bMoved ? subsheetEndpoint : cloneEndpoint(conn.b),
+        ...(conn.signalName ? { signalName: conn.signalName } : {}),
+      };
+      const pairKey = directConnectionPairKey(
+        parentConnection.a,
+        parentConnection.b,
+      );
+      if (!parentConnectionPairs.has(pairKey)) {
+        parentConnectionPairs.add(pairKey);
+        parentConnectionsNext.push(parentConnection);
+      }
+
+      childConnectionsNext.push({
+        id: createId("conn"),
+        a: aMoved
+          ? cloneEndpoint(conn.a)
+          : ({ kind: "sheet-port", portId: boundaryPort.id } as const),
+        b: bMoved
+          ? cloneEndpoint(conn.b)
+          : ({ kind: "sheet-port", portId: boundaryPort.id } as const),
+        ...(conn.signalName ? { signalName: conn.signalName } : {}),
+      });
+    };
+
+    const processDirectConnection = (conn: DirectConnection) => {
+      const aMoved = isMovedNodeEndpoint(conn.a, movedNodeIdSet);
+      const bMoved = isMovedNodeEndpoint(conn.b, movedNodeIdSet);
+
+      if (aMoved && bMoved) {
+        pushCopiedChildConnection(conn);
+        return;
+      }
+      if (!aMoved && !bMoved) {
+        pushCopiedParentConnection(conn);
+        return;
+      }
+      pushSplitBoundaryConnections(conn, aMoved, bMoved);
+    };
+
+    for (const conn of parentSheet.directConnections) {
+      processDirectConnection(conn);
     }
 
-    childConnectionsNext.push({
-      id: createId("conn"),
-      a: aMoved
-        ? cloneEndpoint(conn.a)
-        : ({ kind: "sheet-port", portId: boundaryPort.id } as const),
-      b: bMoved
-        ? cloneEndpoint(conn.b)
-        : ({ kind: "sheet-port", portId: boundaryPort.id } as const),
-      ...(conn.signalName ? { signalName: conn.signalName } : {}),
-    });
-  }
+    const ensureParentBoundaryConnection = (
+      externalEndpoint: SheetEndpointRef,
+      portId: string,
+    ) => {
+      const subsheetEndpoint = subsheetEndpointForPort(portId);
+      const pairKey = directConnectionPairKey(
+        externalEndpoint,
+        subsheetEndpoint,
+      );
+      if (parentConnectionPairs.has(pairKey)) return;
+      parentConnectionPairs.add(pairKey);
+      parentConnectionsNext.push({
+        id: createId("conn"),
+        a: cloneEndpoint(externalEndpoint),
+        b: subsheetEndpoint,
+      });
+    };
 
-  const ensureParentBoundaryConnection = (
-    externalEndpoint: SheetEndpointRef,
-    portId: string,
-  ) => {
-    const subsheetEndpoint = subsheetEndpointForPort(portId);
-    const pairKey = directConnectionPairKey(externalEndpoint, subsheetEndpoint);
-    if (parentConnectionPairs.has(pairKey)) return;
-    parentConnectionPairs.add(pairKey);
-    parentConnectionsNext.push({
-      id: createId("conn"),
-      a: cloneEndpoint(externalEndpoint),
-      b: subsheetEndpoint,
-    });
-  };
+    const ensureChildBoundaryConnection = (
+      movedEndpoint: SheetEndpointRef,
+      portId: string,
+      signalName?: string,
+    ) => {
+      const portEndpoint = { kind: "sheet-port", portId } as const;
+      const pairKey = directConnectionPairKey(movedEndpoint, portEndpoint);
+      if (childConnectionPairs.has(pairKey)) return;
+      childConnectionPairs.add(pairKey);
+      childConnectionsNext.push({
+        id: createId("conn"),
+        a: portEndpoint,
+        b: cloneEndpoint(movedEndpoint),
+        ...(signalName ? { signalName } : {}),
+      });
+    };
 
-  const ensureChildBoundaryConnection = (
-    movedEndpoint: SheetEndpointRef,
-    portId: string,
-    signalName?: string,
-  ) => {
-    const portEndpoint = { kind: "sheet-port", portId } as const;
-    const pairKey = directConnectionPairKey(movedEndpoint, portEndpoint);
-    if (childConnectionPairs.has(pairKey)) return;
-    childConnectionPairs.add(pairKey);
-    childConnectionsNext.push({
-      id: createId("conn"),
-      a: portEndpoint,
-      b: cloneEndpoint(movedEndpoint),
-      ...(signalName ? { signalName } : {}),
-    });
-  };
+    return {
+      parentConnectionsNext,
+      childConnectionsNext,
+      ensureParentBoundaryConnection,
+      ensureChildBoundaryConnection,
+    };
+  })();
 
-  const parentAnchorsNext: SheetDefinition["labelAnchors"] = [];
-  const childAnchorsNext = [...childSheet.labelAnchors];
-  for (const anchor of parentSheet.labelAnchors) {
-    const labelMoved = movedLabelIdSet.has(anchor.labelId);
-    const endpointMoved = isMovedNodeEndpoint(anchor.endpoint, movedNodeIdSet);
+  const anchorState = (() => {
+    const parentAnchorsNext: LabelAnchor[] = [];
+    const childAnchorsNext = [...childSheet.labelAnchors];
+    const parentLabelsById = new Map(
+      parentSheet.labels.map((label) => [label.id, label]),
+    );
 
-    if (labelMoved && endpointMoved) {
-      childAnchorsNext.push({
+    for (const anchor of parentSheet.labelAnchors) {
+      const labelMoved = movedLabelIdSet.has(anchor.labelId);
+      const endpointMoved = isMovedNodeEndpoint(
+        anchor.endpoint,
+        movedNodeIdSet,
+      );
+
+      if (labelMoved && endpointMoved) {
+        childAnchorsNext.push({
+          id: anchor.id,
+          labelId: anchor.labelId,
+          endpoint: cloneEndpoint(anchor.endpoint),
+        });
+        continue;
+      }
+
+      if (labelMoved && !endpointMoved) {
+        const boundaryPort = ensureBoundaryPortForEndpoint(anchor.endpoint);
+        childAnchorsNext.push({
+          id: anchor.id,
+          labelId: anchor.labelId,
+          endpoint: { kind: "sheet-port", portId: boundaryPort.id },
+        });
+        connectionState.ensureParentBoundaryConnection(
+          anchor.endpoint,
+          boundaryPort.id,
+        );
+        continue;
+      }
+
+      if (!labelMoved && endpointMoved) {
+        const boundaryPort = ensureBoundaryPortForEndpoint(anchor.endpoint);
+        const signalName = parentLabelsById.get(anchor.labelId)?.name;
+        parentAnchorsNext.push({
+          id: anchor.id,
+          labelId: anchor.labelId,
+          endpoint: subsheetEndpointForPort(boundaryPort.id),
+        });
+        connectionState.ensureChildBoundaryConnection(
+          anchor.endpoint,
+          boundaryPort.id,
+          signalName,
+        );
+        continue;
+      }
+
+      parentAnchorsNext.push({
         id: anchor.id,
         labelId: anchor.labelId,
         endpoint: cloneEndpoint(anchor.endpoint),
       });
-      continue;
     }
 
-    if (labelMoved && !endpointMoved) {
-      const boundaryPort = ensureBoundaryPortForEndpoint(anchor.endpoint);
-      childAnchorsNext.push({
-        id: anchor.id,
-        labelId: anchor.labelId,
-        endpoint: { kind: "sheet-port", portId: boundaryPort.id },
-      });
-      ensureParentBoundaryConnection(anchor.endpoint, boundaryPort.id);
-      continue;
-    }
+    return { parentAnchorsNext, childAnchorsNext };
+  })();
 
-    if (!labelMoved && endpointMoved) {
-      const boundaryPort = ensureBoundaryPortForEndpoint(anchor.endpoint);
-      const signalName = parentLabelsById.get(anchor.labelId)?.name;
-      parentAnchorsNext.push({
-        id: anchor.id,
-        labelId: anchor.labelId,
-        endpoint: subsheetEndpointForPort(boundaryPort.id),
-      });
-      ensureChildBoundaryConnection(
-        anchor.endpoint,
-        boundaryPort.id,
-        signalName,
-      );
-      continue;
-    }
-
-    parentAnchorsNext.push({
-      id: anchor.id,
-      labelId: anchor.labelId,
-      endpoint: cloneEndpoint(anchor.endpoint),
+  const queueState = (() => {
+    const parentThreadOutputs = getSheetThreadOutputs(parentSheet);
+    if (!parentSheet.hal) parentSheet.hal = {};
+    parentSheet.hal.threadOutputs = [...parentThreadOutputs];
+    const parentOutputsById = new Map(
+      parentThreadOutputs.map((output) => [output.id, output]),
+    );
+    const defaultParentOutputId = firstSheetThreadOutputId(parentSheet);
+    const threadMap = { ...(options.subsheetNode.hal?.threadMap ?? {}) };
+    const originalParentQueue = parentSheet.hal?.addfQueue
+      ? [...parentSheet.hal.addfQueue]
+      : [];
+    const childQueue = [...(childSheet.hal?.addfQueue ?? [])];
+    const parentQueue = originalParentQueue.filter((entry) => {
+      const nodeId = addfQueueEntryNodeId(entry);
+      return !(nodeId && movedNodeIdSet.has(nodeId));
     });
-  }
+    const firstMovedIndexByParentOutputId = new Map<string, number>();
 
-  const parentThreadOutputs = getSheetThreadOutputs(parentSheet);
-  if (!parentSheet.hal) parentSheet.hal = {};
-  parentSheet.hal.threadOutputs = [...parentThreadOutputs];
-  const parentOutputsById = new Map(
-    parentThreadOutputs.map((output) => [output.id, output]),
-  );
-  const defaultParentOutputId = firstSheetThreadOutputId(parentSheet);
-  const threadMap = { ...(options.subsheetNode.hal?.threadMap ?? {}) };
-  const originalParentQueue = parentSheet.hal?.addfQueue
-    ? [...parentSheet.hal.addfQueue]
-    : [];
-  const childQueue = [...(childSheet.hal?.addfQueue ?? [])];
-  const parentQueue = originalParentQueue.filter((entry) => {
-    const nodeId = addfQueueEntryNodeId(entry);
-    return !(nodeId && movedNodeIdSet.has(nodeId));
-  });
-  const firstMovedIndexByParentOutputId = new Map<string, number>();
+    const appendMovedQueueEntry = (
+      entry: (typeof originalParentQueue)[number],
+      nodeId: string,
+      childOutputId: string,
+    ) => {
+      if (typeof entry === "string" || entry.kind === "node") {
+        childQueue.push({
+          kind: "node",
+          nodeId,
+          sheetThreadOutputId: childOutputId,
+        });
+        return;
+      }
+      if (entry.kind === "component-function") {
+        childQueue.push({
+          kind: "component-function",
+          nodeId,
+          functionKey: entry.functionKey,
+          sheetThreadOutputId: childOutputId,
+        });
+      }
+    };
 
-  for (const [index, entry] of originalParentQueue.entries()) {
-    const nodeId = addfQueueEntryNodeId(entry);
-    if (!nodeId || !movedNodeIdSet.has(nodeId)) continue;
-    const parentOutputId =
-      typeof entry === "string"
-        ? defaultParentOutputId
-        : (entry.sheetThreadOutputId ?? defaultParentOutputId);
-    if (!firstMovedIndexByParentOutputId.has(parentOutputId)) {
-      firstMovedIndexByParentOutputId.set(parentOutputId, index);
+    const insertSubsheetOutputMarkers = () => {
+      if (firstMovedIndexByParentOutputId.size === 0) return;
+      const insertions = [...firstMovedIndexByParentOutputId.entries()]
+        .map(([parentOutputId, firstMovedIndex]) => ({
+          firstMovedIndex,
+          entry: makeAddfQueueSubsheetOutputEntry(
+            options.subsheetNode.id,
+            ensureChildOutputForParentOutput(
+              childSheet,
+              parentOutputsById,
+              threadMap,
+              parentOutputId,
+            ),
+            parentOutputId,
+          ),
+        }))
+        .sort((a, b) => a.firstMovedIndex - b.firstMovedIndex);
+
+      let inserted = 0;
+      for (const insertion of insertions) {
+        const insertAt = originalParentQueue
+          .slice(0, insertion.firstMovedIndex)
+          .filter((entry) => {
+            const nodeId = addfQueueEntryNodeId(entry);
+            return !(nodeId && movedNodeIdSet.has(nodeId));
+          }).length;
+        parentQueue.splice(insertAt + inserted, 0, insertion.entry);
+        inserted += 1;
+      }
+    };
+
+    for (const [index, entry] of originalParentQueue.entries()) {
+      const nodeId = addfQueueEntryNodeId(entry);
+      if (!nodeId || !movedNodeIdSet.has(nodeId)) continue;
+      const parentOutputId =
+        typeof entry === "string"
+          ? defaultParentOutputId
+          : (entry.sheetThreadOutputId ?? defaultParentOutputId);
+      if (!firstMovedIndexByParentOutputId.has(parentOutputId)) {
+        firstMovedIndexByParentOutputId.set(parentOutputId, index);
+      }
+      const childOutputId = ensureChildOutputForParentOutput(
+        childSheet,
+        parentOutputsById,
+        threadMap,
+        parentOutputId,
+      );
+      appendMovedQueueEntry(entry, nodeId, childOutputId);
     }
-    const childOutputId = ensureChildOutputForParentOutput(
+
+    ensureChildOutputForParentOutput(
       childSheet,
       parentOutputsById,
       threadMap,
-      parentOutputId,
+      defaultParentOutputId,
     );
-    if (typeof entry === "string" || entry.kind === "node") {
-      childQueue.push({
-        kind: "node",
-        nodeId,
-        sheetThreadOutputId: childOutputId,
-      });
-      continue;
+    options.subsheetNode.hal = {
+      ...(options.subsheetNode.hal ?? {}),
+      threadMap,
+    };
+
+    if (!childSheet.hal) childSheet.hal = {};
+    childSheet.hal.threadOutputs = [...getSheetThreadOutputs(childSheet)];
+    if (childQueue.length > 0) {
+      childSheet.hal.addfQueue = normalizeAddfQueueEntries(childQueue);
+    } else {
+      delete childSheet.hal.addfQueue;
     }
-    if (entry.kind === "component-function") {
-      childQueue.push({
-        kind: "component-function",
-        nodeId,
-        functionKey: entry.functionKey,
-        sheetThreadOutputId: childOutputId,
-      });
-    }
-  }
 
-  ensureChildOutputForParentOutput(
-    childSheet,
-    parentOutputsById,
-    threadMap,
-    defaultParentOutputId,
-  );
-  options.subsheetNode.hal = { ...(options.subsheetNode.hal ?? {}), threadMap };
+    insertSubsheetOutputMarkers();
 
-  if (!childSheet.hal) childSheet.hal = {};
-  childSheet.hal.threadOutputs = [...getSheetThreadOutputs(childSheet)];
-  if (childQueue.length > 0) {
-    childSheet.hal.addfQueue = normalizeAddfQueueEntries(childQueue);
-  } else {
-    delete childSheet.hal.addfQueue;
-  }
-
-  if (firstMovedIndexByParentOutputId.size > 0) {
-    const insertions = [...firstMovedIndexByParentOutputId.entries()]
-      .map(([parentOutputId, firstMovedIndex]) => ({
-        firstMovedIndex,
-        entry: makeAddfQueueSubsheetOutputEntry(
-          options.subsheetNode.id,
-          ensureChildOutputForParentOutput(
-            childSheet,
-            parentOutputsById,
-            threadMap,
-            parentOutputId,
-          ),
-          parentOutputId,
-        ),
-      }))
-      .sort((a, b) => a.firstMovedIndex - b.firstMovedIndex);
-
-    let inserted = 0;
-    for (const insertion of insertions) {
-      const insertAt = originalParentQueue
-        .slice(0, insertion.firstMovedIndex)
-        .filter((entry) => {
-          const nodeId = addfQueueEntryNodeId(entry);
-          return !(nodeId && movedNodeIdSet.has(nodeId));
-        }).length;
-      parentQueue.splice(insertAt + inserted, 0, insertion.entry);
-      inserted += 1;
-    }
-  }
+    return { parentQueue };
+  })();
 
   parentSheet.nodes = parentSheet.nodes.filter(
     (node) => !movedNodeIdSet.has(node.id),
@@ -421,10 +484,12 @@ export function moveSelectionIntoSubsheet(
   parentSheet.labels = parentSheet.labels.filter(
     (label) => !movedLabelIdSet.has(label.id),
   );
-  parentSheet.directConnections = parentConnectionsNext;
-  parentSheet.labelAnchors = parentAnchorsNext;
-  if (parentQueue.length > 0) {
-    parentSheet.hal.addfQueue = normalizeAddfQueueEntries(parentQueue);
+  parentSheet.directConnections = connectionState.parentConnectionsNext;
+  parentSheet.labelAnchors = anchorState.parentAnchorsNext;
+  if (queueState.parentQueue.length > 0) {
+    parentSheet.hal.addfQueue = normalizeAddfQueueEntries(
+      queueState.parentQueue,
+    );
   } else {
     delete parentSheet.hal.addfQueue;
   }
@@ -443,8 +508,8 @@ export function moveSelectionIntoSubsheet(
       position: { ...label.position },
     })),
   );
-  childSheet.directConnections = childConnectionsNext;
-  childSheet.labelAnchors = childAnchorsNext;
+  childSheet.directConnections = connectionState.childConnectionsNext;
+  childSheet.labelAnchors = anchorState.childAnchorsNext;
 
   return {
     movedNodeCount: movedNodes.length,

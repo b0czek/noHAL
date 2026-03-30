@@ -3,29 +3,11 @@ import { buildGroup, buildLayout } from "./constants";
 import type { ImportNodeLayoutMetrics } from "./geometry";
 import type { ImportPreparedNet } from "./layoutTypes";
 
-export function buildPlacementNodeGroups(options: {
-  alphabeticalNodeIds: string[];
-  compareNodeInstanceNames: (a: string, b: string) => number;
-  placementHeuristic: HalImportPlacementHeuristic;
-  preparedNets: ImportPreparedNet[];
-}): string[][] {
-  const {
-    alphabeticalNodeIds,
-    compareNodeInstanceNames,
-    placementHeuristic,
-    preparedNets,
-  } = options;
-
-  if (
-    alphabeticalNodeIds.length <= 1 ||
-    placementHeuristic === "alphabetical"
-  ) {
-    return [alphabeticalNodeIds];
-  }
-
+function buildPlacementGraph(nodeIds: string[]) {
   const adjacency = new Map<string, Map<string, number>>();
   const weightedDegreeByNodeId = new Map<string, number>();
-  for (const nodeId of alphabeticalNodeIds) {
+
+  for (const nodeId of nodeIds) {
     adjacency.set(nodeId, new Map());
     weightedDegreeByNodeId.set(nodeId, 0);
   }
@@ -47,34 +29,129 @@ export function buildPlacementNodeGroups(options: {
     );
   };
 
-  for (const prepared of preparedNets) {
-    const uniqueNodeIds = Array.from(
-      new Set(prepared.resolvedEndpoints.map((endpoint) => endpoint.nodeId)),
-    );
-    if (uniqueNodeIds.length < 2) continue;
-    if (uniqueNodeIds.length > buildGroup.maxNetFanout) continue;
+  return { adjacency, weightedDegreeByNodeId, addEdge };
+}
 
-    const edgeWeight = 1 / Math.max(1, uniqueNodeIds.length - 1);
-    for (let index = 0; index < uniqueNodeIds.length; index += 1) {
-      const a = uniqueNodeIds[index];
-      if (!a) continue;
-      for (
-        let peerIndex = index + 1;
-        peerIndex < uniqueNodeIds.length;
-        peerIndex += 1
-      ) {
-        const b = uniqueNodeIds[peerIndex];
-        if (!b) continue;
-        addEdge(a, b, edgeWeight);
-      }
-    }
+function connectPlacementGraphForNet(
+  prepared: ImportPreparedNet,
+  addEdge: (a: string, b: string, weight: number) => void,
+): void {
+  const uniqueNodeIds = Array.from(
+    new Set(prepared.resolvedEndpoints.map((endpoint) => endpoint.nodeId)),
+  );
+  if (
+    uniqueNodeIds.length < 2 ||
+    uniqueNodeIds.length > buildGroup.maxNetFanout
+  ) {
+    return;
   }
 
-  const getEdgeWeight = (a: string, b: string) => adjacency.get(a)?.get(b) ?? 0;
+  const edgeWeight = 1 / Math.max(1, uniqueNodeIds.length - 1);
+  for (let index = 0; index < uniqueNodeIds.length; index += 1) {
+    const a = uniqueNodeIds[index];
+    if (!a) continue;
+    for (
+      let peerIndex = index + 1;
+      peerIndex < uniqueNodeIds.length;
+      peerIndex += 1
+    ) {
+      const b = uniqueNodeIds[peerIndex];
+      if (!b) continue;
+      addEdge(a, b, edgeWeight);
+    }
+  }
+}
+
+function orderConnectedComponent(args: {
+  componentNodeIds: string[];
+  compareNodeInstanceNames: (a: string, b: string) => number;
+  getEdgeWeight: (a: string, b: string) => number;
+  weightedDegreeByNodeId: Map<string, number>;
+}): string[] {
+  const {
+    componentNodeIds,
+    compareNodeInstanceNames,
+    getEdgeWeight,
+    weightedDegreeByNodeId,
+  } = args;
+  if (componentNodeIds.length <= 2) {
+    return [...componentNodeIds].sort(compareNodeInstanceNames);
+  }
+
+  const remaining = new Set(componentNodeIds);
+  const ordered: string[] = [];
+  let lastPlacedId: string | undefined;
+
+  const pickBestCandidate = (candidates: string[]) =>
+    [...candidates].sort((a, b) => {
+      const sumToPlaced = (candidate: string) => {
+        let sum = 0;
+        for (const placed of ordered) {
+          sum += getEdgeWeight(candidate, placed);
+        }
+        return sum;
+      };
+
+      const aSum = sumToPlaced(a);
+      const bSum = sumToPlaced(b);
+      if (aSum !== bSum) return bSum - aSum;
+
+      const aLast = lastPlacedId ? getEdgeWeight(a, lastPlacedId) : 0;
+      const bLast = lastPlacedId ? getEdgeWeight(b, lastPlacedId) : 0;
+      if (aLast !== bLast) return bLast - aLast;
+
+      const aDegree = weightedDegreeByNodeId.get(a) ?? 0;
+      const bDegree = weightedDegreeByNodeId.get(b) ?? 0;
+      if (aDegree !== bDegree) return bDegree - aDegree;
+
+      return compareNodeInstanceNames(a, b);
+    })[0];
+
+  const seed = [...remaining].sort((a, b) => {
+    const aDegree = weightedDegreeByNodeId.get(a) ?? 0;
+    const bDegree = weightedDegreeByNodeId.get(b) ?? 0;
+    if (aDegree !== bDegree) return bDegree - aDegree;
+    return compareNodeInstanceNames(a, b);
+  })[0];
+
+  if (seed) {
+    ordered.push(seed);
+    remaining.delete(seed);
+    lastPlacedId = seed;
+  }
+
+  while (remaining.size > 0) {
+    const allCandidates = [...remaining];
+    const frontierCandidates = allCandidates.filter((candidate) => {
+      for (const placed of ordered) {
+        if (getEdgeWeight(candidate, placed) > 0) return true;
+      }
+      return false;
+    });
+    const next =
+      pickBestCandidate(
+        frontierCandidates.length > 0 ? frontierCandidates : allCandidates,
+      ) ?? allCandidates.sort(compareNodeInstanceNames)[0];
+    if (!next) break;
+    ordered.push(next);
+    remaining.delete(next);
+    lastPlacedId = next;
+  }
+
+  return ordered;
+}
+
+function collectConnectedComponents(args: {
+  alphabeticalNodeIds: string[];
+  adjacency: Map<string, Map<string, number>>;
+  compareNodeInstanceNames: (a: string, b: string) => number;
+  getEdgeWeight: (a: string, b: string) => number;
+  weightedDegreeByNodeId: Map<string, number>;
+}): string[][] {
   const connectedComponents: string[][] = [];
   const seen = new Set<string>();
 
-  for (const start of alphabeticalNodeIds) {
+  for (const start of args.alphabeticalNodeIds) {
     if (seen.has(start)) continue;
 
     const queue = [start];
@@ -84,7 +161,7 @@ export function buildPlacementNodeGroups(options: {
       const nodeId = queue.shift();
       if (!nodeId) continue;
       componentNodeIds.push(nodeId);
-      const neighbors = adjacency.get(nodeId);
+      const neighbors = args.adjacency.get(nodeId);
       if (!neighbors) continue;
       for (const neighborId of neighbors.keys()) {
         if (seen.has(neighborId)) continue;
@@ -93,74 +170,71 @@ export function buildPlacementNodeGroups(options: {
       }
     }
 
-    componentNodeIds.sort(compareNodeInstanceNames);
-    if (componentNodeIds.length <= 2) {
-      connectedComponents.push(componentNodeIds);
-      continue;
-    }
-
-    const remaining = new Set(componentNodeIds);
-    const ordered: string[] = [];
-    let lastPlacedId: string | undefined;
-
-    const pickBestCandidate = (candidates: string[]) =>
-      [...candidates].sort((a, b) => {
-        const sumToPlaced = (candidate: string) => {
-          let sum = 0;
-          for (const placed of ordered) {
-            sum += getEdgeWeight(candidate, placed);
-          }
-          return sum;
-        };
-
-        const aSum = sumToPlaced(a);
-        const bSum = sumToPlaced(b);
-        if (aSum !== bSum) return bSum - aSum;
-
-        const aLast = lastPlacedId ? getEdgeWeight(a, lastPlacedId) : 0;
-        const bLast = lastPlacedId ? getEdgeWeight(b, lastPlacedId) : 0;
-        if (aLast !== bLast) return bLast - aLast;
-
-        const aDegree = weightedDegreeByNodeId.get(a) ?? 0;
-        const bDegree = weightedDegreeByNodeId.get(b) ?? 0;
-        if (aDegree !== bDegree) return bDegree - aDegree;
-
-        return compareNodeInstanceNames(a, b);
-      })[0];
-
-    const seed = [...remaining].sort((a, b) => {
-      const aDegree = weightedDegreeByNodeId.get(a) ?? 0;
-      const bDegree = weightedDegreeByNodeId.get(b) ?? 0;
-      if (aDegree !== bDegree) return bDegree - aDegree;
-      return compareNodeInstanceNames(a, b);
-    })[0];
-
-    if (seed) {
-      ordered.push(seed);
-      remaining.delete(seed);
-      lastPlacedId = seed;
-    }
-
-    while (remaining.size > 0) {
-      const allCandidates = [...remaining];
-      const frontierCandidates = allCandidates.filter((candidate) => {
-        for (const placed of ordered) {
-          if (getEdgeWeight(candidate, placed) > 0) return true;
-        }
-        return false;
-      });
-      const next =
-        pickBestCandidate(
-          frontierCandidates.length > 0 ? frontierCandidates : allCandidates,
-        ) ?? allCandidates.sort(compareNodeInstanceNames)[0];
-      if (!next) break;
-      ordered.push(next);
-      remaining.delete(next);
-      lastPlacedId = next;
-    }
-
-    connectedComponents.push(ordered);
+    connectedComponents.push(
+      orderConnectedComponent({
+        componentNodeIds,
+        compareNodeInstanceNames: args.compareNodeInstanceNames,
+        getEdgeWeight: args.getEdgeWeight,
+        weightedDegreeByNodeId: args.weightedDegreeByNodeId,
+      }),
+    );
   }
+
+  return connectedComponents;
+}
+
+function mergeIsolatedPlacementGroups(
+  connectedComponents: string[][],
+  compareNodeInstanceNames: (a: string, b: string) => number,
+): string[][] {
+  const isolatedGroups = connectedComponents.filter(
+    (group) => group.length <= 1,
+  );
+  const connectedGroups = connectedComponents.filter(
+    (group) => group.length > 1,
+  );
+  if (isolatedGroups.length > 1) {
+    connectedGroups.push(isolatedGroups.flat().sort(compareNodeInstanceNames));
+  } else if (isolatedGroups.length === 1) {
+    connectedGroups.push(isolatedGroups[0] ?? []);
+  }
+  return connectedGroups.filter((group) => group.length > 0);
+}
+
+export function buildPlacementNodeGroups(options: {
+  alphabeticalNodeIds: string[];
+  compareNodeInstanceNames: (a: string, b: string) => number;
+  placementHeuristic: HalImportPlacementHeuristic;
+  preparedNets: ImportPreparedNet[];
+}): string[][] {
+  const {
+    alphabeticalNodeIds,
+    compareNodeInstanceNames,
+    placementHeuristic,
+    preparedNets,
+  } = options;
+
+  if (
+    alphabeticalNodeIds.length <= 1 ||
+    placementHeuristic === "alphabetical"
+  ) {
+    return [alphabeticalNodeIds];
+  }
+
+  const { adjacency, weightedDegreeByNodeId, addEdge } =
+    buildPlacementGraph(alphabeticalNodeIds);
+  for (const prepared of preparedNets) {
+    connectPlacementGraphForNet(prepared, addEdge);
+  }
+
+  const getEdgeWeight = (a: string, b: string) => adjacency.get(a)?.get(b) ?? 0;
+  const connectedComponents = collectConnectedComponents({
+    alphabeticalNodeIds,
+    adjacency,
+    compareNodeInstanceNames,
+    getEdgeWeight,
+    weightedDegreeByNodeId,
+  });
 
   connectedComponents.sort((a, b) => {
     if (a.length !== b.length) return b.length - a.length;
@@ -178,19 +252,10 @@ export function buildPlacementNodeGroups(options: {
     return compareNodeInstanceNames(a[0] ?? "", b[0] ?? "");
   });
 
-  const isolatedGroups = connectedComponents.filter(
-    (group) => group.length <= 1,
+  return mergeIsolatedPlacementGroups(
+    connectedComponents,
+    compareNodeInstanceNames,
   );
-  const connectedGroups = connectedComponents.filter(
-    (group) => group.length > 1,
-  );
-  if (isolatedGroups.length > 1) {
-    connectedGroups.push(isolatedGroups.flat().sort(compareNodeInstanceNames));
-  } else if (isolatedGroups.length === 1) {
-    connectedGroups.push(isolatedGroups[0] ?? []);
-  }
-
-  return connectedGroups.filter((group) => group.length > 0);
 }
 
 export function planNodeGrid(
