@@ -1,3 +1,4 @@
+import { groupBy, map, pipe, pullObject, sortBy } from "remeda";
 import {
   addfQueueEntryKey,
   addfQueueEntryNodeId,
@@ -104,14 +105,17 @@ function replaceAddfTemplate(
 function buildInstanceConfigByPath(
   items: RuntimeInstanceRecord[],
 ): Record<string, Record<string, string>> | undefined {
-  const instanceConfigByPath: Record<string, Record<string, string>> = {};
-  for (const item of items) {
-    if (!item.instanceConfigValues) continue;
-    if (Object.keys(item.instanceConfigValues).length === 0) continue;
-    instanceConfigByPath[item.instancePath] = {
+  const instanceConfigByPath = pullObject(
+    items.filter(
+      (item) =>
+        item.instanceConfigValues &&
+        Object.keys(item.instanceConfigValues).length > 0,
+    ),
+    (item) => item.instancePath,
+    (item) => ({
       ...item.instanceConfigValues,
-    };
-  }
+    }),
+  );
   return Object.keys(instanceConfigByPath).length > 0
     ? instanceConfigByPath
     : undefined;
@@ -123,9 +127,11 @@ function prepareComponentRuntimeGroup(
   componentName: string,
   items: RuntimeInstanceRecord[],
 ): PreparedComponentRuntimeGroup | null {
-  const sortedNames = items
-    .map((item) => item.instancePath)
-    .sort((a, b) => a.localeCompare(b));
+  const sortedNames = pipe(
+    items,
+    map((item) => item.instancePath),
+    sortBy((name) => name),
+  );
   const component =
     items.length > 0
       ? project.library.components[items[0]?.componentId]
@@ -209,13 +215,9 @@ function collectValidRuntimeInstances(
 function groupRuntimeInstancesByComponentName(
   allInstances: RuntimeInstanceRecord[],
 ): Map<string, RuntimeInstanceRecord[]> {
-  const itemsByComponentName = new Map<string, RuntimeInstanceRecord[]>();
-  for (const item of allInstances) {
-    const list = itemsByComponentName.get(item.componentName);
-    if (list) list.push(item);
-    else itemsByComponentName.set(item.componentName, [item]);
-  }
-  return itemsByComponentName;
+  return new Map(
+    Object.entries(groupBy(allInstances, (item) => item.componentName)),
+  );
 }
 
 function collectCustomLoadByComponentName(
@@ -451,15 +453,18 @@ function buildRuntimeSummaryLines(
     runtimeSummaryLines.push(
       `# Userspace components still need manual loadusr flags/args:`,
     );
-    const byComponent = new Map<string, string[]>();
-    for (const item of userspaceInstances) {
-      const list = byComponent.get(item.componentName);
-      if (list) list.push(item.instancePath);
-      else byComponent.set(item.componentName, [item.instancePath]);
-    }
-    for (const [componentName, instances] of [...byComponent.entries()].sort(
-      ([a], [b]) => a.localeCompare(b),
+    const byComponent = groupBy(
+      userspaceInstances,
+      (item) => item.componentName,
+    );
+    for (const componentName of sortBy(
+      Object.keys(byComponent),
+      (name) => name,
     )) {
+      const instances = pipe(
+        byComponent[componentName] ?? [],
+        map((item) => item.instancePath),
+      );
       runtimeSummaryLines.push(`#   ${componentName}: ${instances.join(", ")}`);
     }
   }

@@ -1,3 +1,4 @@
+import { sortBy, uniqueBy } from "remeda";
 import { isSystemComponent } from "../componentSystem";
 import type { ComponentDefinition } from "../types";
 import type { EndpointRecord, Hint } from "./context";
@@ -25,9 +26,7 @@ export function chooseBoundarySignalName(
 }
 
 export function chooseNetName(hints: Hint[], fallbackIndex: number): string {
-  const unique = Array.from(
-    new Map(hints.map((hint) => [`${hint.kind}:${hint.name}`, hint])).values(),
-  );
+  const unique = uniqueBy(hints, (hint) => `${hint.kind}:${hint.name}`);
   const preferred =
     unique.find((h) => h.kind === "connection") ??
     unique.find((h) => h.kind === "global") ??
@@ -46,7 +45,7 @@ export function sortPinsForHal(records: EndpointRecord[]): EndpointRecord[] {
     if (r.direction === "io") return 1;
     return 2;
   };
-  return [...records].sort((a, b) => rank(a) - rank(b));
+  return sortBy(records, rank);
 }
 
 export function describeEndpointForWarning(record: EndpointRecord): string {

@@ -1,3 +1,4 @@
+import { filter, pipe, unique } from "remeda";
 import { fixedExportStageForComponent } from "../componentSystem";
 import { reconcileHaluiManagedNodes } from "../halui";
 import { createId, slugify } from "../id";
@@ -261,8 +262,13 @@ function assertProjectShape(input: unknown): asserts input is NoHALProject {
 
 function normalizeParsedComponentNode(node: ComponentNode): void {
   if (Array.isArray(node.hiddenPinKeys)) {
-    const hiddenPinKeys = [...new Set(node.hiddenPinKeys)].filter(
-      (key): key is string => typeof key === "string" && key.trim().length > 0,
+    const hiddenPinKeys = pipe(
+      node.hiddenPinKeys,
+      filter(
+        (key): key is string =>
+          typeof key === "string" && key.trim().length > 0,
+      ),
+      unique(),
     );
     if (hiddenPinKeys.length > 0) {
       node.hiddenPinKeys = hiddenPinKeys;

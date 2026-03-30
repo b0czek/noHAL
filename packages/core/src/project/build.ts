@@ -1,3 +1,4 @@
+import { filter, map, pipe, unique } from "remeda";
 import { exportProjectToHal } from "../halExport";
 import { slugify } from "../id";
 import {
@@ -42,8 +43,11 @@ export interface ProjectBuildApi {
 const BUILD_MANIFEST_FILENAME = ".nohal-build-manifest.json";
 
 function normalizeBuildWarnings(warnings: string[]): string[] {
-  return Array.from(
-    new Set(warnings.map((warning) => warning.trim()).filter(Boolean)),
+  return pipe(
+    warnings,
+    map((warning) => warning.trim()),
+    filter(Boolean),
+    unique(),
   );
 }
 

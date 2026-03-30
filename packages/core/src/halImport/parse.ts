@@ -1,3 +1,4 @@
+import { flatMap, fromEntries, map, pipe, sortBy, unique } from "remeda";
 import { slugify } from "../id";
 import { interpolateLoadrtImport } from "../loadrt";
 import type {
@@ -275,7 +276,7 @@ function inferLoadusrInstanceName(
 
   const explicitName = explicitNames[0];
   if (explicitNames.length > 1) {
-    const distinct = [...new Set(explicitNames)];
+    const distinct = unique(explicitNames);
     if (distinct.length > 1) {
       warnings.push(
         `loadusr has multiple component-name candidates (${distinct.join(", ")})`,
@@ -361,13 +362,16 @@ function addObservedParam(
 }
 
 function parseKeyValueArgs(tokens: string[]): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const token of tokens) {
-    const eq = token.indexOf("=");
-    if (eq <= 0) continue;
-    out[token.slice(0, eq)] = token.slice(eq + 1);
-  }
-  return out;
+  return pipe(
+    tokens,
+    flatMap((token) => {
+      const eq = token.indexOf("=");
+      return eq <= 0
+        ? []
+        : [[token.slice(0, eq), token.slice(eq + 1)] as const];
+    }),
+    fromEntries(),
+  );
 }
 
 function isArrowToken(token: string): boolean {
@@ -671,9 +675,7 @@ function buildGroupIdByComponentName(
 ): Map<string, string> {
   const groupIdsByName = new Map<string, string>();
   const usedGroupIds = new Set<string>();
-  for (const name of [...groupsByName.keys()].sort((a, b) =>
-    a.localeCompare(b),
-  )) {
+  for (const name of sortBy([...groupsByName.keys()], (name) => name)) {
     let id = `halcmp:${slugify(name)}`;
     let suffix = 2;
     while (usedGroupIds.has(id)) {
@@ -770,11 +772,13 @@ function buildComponentGroups(args: {
     groupInstances: MutableInstance[],
   ): HalImportComponentGroup {
     const runtimeHint = inferGroupRuntimeHint(groupInstances);
-    const instancesOut = groupInstances
-      .sort((a, b) => a.instanceName.localeCompare(b.instanceName))
-      .map((item) =>
+    const instancesOut = pipe(
+      groupInstances,
+      sortBy((item) => item.instanceName),
+      map((item) =>
         buildGroupInstanceOutput(pinMap, paramMap, componentName, item),
-      );
+      ),
+    );
 
     return {
       id: args.groupIdsByName.get(componentName) ?? componentName,
@@ -791,9 +795,10 @@ function buildComponentGroups(args: {
     };
   }
 
-  return [...args.groupsByName.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([componentName, groupInstances]) => {
+  return pipe(
+    [...args.groupsByName.entries()],
+    sortBy(([componentName]) => componentName),
+    map(([componentName, groupInstances]) => {
       const pinMap = new Map<string, HalImportObservedPin>();
       const paramMap = new Map<string, HalImportObservedParam>();
       return buildComponentGroup(
@@ -802,7 +807,8 @@ function buildComponentGroups(args: {
         componentName,
         groupInstances,
       );
-    });
+    }),
+  );
 }
 
 interface ParseHalImportState {

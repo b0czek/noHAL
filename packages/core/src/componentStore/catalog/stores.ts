@@ -1,3 +1,4 @@
+import { fromKeys, sortBy } from "remeda";
 import {
   type LinuxCncVersion,
   SUPPORTED_LINUXCNC_VERSIONS,
@@ -79,38 +80,27 @@ function buildGeneratedComponentsForVersion(
     if (!component) continue;
     components.push(materializeComponent(version, refName, component));
   }
-  components.sort((a, b) =>
-    a.halComponentName.localeCompare(b.halComponentName),
-  );
-  return components;
+  return sortBy(components, (component) => component.halComponentName);
 }
 
-const catalogEntries = SUPPORTED_LINUXCNC_VERSIONS.map((version) => {
+export const LINUXCNC_VERSION_CATALOG: Record<
+  LinuxCncVersion,
+  LinuxCncVersionCatalogData
+> = fromKeys(SUPPORTED_LINUXCNC_VERSIONS, (version) => {
   const generated = GENERATED_CATALOG_VERSION_METADATA[version];
   const generatedComponents = buildGeneratedComponentsForVersion(
     version,
     generated.refName,
   );
-  return [
+  return {
     version,
-    {
+    refName: generated.refName,
+    revision: generated.revision,
+    generatedAt: generated.generatedAt,
+    components: mergeManualLinuxCncComponents(
       version,
-      refName: generated.refName,
-      revision: generated.revision,
-      generatedAt: generated.generatedAt,
-      components: mergeManualLinuxCncComponents(
-        version,
-        generated.refName,
-        generatedComponents,
-      ),
-    },
-  ] as const;
+      generated.refName,
+      generatedComponents,
+    ),
+  };
 });
-
-export const LINUXCNC_VERSION_CATALOG: Record<
-  LinuxCncVersion,
-  LinuxCncVersionCatalogData
-> = Object.fromEntries(catalogEntries) as Record<
-  LinuxCncVersion,
-  LinuxCncVersionCatalogData
->;

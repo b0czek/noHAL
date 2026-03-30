@@ -1,3 +1,4 @@
+import { pickBy, pullObject, unique } from "remeda";
 import { resolveComponentPinsForInstance } from "../componentInstance";
 import type { ComponentDefinition, NoHALProject } from "../types";
 
@@ -6,10 +7,7 @@ function mergeKnownValuesWithDefaults(
   validKeys: ReadonlySet<string>,
   defaultValues: Record<string, string>,
 ): Record<string, string> {
-  const nextValues: Record<string, string> = {};
-  for (const [key, value] of Object.entries(currentValues)) {
-    if (validKeys.has(key)) nextValues[key] = value;
-  }
+  const nextValues = pickBy(currentValues, (_value, key) => validKeys.has(key));
   for (const [key, value] of Object.entries(defaultValues)) {
     if (!(key in nextValues)) nextValues[key] = value;
   }
@@ -20,11 +18,10 @@ function prunePinInitialValues(
   currentValues: Record<string, string> | undefined,
   validPinKeys: ReadonlySet<string>,
 ): Record<string, string> | undefined {
-  const nextValues: Record<string, string> = {};
-  for (const [key, value] of Object.entries(currentValues ?? {})) {
-    if (!validPinKeys.has(key) || !value.trim()) continue;
-    nextValues[key] = value;
-  }
+  const nextValues = pickBy(
+    currentValues ?? {},
+    (value, key) => validPinKeys.has(key) && value.trim().length > 0,
+  );
   return Object.keys(nextValues).length > 0 ? nextValues : undefined;
 }
 
@@ -32,10 +29,10 @@ function pruneHiddenPinKeys(
   currentValues: string[] | undefined,
   validPinKeys: ReadonlySet<string>,
 ): string[] | undefined {
-  const nextValues = (currentValues ?? []).filter((key) =>
-    validPinKeys.has(key),
+  const nextValues = unique(
+    (currentValues ?? []).filter((key) => validPinKeys.has(key)),
   );
-  return nextValues.length > 0 ? [...new Set(nextValues)] : undefined;
+  return nextValues.length > 0 ? nextValues : undefined;
 }
 
 export function reconcileComponentNodesForDefinition(
@@ -47,15 +44,17 @@ export function reconcileComponentNodesForDefinition(
   const validInstanceConfigKeys = new Set(
     (component.runtime?.instanceConfig?.fields ?? []).map((field) => field.key),
   );
-  const defaultInstanceConfigValues = Object.fromEntries(
-    (component.runtime?.instanceConfig?.fields ?? [])
-      .filter((field) => field.defaultValue !== undefined)
-      .map((field) => [field.key, `${field.defaultValue ?? ""}`]),
+  const defaultInstanceConfigValues = pullObject(
+    (component.runtime?.instanceConfig?.fields ?? []).filter(
+      (field) => field.defaultValue !== undefined,
+    ),
+    (field) => field.key,
+    (field) => `${field.defaultValue ?? ""}`,
   );
-  const defaultParams = Object.fromEntries(
-    component.params
-      .filter((param) => param.defaultValue !== undefined)
-      .map((param) => [param.key, param.defaultValue ?? ""]),
+  const defaultParams = pullObject(
+    component.params.filter((param) => param.defaultValue !== undefined),
+    (param) => param.key,
+    (param) => param.defaultValue ?? "",
   );
 
   for (const sheet of Object.values(project.sheets)) {

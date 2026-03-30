@@ -1,3 +1,4 @@
+import { indexBy } from "remeda";
 import { MESA_DB25_CARD_KINDS, MESA_DB25_CARDS } from "./db25";
 import { MESA_HOST_KINDS, MESA_HOSTS } from "./hosts";
 import {
@@ -17,16 +18,13 @@ export {
 export * from "./compat";
 export type * from "./types";
 
-const MESA_HOSTS_BY_KIND = Object.fromEntries(
-  MESA_HOSTS.map((entry) => [entry.kind, entry]),
-);
+const MESA_HOSTS_BY_KIND = indexBy(MESA_HOSTS, (entry) => entry.kind);
 
-const MESA_DB25_CARDS_BY_KIND = Object.fromEntries(
-  MESA_DB25_CARDS.map((entry) => [entry.kind, entry]),
-);
+const MESA_DB25_CARDS_BY_KIND = indexBy(MESA_DB25_CARDS, (entry) => entry.kind);
 
-const MESA_SMART_SERIAL_CARDS_BY_KIND = Object.fromEntries(
-  MESA_SMART_SERIAL_CARDS.map((entry) => [entry.kind, entry]),
+const MESA_SMART_SERIAL_CARDS_BY_KIND = indexBy(
+  MESA_SMART_SERIAL_CARDS,
+  (entry) => entry.kind,
 );
 
 export function getMesaHostCatalogEntry(kind: string) {

@@ -1,3 +1,4 @@
+import { filter, fromEntries, map, pipe, sortBy } from "remeda";
 import { resolveComponentPinsForInstance } from "../componentInstance";
 import type { ComponentDefinition } from "../types";
 
@@ -72,12 +73,14 @@ export function normalizeInstanceConfigValues(
   value: Record<string, string> | undefined,
 ): Record<string, string> | undefined {
   if (!value) return undefined;
-  const entries = Object.entries(value)
-    .map(([key, item]) => [key.trim(), `${item}`.trim()] as const)
-    .filter(([key, item]) => key.length > 0 && item.length > 0)
-    .sort(([a], [b]) => a.localeCompare(b));
+  const entries = pipe(
+    Object.entries(value),
+    map(([key, item]) => [key.trim(), `${item}`.trim()] as const),
+    filter(([key, item]) => key.length > 0 && item.length > 0),
+    sortBy(([key]) => key),
+  );
   if (entries.length === 0) return undefined;
-  return Object.fromEntries(entries);
+  return fromEntries(entries);
 }
 
 export function sameInstanceConfigValues(

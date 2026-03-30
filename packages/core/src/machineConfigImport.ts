@@ -1,3 +1,4 @@
+import { difference, flatMap, pipe, sortBy, unique } from "remeda";
 import { parseHalImportDraft } from "./halImport";
 import { collectLinuxCncHalReferences, parseLinuxCncIni } from "./linuxcncIni";
 import { stripManagedEntriesFromIni } from "./machineConfig/policy";
@@ -324,43 +325,39 @@ function computePostguiOnlyInstances(args: {
   halSources: MachineConfigHalSource[];
   parsedInstanceNamesByPath: Map<string, Set<string>>;
 }): string[] {
-  const postguiResolvedPaths = new Set(
-    args.halSources
-      .filter(
-        (source) =>
-          source.status === "loaded" &&
-          source.kind === "POSTGUI_HALFILE" &&
-          source.resolvedPath,
-      )
-      .map((source) => source.resolvedPath as string),
+  const resolvedPathsForKind = (
+    kind: "HALFILE" | "POSTGUI_HALFILE",
+  ): string[] =>
+    pipe(
+      args.halSources,
+      flatMap((source) =>
+        source.status === "loaded" &&
+        source.kind === kind &&
+        source.resolvedPath
+          ? [source.resolvedPath]
+          : [],
+      ),
+      unique(),
+    );
+
+  const postguiResolvedPaths = resolvedPathsForKind("POSTGUI_HALFILE");
+  const mainResolvedPaths = resolvedPathsForKind("HALFILE");
+  const instanceNamesForPaths = (paths: string[]): string[] =>
+    pipe(
+      paths,
+      flatMap((sourcePath) => [
+        ...(args.parsedInstanceNamesByPath.get(sourcePath) ?? []),
+      ]),
+      unique(),
+    );
+
+  const postguiInstances = instanceNamesForPaths(postguiResolvedPaths);
+  const mainInstances = instanceNamesForPaths(mainResolvedPaths);
+  return pipe(
+    postguiInstances,
+    difference(mainInstances),
+    sortBy((name) => name),
   );
-  const mainResolvedPaths = new Set(
-    args.halSources
-      .filter(
-        (source) =>
-          source.status === "loaded" &&
-          source.kind === "HALFILE" &&
-          source.resolvedPath,
-      )
-      .map((source) => source.resolvedPath as string),
-  );
-  const postguiInstances = new Set<string>();
-  const mainInstances = new Set<string>();
-  for (const sourcePath of postguiResolvedPaths) {
-    for (const instanceName of args.parsedInstanceNamesByPath.get(sourcePath) ??
-      []) {
-      postguiInstances.add(instanceName);
-    }
-  }
-  for (const sourcePath of mainResolvedPaths) {
-    for (const instanceName of args.parsedInstanceNamesByPath.get(sourcePath) ??
-      []) {
-      mainInstances.add(instanceName);
-    }
-  }
-  return [...postguiInstances]
-    .filter((instanceName) => !mainInstances.has(instanceName))
-    .sort((a, b) => a.localeCompare(b));
 }
 
 export const parseMachineConfigImportSetupDraft =

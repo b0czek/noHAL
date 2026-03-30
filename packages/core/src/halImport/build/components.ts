@@ -1,3 +1,4 @@
+import { unique } from "remeda";
 import { safeKey, slugify } from "../../id";
 import type {
   ComponentDefinition,
@@ -206,7 +207,7 @@ function buildGeneratedProjectLocalComponent(
 
   const pins: ComponentPinDefinition[] = group.pins.map((pin) => {
     const typeHints = mappedStorePinTypes.get(`${group.id}::${pin.name}`) ?? [];
-    const uniqueTypes = Array.from(new Set(typeHints));
+    const uniqueTypes = unique(typeHints);
     let type: HalValueType = "bit";
     if (uniqueTypes.length === 1) {
       type = uniqueTypes[0] ?? "bit";

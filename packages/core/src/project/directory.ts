@@ -1,3 +1,4 @@
+import { pickBy } from "remeda";
 import corePackageJson from "../../package.json";
 import { isSystemComponent } from "../componentSystem";
 import { slugify } from "../id";
@@ -213,13 +214,13 @@ function getUsedComponentIds(project: NoHALProject): Set<string> {
 
 function createPersistedProjectLibrary(project: NoHALProject): ProjectLibrary {
   const usedComponentIds = getUsedComponentIds(project);
-  const components: ProjectLibrary["components"] = {};
-  for (const componentId of usedComponentIds) {
-    const component = project.library.components[componentId];
-    if (!component) continue;
-    components[componentId] = component;
-  }
-  return { components };
+  return {
+    components: pickBy(
+      project.library.components,
+      (component, componentId) =>
+        Boolean(component) && usedComponentIds.has(componentId),
+    ),
+  };
 }
 
 function createProjectLibraryFile(
