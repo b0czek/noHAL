@@ -254,7 +254,6 @@ async function loadReferencedHalSources(args: {
       return;
     }
 
-    loadedHalPaths.add(resolvedPath);
     halSources.push({
       kind: ref.kind,
       iniLine: ref.line,
