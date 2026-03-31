@@ -72,6 +72,7 @@ export const en = {
   "canvasContext.paste": "Paste",
   "canvasContext.move": "Move",
   "canvasContext.newSheet": "New Sheet",
+  "canvasContext.detachSheetReference": "Detach Reference",
   "canvasContext.putEverythingIntoSubsheet": "Into Subsheet",
   "canvasContext.splitConnectionIntoLabels": "Split Into Labels",
   "canvasContext.removeConnection": "Remove Connection",
@@ -83,6 +84,13 @@ export const en = {
   "canvasComponentMenu.empty": "No matching components",
   "canvasComponentMenu.itemTitle": "{name} ({pins} pins)",
   "canvasComponentMenu.itemMeta": "{source} • {pins} pins",
+  "canvasSheetMenu.filterPlaceholder": "Filter sheets...",
+  "canvasSheetMenu.createSheet": "Create New Sheet",
+  "canvasSheetMenu.createSheetMeta":
+    "Create a new definition, then place a reference",
+  "canvasSheetMenu.empty": "No matching sheets",
+  "canvasSheetMenu.definition": "definition",
+  "canvasSheetMenu.recursive": "recursive",
 
   "componentSearch.title.sheet": "Find in Sheet",
   "componentSearch.title.project": "Find in Project",
@@ -284,11 +292,11 @@ export const en = {
   "sheetSettings.tabAddfQueue": "addf Queue",
   "sheetSettings.instanceTitle": "Sheet Instance",
   "sheetSettings.instanceHelp":
-    "Set the instance name used when this sheet is placed in its parent sheet.",
+    "Review the referenced definition, rename this reference, or detach it into a new sheet definition.",
   "sheetSettings.instanceRootHelp":
-    "The root sheet does not have a parent instance name.",
+    "The root sheet is a definition, not a placed reference.",
   "sheetSettings.instanceUnavailable":
-    "This sheet is not currently placed in a parent sheet.",
+    "Rename references from the canvas inspector or a specific placement.",
   "sheetSettings.threadOutputsTitle": "Sheet Thread Outputs",
   "sheetSettings.threadOutputsHelp":
     "Define this sheet's local scheduling outputs. Parent sheets map subsheet outputs into their own outputs.",
@@ -318,14 +326,27 @@ export const en = {
   "sheetSettings.empty": "No RT components or subsheets in this sheet.",
   "sheetSettings.missingSheet": "missing sheet",
   "sheetSettings.missing": "missing",
+  "sheetSettings.referencedSheet": "Referenced Sheet",
+  "sheetSettings.detachReference": "Detach Reference",
 
-  "sidebar.sheets": "Tree",
+  "sidebar.title": "Sheets",
+  "sidebar.sheets": "Sheets",
+  "sidebar.references": "References",
   "sidebar.expandSheet": "Expand {name}",
   "sidebar.collapseSheet": "Collapse {name}",
-  "sidebar.orphan": "orphan",
+  "sidebar.root": "root",
+  "sidebar.system": "system",
+  "sidebar.unused": "unused",
+  "sidebar.usedBy": "Used By",
+  "sidebar.referencesFrom": "References",
+  "sidebar.rootDefinition": "This is the root sheet definition.",
+  "sidebar.unusedDefinition": "This definition is currently unused.",
+  "sidebar.noReferences": "This definition does not reference any sheets.",
   "sidebar.sheetActions": "Sheet actions",
   "sidebar.sheetSettings": "Sheet Settings",
   "sidebar.deleteSheet": "Delete Sheet",
+  "sidebar.confirmDeleteSheet":
+    "Delete sheet definition '{name}' and all {count} reference(s)?",
 
   "projectCreation.projectLocalGenerated": "Project-local (generated)",
   "projectCreation.systemComponent": "System component",
@@ -621,6 +642,7 @@ export const en = {
   "store.status.pastedSelection": "Pasted selection ({count} items)",
   "store.status.placedComponent": "Placed component {componentName}",
   "store.status.createdSubsheet": "Created subsheet {name}",
+  "store.status.detachedSheetReference": "Detached sheet reference into {name}",
   "store.status.cannotPlaceSheetInsideItself":
     "Cannot place a sheet inside itself",
   "store.status.sheetAlreadyPlaced": "Sheet is already placed",
@@ -629,8 +651,7 @@ export const en = {
   "store.status.placedSubsheet": "Placed subsheet {name}",
   "store.status.cannotDeleteRootSheet": "Cannot delete the root sheet",
   "store.status.cannotDeleteSystemSheet": "The System sheet cannot be deleted",
-  "store.status.deletedSheet":
-    "Deleted sheet {name} ({count} sheet definitions removed)",
+  "store.status.deletedSheet": "Deleted sheet definition {name}",
   "store.status.addedLabel": "Added {scope} label",
   "store.status.addedComment": "Added text comment",
   "store.status.addedSheetPort": "Added sheet port",

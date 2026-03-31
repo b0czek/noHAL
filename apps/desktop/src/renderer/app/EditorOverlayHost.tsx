@@ -76,6 +76,7 @@ export default function EditorOverlayHost() {
         {(current) => (
           <SheetSettingsDialog
             sheetId={current().sheetId}
+            referenceTarget={current().referenceTarget}
             onClose={editorUi.closeActiveOverlay}
           />
         )}

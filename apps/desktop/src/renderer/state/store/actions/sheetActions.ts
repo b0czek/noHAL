@@ -1,4 +1,4 @@
-import { getSheet } from "@nohal/core/graph";
+import { getSheet, getSheetReferenceLocations } from "@nohal/core/graph";
 import { createId } from "@nohal/core/id";
 import { createSheet } from "@nohal/core/project";
 import {
@@ -106,6 +106,31 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     deps.clearPendingConnectionUi();
   };
 
+  const detachSheetReferenceAt = (
+    parentSheetId: string,
+    nodeId: string,
+  ): string | null => {
+    const currentSheet = getSheet(deps.state.project, parentSheetId);
+    const node = currentSheet.nodes.find(
+      (entry): entry is SheetNode =>
+        entry.kind === "sheet" && entry.id === nodeId,
+    );
+    if (!node) return null;
+    if (isProtectedSystemSheet(deps.state.project, node.sheetId)) {
+      deps.setStatusT("store.status.cannotDeleteSystemSheet");
+      return null;
+    }
+
+    const result = deps.withProject((project) =>
+      sheetModelEdits.reference.detach(project, parentSheetId, nodeId),
+    );
+    if (!result) return null;
+    deps.setStatusT("store.status.detachedSheetReference", {
+      name: result.detachedSheet.name,
+    });
+    return result.detachedSheet.id;
+  };
+
   return {
     addSheetThreadOutput(sheetId: string): void {
       deps.withProject((project) => {
@@ -190,6 +215,24 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       deps.setStatusT("store.status.createdSubsheet", { name: result.name });
     },
 
+    addSheetReference(sheetId: string, position?: XY): void {
+      const result = deps.withProject((project) => {
+        const added = sheetModelEdits.reference.add(
+          project,
+          deps.state.activeSheetId,
+          sheetId,
+        );
+        if (added && position) {
+          added.node.position = { ...position };
+        }
+        return added;
+      });
+      if (!result) return;
+      deps.setStatusT("store.status.createdSubsheet", {
+        name: result.sheet.name,
+      });
+    },
+
     putSelectionIntoSubsheet(): void {
       const prepared = prepareSelectionMove(deps.state.selection);
       if (!prepared) return;
@@ -198,7 +241,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         Object.values(prepared.next.sheets).map((sheet) => sheet.name),
       );
       const childName = nextName("Sheet", allNames);
-      const child = createSheet(childName, prepared.parentSheet.id);
+      const child = createSheet(childName);
 
       const childNodePosition = selectionBoundsForNodesAndLabels(
         prepared.movedNodes,
@@ -279,6 +322,21 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         deps.setStatusT("store.status.cannotDeleteSystemSheet");
         return;
       }
+      const referenceCount = getSheetReferenceLocations(
+        project,
+        sheetId,
+      ).length;
+      if (
+        typeof window !== "undefined" &&
+        !window.confirm(
+          deps.t("sidebar.confirmDeleteSheet", {
+            name: target.name,
+            count: referenceCount,
+          }),
+        )
+      ) {
+        return;
+      }
 
       const next = cloneProject(project);
       const result = sheetModelEdits.definition.remove(
@@ -302,6 +360,33 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       });
     },
 
+    deleteSheetReference(nodeId: string): void {
+      const currentSheetId = deps.state.activeSheetId;
+      const currentSheet = getSheet(deps.state.project, currentSheetId);
+      const node = currentSheet.nodes.find(
+        (entry): entry is SheetNode =>
+          entry.kind === "sheet" && entry.id === nodeId,
+      );
+      if (!node) return;
+      if (isProtectedSystemSheet(deps.state.project, node.sheetId)) {
+        deps.setStatusT("store.status.cannotDeleteSystemSheet");
+        return;
+      }
+
+      const removed = deps.withProject((project) =>
+        sheetModelEdits.reference.remove(project, currentSheetId, nodeId),
+      );
+      if (!removed) return;
+      deps.clearSelectionAndPendingUi();
+      deps.setStatusT("store.status.removedSelection");
+    },
+
+    detachSheetReferenceAt,
+
+    detachSheetReference(nodeId: string): string | null {
+      return detachSheetReferenceAt(deps.state.activeSheetId, nodeId);
+    },
+
     enterSelectedSheet(): void {
       const selection = deps.state.selection;
       if (!selection || selection.kind !== "node") return;
@@ -312,9 +397,12 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     },
 
     goToParentSheet(): void {
-      const current = getSheet(deps.state.project, deps.state.activeSheetId);
-      if (!current.parentSheetId) return;
-      setActiveSheet(current.parentSheetId);
+      const [reference] = getSheetReferenceLocations(
+        deps.state.project,
+        deps.state.activeSheetId,
+      );
+      if (!reference) return;
+      setActiveSheet(reference.parentSheetId);
     },
   };
 }
