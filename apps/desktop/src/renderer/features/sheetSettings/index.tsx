@@ -1,4 +1,5 @@
-import { createSignal, Show } from "solid-js";
+import type { SheetNode } from "@nohal/core/types";
+import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import type { OverlayDialogProps } from "../../app/types";
 import SettingsDialogShell from "../../components/settings/SettingsDialogShell";
 import { useI18n } from "../../i18n";
@@ -12,18 +13,44 @@ type SheetSettingsTab = "instance" | "thread-outputs" | "addf-queue";
 
 interface SheetSettingsDialogProps extends OverlayDialogProps {
   sheetId: string;
+  referenceTarget?: {
+    parentSheetId: string;
+    nodeId: string;
+  };
 }
 
 export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
   const { t } = useI18n();
   const { state } = useEditorStore();
-  const [tab, setTab] = createSignal<SheetSettingsTab>("instance");
+  const hasReferenceTarget = () => {
+    const target = props.referenceTarget;
+    if (!target) return false;
+    const parentSheet = state.project.sheets[target.parentSheetId];
+    const node = parentSheet?.nodes.find(
+      (entry): entry is SheetNode =>
+        entry.kind === "sheet" && entry.id === target.nodeId,
+    );
+    return node?.sheetId === props.sheetId;
+  };
+  const [tab, setTab] = createSignal<SheetSettingsTab>(
+    hasReferenceTarget() ? "instance" : "thread-outputs",
+  );
   const sheet = () => state.project.sheets[props.sheetId];
+  const hasInstanceTab = createMemo(() => hasReferenceTarget());
+
+  createEffect(() => {
+    if (!hasInstanceTab() && tab() === "instance") {
+      setTab("thread-outputs");
+    }
+  });
 
   return (
     <Show when={sheet()}>
       {(currentSheet) => (
-        <SheetSettingsProvider sheetId={props.sheetId}>
+        <SheetSettingsProvider
+          sheetId={props.sheetId}
+          referenceTarget={props.referenceTarget}
+        >
           <SettingsDialogShell
             title={t("sheetSettings.title")}
             description={currentSheet().name}
@@ -34,11 +61,15 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
             headerClass="border-b border-white/8 pb-4"
             descriptionClass="mono"
             tabs={[
-              {
-                value: "instance",
-                label: t("sheetSettings.tabInstance"),
-                content: <InstanceTab />,
-              },
+              ...(hasInstanceTab()
+                ? [
+                    {
+                      value: "instance",
+                      label: t("sheetSettings.tabInstance"),
+                      content: <InstanceTab />,
+                    },
+                  ]
+                : []),
               {
                 value: "thread-outputs",
                 label: t("sheetSettings.tabThreadOutputs"),

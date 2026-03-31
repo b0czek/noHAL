@@ -121,10 +121,6 @@ function isSheetDefinitionLike(value: unknown): value is SheetDefinition {
   if (!isRecord(value)) return false;
   if (typeof value.id !== "string") return false;
   if (typeof value.name !== "string") return false;
-  if (
-    !(value.parentSheetId === null || typeof value.parentSheetId === "string")
-  )
-    return false;
   return (
     Array.isArray(value.nodes) &&
     Array.isArray(value.ports) &&

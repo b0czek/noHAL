@@ -5,7 +5,11 @@ import {
 } from "@nohal/core/componentSystem";
 import { isComponentPlaceable } from "@nohal/core/componentVisibility";
 import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
-import { getSheet, isNodePinConnected } from "@nohal/core/graph";
+import {
+  getSheet,
+  getSheetReferenceLocations,
+  isNodePinConnected,
+} from "@nohal/core/graph";
 import { isValidHalName } from "@nohal/core/halNames";
 import { createId } from "@nohal/core/id";
 import { createSheetPortDraft } from "@nohal/core/project";
@@ -17,7 +21,6 @@ import type {
   SheetComment,
   SheetDefinition,
   SheetEndpointRef,
-  SheetNode,
   XY,
 } from "@nohal/core/types";
 import {
@@ -444,19 +447,25 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       renameNodeInSheet(deps.state.activeSheetId, nodeId, instanceName);
     },
 
+    renameSheetReference(
+      parentSheetId: string,
+      nodeId: string,
+      instanceName: string,
+    ): void {
+      renameNodeInSheet(parentSheetId, nodeId, instanceName);
+    },
+
     renameSheetInstance(sheetId: string, instanceName: string): void {
-      const currentSheet = deps.state.project.sheets[sheetId];
-      if (!currentSheet?.parentSheetId) return;
-      const parentSheet = getSheet(
+      const [reference] = getSheetReferenceLocations(
         deps.state.project,
-        currentSheet.parentSheetId,
+        sheetId,
       );
-      const subsheetNode = parentSheet.nodes.find(
-        (node): node is SheetNode =>
-          node.kind === "sheet" && node.sheetId === sheetId,
+      if (!reference) return;
+      renameNodeInSheet(
+        reference.parentSheetId,
+        reference.nodeId,
+        instanceName,
       );
-      if (!subsheetNode) return;
-      renameNodeInSheet(parentSheet.id, subsheetNode.id, instanceName);
     },
 
     updateSheetNodeThreadMap(

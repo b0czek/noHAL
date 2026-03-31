@@ -7,8 +7,6 @@ import type { XY } from "@nohal/core/types";
 import { createSelectionClipboard } from "../../../clipboard/selection";
 import {
   cloneProject,
-  collectSheetSubtreeIds,
-  removeSheetNodeReferencesForDeletedSheets,
   removeSheetSelectionItems,
   syncProjectUi,
 } from "../helpers";
@@ -21,7 +19,6 @@ import type { MultiSelection } from "../selectionTypes";
 import type { EditorSelection, EditorStoreActionContext } from "./types";
 
 type SelectionActionLinks = {
-  deleteSheetDefinition: (sheetId: string) => void;
   removeDirectConnection: (connectionId: string) => void;
   removeLabelAnchor: (anchorId: string) => void;
 };
@@ -60,25 +57,7 @@ export function createSelectionActions(
     );
     for (const nodeId of protectedNodeIds) selectedNodeIds.delete(nodeId);
 
-    const deletedSheetIds = new Set<string>();
-    for (const node of currentSheet.nodes) {
-      if (node.kind !== "sheet" || !selectedNodeIds.has(node.id)) continue;
-      for (const sheetId of collectSheetSubtreeIds(
-        deps.state.project,
-        node.sheetId,
-      )) {
-        deletedSheetIds.add(sheetId);
-      }
-    }
-
     const next = cloneProject(deps.state.project);
-    if (deletedSheetIds.size > 0) {
-      removeSheetNodeReferencesForDeletedSheets(next, deletedSheetIds);
-      for (const deletedSheetId of deletedSheetIds) {
-        delete next.sheets[deletedSheetId];
-      }
-    }
-
     const sheet = next.sheets[deps.state.activeSheetId];
     if (sheet) {
       removeSheetSelectionItems(sheet, {
@@ -169,8 +148,6 @@ export function createSelectionActions(
             deps.setStatusT("store.status.cannotDeleteSystemSheet");
             return;
           }
-          links.deleteSheetDefinition(node.sheetId);
-          return;
         }
       }
 

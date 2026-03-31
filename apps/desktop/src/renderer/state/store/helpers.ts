@@ -186,17 +186,6 @@ export function sheetContainsSheet(
   return false;
 }
 
-export function isSheetPlacedInProject(
-  project: NoHALProject,
-  sheetId: string,
-): boolean {
-  return Object.values(project.sheets).some((sheet) =>
-    sheet.nodes.some(
-      (node) => node.kind === "sheet" && node.sheetId === sheetId,
-    ),
-  );
-}
-
 export function pruneSheetNodeReferences(
   sheet: SheetDefinition,
   removedNodeIds: ReadonlySet<string>,
@@ -285,39 +274,6 @@ export function removeSheetSelectionItems(
   if (selection.portIds.size > 0) {
     sheet.ports = sheet.ports.filter((port) => !selection.portIds.has(port.id));
     pruneSheetPortReferences(sheet, selection.portIds);
-  }
-}
-
-export function collectSheetSubtreeIds(
-  project: NoHALProject,
-  rootSheetId: string,
-): Set<string> {
-  const deleted = new Set<string>();
-  const queue = [rootSheetId];
-  while (queue.length > 0) {
-    const sheetId = queue.shift();
-    if (!sheetId || deleted.has(sheetId) || !project.sheets[sheetId]) continue;
-    deleted.add(sheetId);
-    for (const sheet of Object.values(project.sheets)) {
-      if (sheet.parentSheetId === sheetId) queue.push(sheet.id);
-    }
-  }
-  return deleted;
-}
-
-export function removeSheetNodeReferencesForDeletedSheets(
-  project: NoHALProject,
-  deletedSheetIds: ReadonlySet<string>,
-): void {
-  for (const sheet of Object.values(project.sheets)) {
-    const removedNodeIds = new Set<string>();
-    sheet.nodes = sheet.nodes.filter((node) => {
-      if (node.kind !== "sheet") return true;
-      if (!deletedSheetIds.has(node.sheetId)) return true;
-      removedNodeIds.add(node.id);
-      return false;
-    });
-    pruneSheetNodeReferences(sheet, removedNodeIds);
   }
 }
 

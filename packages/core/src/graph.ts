@@ -33,6 +33,78 @@ export function getSheet(
   return sheet;
 }
 
+export interface SheetReferenceLocation {
+  parentSheetId: string;
+  parentSheetName: string;
+  nodeId: string;
+  instanceName: string;
+}
+
+export interface ReferencedSheetLocation extends SheetReferenceLocation {
+  sheetId: string;
+  sheetName: string;
+}
+
+export function getSheetReferenceLocations(
+  project: NoHALProject,
+  sheetId: string,
+): SheetReferenceLocation[] {
+  const references: SheetReferenceLocation[] = [];
+  for (const parentSheet of Object.values(project.sheets)) {
+    for (const node of parentSheet.nodes) {
+      if (node.kind !== "sheet" || node.sheetId !== sheetId) continue;
+      references.push({
+        parentSheetId: parentSheet.id,
+        parentSheetName: parentSheet.name,
+        nodeId: node.id,
+        instanceName: node.instanceName,
+      });
+    }
+  }
+  return references.sort((left, right) => {
+    const parentNameCompare = left.parentSheetName.localeCompare(
+      right.parentSheetName,
+    );
+    if (parentNameCompare !== 0) return parentNameCompare;
+    return left.instanceName.localeCompare(right.instanceName);
+  });
+}
+
+export function getReferencedSheetLocations(
+  project: NoHALProject,
+  parentSheetId: string,
+): ReferencedSheetLocation[] {
+  const parentSheet = getSheet(project, parentSheetId);
+  return parentSheet.nodes
+    .flatMap((node) => {
+      if (node.kind !== "sheet") return [];
+      const childSheet = project.sheets[node.sheetId];
+      if (!childSheet) return [];
+      return [
+        {
+          parentSheetId,
+          parentSheetName: parentSheet.name,
+          nodeId: node.id,
+          instanceName: node.instanceName,
+          sheetId: childSheet.id,
+          sheetName: childSheet.name,
+        },
+      ];
+    })
+    .sort((left, right) => {
+      const sheetNameCompare = left.sheetName.localeCompare(right.sheetName);
+      if (sheetNameCompare !== 0) return sheetNameCompare;
+      return left.instanceName.localeCompare(right.instanceName);
+    });
+}
+
+export function isSheetPlacedInProject(
+  project: NoHALProject,
+  sheetId: string,
+): boolean {
+  return getSheetReferenceLocations(project, sheetId).length > 0;
+}
+
 export function getNode(
   sheet: SheetDefinition,
   nodeId: string,

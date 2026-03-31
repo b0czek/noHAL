@@ -4,6 +4,7 @@ import {
   isComponentSearchable,
 } from "@nohal/core/componentVisibility";
 import { getSheet } from "@nohal/core/graph";
+import { isProtectedSystemSheet } from "@nohal/core/sheet";
 import type {
   ComponentNode,
   SheetDefinition,
@@ -22,7 +23,9 @@ import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 import type { Selection } from "../state/store";
+import { sheetContainsSheet } from "../state/store/helpers";
 import CanvasComponentMenu from "./CanvasComponentMenu";
+import CanvasSheetMenu from "./CanvasSheetMenu";
 import type { ContextMenuActionItem } from "./ContextMenuProvider";
 import { useContextMenu } from "./ContextMenuProvider";
 
@@ -54,6 +57,21 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       )
       .sort((a, b) => a.halComponentName.localeCompare(b.halComponentName)),
   );
+  const placeableSheetChoices = createMemo(() =>
+    Object.values(state.project.sheets)
+      .filter((sheet) => !isProtectedSystemSheet(state.project, sheet.id))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  );
+  const disabledSheetIds = createMemo(
+    () =>
+      new Set(
+        placeableSheetChoices()
+          .filter((sheet) =>
+            sheetContainsSheet(state.project, sheet.id, state.activeSheetId),
+          )
+          .map((sheet) => sheet.id),
+      ),
+  );
   const backgroundMenuItems = (point: {
     x: number;
     y: number;
@@ -82,7 +100,18 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     },
     {
       label: t("topbar.addSubsheet"),
-      onSelect: () => actions.addSheetDefinition(point),
+      onSelect: () => undefined,
+      childrenClass: "w-[22rem] overflow-hidden p-3",
+      renderChildren: ({ close }) => (
+        <CanvasSheetMenu
+          sheets={placeableSheetChoices()}
+          disabledSheetIds={disabledSheetIds()}
+          onSelectSheet={(sheetId) => actions.addSheetReference(sheetId, point)}
+          onCreateSheet={() => actions.addSheetDefinition(point)}
+          onClose={close}
+          listClass="max-h-[16rem] overflow-y-auto"
+        />
+      ),
     },
     {
       label: t("topbar.addPort"),
@@ -334,11 +363,15 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
         selectionItems.copyItem,
         {
           label: t("inspector.enterSubsheet"),
-          onSelect: () => editorUi.openComponentEditorForNode(node.id),
+          onSelect: () => actions.setActiveSheet(node.sheetId),
         },
         {
           label: t("sidebar.sheetSettings"),
-          onSelect: () => editorUi.openSheetSettings(node.sheetId),
+          onSelect: () =>
+            editorUi.openSheetSettings(node.sheetId, {
+              parentSheetId: state.activeSheetId,
+              nodeId: node.id,
+            }),
         },
         selectionItems.deleteItem,
       ],

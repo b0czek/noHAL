@@ -68,7 +68,7 @@ describe("sheet actions", () => {
 
   it("moves a singly selected node into an existing subsheet", () => {
     const { project, rootSheet } = createProjectFixture();
-    const childSheet = createSheet("Existing Sheet", project.rootSheetId);
+    const childSheet = createSheet("Existing Sheet");
     project.sheets[childSheet.id] = childSheet;
     rootSheet.nodes.push({
       id: "node_existing_subsheet",
@@ -109,7 +109,7 @@ describe("sheet actions", () => {
 
   it("renames a subsheet instance from sheet settings", () => {
     const { project, rootSheet } = createProjectFixture();
-    const childSheet = createSheet("Existing Sheet", project.rootSheetId);
+    const childSheet = createSheet("Existing Sheet");
     project.sheets[childSheet.id] = childSheet;
     rootSheet.nodes.push({
       id: "node_existing_subsheet",
