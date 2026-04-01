@@ -2,7 +2,11 @@ import { getVisibleNodePins } from "@nohal/core/graph";
 import type { NoHALProject, SheetDefinition } from "@nohal/core/types";
 import type { EndpointSide, SheetLookup } from "./types";
 
-const sheetLookupCache = new WeakMap<SheetDefinition, SheetLookup>();
+let sheetLookupCache = new WeakMap<SheetDefinition, SheetLookup>();
+
+export function clearSheetLookupCache(): void {
+  sheetLookupCache = new WeakMap<SheetDefinition, SheetLookup>();
+}
 
 export function getSheetLookup(
   project: NoHALProject,

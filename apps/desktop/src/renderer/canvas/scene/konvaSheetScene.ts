@@ -16,6 +16,7 @@ import {
   getSplitLabelPositionsForConnection as getSplitLabelPositionsForWire,
   redraw as redrawSceneWires,
 } from "../wires";
+import { clearSheetLookupCache } from "../wires/lookup";
 import { clampScenePos } from "./bounds";
 import {
   applyCamera,
@@ -213,6 +214,7 @@ export function createKonvaSheetScene(
       runtime.state.selectedConnectionId = selectedConnectionId;
 
       runtime.state.lastState = state;
+      clearSheetLookupCache();
       resetTransientPositions();
       runtime.view.mainWorld.destroyChildren();
       syncLayerOrder(project.ui.wireLayerPosition);
