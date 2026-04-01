@@ -7,9 +7,10 @@ import { useEditorStore } from "../../state/EditorStoreProvider";
 import AddfQueueTab from "./AddfQueueTab";
 import InstanceTab from "./InstanceTab";
 import { SheetSettingsProvider } from "./SheetSettingsContext";
+import SheetTab from "./SheetTab";
 import ThreadOutputsTab from "./ThreadOutputsTab";
 
-type SheetSettingsTab = "instance" | "thread-outputs" | "addf-queue";
+type SheetSettingsTab = "sheet" | "instance" | "thread-outputs" | "addf-queue";
 
 interface SheetSettingsDialogProps extends OverlayDialogProps {
   sheetId: string;
@@ -33,14 +34,14 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
     return node?.sheetId === props.sheetId;
   };
   const [tab, setTab] = createSignal<SheetSettingsTab>(
-    hasReferenceTarget() ? "instance" : "thread-outputs",
+    hasReferenceTarget() ? "instance" : "sheet",
   );
   const sheet = () => state.project.sheets[props.sheetId];
   const hasInstanceTab = createMemo(() => hasReferenceTarget());
 
   createEffect(() => {
     if (!hasInstanceTab() && tab() === "instance") {
-      setTab("thread-outputs");
+      setTab("sheet");
     }
   });
 
@@ -70,6 +71,11 @@ export default function SheetSettingsDialog(props: SheetSettingsDialogProps) {
                     },
                   ]
                 : []),
+              {
+                value: "sheet",
+                label: t("sheetSettings.tabSheet"),
+                content: <SheetTab />,
+              },
               {
                 value: "thread-outputs",
                 label: t("sheetSettings.tabThreadOutputs"),

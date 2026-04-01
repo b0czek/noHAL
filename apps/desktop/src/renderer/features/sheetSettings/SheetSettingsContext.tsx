@@ -88,6 +88,8 @@ function createSheetSettingsState(args: {
     halThreads,
     rows,
     rowsByThreadOutput,
+    renameSheetDefinition: (value: string) =>
+      actions.renameSheetDefinition(args.sheetId, value),
     addThreadOutput: () => actions.addSheetThreadOutput(args.sheetId),
     updateThreadOutputName: (outputId: string, value: string) =>
       actions.updateSheetThreadOutputName(args.sheetId, outputId, value),

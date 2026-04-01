@@ -216,6 +216,13 @@ export interface AddSheetReferenceResult {
   node: SheetNode;
 }
 
+export type RenameSheetDefinitionResult =
+  | { ok: true; changed: boolean; sheet: SheetDefinition }
+  | {
+      ok: false;
+      reason: "not-found" | "empty-name" | "duplicate-name";
+    };
+
 function createSheetDefinition(
   project: NoHALProject,
   baseName = "Sheet",
@@ -227,6 +234,30 @@ function createSheetDefinition(
   const sheet = createSheet(name);
   project.sheets[sheet.id] = sheet;
   return sheet;
+}
+
+function renameSheetDefinition(
+  project: NoHALProject,
+  sheetId: string,
+  name: string,
+): RenameSheetDefinitionResult {
+  const target = project.sheets[sheetId];
+  if (!target) return { ok: false, reason: "not-found" };
+
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, reason: "empty-name" };
+  if (target.name === trimmed)
+    return { ok: true, changed: false, sheet: target };
+  if (
+    Object.values(project.sheets).some(
+      (sheet) => sheet.id !== sheetId && sheet.name === trimmed,
+    )
+  ) {
+    return { ok: false, reason: "duplicate-name" };
+  }
+
+  target.name = trimmed;
+  return { ok: true, changed: true, sheet: target };
 }
 
 function addSheetReference(
@@ -522,6 +553,7 @@ export const sheetModelEdits = {
   definition: {
     create: createSheetDefinition,
     add: addSheetDefinition,
+    rename: renameSheetDefinition,
     remove: deleteSheetDefinition,
   },
   reference: {

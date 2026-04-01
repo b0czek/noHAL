@@ -286,9 +286,12 @@ export const en = {
 
   "sheetSettings.ariaLabel": "Sheet Settings",
   "sheetSettings.title": "Sheet Settings",
+  "sheetSettings.tabSheet": "Sheet",
   "sheetSettings.tabInstance": "Instance",
   "sheetSettings.tabThreadOutputs": "Thread Outputs",
   "sheetSettings.tabAddfQueue": "addf Queue",
+  "sheetSettings.sheetTitle": "Sheet Definition",
+  "sheetSettings.sheetHelp": "Rename this sheet definition.",
   "sheetSettings.instanceTitle": "Sheet Instance",
   "sheetSettings.instanceHelp":
     "Review the referenced definition, rename this reference, or detach it into a new sheet definition.",
@@ -648,6 +651,12 @@ export const en = {
   "store.status.cannotCreateRecursiveSheetHierarchy":
     "Cannot create recursive sheet hierarchy",
   "store.status.placedSubsheet": "Placed subsheet {name}",
+  "store.status.sheetDefinitionNameRequired":
+    "Sheet definition name is required",
+  "store.status.duplicateSheetDefinitionName":
+    "Sheet definition name already exists: {name}",
+  "store.status.updatedSheetDefinitionName":
+    "Renamed sheet definition to {name}",
   "store.status.cannotDeleteRootSheet": "Cannot delete the root sheet",
   "store.status.cannotDeleteSystemSheet": "The System sheet cannot be deleted",
   "store.status.deletedSheet": "Deleted sheet definition {name}",

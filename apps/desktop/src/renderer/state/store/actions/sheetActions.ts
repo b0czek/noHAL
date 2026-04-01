@@ -132,6 +132,27 @@ export function createSheetActions(deps: EditorStoreActionContext) {
   };
 
   return {
+    renameSheetDefinition(sheetId: string, name: string): void {
+      const trimmed = name.trim();
+      const result = deps.withProject((project) =>
+        sheetModelEdits.definition.rename(project, sheetId, trimmed),
+      );
+      if (!result.ok && result.reason === "empty-name") {
+        deps.setStatusT("store.status.sheetDefinitionNameRequired");
+        return;
+      }
+      if (!result.ok && result.reason === "duplicate-name") {
+        deps.setStatusT("store.status.duplicateSheetDefinitionName", {
+          name: trimmed,
+        });
+        return;
+      }
+      if (!result.ok || !result.changed) return;
+      deps.setStatusT("store.status.updatedSheetDefinitionName", {
+        name: result.sheet.name,
+      });
+    },
+
     addSheetThreadOutput(sheetId: string): void {
       deps.withProject((project) => {
         const sheet = getSheet(project, sheetId);
