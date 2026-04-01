@@ -3,7 +3,7 @@ import { clampRuntimePos, sceneWorldExtents } from "./bounds";
 import type { CameraState, SceneBounds, SceneRuntime } from "./types";
 
 const CAMERA_OVERSCROLL_PX = 220;
-const CAMERA_MIN_SCALE = 0.35;
+const CAMERA_MIN_SCALE = 0.1;
 const CAMERA_MAX_SCALE = 2.8;
 const CAMERA_SCALE_EPSILON = 1e-6;
 
