@@ -17,7 +17,7 @@ const GRID_MAJOR_SPACING_MULTIPLIER = 5;
 
 export default function Canvas() {
   const { t } = useI18n();
-  const { state, actions } = useEditorStore();
+  const { state, setState, actions } = useEditorStore();
   const editorUi = useEditorUi();
   let hostEl!: HTMLDivElement;
   let scene: SheetScene | null = null;
@@ -100,6 +100,11 @@ export default function Canvas() {
       onMoveSelectionGroup: actions.moveSelectionGroup,
       onMoveConnectionWaypoints: actions.updateDirectConnectionWaypoints,
       onCameraChange: setCamera,
+      onCursorPosChange: (point) => {
+        const current = state.canvasCursorPos;
+        if (current?.x === point?.x && current?.y === point?.y) return;
+        setState("canvasCursorPos", point);
+      },
       onContextMenuRequest: canvasContextMenu.handleSceneContextMenuRequest,
     });
     resizeObserver = new ResizeObserver((entries) => {
@@ -144,6 +149,7 @@ export default function Canvas() {
   });
 
   onCleanup(() => {
+    setState("canvasCursorPos", null);
     resizeObserver?.disconnect();
     resizeObserver = null;
     scene?.destroy();

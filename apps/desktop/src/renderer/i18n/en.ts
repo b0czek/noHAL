@@ -13,6 +13,7 @@ export const en = {
   "common.type": "Type",
   "common.rotation": "Rotation",
   "common.status": "Status",
+  "common.cursor": "Cursor",
   "common.file": "File",
   "common.project": "Project",
   "common.unsaved": "(unsaved)",

@@ -97,6 +97,7 @@ export interface SceneCallbacks {
   onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
   onBackgroundClick?: (point: XY, options?: SceneSelectOptions) => void;
   onCameraChange?: (camera: { x: number; y: number; scale: number }) => void;
+  onCursorPosChange?: (point: XY | null) => void;
   onContextMenuRequest?: (request: SceneContextMenuRequest) => void;
 }
 

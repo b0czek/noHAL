@@ -34,6 +34,7 @@ export interface EditorState {
   componentStore: ComponentStore;
   projectPath: string | null;
   isDirty: boolean;
+  canvasCursorPos: XY | null;
   activeSheetId: string;
   canUndo: boolean;
   canRedo: boolean;

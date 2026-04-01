@@ -38,6 +38,26 @@ function preventCancelableEvent(
   if ("preventDefault" in evt.evt) evt.evt.preventDefault();
 }
 
+function syncCursorPos(runtime: SceneRuntime, pos: Pt | null): void {
+  runtime.state.cursorPos = pos;
+  runtime.callbacks.onCursorPosChange?.(
+    pos
+      ? {
+          x: Math.round(pos.x),
+          y: Math.round(pos.y),
+        }
+      : null,
+  );
+}
+
+function syncCursorPosFromScreenPos(
+  runtime: SceneRuntime,
+  screenPos: Pt | null,
+  toClampedWorld: (pos: Pt) => Pt,
+): void {
+  syncCursorPos(runtime, screenPos ? toClampedWorld(screenPos) : null);
+}
+
 function handlePendingEndpointBackgroundClick(args: {
   runtime: SceneRuntime;
   stage: Konva.Stage;
@@ -250,8 +270,6 @@ export function bindSceneInteractions(
   stage.on(`mousemove${EVENT_NS} touchmove${EVENT_NS}`, () => {
     const pos = stage.getPointerPosition();
     const screenPos = pos ? { x: pos.x, y: pos.y } : null;
-    runtime.state.cursorPos = screenPos ? toClampedWorld(screenPos) : null;
-    syncPlacementPreview();
 
     const { interaction } = runtime.state;
     if (interaction.isPanning && screenPos && interaction.panLastScreenPos) {
@@ -261,6 +279,9 @@ export function bindSceneInteractions(
       interaction.panLastScreenPos = screenPos;
       applyCamera();
     }
+
+    syncCursorPosFromScreenPos(runtime, screenPos, toClampedWorld);
+    syncPlacementPreview();
 
     if (interaction.isMarqueeSelecting && screenPos) {
       interaction.marqueeCurrentScreenPos = screenPos;
@@ -288,7 +309,7 @@ export function bindSceneInteractions(
     runtime.state.interaction.backgroundTapStartScreenPos = null;
     runtime.state.interaction.backgroundTapAdditive = false;
     cancelMarqueeSelection();
-    runtime.state.cursorPos = null;
+    syncCursorPos(runtime, null);
     syncPlacementPreview();
     if (runtime.state.lastState?.pendingEndpoint) redrawWires();
   });
@@ -351,6 +372,11 @@ export function bindSceneInteractions(
         -wheelEvt.deltaY * deltaScale,
       );
       applyCamera();
+      syncCursorPosFromScreenPos(
+        runtime,
+        stage.getPointerPosition(),
+        toClampedWorld,
+      );
       if (runtime.state.lastState?.pendingEndpoint) redrawWires();
       return;
     }
@@ -361,6 +387,7 @@ export function bindSceneInteractions(
       wheelEvt.deltaY > 0 ? 1 / KEYBOARD_ZOOM_FACTOR : KEYBOARD_ZOOM_FACTOR,
       pointer,
     );
+    syncCursorPosFromScreenPos(runtime, pointer, toClampedWorld);
   });
 
   return () => {
