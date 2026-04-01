@@ -78,6 +78,7 @@ export type SceneInteractionState = {
   marqueeCurrentScreenPos: Pt | null;
   marqueeAdditive: boolean;
   groupDragSession: GroupDragSession | null;
+  gridSnapOverridePressed: boolean;
   spacePressed: boolean;
 };
 

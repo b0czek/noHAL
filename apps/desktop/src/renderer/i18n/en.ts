@@ -444,6 +444,9 @@ export const en = {
   "generalSettings.interfaceTitle": "Interface",
   "generalSettings.interfaceHelp":
     "Adjust app-wide presentation settings that should persist across projects.",
+  "generalSettings.canvasGridLabel": "Canvas Grid",
+  "generalSettings.canvasGridHelp":
+    "Choose the snap and grid spacing used across projects. Off disables both the visible grid and snapping. Hold Ctrl/Cmd while placing or dragging to temporarily bypass snapping.",
   "generalSettings.interfaceScaleLabel": "Interface Scale",
   "generalSettings.interfaceScaleHelp":
     "Adjust the size of the interface in this window. Changes apply immediately and are remembered for later.",

@@ -171,6 +171,10 @@
       var(--grid-major-offset-x) var(--grid-major-offset-y);
   }
 
+  .canvas-grid-hidden::before {
+    display: none;
+  }
+
   .scene-konva-host,
   .scene-konva-host canvas {
     @apply block h-full w-full;

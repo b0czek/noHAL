@@ -110,6 +110,7 @@ export function createSceneRuntime(
         marqueeCurrentScreenPos: null,
         marqueeAdditive: false,
         groupDragSession: null,
+        gridSnapOverridePressed: false,
         spacePressed: false,
       },
     },

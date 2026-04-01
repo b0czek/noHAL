@@ -104,6 +104,7 @@ export interface SceneCallbacks {
 export interface SceneRenderState {
   project: NoHALProject;
   sheet: SheetDefinition;
+  gridResolution: number | null;
   selection: SceneSelection;
   pendingEndpoint: SheetEndpointRef | null;
   pendingWirePoints: XY[];
