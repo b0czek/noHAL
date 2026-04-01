@@ -86,8 +86,7 @@ export const en = {
   "canvasComponentMenu.itemMeta": "{source} • {pins} pins",
   "canvasSheetMenu.filterPlaceholder": "Filter sheets...",
   "canvasSheetMenu.createSheet": "Create New Sheet",
-  "canvasSheetMenu.createSheetMeta":
-    "Create a new definition, then place a reference",
+  "canvasSheetMenu.newInline": "+ New",
   "canvasSheetMenu.empty": "No matching sheets",
   "canvasSheetMenu.definition": "definition",
   "canvasSheetMenu.recursive": "recursive",
