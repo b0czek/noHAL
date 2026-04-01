@@ -5,6 +5,7 @@ import { typography } from "../constants/typography";
 import { estimateCommentSize } from "../measurements";
 import {
   bindDraggableRenderable,
+  isPrimaryScenePointerButton,
   type RenderCommentsArgs,
   type RenderSceneContext,
 } from "./shared";
@@ -69,6 +70,7 @@ export function renderComments(
       },
     });
     group.on("click tap", (evt) => {
+      if (!isPrimaryScenePointerButton(evt.evt)) return;
       evt.cancelBubble = true;
       callbacks.onSelect(
         { kind: "comment", id: sheetComment.id },

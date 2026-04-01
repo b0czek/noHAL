@@ -6,6 +6,7 @@ import { measureLabelBox, measureLabelScopeWidth } from "../measurements";
 import { labelFill } from "../theme";
 import {
   bindDraggableRenderable,
+  isPrimaryScenePointerButton,
   type RenderLabelsArgs,
   type RenderSceneContext,
 } from "./shared";
@@ -83,6 +84,7 @@ export function renderLabels(
       },
     });
     group.on("click tap", (evt) => {
+      if (!isPrimaryScenePointerButton(evt.evt)) return;
       evt.cancelBubble = true;
       callbacks.onLabelClick(label.id, {
         mode:

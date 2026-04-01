@@ -83,6 +83,12 @@ export interface RenderCommentsArgs {
   commentGroups: Map<string, Konva.Group>;
 }
 
+export function isPrimaryScenePointerButton(
+  evt: MouseEvent | TouchEvent,
+): boolean {
+  return !(evt instanceof MouseEvent) || evt.button === 0;
+}
+
 export function bindDraggableRenderable(args: {
   group: Konva.Group;
   target: DragSelectionTarget;
@@ -181,6 +187,7 @@ export function addPinDot(args: {
   });
 
   bead.on("click tap", (evt) => {
+    if (!isPrimaryScenePointerButton(evt.evt)) return;
     evt.cancelBubble = true;
     args.callbacks.onEndpointClick(args.endpoint);
   });

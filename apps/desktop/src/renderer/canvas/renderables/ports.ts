@@ -8,6 +8,7 @@ import { estimatePortBox } from "../measurements";
 import {
   addPinDot,
   bindDraggableRenderable,
+  isPrimaryScenePointerButton,
   type RenderPortsArgs,
   type RenderSceneContext,
 } from "./shared";
@@ -89,6 +90,7 @@ export function renderPorts(
       },
     });
     portGroup.on("click tap", (evt) => {
+      if (!isPrimaryScenePointerButton(evt.evt)) return;
       evt.cancelBubble = true;
       callbacks.onSelect(
         { kind: "sheet-port", id: port.id },

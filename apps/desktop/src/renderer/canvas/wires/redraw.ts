@@ -11,6 +11,7 @@ import type {
 } from "../../state/store/selectionTypes";
 import { wire } from "../constants/wires";
 import type { Pt } from "../layout";
+import { isPrimaryScenePointerButton } from "../renderables/shared";
 import { clampRuntimePos } from "../scene/bounds";
 import type { SceneRuntime } from "../scene/types";
 import type { SceneWireContextMenuTarget } from "../types";
@@ -147,6 +148,7 @@ function bindWireLineEvents(args: {
   const { runtime, connection, routePoints, wireLine } = args;
 
   wireLine.on("click tap", (evt) => {
+    if (!isPrimaryScenePointerButton(evt.evt)) return;
     evt.cancelBubble = true;
     if (evt.evt instanceof MouseEvent && evt.evt.detail >= 2) {
       const point = getPointerWorldPos(runtime);
@@ -222,6 +224,7 @@ function renderConnectionWaypoints(args: {
     setCullBounds(handle, boundsFromPoints([p], WAYPOINT_CULL_PADDING));
 
     handle.on("click tap", (evt) => {
+      if (!isPrimaryScenePointerButton(evt.evt)) return;
       evt.cancelBubble = true;
       selectConnection(runtime, connection.id, i);
       redraw(runtime);
@@ -306,6 +309,7 @@ function renderLabelAnchors(
           hitStrokeWidth: wire.labelAnchor.strokeWidth.hit,
         });
         line.on("click tap", (evt) => {
+          if (!isPrimaryScenePointerButton(evt.evt)) return;
           evt.cancelBubble = true;
           selectLabelAnchor(runtime, anchor.id);
           redraw(runtime);
