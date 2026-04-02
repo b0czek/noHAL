@@ -115,12 +115,14 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           <CanvasSheetMenu
             sheets={placeableSheetChoices()}
             disabledSheetIds={disabledSheetIds()}
-            onSelectSheet={(sheetId) => actions.addSheetReference(sheetId, point)}
+            onSelectSheet={(sheetId) =>
+              actions.addSheetReference(sheetId, point)
+            }
             onCreateSheet={() => actions.addSheetDefinition(placementPoint)}
             onClose={close}
             listClass="max-h-[16rem] overflow-y-auto"
           />
-      ),
+        ),
       },
       {
         label: t("topbar.addPort"),
