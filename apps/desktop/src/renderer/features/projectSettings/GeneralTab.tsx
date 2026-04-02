@@ -32,7 +32,6 @@ export default function GeneralTab() {
       label: t("projectSettings.generalWireStyleCurved"),
     },
   ];
-
   return (
     <div class="grid gap-6">
       <div class="grid gap-1">

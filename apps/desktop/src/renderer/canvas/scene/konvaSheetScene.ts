@@ -1,6 +1,7 @@
 import { endpointKey } from "@nohal/core/graph";
 import type { ProjectWireLayerPosition } from "@nohal/core/types";
 import { scene } from "../constants/scene";
+import { snapPointToGrid } from "../grid";
 import { buildSheetSceneLayout, type Pt } from "../layout";
 import {
   type DragSelectionTarget,
@@ -101,7 +102,7 @@ export function createKonvaSheetScene(
   };
 
   const onSelectionDragMove = (target: DragSelectionTarget, pos: Pt): boolean =>
-    moveDragSelection(runtime, target, pos, {
+    moveDragSelection(runtime, target, snapPos(pos), {
       redrawWires: () => redrawWires(),
     });
 
@@ -109,7 +110,7 @@ export function createKonvaSheetScene(
     target: DragSelectionTarget,
     pos: Pt,
   ): boolean => {
-    const handled = endDragSelection(runtime, target, pos, {
+    const handled = endDragSelection(runtime, target, snapPos(pos), {
       redrawWires: () => redrawWires(),
     });
     runtime.state.interaction.groupDragSession = null;
@@ -231,7 +232,7 @@ export function createKonvaSheetScene(
 
       const renderCtx: RenderSceneContext = {
         mainWorld: runtime.view.mainWorld,
-        clampPos,
+        clampPos: snapPos,
         redrawWires: () => redrawWires(),
         dragSelection: {
           onSelectionDragStart,
@@ -280,6 +281,19 @@ export function createKonvaSheetScene(
 
   function clampPos(pos: Pt): Pt {
     return clampScenePos(pos, runtime.state.sceneBounds);
+  }
+
+  function snapPos(pos: Pt): Pt {
+    const clamped = clampPos(pos);
+    const state = runtime.state.lastState;
+    if (
+      !state ||
+      !state.gridResolution ||
+      runtime.state.interaction.gridSnapOverridePressed
+    ) {
+      return clamped;
+    }
+    return clampPos(snapPointToGrid(clamped, state.gridResolution));
   }
 
   function zoomByFactor(zoomFactor: number, pointer?: Pt): void {

@@ -1,4 +1,5 @@
 import type Konva from "konva";
+import { snapPointToGrid } from "../grid";
 import type { Pt } from "../layout";
 import type { SceneRenderState } from "../types";
 import { clampRuntimePos } from "./bounds";
@@ -38,6 +39,39 @@ function preventCancelableEvent(
   if ("preventDefault" in evt.evt) evt.evt.preventDefault();
 }
 
+function syncGridSnapOverrideFromKeyboardEvent(
+  runtime: SceneRuntime,
+  evt: KeyboardEvent,
+): void {
+  runtime.state.interaction.gridSnapOverridePressed =
+    evt.ctrlKey || evt.metaKey;
+}
+
+function syncGridSnapOverrideFromPointerEvent(
+  runtime: SceneRuntime,
+  evt: MouseEvent | TouchEvent | WheelEvent,
+): void {
+  if (evt instanceof TouchEvent) return;
+  runtime.state.interaction.gridSnapOverridePressed =
+    evt.ctrlKey || evt.metaKey;
+}
+
+function maybeSnapWorldPos(runtime: SceneRuntime, pos: Pt): Pt {
+  const clamped = clampRuntimePos(runtime, pos);
+  const state = runtime.state.lastState;
+  if (
+    !state ||
+    !state.gridResolution ||
+    runtime.state.interaction.gridSnapOverridePressed
+  ) {
+    return clamped;
+  }
+  return clampRuntimePos(
+    runtime,
+    snapPointToGrid(clamped, state.gridResolution),
+  );
+}
+
 function syncCursorPos(runtime: SceneRuntime, pos: Pt | null): void {
   runtime.state.cursorPos = pos;
   runtime.callbacks.onCursorPosChange?.(
@@ -53,18 +87,18 @@ function syncCursorPos(runtime: SceneRuntime, pos: Pt | null): void {
 function syncCursorPosFromScreenPos(
   runtime: SceneRuntime,
   screenPos: Pt | null,
-  toClampedWorld: (pos: Pt) => Pt,
+  toWorld: (pos: Pt) => Pt,
 ): void {
-  syncCursorPos(runtime, screenPos ? toClampedWorld(screenPos) : null);
+  syncCursorPos(runtime, screenPos ? toWorld(screenPos) : null);
 }
 
 function handlePendingEndpointBackgroundClick(args: {
   runtime: SceneRuntime;
   stage: Konva.Stage;
   evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
-  toClampedWorld: (pos: Pt) => Pt;
+  toWorld: (pos: Pt) => Pt;
 }): boolean {
-  const { runtime, stage, evt, toClampedWorld } = args;
+  const { runtime, stage, evt, toWorld } = args;
   const pos = stage.getPointerPosition();
   if (
     !pos ||
@@ -79,7 +113,7 @@ function handlePendingEndpointBackgroundClick(args: {
 
   evt.cancelBubble = true;
   evt.evt.preventDefault();
-  runtime.callbacks.onBackgroundClick?.(toClampedWorld({ x: pos.x, y: pos.y }));
+  runtime.callbacks.onBackgroundClick?.(toWorld({ x: pos.x, y: pos.y }));
   resetBackgroundTapState(runtime);
   return true;
 }
@@ -209,11 +243,14 @@ export function bindSceneInteractions(
     updateMarqueeRect,
   } = ops;
   const { stage, container, placementHitRect } = runtime.view;
-  const toClampedWorld = (pos: Pt): Pt =>
-    clampRuntimePos(runtime, screenToWorld(runtime.state.camera, pos));
+  const toWorld = (pos: Pt): Pt =>
+    maybeSnapWorldPos(runtime, screenToWorld(runtime.state.camera, pos));
 
   const onKeyDown = (evt: KeyboardEvent) => {
+    syncGridSnapOverrideFromKeyboardEvent(runtime, evt);
     if (evt.code === "Space") runtime.state.interaction.spacePressed = true;
+    syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
+    syncPlacementPreview();
     const primaryModifier = evt.ctrlKey || evt.metaKey;
     if (
       primaryModifier &&
@@ -227,6 +264,12 @@ export function bindSceneInteractions(
         zoomByFactor(
           isZoomIn ? KEYBOARD_ZOOM_FACTOR : 1 / KEYBOARD_ZOOM_FACTOR,
         );
+        syncCursorPosFromScreenPos(
+          runtime,
+          stage.getPointerPosition(),
+          toWorld,
+        );
+        syncPlacementPreview();
         evt.preventDefault();
         evt.stopPropagation();
         evt.stopImmediatePropagation();
@@ -245,21 +288,31 @@ export function bindSceneInteractions(
   };
 
   const onKeyUp = (evt: KeyboardEvent) => {
+    syncGridSnapOverrideFromKeyboardEvent(runtime, evt);
     if (evt.code === "Space") runtime.state.interaction.spacePressed = false;
+    syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
+    syncPlacementPreview();
+  };
+
+  const onWindowBlur = () => {
+    runtime.state.interaction.gridSnapOverridePressed = false;
+    runtime.state.interaction.spacePressed = false;
+    syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
+    syncPlacementPreview();
   };
 
   window.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("keyup", onKeyUp);
+  window.addEventListener("blur", onWindowBlur);
 
   placementHitRect.on(`mousedown${EVENT_NS} touchstart${EVENT_NS}`, (evt) => {
     if (!runtime.state.lastState?.placement) return;
+    syncGridSnapOverrideFromPointerEvent(runtime, evt.evt);
     const pos = stage.getPointerPosition();
     if (!pos) return;
     evt.cancelBubble = true;
     if ("preventDefault" in evt.evt) evt.evt.preventDefault();
-    runtime.callbacks.onBackgroundClick?.(
-      toClampedWorld({ x: pos.x, y: pos.y }),
-    );
+    runtime.callbacks.onBackgroundClick?.(toWorld({ x: pos.x, y: pos.y }));
   });
 
   placementHitRect.on(`contextmenu${EVENT_NS}`, (evt) => {
@@ -267,7 +320,8 @@ export function bindSceneInteractions(
     if ("preventDefault" in evt.evt) evt.evt.preventDefault();
   });
 
-  stage.on(`mousemove${EVENT_NS} touchmove${EVENT_NS}`, () => {
+  stage.on(`mousemove${EVENT_NS} touchmove${EVENT_NS}`, (evt) => {
+    syncGridSnapOverrideFromPointerEvent(runtime, evt.evt);
     const pos = stage.getPointerPosition();
     const screenPos = pos ? { x: pos.x, y: pos.y } : null;
 
@@ -280,7 +334,7 @@ export function bindSceneInteractions(
       applyCamera();
     }
 
-    syncCursorPosFromScreenPos(runtime, screenPos, toClampedWorld);
+    syncCursorPosFromScreenPos(runtime, screenPos, toWorld);
     syncPlacementPreview();
 
     if (interaction.isMarqueeSelecting && screenPos) {
@@ -303,6 +357,14 @@ export function bindSceneInteractions(
     if (runtime.state.lastState?.pendingEndpoint) redrawWires();
   });
 
+  stage.on(
+    `dragstart${EVENT_NS} dragmove${EVENT_NS} dragend${EVENT_NS}`,
+    () => {
+      syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
+      syncPlacementPreview();
+    },
+  );
+
   stage.on(`mouseleave${EVENT_NS}`, () => {
     runtime.state.interaction.isPanning = false;
     runtime.state.interaction.panLastScreenPos = null;
@@ -315,12 +377,13 @@ export function bindSceneInteractions(
   });
 
   stage.on(`mousedown${EVENT_NS} touchstart${EVENT_NS}`, (evt) => {
+    syncGridSnapOverrideFromPointerEvent(runtime, evt.evt);
     if (
       handlePendingEndpointBackgroundClick({
         runtime,
         stage,
         evt,
-        toClampedWorld,
+        toWorld,
       })
     ) {
       return;
@@ -357,6 +420,7 @@ export function bindSceneInteractions(
 
   stage.on(`wheel${EVENT_NS}`, (evt) => {
     const wheelEvt = evt.evt;
+    syncGridSnapOverrideFromPointerEvent(runtime, wheelEvt);
     evt.evt.preventDefault();
 
     if (!(wheelEvt.ctrlKey || wheelEvt.metaKey)) {
@@ -372,11 +436,7 @@ export function bindSceneInteractions(
         -wheelEvt.deltaY * deltaScale,
       );
       applyCamera();
-      syncCursorPosFromScreenPos(
-        runtime,
-        stage.getPointerPosition(),
-        toClampedWorld,
-      );
+      syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
       if (runtime.state.lastState?.pendingEndpoint) redrawWires();
       return;
     }
@@ -387,12 +447,13 @@ export function bindSceneInteractions(
       wheelEvt.deltaY > 0 ? 1 / KEYBOARD_ZOOM_FACTOR : KEYBOARD_ZOOM_FACTOR,
       pointer,
     );
-    syncCursorPosFromScreenPos(runtime, pointer, toClampedWorld);
+    syncCursorPosFromScreenPos(runtime, pointer, toWorld);
   });
 
   return () => {
     window.removeEventListener("keydown", onKeyDown, true);
     window.removeEventListener("keyup", onKeyUp);
+    window.removeEventListener("blur", onWindowBlur);
     stage.off(EVENT_NS);
     placementHitRect.off(EVENT_NS);
   };
