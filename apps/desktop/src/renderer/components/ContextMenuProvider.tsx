@@ -1,3 +1,4 @@
+import type { XY } from "@nohal/core/types";
 import {
   type Accessor,
   createContext,
@@ -33,15 +34,13 @@ export interface ContextMenuActionItem {
   renderChildren?: (api: { close: () => void }) => JSX.Element;
 }
 
-type ContextMenuBase = {
-  x: number;
-  y: number;
+interface ContextMenuBase extends XY {
   ariaLabel: string;
   title?: string;
   width?: number;
   maxHeight?: number;
   onClose?: () => void;
-};
+}
 
 export type ContextMenuActionsSpec = ContextMenuBase & {
   kind: "actions";
@@ -64,6 +63,10 @@ interface ContextMenuContextValue {
 }
 
 const ContextMenuContext = createContext<ContextMenuContextValue>();
+const VIEWPORT_MENU_MARGIN = 8;
+const DEFAULT_ACTIONS_MENU_WIDTH = 280;
+const DEFAULT_VIEWPORT_ESTIMATED_MENU_WIDTH = 360;
+const DEFAULT_VIEWPORT_ESTIMATED_MENU_HEIGHT = 460;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(value, Math.max(min, max)));
@@ -147,13 +150,21 @@ function ContextMenuActionNode(props: {
 
 function clampToViewport(spec: ContextMenuSpec): ContextMenuSpec {
   if (typeof window === "undefined") return spec;
-  const margin = 8;
-  const estimatedWidth = spec.width ?? 360;
-  const estimatedHeight = spec.maxHeight ?? 460;
+  const estimatedWidth = spec.width ?? DEFAULT_VIEWPORT_ESTIMATED_MENU_WIDTH;
+  const estimatedHeight =
+    spec.maxHeight ?? DEFAULT_VIEWPORT_ESTIMATED_MENU_HEIGHT;
   return {
     ...spec,
-    x: clamp(spec.x, margin, window.innerWidth - estimatedWidth - margin),
-    y: clamp(spec.y, margin, window.innerHeight - estimatedHeight - margin),
+    x: clamp(
+      spec.x,
+      VIEWPORT_MENU_MARGIN,
+      window.innerWidth - estimatedWidth - VIEWPORT_MENU_MARGIN,
+    ),
+    y: clamp(
+      spec.y,
+      VIEWPORT_MENU_MARGIN,
+      window.innerHeight - estimatedHeight - VIEWPORT_MENU_MARGIN,
+    ),
   };
 }
 
@@ -214,7 +225,7 @@ export function ContextMenuProvider(props: ParentProps) {
                   class="canvas-context-actions-menu"
                   aria-label={current().ariaLabel}
                   style={{
-                    width: `${current().width ?? 280}px`,
+                    width: `${current().width ?? DEFAULT_ACTIONS_MENU_WIDTH}px`,
                     "max-height":
                       current().maxHeight != null
                         ? `${current().maxHeight}px`

@@ -1,24 +1,23 @@
-import { customComponentEdits } from "@nohal/core/src/customComponent";
+import { customComponentEdits } from "@nohal/core/customComponent";
 import {
   addHalThread,
   removeHalThread,
   updateHalThreadFloatMode,
   updateHalThreadName,
   updateHalThreadPeriodNs,
-} from "@nohal/core/src/halThread";
+} from "@nohal/core/halThread";
+import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
 import {
   syncMotmodManagedProjection,
   updateMotmodNumericConfig,
-} from "@nohal/core/src/motmod";
-import type { ProjectReadResult } from "@nohal/core/src/project";
-import { projectEdits } from "@nohal/core/src/project";
+} from "@nohal/core/motmod";
+import { type ProjectReadResult, projectEdits } from "@nohal/core/project";
 import type {
   HalValueType,
-  LinuxCncVersion,
   NoHALProject,
   ProjectWireLayerPosition,
   ProjectWireStyle,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import type { TranslationKey } from "../../../i18n";
 import { toErrorMessage } from "../helpers";
 import type { EditorStoreActionContext } from "./types";
@@ -421,6 +420,36 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         componentName = updated.halComponentName;
       });
       deps.setStatusT("store.status.updatedCustomComponentLoad", {
+        componentName,
+      });
+    },
+
+    updateCustomComponentMaxInstances(
+      componentId: string,
+      maxInstances: number | undefined,
+    ): void {
+      const component = deps.state.project.library.components[componentId];
+
+      if (!component || component.source === "comp") {
+        deps.setStatusT("store.status.selectedComponentNotCustom");
+        return;
+      }
+
+      let componentName = "";
+
+      deps.withProject((project) => {
+        const updated = customComponentEdits.maxInstances.update(
+          project,
+          componentId,
+          maxInstances,
+        );
+
+        if (!updated) return;
+
+        componentName = updated.halComponentName;
+      });
+
+      deps.setStatusT("store.status.updatedCustomComponent", {
         componentName,
       });
     },

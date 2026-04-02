@@ -1,4 +1,4 @@
-import type { MachineConfigImportSetupDraft } from "@nohal/core/src/types";
+import type { MachineConfigImportSetupDraft } from "@nohal/core/types";
 import {
   HiOutlineFolderOpen,
   HiOutlinePlus,
@@ -21,17 +21,15 @@ import {
 } from "../../../components/ui/switch";
 import { useI18n } from "../../../i18n";
 import type { MachineImportController } from "../useMachineImportFlow";
-import MachineImportWarningsCard from "./MachineImportWarningsCard";
+import WarningsCard from "./WarningsCard";
 
-interface MachineImportFilesStepProps {
+interface FilesStepProps {
   machineImport: MachineImportController;
   setup: MachineConfigImportSetupDraft;
   iniKeyCount: number;
 }
 
-export default function MachineImportFilesStep(
-  props: MachineImportFilesStepProps,
-) {
+export default function FilesStep(props: FilesStepProps) {
   const { t } = useI18n();
   const flow = () => props.machineImport.machineImportFlow;
 
@@ -59,7 +57,7 @@ export default function MachineImportFilesStep(
         </CardContent>
       </Card>
 
-      <MachineImportWarningsCard warnings={props.setup.warnings} />
+      <WarningsCard warnings={props.setup.warnings} />
 
       <Card class="border-white/8 bg-transparent shadow-none">
         <CardHeader>

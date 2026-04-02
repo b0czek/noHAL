@@ -1,5 +1,10 @@
-import { getSheet } from "@nohal/core/src/graph";
-import type { LabelScope, XY } from "@nohal/core/src/types";
+import { getSheet } from "@nohal/core/graph";
+import type {
+  HalValueType,
+  LabelScope,
+  PinDirection,
+  XY,
+} from "@nohal/core/types";
 import {
   createContext,
   createEffect,
@@ -18,20 +23,41 @@ export type CanvasFocusTarget = {
 };
 export type CanvasPlacement =
   | { kind: "component"; componentId: string }
-  | { kind: "subsheet" }
+  | { kind: "subsheet"; sheetId?: string }
   | { kind: "comment" }
   | { kind: "label"; scope: LabelScope }
   | {
       kind: "sheet-port";
-      direction: "in" | "out" | "io";
-      type: "bit" | "float" | "s32" | "u32" | "s64" | "u64" | "port";
+      direction: PinDirection;
+      type: HalValueType;
     };
+export type ComponentEditorOverlay = {
+  kind: "component-editor";
+  nodeId: string;
+};
+export type GeneralSettingsOverlay = {
+  kind: "general-settings";
+  initialTab?: GeneralSettingsTab;
+};
+export type ProjectSettingsOverlay = { kind: "project-settings" };
+export type SheetSettingsOverlay = {
+  kind: "sheet-settings";
+  sheetId: string;
+  referenceTarget?: {
+    parentSheetId: string;
+    nodeId: string;
+  };
+};
+export type ComponentSearchOverlay = {
+  kind: "component-search";
+  scope: ComponentSearchScope;
+};
 export type EditorOverlay =
-  | { kind: "component-editor"; nodeId: string }
-  | { kind: "general-settings"; initialTab?: GeneralSettingsTab }
-  | { kind: "project-settings" }
-  | { kind: "sheet-settings"; sheetId: string }
-  | { kind: "component-search"; scope: ComponentSearchScope };
+  | ComponentEditorOverlay
+  | GeneralSettingsOverlay
+  | ProjectSettingsOverlay
+  | SheetSettingsOverlay
+  | ComponentSearchOverlay;
 
 type CanvasFocusRequest = {
   requestId: number;
@@ -75,6 +101,9 @@ function createEditorUiState() {
     if (left.kind === "label" && right.kind === "label") {
       return left.scope === right.scope;
     }
+    if (left.kind === "subsheet" && right.kind === "subsheet") {
+      return left.sheetId === right.sheetId;
+    }
     if (left.kind === "sheet-port" && right.kind === "sheet-port") {
       return left.direction === right.direction && left.type === right.type;
     }
@@ -110,6 +139,24 @@ function createEditorUiState() {
       !state.project.sheets[current.sheetId]
     ) {
       setOverlay(null);
+      return;
+    }
+    if (current?.kind === "sheet-settings" && current.referenceTarget) {
+      const parentSheet =
+        state.project.sheets[current.referenceTarget.parentSheetId];
+      const node = parentSheet?.nodes.find(
+        (
+          entry,
+        ): entry is (typeof parentSheet.nodes)[number] & { kind: "sheet" } =>
+          entry.kind === "sheet" &&
+          entry.id === current.referenceTarget?.nodeId,
+      );
+      if (!parentSheet || !node || node.sheetId !== current.sheetId) {
+        setOverlay({
+          kind: "sheet-settings",
+          sheetId: current.sheetId,
+        });
+      }
     }
   });
 
@@ -140,7 +187,11 @@ function createEditorUiState() {
         actions.addComponentNode(current.componentId, point);
         return true;
       case "subsheet":
-        actions.addSheetDefinition(point);
+        if (current.sheetId) {
+          actions.addSheetReference(current.sheetId, point);
+        } else {
+          actions.addSheetDefinition(point);
+        }
         return true;
       case "comment":
         actions.addComment(point);
@@ -164,8 +215,10 @@ function createEditorUiState() {
     openGeneralSettings: (initialTab?: GeneralSettingsTab) =>
       openOverlay({ kind: "general-settings", initialTab }),
     openProjectSettings: () => openOverlay({ kind: "project-settings" }),
-    openSheetSettings: (sheetId: string) =>
-      openOverlay({ kind: "sheet-settings", sheetId }),
+    openSheetSettings: (
+      sheetId: string,
+      referenceTarget?: { parentSheetId: string; nodeId: string },
+    ) => openOverlay({ kind: "sheet-settings", sheetId, referenceTarget }),
     openComponentSearch: (scope: ComponentSearchScope) =>
       openOverlay({ kind: "component-search", scope }),
     beginPlacementMode,

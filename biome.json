@@ -18,7 +18,36 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "complexity": {
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": {
+            "maxAllowedComplexity": 25
+          }
+        },
+        "noForEach": "error"
+      },
+      "correctness": {
+        "noProcessGlobal": "error"
+      },
+      "style": {
+        "noMagicNumbers": "error",
+        "noNonNullAssertion": "error",
+        "noNestedTernary": "error",
+        "noParameterAssign": "error",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["@nohal/core/src/**"]
+              }
+            ]
+          }
+        }
+      },
       "suspicious": {
+        "noExplicitAny": "error",
         "noUnknownAtRules": "off"
       }
     }

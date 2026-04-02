@@ -1,46 +1,57 @@
-import { endpointKey, getVisibleNodePins } from "@nohal/core/src/graph";
+import { endpointKey, getVisibleNodePins } from "@nohal/core/graph";
 import type {
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
   SheetNodeInstance,
-} from "@nohal/core/src/types";
-import {
-  BOTTOM_H,
-  BOTTOM_PIN_COLUMN_STEP,
-  BOTTOM_PIN_DOT_GAP,
-  BOTTOM_PIN_PILL_W,
-  BOTTOM_PIN_TEXT_PAD,
-  HEADER_H,
-  NODE_WIDTH,
-  PIN_R,
-  SIDE_ROW_H,
-} from "./constants";
+  Size,
+  XY,
+} from "@nohal/core/types";
+import { node as nodeConst } from "./constants/nodes";
+import { pin as pinConst } from "./constants/pins";
+import { surface } from "./constants/surfaces";
 
-export type Pt = { x: number; y: number };
-export type BottomPinLabelMode = "horizontal" | "vertical";
+export type BandPinLabelMode = "horizontal" | "vertical";
 
-export interface NodeLayout {
-  width: number;
-  height: number;
+export interface NodeLayout extends Size {
   topBandHeight: number;
-  topLabelMode: BottomPinLabelMode;
+  topLabelMode: BandPinLabelMode;
   bottomBandHeight: number;
-  bottomLabelMode: BottomPinLabelMode;
-  pinPositionsLocal: Record<string, Pt>;
+  bottomLabelMode: BandPinLabelMode;
+  pinPositionsLocal: Record<string, XY>;
 }
 
 export interface SheetSceneLayout {
   nodeLayouts: Map<string, NodeLayout>;
-  endpointPoints: Map<string, Pt>;
+  endpointPoints: Map<string, XY>;
 }
 
-const MONO_CHAR_WIDTH_AT_12 = 7.2;
-const SIDE_LABEL_CLEARANCE = 50; // side pin bubbles/text start/end ~25px from the node edge
-const SIDE_LABEL_GAP = 16;
+const layoutHeuristics = {
+  monoText: {
+    charWidthAt12: 7.2,
+    baseFontSize: 12,
+  },
+  sideLabels: {
+    // Side pin bubbles and labels sit roughly 25px away from the body on each side.
+    clearance: 50,
+    gap: 16,
+  },
+  bandPinLabels: {
+    fontSize: 11,
+    horizontalPadding: 16,
+    singlePinExtraWidth: 20,
+    stepBasePadding: 6,
+    stepGap: 8,
+  },
+  nodeEdgePinInset: 10,
+} as const;
 
 function estimateMonoTextWidth(text: string, fontSize: number): number {
-  return Math.ceil(text.length * MONO_CHAR_WIDTH_AT_12 * (fontSize / 12));
+  return Math.ceil(
+    text.length *
+      layoutHeuristics.monoText.charWidthAt12 *
+      (fontSize / layoutHeuristics.monoText.baseFontSize),
+  );
 }
 
 function computeSidePinWidth(
@@ -49,59 +60,137 @@ function computeSidePinWidth(
 ): number {
   const leftMax = Math.max(
     0,
-    ...leftNames.map((name) => estimateMonoTextWidth(name, 12)),
+    ...leftNames.map((name) =>
+      estimateMonoTextWidth(name, layoutHeuristics.monoText.baseFontSize),
+    ),
   );
   const rightMax = Math.max(
     0,
-    ...rightNames.map((name) => estimateMonoTextWidth(name, 12)),
+    ...rightNames.map((name) =>
+      estimateMonoTextWidth(name, layoutHeuristics.monoText.baseFontSize),
+    ),
   );
-  return leftMax + rightMax + SIDE_LABEL_CLEARANCE + SIDE_LABEL_GAP;
+  return (
+    leftMax +
+    rightMax +
+    layoutHeuristics.sideLabels.clearance +
+    layoutHeuristics.sideLabels.gap
+  );
 }
 
-function computeBottomPinWidthVertical(bottomNames: string[]): number {
-  if (bottomNames.length === 0) return 0;
-  return Math.ceil(BOTTOM_PIN_COLUMN_STEP * (bottomNames.length + 1));
+function computeBandPinWidthVertical(pinNames: string[]): number {
+  if (pinNames.length === 0) return 0;
+  return Math.ceil(pinConst.columnStep * (pinNames.length + 1));
 }
 
-function computeBottomPinWidthHorizontal(bottomNames: string[]): number {
-  if (bottomNames.length === 0) return 0;
+function computeBandPinWidthHorizontal(pinNames: string[]): number {
+  if (pinNames.length === 0) return 0;
 
-  const pillWidths = bottomNames.map(
-    (name) => estimateMonoTextWidth(name, 11) + 16,
+  const pillWidths = pinNames.map(
+    (name) =>
+      estimateMonoTextWidth(name, layoutHeuristics.bandPinLabels.fontSize) +
+      layoutHeuristics.bandPinLabels.horizontalPadding,
   );
   const count = pillWidths.length;
   const maxPill = Math.max(...pillWidths);
 
   if (count === 1) {
-    return maxPill + 20;
+    return maxPill + layoutHeuristics.bandPinLabels.singlePinExtraWidth;
   }
 
-  let requiredStep = maxPill / 2 + 6;
+  let requiredStep =
+    maxPill / 2 + layoutHeuristics.bandPinLabels.stepBasePadding;
   for (let i = 0; i < pillWidths.length - 1; i += 1) {
     requiredStep = Math.max(
       requiredStep,
-      (pillWidths[i] + pillWidths[i + 1]) / 2 + 8,
+      (pillWidths[i] + pillWidths[i + 1]) / 2 +
+        layoutHeuristics.bandPinLabels.stepGap,
     );
   }
   return Math.ceil(requiredStep * (count + 1));
 }
 
-function computeBottomBandHeightVertical(bottomNames: string[]): number {
-  if (bottomNames.length === 0) return 0;
+function computeBandHeightVertical(pinNames: string[]): number {
+  if (pinNames.length === 0) return 0;
 
   const maxRotatedTextSpan = Math.max(
-    ...bottomNames.map((name) => estimateMonoTextWidth(name, 11)),
+    ...pinNames.map((name) =>
+      estimateMonoTextWidth(name, layoutHeuristics.bandPinLabels.fontSize),
+    ),
   );
   const tallestPill = Math.max(
-    BOTTOM_PIN_PILL_W,
-    maxRotatedTextSpan + BOTTOM_PIN_TEXT_PAD,
+    pinConst.bottom.width,
+    maxRotatedTextSpan + pinConst.bottom.textPadding,
   );
-  return tallestPill + BOTTOM_PIN_DOT_GAP + PIN_R;
+  return tallestPill + pinConst.bottom.dotGap + surface.pin.radius;
 }
 
-function computeBottomBandHeightHorizontal(bottomNames: string[]): number {
-  if (bottomNames.length === 0) return 0;
-  return BOTTOM_H - 4 + BOTTOM_PIN_DOT_GAP + PIN_R;
+function computeBandHeightHorizontal(pinNames: string[]): number {
+  if (pinNames.length === 0) return 0;
+  return (
+    nodeConst.bottom.height -
+    pinConst.band.inset +
+    pinConst.bottom.dotGap +
+    surface.pin.radius
+  );
+}
+
+function pickBandLayout(
+  pinNames: string[],
+  sideWidth: number,
+  sideHeight: number,
+): {
+  mode: BandPinLabelMode;
+  bandHeight: number;
+  widthRequirement: number;
+} {
+  if (pinNames.length === 0) {
+    return {
+      mode: "horizontal",
+      bandHeight: 0,
+      widthRequirement: 0,
+    };
+  }
+
+  const candidates = (["horizontal", "vertical"] as const).map((mode) => {
+    const bandHeight =
+      mode === "horizontal"
+        ? computeBandHeightHorizontal(pinNames)
+        : computeBandHeightVertical(pinNames);
+    const widthRequirement =
+      mode === "horizontal"
+        ? computeBandPinWidthHorizontal(pinNames)
+        : computeBandPinWidthVertical(pinNames);
+    const candidateWidth = Math.max(
+      nodeConst.width,
+      sideWidth,
+      widthRequirement,
+    );
+    const candidateHeight =
+      nodeConst.header.height +
+      bandHeight +
+      sideHeight +
+      nodeConst.sectionGap +
+      nodeConst.body.bottomPadding;
+    return {
+      mode,
+      bandHeight,
+      widthRequirement,
+      area: candidateWidth * candidateHeight,
+    };
+  });
+
+  const best = candidates.reduce((acc, item) => {
+    if (item.area < acc.area) return item;
+    if (item.area === acc.area && item.mode === "horizontal") return item;
+    return acc;
+  });
+
+  return {
+    mode: best.mode,
+    bandHeight: best.bandHeight,
+    widthRequirement: best.widthRequirement,
+  };
 }
 
 export function computeNodeLayout(
@@ -120,104 +209,59 @@ export function computeNodeLayout(
   );
 
   const rows = Math.max(left.length, right.length, 1);
-  const sideHeight = rows * SIDE_ROW_H;
+  const sideHeight = rows * nodeConst.side.rowHeight;
   const topNames = top.map((pin) => pin.name);
   const bottomNames = bottom.map((pin) => pin.name);
 
-  let topLabelMode: BottomPinLabelMode = "horizontal";
-  let topBandHeight = 0;
-  let topWidth = 0;
-  let bottomLabelMode: BottomPinLabelMode = "horizontal";
-  let bottomBandHeight = 0;
-  let bottomWidth = 0;
+  const topBandLayout = pickBandLayout(topNames, sideWidth, sideHeight);
+  const bottomBandLayout = pickBandLayout(bottomNames, sideWidth, sideHeight);
 
-  if (topNames.length > 0) {
-    const candidates = (["horizontal", "vertical"] as const).map((mode) => {
-      const bandHeight =
-        mode === "horizontal"
-          ? computeBottomBandHeightHorizontal(topNames)
-          : computeBottomBandHeightVertical(topNames);
-      const widthRequirement =
-        mode === "horizontal"
-          ? computeBottomPinWidthHorizontal(topNames)
-          : computeBottomPinWidthVertical(topNames);
-      const candidateWidth = Math.max(NODE_WIDTH, sideWidth, widthRequirement);
-      const candidateHeight = HEADER_H + bandHeight + sideHeight + 10 + 12;
-      return {
-        mode,
-        bandHeight,
-        widthRequirement,
-        area: candidateWidth * candidateHeight,
-      };
-    });
+  const topLabelMode = topBandLayout.mode;
+  const topBandHeight = topBandLayout.bandHeight;
+  const topWidth = topBandLayout.widthRequirement;
+  const bottomLabelMode = bottomBandLayout.mode;
+  const bottomBandHeight = bottomBandLayout.bandHeight;
+  const bottomWidth = bottomBandLayout.widthRequirement;
 
-    const best = candidates.reduce((acc, item) => {
-      if (item.area < acc.area) return item;
-      if (item.area === acc.area && item.mode === "horizontal") return item;
-      return acc;
-    });
-
-    topLabelMode = best.mode;
-    topBandHeight = best.bandHeight;
-    topWidth = best.widthRequirement;
-  }
-
-  if (bottomNames.length > 0) {
-    const candidates = (["horizontal", "vertical"] as const).map((mode) => {
-      const bandHeight =
-        mode === "horizontal"
-          ? computeBottomBandHeightHorizontal(bottomNames)
-          : computeBottomBandHeightVertical(bottomNames);
-      const widthRequirement =
-        mode === "horizontal"
-          ? computeBottomPinWidthHorizontal(bottomNames)
-          : computeBottomPinWidthVertical(bottomNames);
-      const candidateWidth = Math.max(NODE_WIDTH, sideWidth, widthRequirement);
-      const candidateHeight = HEADER_H + sideHeight + bandHeight + 10 + 12;
-      return {
-        mode,
-        bandHeight,
-        widthRequirement,
-        area: candidateWidth * candidateHeight,
-      };
-    });
-
-    const best = candidates.reduce((acc, item) => {
-      if (item.area < acc.area) return item;
-      if (item.area === acc.area && item.mode === "horizontal") return item;
-      return acc;
-    });
-
-    bottomLabelMode = best.mode;
-    bottomBandHeight = best.bandHeight;
-    bottomWidth = best.widthRequirement;
-  }
-
-  const width = Math.max(NODE_WIDTH, sideWidth, topWidth, bottomWidth);
-  const topHeight = top.length > 0 ? topBandHeight + 10 : 0;
-  const bottomHeight = bottom.length > 0 ? bottomBandHeight + 10 : 0;
-  const height = HEADER_H + topHeight + sideHeight + bottomHeight + 12;
-  const pinPositionsLocal: Record<string, Pt> = {};
+  const width = Math.max(nodeConst.width, sideWidth, topWidth, bottomWidth);
+  const topHeight = top.length > 0 ? topBandHeight + nodeConst.sectionGap : 0;
+  const bottomHeight =
+    bottom.length > 0 ? bottomBandHeight + nodeConst.sectionGap : 0;
+  const height =
+    nodeConst.header.height +
+    topHeight +
+    sideHeight +
+    bottomHeight +
+    nodeConst.body.bottomPadding;
+  const pinPositionsLocal: Record<string, XY> = {};
 
   top.forEach((pin, idx) => {
     const step = width / (top.length + 1);
     pinPositionsLocal[pin.key] = {
       x: step * (idx + 1),
-      y: HEADER_H + 10,
+      y: nodeConst.header.height + nodeConst.sectionGap,
     };
   });
 
   left.forEach((pin, idx) => {
     pinPositionsLocal[pin.key] = {
-      x: 10,
-      y: HEADER_H + topHeight + idx * SIDE_ROW_H + SIDE_ROW_H / 2,
+      x: layoutHeuristics.nodeEdgePinInset,
+      y:
+        nodeConst.header.height +
+        topHeight +
+        idx * nodeConst.side.rowHeight +
+        nodeConst.side.rowHeight / 2,
     };
   });
 
   right.forEach((pin, idx) => {
     pinPositionsLocal[pin.key] = {
-      x: width - 10,
-      y: HEADER_H + topHeight + idx * SIDE_ROW_H + SIDE_ROW_H / 2,
+      x: width - layoutHeuristics.nodeEdgePinInset,
+      y:
+        nodeConst.header.height +
+        topHeight +
+        idx * nodeConst.side.rowHeight +
+        nodeConst.side.rowHeight / 2,
     };
   });
 
@@ -225,7 +269,7 @@ export function computeNodeLayout(
     const step = width / (bottom.length + 1);
     pinPositionsLocal[pin.key] = {
       x: step * (idx + 1),
-      y: height - 10,
+      y: height - nodeConst.sectionGap,
     };
   });
 
@@ -244,7 +288,7 @@ export function endpointPointOf(
   sheet: SheetDefinition,
   layouts: Map<string, NodeLayout>,
   endpoint: SheetEndpointRef,
-): Pt | null {
+): XY | null {
   if (endpoint.kind === "sheet-port") {
     const port = sheet.ports.find((p) => p.id === endpoint.portId);
     return port ? { x: port.position.x, y: port.position.y } : null;
@@ -264,7 +308,7 @@ export function buildSheetSceneLayout(
   const nodeLayouts = new Map(
     sheet.nodes.map((n) => [n.id, computeNodeLayout(project, sheet, n)]),
   );
-  const endpointPoints = new Map<string, Pt>();
+  const endpointPoints = new Map<string, XY>();
 
   for (const port of sheet.ports) {
     endpointPoints.set(endpointKey({ kind: "sheet-port", portId: port.id }), {
@@ -279,10 +323,7 @@ export function buildSheetSceneLayout(
     for (const [pinKey, pt] of Object.entries(layout.pinPositionsLocal)) {
       endpointPoints.set(
         endpointKey({ kind: "node-pin", nodeId: node.id, pinKey }),
-        {
-          x: node.position.x + pt.x,
-          y: node.position.y + pt.y,
-        },
+        { x: node.position.x + pt.x, y: node.position.y + pt.y },
       );
     }
   }

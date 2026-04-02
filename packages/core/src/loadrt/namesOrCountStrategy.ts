@@ -31,12 +31,12 @@ function parseCountLike(
 ): string[] {
   const countArg = Number.parseInt(args.count ?? "", 10);
   const numChanArg = Number.parseInt(args.num_chan ?? "", 10);
-  const countLike =
-    Number.isFinite(countArg) && countArg > 0
-      ? countArg
-      : Number.isFinite(numChanArg) && numChanArg > 0
-        ? numChanArg
-        : undefined;
+  let countLike: number | undefined;
+  if (Number.isFinite(countArg) && countArg > 0) {
+    countLike = countArg;
+  } else if (Number.isFinite(numChanArg) && numChanArg > 0) {
+    countLike = numChanArg;
+  }
   if (countLike === undefined) return [`${componentName}.0`];
   return Array.from(
     { length: countLike },

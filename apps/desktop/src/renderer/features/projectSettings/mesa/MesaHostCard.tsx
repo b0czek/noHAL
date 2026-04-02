@@ -11,7 +11,7 @@ import {
   type ProjectMesaHostKind,
   type ProjectMesaSmartSerialCardKind,
   type ProjectMesaSmartSerialTarget,
-} from "@nohal/core/src/mesa";
+} from "@nohal/core/mesa";
 import { For, Show } from "solid-js";
 import StringSelect from "../../../components/form/StringSelect";
 import {

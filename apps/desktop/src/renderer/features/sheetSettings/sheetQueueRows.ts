@@ -4,13 +4,18 @@ import {
   makeAddfQueueFunctionEntry,
   makeAddfQueueNodeEntry,
   makeAddfQueueSubsheetOutputEntry,
-} from "@nohal/core/src/addfQueue";
-import { resolveAddfFunctionTarget } from "@nohal/core/src/componentFunctions";
+} from "@nohal/core/addfQueue";
+import { resolveAddfFunctionTarget } from "@nohal/core/componentFunctions";
 import {
   firstSheetThreadOutputId,
   getSheetThreadOutputs,
-} from "@nohal/core/src/sheet";
-import type { NoHALProject, SheetNodeInstance } from "@nohal/core/src/types";
+} from "@nohal/core/sheet";
+import type {
+  ComponentNode,
+  NoHALProject,
+  SheetNode,
+  SheetNodeInstance,
+} from "@nohal/core/types";
 import type { SheetQueueRow } from "./types";
 
 interface SheetQueueLabels {
@@ -54,9 +59,7 @@ export function buildSheetQueueRows(
     rows.push(row);
   };
 
-  const componentFunctionRows = (
-    node: Extract<SheetNodeInstance, { kind: "component" }>,
-  ): SheetQueueRow[] => {
+  const componentFunctionRows = (node: ComponentNode): SheetQueueRow[] => {
     const component = project.library.components[node.componentId];
     const functions = component?.functions ?? [];
     if (functions.length === 0) {
@@ -128,7 +131,7 @@ export function buildSheetQueueRows(
   };
 
   const subsheetOutputRows = (
-    node: Extract<SheetNodeInstance, { kind: "sheet" }>,
+    node: SheetNode,
     parentThreadOutputId: string,
   ): SheetQueueRow[] => {
     const childSheet = project.sheets[node.sheetId];
@@ -185,75 +188,84 @@ export function buildSheetQueueRows(
     });
   };
 
-  for (const entry of sheet.hal?.addfQueue ?? []) {
-    const queueKey = addfQueueEntryKey(entry);
-    const nodeId = addfQueueEntryNodeId(entry);
-    if (!queueKey || !nodeId) continue;
-    const node = byId.get(nodeId);
-    if (!node) continue;
+  const queueEntries = sheet.hal?.addfQueue ?? [];
 
-    if (typeof entry !== "string" && entry.kind === "component-function") {
-      if (node.kind !== "component") continue;
-      const component = project.library.components[node.componentId];
-      const fn = component?.functions?.find(
-        (item) => item.key === entry.functionKey,
-      );
-      if (!fn) continue;
-      const covered = coveredFunctionKeysByNodeId.get(node.id);
-      if (covered) covered.add(fn.key);
-      else coveredFunctionKeysByNodeId.set(node.id, new Set([fn.key]));
-      const addfTarget = resolveAddfFunctionTarget(node.instanceName, fn);
-      const fnLabel = fn.halSuffix || labels.defaultFunction;
-      const floatLabel =
-        fn.floatMode === "unknown" ? labels.unknownFloat : fn.floatMode;
-      appendRow({
-        rowKey: `fn:${node.id}:${fn.key}`,
-        queueKey,
-        queueEntry: entry,
-        nodeId,
-        instanceName: node.instanceName,
-        kind: "function",
-        title: addfTarget,
-        subtitle: `${component?.halComponentName ?? labels.missing} • ${fnLabel} • ${floatLabel}`,
-        sortName: `${node.instanceName}\u0000${fn.halSuffix || "\u0000"}`,
-        sheetThreadOutputId: normalizeThreadOutputId(entry.sheetThreadOutputId),
-      });
-      continue;
-    }
+  const appendFunctionEntryRow = (
+    node: ComponentNode,
+    entry: Exclude<(typeof queueEntries)[number], string>,
+    queueKey: string,
+    nodeId: string,
+  ): boolean => {
+    if (entry.kind !== "component-function") return false;
+    const component = project.library.components[node.componentId];
+    const fn = component?.functions?.find(
+      (item) => item.key === entry.functionKey,
+    );
+    if (!fn) return true;
+    const covered = coveredFunctionKeysByNodeId.get(node.id);
+    if (covered) covered.add(fn.key);
+    else coveredFunctionKeysByNodeId.set(node.id, new Set([fn.key]));
+    const addfTarget = resolveAddfFunctionTarget(node.instanceName, fn);
+    const fnLabel = fn.halSuffix || labels.defaultFunction;
+    const floatLabel =
+      fn.floatMode === "unknown" ? labels.unknownFloat : fn.floatMode;
+    appendRow({
+      rowKey: `fn:${node.id}:${fn.key}`,
+      queueKey,
+      queueEntry: entry,
+      nodeId,
+      instanceName: node.instanceName,
+      kind: "function",
+      title: addfTarget,
+      subtitle: `${component?.halComponentName ?? labels.missing} • ${fnLabel} • ${floatLabel}`,
+      sortName: `${node.instanceName}\u0000${fn.halSuffix || "\u0000"}`,
+      sheetThreadOutputId: normalizeThreadOutputId(entry.sheetThreadOutputId),
+    });
+    return true;
+  };
 
-    if (typeof entry !== "string" && entry.kind === "subsheet-output") {
-      if (node.kind !== "sheet") continue;
-      const childSheet = project.sheets[node.sheetId];
-      const childOutput = childSheet
-        ? getSheetThreadOutputs(childSheet).find(
-            (output) => output.id === entry.childThreadOutputId,
-          )
-        : undefined;
-      if (!childOutput) continue;
-      const resolvedParentThreadOutputId = normalizeThreadOutputId(
-        entry.sheetThreadOutputId,
-      );
-      const queueEntry = {
-        ...entry,
-        sheetThreadOutputId: resolvedParentThreadOutputId,
-      } as const;
-      appendRow({
-        rowKey: `subsheet:${node.id}:${childOutput.id}`,
-        queueKey:
-          addfQueueEntryKey(queueEntry) ??
-          `subsheet:${node.id}:${childOutput.id}`,
-        queueEntry,
-        nodeId,
-        instanceName: node.instanceName,
-        kind: "subsheet",
-        title: `${node.instanceName}.${childOutput.name}`,
-        subtitle: childSheet?.name ?? labels.missingSheet,
-        sortName: `${node.instanceName}\u0000${childOutput.name}`,
-        sheetThreadOutputId: resolvedParentThreadOutputId,
-      });
-      continue;
-    }
+  const appendSubsheetEntryRows = (
+    node: SheetNode,
+    entry: Exclude<(typeof queueEntries)[number], string>,
+    nodeId: string,
+  ): boolean => {
+    if (entry.kind !== "subsheet-output") return false;
+    const childSheet = project.sheets[node.sheetId];
+    const childOutput = childSheet
+      ? getSheetThreadOutputs(childSheet).find(
+          (output) => output.id === entry.childThreadOutputId,
+        )
+      : undefined;
+    if (!childOutput) return true;
+    const resolvedParentThreadOutputId = normalizeThreadOutputId(
+      entry.sheetThreadOutputId,
+    );
+    const queueEntry = {
+      ...entry,
+      sheetThreadOutputId: resolvedParentThreadOutputId,
+    } as const;
+    appendRow({
+      rowKey: `subsheet:${node.id}:${childOutput.id}`,
+      queueKey:
+        addfQueueEntryKey(queueEntry) ??
+        `subsheet:${node.id}:${childOutput.id}`,
+      queueEntry,
+      nodeId,
+      instanceName: node.instanceName,
+      kind: "subsheet",
+      title: `${node.instanceName}.${childOutput.name}`,
+      subtitle: childSheet?.name ?? labels.missingSheet,
+      sortName: `${node.instanceName}\u0000${childOutput.name}`,
+      sheetThreadOutputId: resolvedParentThreadOutputId,
+    });
+    return true;
+  };
 
+  const appendStandardEntryRow = (
+    node: SheetNodeInstance,
+    nodeId: string,
+    entry: (typeof queueEntries)[number],
+  ): void => {
     if (node.kind === "component") {
       const component = project.library.components[node.componentId];
       if ((component?.functions?.length ?? 0) > 0) {
@@ -269,10 +281,10 @@ export function buildSheetQueueRows(
       )) {
         appendRow(row);
       }
-      continue;
+      return;
     }
     const row = nodeRow(node);
-    if (!row) continue;
+    if (!row) return;
     const resolvedThreadOutputId =
       typeof entry === "string"
         ? defaultThreadOutputId
@@ -287,17 +299,43 @@ export function buildSheetQueueRows(
     row.queueKey = addfQueueEntryKey(row.queueEntry) ?? row.queueKey;
     row.sheetThreadOutputId = resolvedThreadOutputId;
     appendRow(row);
-  }
+  };
 
-  for (const node of eligibleNodes) {
+  const appendQueueEntryRows = (entry: (typeof queueEntries)[number]): void => {
+    const queueKey = addfQueueEntryKey(entry);
+    const nodeId = addfQueueEntryNodeId(entry);
+    if (!queueKey || !nodeId) return;
+    const node = byId.get(nodeId);
+    if (!node) return;
+
+    if (typeof entry !== "string" && node.kind === "component") {
+      if (appendFunctionEntryRow(node, entry, queueKey, nodeId)) return;
+    }
+
+    if (typeof entry !== "string" && node.kind === "sheet") {
+      if (appendSubsheetEntryRows(node, entry, nodeId)) return;
+    }
+
+    appendStandardEntryRow(node, nodeId, entry);
+  };
+
+  const appendFallbackRowsForNode = (node: SheetNodeInstance): void => {
     if (node.kind === "sheet") {
       for (const row of subsheetOutputRows(node, defaultThreadOutputId)) {
         appendRow(row);
       }
-      continue;
+      return;
     }
-    if (coveredByNodeEntry.has(node.id)) continue;
+    if (coveredByNodeEntry.has(node.id)) return;
     for (const row of componentFunctionRows(node)) appendRow(row);
+  };
+
+  for (const entry of queueEntries) {
+    appendQueueEntryRows(entry);
+  }
+
+  for (const node of eligibleNodes) {
+    appendFallbackRowsForNode(node);
   }
 
   return rows;

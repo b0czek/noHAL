@@ -1,11 +1,11 @@
-import { createEmptyProject, createSheet } from "@nohal/core/src/project";
+import { createEmptyProject, createSheet } from "@nohal/core/project";
 import { describe, expect, it } from "vitest";
 import { buildCanvasSearchResults } from "./componentSearch";
 
 function createProjectFixture() {
   const project = createEmptyProject("Search Fixture");
   const rootSheet = project.sheets[project.rootSheetId];
-  const childSheet = createSheet("Child Sheet", project.rootSheetId);
+  const childSheet = createSheet("Child Sheet");
   const componentId = "comp:test-and2";
 
   project.library.components[componentId] = {

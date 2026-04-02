@@ -1,4 +1,4 @@
-import type { ComponentInstanceConfigFieldDefinition } from "@nohal/core/src/types";
+import type { ComponentInstanceConfigFieldDefinition } from "@nohal/core/types";
 import { createMemo, Index, Show } from "solid-js";
 import BufferedInput from "../../components/form/BufferedInput";
 import {

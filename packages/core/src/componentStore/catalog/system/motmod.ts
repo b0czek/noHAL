@@ -3,6 +3,7 @@ import type {
   ComponentDefinition,
   ComponentPinDefinition,
   ProjectMotmodConfig,
+  XY,
 } from "../../../types";
 import { axisPinsForVersion, requiredAxisInstances } from "./axis";
 import { jointPinsForVersion } from "./joint";
@@ -13,6 +14,19 @@ import {
   motionPinsForVersion,
 } from "./motion";
 import { spindlePinsForVersion } from "./spindle";
+
+const motmodLayout = {
+  baseXByFamily: {
+    motion: 120,
+    axis: 420,
+    joint: 760,
+    spindle: 1100,
+  },
+  baseY: 120,
+  rowsPerColumn: 9,
+  columnWidth: 260,
+  rowHeight: 82,
+} as const;
 
 export const MOTMOD_SYSTEM_COMPONENT_IDS = {
   motion: "system:motmod:motion",
@@ -119,20 +133,12 @@ export function requiredMotmodInstancesByFamily(
 export function defaultPositionForMotmodFamily(
   family: MotmodManagedFamily,
   index: number,
-): { x: number; y: number } {
-  const baseX =
-    family === "motion"
-      ? 120
-      : family === "axis"
-        ? 420
-        : family === "joint"
-          ? 760
-          : 1100;
-  const baseY = 120;
-  const row = index % 9;
-  const col = Math.floor(index / 9);
+): XY {
+  const baseX = motmodLayout.baseXByFamily[family];
+  const row = index % motmodLayout.rowsPerColumn;
+  const col = Math.floor(index / motmodLayout.rowsPerColumn);
   return {
-    x: baseX + col * 260,
-    y: baseY + row * 82,
+    x: baseX + col * motmodLayout.columnWidth,
+    y: motmodLayout.baseY + row * motmodLayout.rowHeight,
   };
 }

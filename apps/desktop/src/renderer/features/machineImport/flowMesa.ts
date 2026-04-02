@@ -1,5 +1,6 @@
 import {
   addMesaHost,
+  createDefaultMesaConfig,
   type ProjectMesaConfig,
   type ProjectMesaConnectorCardKind,
   type ProjectMesaGpioDirection,
@@ -12,11 +13,8 @@ import {
   setMesaSmartSerialCard,
   updateMesaHostIp,
   updateMesaHostKind,
-} from "@nohal/core/src/mesa";
-import {
-  createDefaultMesaConfig,
-  createEmptyProject,
-} from "@nohal/core/src/project";
+} from "@nohal/core/mesa";
+import { createEmptyProject } from "@nohal/core/project";
 import { unwrap } from "solid-js/store";
 
 function editMesaConfig(

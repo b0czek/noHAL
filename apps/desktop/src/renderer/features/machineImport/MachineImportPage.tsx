@@ -1,5 +1,5 @@
-import { deriveMesaTopology } from "@nohal/core/src/mesa";
-import type { HalImportPlacementHeuristic } from "@nohal/core/src/types";
+import { deriveMesaTopology } from "@nohal/core/mesa";
+import type { HalImportPlacementHeuristic } from "@nohal/core/types";
 import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -11,10 +11,10 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { useI18n } from "../../i18n";
-import MachineImportFilesStep from "./components/MachineImportFilesStep";
-import MachineImportGeneratedComponentDialog from "./components/MachineImportGeneratedComponentDialog";
-import MachineImportLinkStep from "./components/MachineImportLinkStep";
-import MachineImportMesaStep from "./components/MachineImportMesaStep";
+import FilesStep from "./components/FilesStep";
+import GeneratedComponentDialog from "./components/GeneratedComponentDialog";
+import LinkStep from "./components/LinkStep";
+import MesaStep from "./components/MesaStep";
 import type { MachineImportController } from "./useMachineImportFlow";
 
 export interface MachineImportPageProps {
@@ -36,13 +36,17 @@ export default function MachineImportPage(props: MachineImportPageProps) {
     ),
   );
 
-  const pageSubtitle = createMemo(() =>
-    flow().step === "machine-files"
-      ? t("projectCreation.subtitleMachineFiles")
-      : flow().step === "mesa"
-        ? t("projectCreation.subtitleMesa")
-        : t("projectCreation.subtitleLink"),
-  );
+  const pageSubtitle = createMemo(() => {
+    const step = flow().step;
+    switch (step) {
+      case "machine-files":
+        return t("projectCreation.subtitleMachineFiles");
+      case "mesa":
+        return t("projectCreation.subtitleMesa");
+      case "link":
+        return t("projectCreation.subtitleLink");
+    }
+  });
 
   const mesaTopology = createMemo(() =>
     deriveMesaTopology(flow().mesaConfig ?? { hosts: [] }),
@@ -156,7 +160,7 @@ export default function MachineImportPage(props: MachineImportPageProps) {
           {(setup) => (
             <>
               <Show when={flow().step === "machine-files"}>
-                <MachineImportFilesStep
+                <FilesStep
                   machineImport={machineImport()}
                   setup={setup()}
                   iniKeyCount={iniKeyCount()}
@@ -164,7 +168,7 @@ export default function MachineImportPage(props: MachineImportPageProps) {
               </Show>
 
               <Show when={flow().step === "mesa" && flow().mesaConfig}>
-                <MachineImportMesaStep
+                <MesaStep
                   machineImport={machineImport()}
                   mesaFatalIssueCount={mesaFatalIssues().length}
                   canContinue={canContinueFromMesa()}
@@ -173,7 +177,7 @@ export default function MachineImportPage(props: MachineImportPageProps) {
 
               <Show when={flow().step === "link" && flow().importDraft}>
                 {(draft) => (
-                  <MachineImportLinkStep
+                  <LinkStep
                     machineImport={machineImport()}
                     draft={draft()}
                     onEditGeneratedGroup={setEditingGeneratedGroupId}
@@ -182,7 +186,7 @@ export default function MachineImportPage(props: MachineImportPageProps) {
                 )}
               </Show>
 
-              <MachineImportGeneratedComponentDialog
+              <GeneratedComponentDialog
                 machineImport={machineImport()}
                 editor={editingGeneratedEditor()}
                 onClose={() => setEditingGeneratedGroupId(null)}

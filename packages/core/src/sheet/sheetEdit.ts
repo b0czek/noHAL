@@ -1,5 +1,6 @@
 import { addfQueueEntryNodeId, normalizeAddfQueueEntries } from "../addfQueue";
-import { createId, slugify } from "../id";
+import { ensureInstanceName } from "../componentNaming";
+import { createId } from "../id";
 import { createSheet } from "../project";
 import type {
   NoHALProject,
@@ -8,6 +9,7 @@ import type {
   SheetNode,
   SheetThreadOutputDefinition,
 } from "../types";
+import { defaultNodePositionForIndex } from "./layout";
 import { normalizeSheetThreadOutputs } from "./threads";
 
 function nextUniqueName(base: string, used: ReadonlySet<string>): string {
@@ -15,19 +17,6 @@ function nextUniqueName(base: string, used: ReadonlySet<string>): string {
   let index = 2;
   while (used.has(`${base}${index}`)) index += 1;
   return `${base}${index}`;
-}
-
-function defaultNodePosition(sheet: SheetDefinition): { x: number; y: number } {
-  const index = sheet.nodes.length;
-  return {
-    x: 120 + (index % 4) * 280,
-    y: 100 + Math.floor(index / 4) * 180,
-  };
-}
-
-function ensureInstanceName(sheet: SheetDefinition, preferred: string): string {
-  const used = new Set(sheet.nodes.map((node) => node.instanceName));
-  return nextUniqueName(slugify(preferred).replace(/-/g, "_"), used);
 }
 
 function pruneSheetNodeReferences(
@@ -65,39 +54,6 @@ function pruneSheetNodeReferences(
   );
   if (sheet.hal.addfQueue.length === 0) delete sheet.hal.addfQueue;
   if (Object.keys(sheet.hal).length === 0) delete sheet.hal;
-}
-
-function collectSheetSubtreeIds(
-  project: NoHALProject,
-  rootSheetId: string,
-): Set<string> {
-  const deleted = new Set<string>();
-  const queue = [rootSheetId];
-  while (queue.length > 0) {
-    const sheetId = queue.shift();
-    if (!sheetId || deleted.has(sheetId) || !project.sheets[sheetId]) continue;
-    deleted.add(sheetId);
-    for (const sheet of Object.values(project.sheets)) {
-      if (sheet.parentSheetId === sheetId) queue.push(sheet.id);
-    }
-  }
-  return deleted;
-}
-
-function removeSheetNodeReferencesForDeletedSheets(
-  project: NoHALProject,
-  deletedSheetIds: ReadonlySet<string>,
-): void {
-  for (const sheet of Object.values(project.sheets)) {
-    const removedNodeIds = new Set<string>();
-    sheet.nodes = sheet.nodes.filter((node) => {
-      if (node.kind !== "sheet") return true;
-      if (!deletedSheetIds.has(node.sheetId)) return true;
-      removedNodeIds.add(node.id);
-      return false;
-    });
-    pruneSheetNodeReferences(sheet, removedNodeIds);
-  }
 }
 
 function cleanupEmptyHal(sheet: SheetDefinition): void {
@@ -255,30 +211,282 @@ export interface AddSheetDefinitionResult {
   node: SheetNode;
 }
 
-function addSheetDefinition(
-  project: NoHALProject,
-  parentSheetId: string,
-): AddSheetDefinitionResult | null {
-  const parentSheet = project.sheets[parentSheetId];
-  if (!parentSheet) return null;
+export interface AddSheetReferenceResult {
+  sheet: SheetDefinition;
+  node: SheetNode;
+}
 
+export type RenameSheetDefinitionResult =
+  | { ok: true; changed: boolean; sheet: SheetDefinition }
+  | {
+      ok: false;
+      reason: "not-found" | "empty-name" | "duplicate-name";
+    };
+
+function createSheetDefinition(
+  project: NoHALProject,
+  baseName = "Sheet",
+): SheetDefinition {
   const name = nextUniqueName(
-    "Sheet",
+    baseName,
     new Set(Object.values(project.sheets).map((sheet) => sheet.name)),
   );
-  const sheet = createSheet(name, parentSheet.id);
+  const sheet = createSheet(name);
+  project.sheets[sheet.id] = sheet;
+  return sheet;
+}
+
+function renameSheetDefinition(
+  project: NoHALProject,
+  sheetId: string,
+  name: string,
+): RenameSheetDefinitionResult {
+  const target = project.sheets[sheetId];
+  if (!target) return { ok: false, reason: "not-found" };
+
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, reason: "empty-name" };
+  if (target.name === trimmed)
+    return { ok: true, changed: false, sheet: target };
+  if (
+    Object.values(project.sheets).some(
+      (sheet) => sheet.id !== sheetId && sheet.name === trimmed,
+    )
+  ) {
+    return { ok: false, reason: "duplicate-name" };
+  }
+
+  target.name = trimmed;
+  return { ok: true, changed: true, sheet: target };
+}
+
+function addSheetReference(
+  project: NoHALProject,
+  parentSheetId: string,
+  sheetId: string,
+): AddSheetReferenceResult | null {
+  const parentSheet = project.sheets[parentSheetId];
+  const sheet = project.sheets[sheetId];
+  if (!parentSheet) return null;
+  if (!sheet) return null;
+
   const node: SheetNode = {
     id: createId("node"),
     kind: "sheet",
     sheetId: sheet.id,
-    instanceName: ensureInstanceName(parentSheet, name),
-    position: defaultNodePosition(parentSheet),
+    instanceName: ensureInstanceName(parentSheet, sheet.name),
+    position: defaultNodePositionForIndex(parentSheet.nodes.length),
   };
-
-  project.sheets[sheet.id] = sheet;
   parentSheet.nodes.push(node);
 
-  return { name, sheet, node };
+  return { sheet, node };
+}
+
+function addSheetDefinition(
+  project: NoHALProject,
+  parentSheetId: string,
+): AddSheetDefinitionResult | null {
+  const sheet = createSheetDefinition(project);
+  const placed = addSheetReference(project, parentSheetId, sheet.id);
+  if (!placed) {
+    delete project.sheets[sheet.id];
+    return null;
+  }
+  return { name: sheet.name, sheet, node: placed.node };
+}
+
+function removeSheetReference(
+  project: NoHALProject,
+  parentSheetId: string,
+  nodeId: string,
+): boolean {
+  const parentSheet = project.sheets[parentSheetId];
+  if (!parentSheet) return false;
+  const removedNodeIds = new Set<string>();
+  const nextNodes = parentSheet.nodes.filter((node) => {
+    if (node.id !== nodeId) return true;
+    removedNodeIds.add(node.id);
+    return false;
+  });
+  if (removedNodeIds.size === 0) return false;
+  parentSheet.nodes = nextNodes;
+  pruneSheetNodeReferences(parentSheet, removedNodeIds);
+  return true;
+}
+
+function removeSheetNodeReferencesForDeletedDefinition(
+  project: NoHALProject,
+  deletedSheetId: string,
+): void {
+  for (const sheet of Object.values(project.sheets)) {
+    const removedNodeIds = new Set<string>();
+    sheet.nodes = sheet.nodes.filter((node) => {
+      if (node.kind !== "sheet" || node.sheetId !== deletedSheetId) return true;
+      removedNodeIds.add(node.id);
+      return false;
+    });
+    pruneSheetNodeReferences(sheet, removedNodeIds);
+  }
+}
+
+function cloneSheetDefinitionSnapshot(
+  source: SheetDefinition,
+  name: string,
+): SheetDefinition {
+  const nodeIdMap = new Map<string, string>();
+  const portIdMap = new Map<string, string>();
+  const labelIdMap = new Map<string, string>();
+  const sourceThreadOutputs = normalizeSheetThreadOutputs(
+    source.hal?.threadOutputs,
+  );
+  const threadOutputIdMap = new Map(
+    sourceThreadOutputs.map((output) => [output.id, createId("sheetthread")]),
+  );
+
+  const snapshot: SheetDefinition = {
+    id: createId("sheet"),
+    name,
+    nodes: source.nodes.map((node) => {
+      const nextId = createId("node");
+      nodeIdMap.set(node.id, nextId);
+      if (node.kind === "component") {
+        return {
+          ...structuredClone(node),
+          id: nextId,
+        };
+      }
+      const clonedNode = structuredClone(node);
+      const threadMap = node.hal?.threadMap
+        ? Object.fromEntries(
+            Object.entries(node.hal.threadMap).map(
+              ([childOutputId, parentOutputId]) => [
+                childOutputId,
+                threadOutputIdMap.get(parentOutputId) ?? parentOutputId,
+              ],
+            ),
+          )
+        : undefined;
+      return {
+        ...structuredClone(node),
+        id: nextId,
+        hal: threadMap
+          ? { ...(clonedNode.hal ?? {}), threadMap }
+          : clonedNode.hal,
+      };
+    }),
+    ports: source.ports.map((port) => {
+      const nextId = createId("port");
+      portIdMap.set(port.id, nextId);
+      return {
+        ...structuredClone(port),
+        id: nextId,
+      };
+    }),
+    labels: source.labels.map((label) => {
+      const nextId = createId("label");
+      labelIdMap.set(label.id, nextId);
+      return {
+        ...structuredClone(label),
+        id: nextId,
+      };
+    }),
+    comments: source.comments.map((comment) => ({
+      ...structuredClone(comment),
+      id: createId("comment"),
+    })),
+    directConnections: [],
+    labelAnchors: [],
+  };
+
+  const remapEndpoint = (
+    endpoint: SheetDefinition["directConnections"][number]["a"],
+  ) => {
+    if (endpoint.kind === "node-pin") {
+      return {
+        kind: "node-pin" as const,
+        nodeId: nodeIdMap.get(endpoint.nodeId) ?? endpoint.nodeId,
+        pinKey: endpoint.pinKey,
+      };
+    }
+    return {
+      kind: "sheet-port" as const,
+      portId: portIdMap.get(endpoint.portId) ?? endpoint.portId,
+    };
+  };
+
+  snapshot.directConnections = source.directConnections.map((connection) => ({
+    ...structuredClone(connection),
+    id: createId("conn"),
+    a: remapEndpoint(connection.a),
+    b: remapEndpoint(connection.b),
+  }));
+
+  snapshot.labelAnchors = source.labelAnchors.map((anchor) => ({
+    ...structuredClone(anchor),
+    id: createId("anchor"),
+    labelId: labelIdMap.get(anchor.labelId) ?? anchor.labelId,
+    endpoint: remapEndpoint(anchor.endpoint),
+  }));
+
+  if (source.hal) {
+    snapshot.hal = {};
+    snapshot.hal.threadOutputs = sourceThreadOutputs.map((output) => ({
+      ...structuredClone(output),
+      id: threadOutputIdMap.get(output.id) ?? output.id,
+    }));
+    if (source.hal.addfQueue) {
+      snapshot.hal.addfQueue = normalizeAddfQueueEntries(
+        source.hal.addfQueue.map((entry) => {
+          if (typeof entry === "string") {
+            return nodeIdMap.get(entry) ?? entry;
+          }
+          return {
+            ...structuredClone(entry),
+            nodeId: nodeIdMap.get(entry.nodeId) ?? entry.nodeId,
+            sheetThreadOutputId: entry.sheetThreadOutputId
+              ? (threadOutputIdMap.get(entry.sheetThreadOutputId) ??
+                entry.sheetThreadOutputId)
+              : undefined,
+          };
+        }),
+      );
+    }
+    cleanupEmptyHal(snapshot);
+  }
+
+  return snapshot;
+}
+
+export interface DetachSheetReferenceResult {
+  originalSheetId: string;
+  detachedSheet: SheetDefinition;
+  node: SheetNode;
+}
+
+function detachSheetReference(
+  project: NoHALProject,
+  parentSheetId: string,
+  nodeId: string,
+): DetachSheetReferenceResult | null {
+  const parentSheet = project.sheets[parentSheetId];
+  if (!parentSheet) return null;
+  const node = parentSheet.nodes.find(
+    (entry): entry is SheetNode =>
+      entry.kind === "sheet" && entry.id === nodeId,
+  );
+  if (!node) return null;
+  const source = project.sheets[node.sheetId];
+  if (!source) return null;
+
+  const detachedName = nextUniqueName(
+    `${source.name} Copy`,
+    new Set(Object.values(project.sheets).map((sheet) => sheet.name)),
+  );
+  const detachedSheet = cloneSheetDefinitionSnapshot(source, detachedName);
+  project.sheets[detachedSheet.id] = detachedSheet;
+  const originalSheetId = node.sheetId;
+  node.sheetId = detachedSheet.id;
+  return { originalSheetId, detachedSheet, node };
 }
 
 export type DeleteSheetDefinitionResult =
@@ -301,25 +509,28 @@ function deleteSheetDefinition(
     return { ok: false, reason: "root-sheet" };
   }
 
-  const deletedSheetIds = collectSheetSubtreeIds(project, sheetId);
-  if (deletedSheetIds.size === 0) return { ok: false, reason: "not-found" };
-
-  removeSheetNodeReferencesForDeletedSheets(project, deletedSheetIds);
-  for (const deletedSheetId of deletedSheetIds) {
-    delete project.sheets[deletedSheetId];
+  const referenceParentSheetIds = new Set<string>();
+  for (const sheet of Object.values(project.sheets)) {
+    for (const node of sheet.nodes) {
+      if (node.kind !== "sheet" || node.sheetId !== sheetId) continue;
+      referenceParentSheetIds.add(sheet.id);
+    }
   }
+
+  removeSheetNodeReferencesForDeletedDefinition(project, sheetId);
+  delete project.sheets[sheetId];
 
   let nextActiveSheetId = activeSheetId;
   if (!project.sheets[nextActiveSheetId]) {
     nextActiveSheetId =
-      target.parentSheetId && project.sheets[target.parentSheetId]
-        ? target.parentSheetId
-        : project.rootSheetId;
+      [...referenceParentSheetIds].find(
+        (candidateId) => project.sheets[candidateId],
+      ) ?? project.rootSheetId;
   }
 
   return {
     ok: true,
-    deletedSheetIds: [...deletedSheetIds],
+    deletedSheetIds: [sheetId],
     deletedSheetName: target.name,
     nextActiveSheetId,
   };
@@ -340,7 +551,14 @@ export const sheetModelEdits = {
     set: setSheetAddfQueue,
   },
   definition: {
+    create: createSheetDefinition,
     add: addSheetDefinition,
+    rename: renameSheetDefinition,
     remove: deleteSheetDefinition,
+  },
+  reference: {
+    add: addSheetReference,
+    remove: removeSheetReference,
+    detach: detachSheetReference,
   },
 } as const;

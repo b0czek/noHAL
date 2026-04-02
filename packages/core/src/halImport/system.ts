@@ -1,3 +1,4 @@
+import { filter, map, pipe, sortBy } from "remeda";
 import { resolveComponentPinsForInstance } from "../componentInstance";
 import { createHaluiSystemComponentDefinition } from "../componentStore/catalog/system/halui";
 import {
@@ -10,10 +11,10 @@ import {
   type MotmodManagedFamily,
   managedInstanceConfigValuesForFamily,
 } from "../componentStore/catalog/system/motmod";
+import type { LinuxCncVersion } from "../linuxcncVersion";
 import type {
   ComponentDefinition,
   HalImportComponentGroup,
-  LinuxCncVersion,
   ProjectMotmodConfig,
 } from "../types";
 
@@ -154,26 +155,32 @@ export function analyzeSystemHalImportOverride(
       systemDefinition.instanceConfigValues,
     ).map(pinIdentity),
   );
-  const extraPins = component.pins
-    .filter((pin) => !expectedPins.has(pinIdentity(pin)))
-    .map((pin) => pin.name)
-    .sort((a, b) => a.localeCompare(b));
+  const extraPins = pipe(
+    component.pins,
+    filter((pin) => !expectedPins.has(pinIdentity(pin))),
+    map((pin) => pin.name),
+    sortBy((name) => name),
+  );
 
   const expectedParams = new Set(
     systemDefinition.component.params.map(paramIdentity),
   );
-  const extraParams = component.params
-    .filter((param) => !expectedParams.has(paramIdentity(param)))
-    .map((param) => param.name)
-    .sort((a, b) => a.localeCompare(b));
+  const extraParams = pipe(
+    component.params,
+    filter((param) => !expectedParams.has(paramIdentity(param))),
+    map((param) => param.name),
+    sortBy((name) => name),
+  );
 
   const expectedFunctions = new Set(
     (systemDefinition.component.functions ?? []).map(functionIdentity),
   );
-  const extraFunctions = (component.functions ?? [])
-    .filter((fn) => !expectedFunctions.has(functionIdentity(fn)))
-    .map((fn) => fn.halSuffix || fn.declaredName || fn.key)
-    .sort((a, b) => a.localeCompare(b));
+  const extraFunctions = pipe(
+    component.functions ?? [],
+    filter((fn) => !expectedFunctions.has(functionIdentity(fn))),
+    map((fn) => fn.halSuffix || fn.declaredName || fn.key),
+    sortBy((name) => name),
+  );
 
   if (
     extraPins.length === 0 &&

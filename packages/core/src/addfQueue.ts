@@ -1,5 +1,46 @@
 import type { SheetAddfQueueStoredEntry } from "./types";
 
+function trimThreadOutputId(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+function normalizeAddfQueueEntry(
+  entry: SheetAddfQueueStoredEntry,
+): SheetAddfQueueStoredEntry | null {
+  if (typeof entry === "string") {
+    const nodeId = entry.trim();
+    return nodeId ? { kind: "node", nodeId } : null;
+  }
+
+  const sheetThreadOutputId = trimThreadOutputId(entry.sheetThreadOutputId);
+  if (entry.kind === "node") {
+    return {
+      kind: "node",
+      nodeId: entry.nodeId.trim(),
+      ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
+    };
+  }
+
+  if (entry.kind === "component-function") {
+    return {
+      kind: "component-function",
+      nodeId: entry.nodeId.trim(),
+      functionKey: entry.functionKey.trim(),
+      ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
+    };
+  }
+
+  const childThreadOutputId = entry.childThreadOutputId?.trim();
+  if (!childThreadOutputId) return null;
+  return {
+    kind: "subsheet-output",
+    nodeId: entry.nodeId.trim(),
+    childThreadOutputId,
+    ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
+  };
+}
+
 export function addfQueueEntryNodeId(
   entry: SheetAddfQueueStoredEntry,
 ): string | null {
@@ -16,12 +57,13 @@ export function addfQueueEntryNodeId(
 export function addfQueueEntryKey(
   entry: SheetAddfQueueStoredEntry,
 ): string | null {
-  const threadSuffix =
-    typeof entry === "string"
-      ? ""
-      : entry.sheetThreadOutputId?.trim()
-        ? `@${entry.sheetThreadOutputId.trim()}`
-        : "";
+  let threadSuffix = "";
+  if (typeof entry !== "string") {
+    const threadOutputId = entry.sheetThreadOutputId?.trim();
+    if (threadOutputId) {
+      threadSuffix = `@${threadOutputId}`;
+    }
+  }
   const nodeId = addfQueueEntryNodeId(entry);
   if (!nodeId) return null;
   if (typeof entry === "string" || entry.kind === "node") {
@@ -86,46 +128,8 @@ export function normalizeAddfQueueEntries(
     const key = addfQueueEntryKey(entry);
     if (!key || seen.has(key)) continue;
     seen.add(key);
-
-    if (typeof entry === "string") {
-      const nodeId = entry.trim();
-      if (!nodeId) continue;
-      out.push({ kind: "node", nodeId });
-      continue;
-    }
-
-    if (entry.kind === "node") {
-      const sheetThreadOutputId = entry.sheetThreadOutputId?.trim();
-      out.push({
-        kind: "node",
-        nodeId: entry.nodeId.trim(),
-        ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
-      });
-      continue;
-    }
-
-    if (entry.kind === "component-function") {
-      const sheetThreadOutputId = entry.sheetThreadOutputId?.trim();
-      out.push({
-        kind: "component-function",
-        nodeId: entry.nodeId.trim(),
-        functionKey: entry.functionKey.trim(),
-        ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
-      });
-      continue;
-    }
-
-    if (entry.kind === "subsheet-output") {
-      const sheetThreadOutputId = entry.sheetThreadOutputId?.trim();
-      const childThreadOutputId = entry.childThreadOutputId?.trim();
-      if (!childThreadOutputId) continue;
-      out.push({
-        kind: "subsheet-output",
-        nodeId: entry.nodeId.trim(),
-        childThreadOutputId,
-        ...(sheetThreadOutputId ? { sheetThreadOutputId } : {}),
-      });
-    }
+    const normalized = normalizeAddfQueueEntry(entry);
+    if (normalized) out.push(normalized);
   }
   return out;
 }

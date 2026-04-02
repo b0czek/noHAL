@@ -1,22 +1,34 @@
-import { isSystemComponent } from "@nohal/core/src/componentSystem";
+import { isSystemComponent } from "@nohal/core/componentSystem";
 import {
   isComponentPlaceable,
   isComponentSearchable,
-} from "@nohal/core/src/componentVisibility";
-import { getSheet } from "@nohal/core/src/graph";
+} from "@nohal/core/componentVisibility";
+import { getSheet } from "@nohal/core/graph";
+import { isProtectedSystemSheet } from "@nohal/core/sheet";
+import type {
+  ComponentNode,
+  SheetDefinition,
+  SheetNode,
+  XY,
+} from "@nohal/core/types";
 import { HiOutlineDocumentDuplicate } from "solid-icons/hi";
 import { RiDocumentClipboardLine } from "solid-icons/ri";
 import { createMemo } from "solid-js";
 import type {
+  SceneContextMenuNodeTarget,
   SceneContextMenuRequest,
   SceneContextMenuTarget,
   SheetScene,
 } from "../canvas";
+import { snapPointToGrid } from "../canvas/grid";
 import { useI18n } from "../i18n";
+import { useAppSettings } from "../state/AppSettingsProvider";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 import type { Selection } from "../state/store";
+import { sheetContainsSheet } from "../state/store/helpers";
 import CanvasComponentMenu from "./CanvasComponentMenu";
+import CanvasSheetMenu from "./CanvasSheetMenu";
 import type { ContextMenuActionItem } from "./ContextMenuProvider";
 import { useContextMenu } from "./ContextMenuProvider";
 
@@ -25,12 +37,23 @@ interface UseCanvasContextMenuArgs {
   getScene: () => SheetScene | null;
 }
 
+type SelectionActionItems = {
+  copyItem: ContextMenuActionItem;
+  moveItem: ContextMenuActionItem;
+  deleteItem: ContextMenuActionItem;
+};
+
+const CONTEXT_MENU_VIEWPORT_PADDING = 8;
+
 export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
+  const { settings } = useAppSettings();
   const editorUi = useEditorUi();
   const contextMenu = useContextMenu();
   const currentSheet = () => getSheet(state.project, state.activeSheetId);
+  const gridResolution = () =>
+    settings.canvasGridResolution > 0 ? settings.canvasGridResolution : null;
 
   const componentChoices = createMemo(() =>
     Object.values(state.project.library.components)
@@ -40,73 +63,105 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       )
       .sort((a, b) => a.halComponentName.localeCompare(b.halComponentName)),
   );
-  const backgroundMenuItems = (point: {
-    x: number;
-    y: number;
-  }): ContextMenuActionItem[] => [
-    {
-      label: t("canvasContext.paste"),
-      icon: <RiDocumentClipboardLine size={16} aria-hidden="true" />,
-      onSelect: () => {
-        actions.pasteClipboard(point);
-      },
-    },
-    {
-      label: t("topbar.addComponent"),
-      onSelect: () => undefined,
-      childrenClass: "w-[22rem] overflow-hidden p-3",
-      renderChildren: ({ close }) => (
-        <CanvasComponentMenu
-          components={componentChoices()}
-          onAddComponent={(componentId) =>
-            actions.addComponentNode(componentId, point)
-          }
-          onClose={close}
-          listClass="max-h-[16rem] overflow-y-auto"
-        />
+  const placeableSheetChoices = createMemo(() =>
+    Object.values(state.project.sheets)
+      .filter((sheet) => !isProtectedSystemSheet(state.project, sheet.id))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  );
+  const disabledSheetIds = createMemo(
+    () =>
+      new Set(
+        placeableSheetChoices()
+          .filter((sheet) =>
+            sheetContainsSheet(state.project, sheet.id, state.activeSheetId),
+          )
+          .map((sheet) => sheet.id),
       ),
-    },
-    {
-      label: t("topbar.addSubsheet"),
-      onSelect: () => actions.addSheetDefinition(point),
-    },
-    {
-      label: t("topbar.addPort"),
-      onSelect: () => undefined,
-      children: [
-        {
-          label: t("topbar.inPortBit"),
-          onSelect: () => actions.addSheetPort("in", "bit", point),
+  );
+  const backgroundMenuItems = (point: XY): ContextMenuActionItem[] => {
+    const resolution = gridResolution();
+    const placementPoint = resolution
+      ? snapPointToGrid(point, resolution)
+      : point;
+
+    return [
+      {
+        label: t("canvasContext.paste"),
+        icon: <RiDocumentClipboardLine size={16} aria-hidden="true" />,
+        onSelect: () => {
+          actions.pasteClipboard(point);
         },
-        {
-          label: t("topbar.outPortBit"),
-          onSelect: () => actions.addSheetPort("out", "bit", point),
-        },
-        {
-          label: t("topbar.ioPortFloat"),
-          onSelect: () => actions.addSheetPort("io", "float", point),
-        },
-      ],
-    },
-    {
-      label: t("topbar.addText"),
-      onSelect: () => actions.addComment(point),
-    },
-    {
-      label: t("topbar.addLabel"),
-      onSelect: () => undefined,
-      children: [
-        {
-          label: t("topbar.localLabel"),
-          onSelect: () => actions.addLabel("local", point),
-        },
-        {
-          label: t("topbar.globalLabel"),
-          onSelect: () => actions.addLabel("global", point),
-        },
-      ],
-    },
-  ];
+      },
+      {
+        label: t("topbar.addComponent"),
+        onSelect: () => undefined,
+        childrenClass: "w-[22rem] overflow-hidden p-3",
+        renderChildren: ({ close }) => (
+          <CanvasComponentMenu
+            components={componentChoices()}
+            onAddComponent={(componentId) =>
+              actions.addComponentNode(componentId, placementPoint)
+            }
+            onClose={close}
+            listClass="max-h-[16rem] overflow-y-auto"
+          />
+        ),
+      },
+      {
+        label: t("topbar.addSubsheet"),
+        onSelect: () => undefined,
+        childrenClass: "w-[22rem] overflow-hidden p-3",
+        renderChildren: ({ close }) => (
+          <CanvasSheetMenu
+            sheets={placeableSheetChoices()}
+            disabledSheetIds={disabledSheetIds()}
+            onSelectSheet={(sheetId) =>
+              actions.addSheetReference(sheetId, point)
+            }
+            onCreateSheet={() => actions.addSheetDefinition(placementPoint)}
+            onClose={close}
+            listClass="max-h-[16rem] overflow-y-auto"
+          />
+        ),
+      },
+      {
+        label: t("topbar.addPort"),
+        onSelect: () => undefined,
+        children: [
+          {
+            label: t("topbar.inPortBit"),
+            onSelect: () => actions.addSheetPort("in", "bit", placementPoint),
+          },
+          {
+            label: t("topbar.outPortBit"),
+            onSelect: () => actions.addSheetPort("out", "bit", placementPoint),
+          },
+          {
+            label: t("topbar.ioPortFloat"),
+            onSelect: () => actions.addSheetPort("io", "float", placementPoint),
+          },
+        ],
+      },
+      {
+        label: t("topbar.addText"),
+        onSelect: () => actions.addComment(placementPoint),
+      },
+      {
+        label: t("topbar.addLabel"),
+        onSelect: () => undefined,
+        children: [
+          {
+            label: t("topbar.localLabel"),
+            onSelect: () => actions.addLabel("local", placementPoint),
+          },
+          {
+            label: t("topbar.globalLabel"),
+            onSelect: () => actions.addLabel("global", placementPoint),
+          },
+        ],
+      },
+    ];
+  };
 
   const menuPosition = (
     clientX: number,
@@ -115,10 +170,10 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     menuH: number,
   ) => {
     const rect = args.getHostEl().getBoundingClientRect();
-    const minX = rect.left + 8;
-    const minY = rect.top + 8;
-    const maxX = rect.right - menuW - 8;
-    const maxY = rect.bottom - menuH - 8;
+    const minX = rect.left + CONTEXT_MENU_VIEWPORT_PADDING;
+    const minY = rect.top + CONTEXT_MENU_VIEWPORT_PADDING;
+    const maxX = rect.right - menuW - CONTEXT_MENU_VIEWPORT_PADDING;
+    const maxY = rect.bottom - menuH - CONTEXT_MENU_VIEWPORT_PADDING;
     return {
       x: Math.max(minX, Math.min(clientX, Math.max(minX, maxX))),
       y: Math.max(minY, Math.min(clientY, Math.max(minY, maxY))),
@@ -132,6 +187,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     if (!selection || selection.kind !== "multi") return false;
     if (target.kind === "node") return selection.nodeIds.includes(target.id);
     if (target.kind === "label") return selection.labelIds.includes(target.id);
+    if (target.kind === "label-anchor") return false;
     if (target.kind === "comment") return false;
     if (target.kind === "sheet-port")
       return selection.portIds.includes(target.id);
@@ -153,6 +209,9 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     }
     if (target.kind === "node") return { kind: "node", id: target.id };
     if (target.kind === "label") return { kind: "label", id: target.id };
+    if (target.kind === "label-anchor") {
+      return { kind: "label-anchor", id: target.anchorId };
+    }
     if (target.kind === "comment") return { kind: "comment", id: target.id };
     if (target.kind === "sheet-port")
       return { kind: "sheet-port", id: target.id };
@@ -166,17 +225,17 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     selection: Selection,
   ): ContextMenuActionItem[] => {
     const sheet = currentSheet();
-    const selectedNodeIds =
-      selection?.kind === "node"
-        ? new Set([selection.id])
-        : selection?.kind === "multi"
-          ? new Set(selection.nodeIds)
-          : new Set<string>();
+    let selectedNodeIds: Set<string>;
+    if (selection?.kind === "node") {
+      selectedNodeIds = new Set([selection.id]);
+    } else if (selection?.kind === "multi") {
+      selectedNodeIds = new Set(selection.nodeIds);
+    } else {
+      selectedNodeIds = new Set<string>();
+    }
     const existingSheetItems = sheet.nodes
       .filter(
-        (
-          node,
-        ): node is Extract<(typeof sheet.nodes)[number], { kind: "sheet" }> =>
+        (node): node is SheetNode =>
           node.kind === "sheet" && !selectedNodeIds.has(node.id),
       )
       .map((node): ContextMenuActionItem => {
@@ -244,6 +303,108 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     actions.splitDirectConnectionIntoLabels(connectionId, positions);
   };
 
+  const deleteSelectionItem = (
+    actionSelection: Selection,
+  ): ContextMenuActionItem => ({
+    label: t("inspector.deleteSelection"),
+    onSelect: () => {
+      actions.select(actionSelection);
+      actions.removeSelection();
+    },
+  });
+
+  const copySelectionItem = (
+    actionSelection: Selection,
+  ): ContextMenuActionItem => ({
+    label: t("canvasContext.copy"),
+    icon: <HiOutlineDocumentDuplicate size={16} aria-hidden="true" />,
+    onSelect: () => {
+      actions.select(actionSelection);
+      actions.copySelection();
+    },
+  });
+
+  const moveSelectionItem = (
+    actionSelection: Selection,
+  ): ContextMenuActionItem => ({
+    label: t("canvasContext.move"),
+    onSelect: () => undefined,
+    closeOnSelect: false,
+    children: moveMenuItemsForSelection(actionSelection),
+  });
+
+  const buildComponentNodeActionMenu = (
+    node: ComponentNode,
+    selectionItems: SelectionActionItems,
+  ) => {
+    const isSystemManagedProtected = Boolean(
+      isSystemComponent(state.project.library.components[node.componentId]),
+    );
+    const entry = state.componentStore.components[node.componentId];
+    const canRefreshStoredComponent =
+      entry?.sourceRef.kind !== "linuxcnc-builtin";
+
+    return {
+      title: t("canvasContext.component"),
+      items: [
+        isSystemManagedProtected ? null : selectionItems.copyItem,
+        isSystemManagedProtected ? null : selectionItems.moveItem,
+        isSystemManagedProtected ? null : selectionItems.deleteItem,
+        {
+          label: t("inspector.openComponentSettings"),
+          onSelect: () => editorUi.openComponentEditorForNode(node.id),
+        },
+        canRefreshStoredComponent
+          ? {
+              label: t("inspector.refreshComponentDefinition"),
+              onSelect: () =>
+                void actions.refreshComponentInStore(node.componentId),
+            }
+          : null,
+      ].filter((item): item is ContextMenuActionItem => item !== null),
+    };
+  };
+
+  const buildSheetNodeActionMenu = (
+    node: SheetNode,
+    selectionItems: SelectionActionItems,
+  ) => {
+    return {
+      title: t("canvasContext.subsheet"),
+      items: [
+        selectionItems.copyItem,
+        {
+          label: t("inspector.enterSubsheet"),
+          onSelect: () => actions.setActiveSheet(node.sheetId),
+        },
+        {
+          label: t("sidebar.sheetSettings"),
+          onSelect: () =>
+            editorUi.openSheetSettings(node.sheetId, {
+              parentSheetId: state.activeSheetId,
+              nodeId: node.id,
+            }),
+        },
+        selectionItems.deleteItem,
+      ],
+    };
+  };
+
+  const buildNodeActionMenu = (
+    target: SceneContextMenuNodeTarget,
+    sheet: SheetDefinition,
+    selectionItems: SelectionActionItems,
+  ) => {
+    const node = sheet.nodes.find((n) => n.id === target.id);
+    if (!node) return null;
+
+    if (node.kind === "component") {
+      return buildComponentNodeActionMenu(node, selectionItems);
+    }
+
+    return buildSheetNodeActionMenu(node, selectionItems);
+  };
+
   const buildActionMenu = (
     target: SceneContextMenuTarget | { kind: "group" },
   ): {
@@ -252,118 +413,44 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   } | null => {
     const sheet = currentSheet();
     const actionSelection = actionSelectionForTarget(target);
-    const copyItem: ContextMenuActionItem = {
-      label: t("canvasContext.copy"),
-      icon: <HiOutlineDocumentDuplicate size={16} aria-hidden="true" />,
-      onSelect: () => {
-        actions.select(actionSelection);
-        actions.copySelection();
-      },
-    };
-    const moveItem: ContextMenuActionItem = {
-      label: t("canvasContext.move"),
-      onSelect: () => undefined,
-      closeOnSelect: false,
-      children: moveMenuItemsForSelection(actionSelection),
+    const selectionItems: SelectionActionItems = {
+      copyItem: copySelectionItem(actionSelection),
+      moveItem: moveSelectionItem(actionSelection),
+      deleteItem: deleteSelectionItem(actionSelection),
     };
     if (target.kind === "group") {
       return {
         title: t("canvasContext.selection"),
         items: [
-          copyItem,
-          moveItem,
-          {
-            label: t("inspector.deleteSelection"),
-            onSelect: () => {
-              actions.select(actionSelection);
-              actions.removeSelection();
-            },
-          },
+          selectionItems.copyItem,
+          selectionItems.moveItem,
+          selectionItems.deleteItem,
         ],
       };
     }
 
     if (target.kind === "node") {
-      const node = sheet.nodes.find((n) => n.id === target.id);
-      if (!node) return null;
-      if (target.nodeKind === "component" && node.kind === "component") {
-        const isSystemManagedProtected = Boolean(
-          isSystemComponent(state.project.library.components[node.componentId]),
-        );
-        const canRefreshStoredComponent = (() => {
-          const entry = state.componentStore.components[node.componentId];
-          if (!entry) return false;
-          return entry.sourceRef.kind !== "linuxcnc-builtin";
-        })();
-        const componentItems = [
-          ...(!isSystemManagedProtected ? [copyItem] : []),
-          moveItem,
-          {
-            label: t("inspector.openComponentSettings"),
-            onSelect: () => editorUi.openComponentEditorForNode(node.id),
-          },
-          ...(canRefreshStoredComponent
-            ? [
-                {
-                  label: t("inspector.refreshComponentDefinition"),
-                  onSelect: () =>
-                    void actions.refreshComponentInStore(node.componentId),
-                },
-              ]
-            : []),
-          ...(isSystemManagedProtected
-            ? []
-            : [
-                {
-                  label: t("inspector.deleteSelection"),
-                  onSelect: () => {
-                    actions.select(actionSelection);
-                    actions.removeSelection();
-                  },
-                },
-              ]),
-        ];
-        return {
-          title: t("canvasContext.component"),
-          items: componentItems,
-        };
-      }
-      if (node.kind !== "sheet") return null;
-      return {
-        title: t("canvasContext.subsheet"),
-        items: [
-          copyItem,
-          {
-            label: t("inspector.enterSubsheet"),
-            onSelect: () => editorUi.openComponentEditorForNode(node.id),
-          },
-          {
-            label: t("sidebar.sheetSettings"),
-            onSelect: () => editorUi.openSheetSettings(node.sheetId),
-          },
-          {
-            label: t("inspector.deleteSelection"),
-            onSelect: () => {
-              actions.select(actionSelection);
-              actions.removeSelection();
-            },
-          },
-        ],
-      };
+      return buildNodeActionMenu(target, sheet, selectionItems);
     }
 
     if (target.kind === "label") {
       return {
         title: t("canvasContext.label"),
         items: [
-          copyItem,
-          moveItem,
+          selectionItems.copyItem,
+          selectionItems.moveItem,
+          selectionItems.deleteItem,
+        ],
+      };
+    }
+
+    if (target.kind === "label-anchor") {
+      return {
+        title: t("canvasContext.labelAnchor"),
+        items: [
           {
-            label: t("inspector.deleteSelection"),
-            onSelect: () => {
-              actions.select(actionSelection);
-              actions.removeSelection();
-            },
+            label: t("canvasContext.removeLabelAnchor"),
+            onSelect: () => actions.removeLabelAnchor(target.anchorId),
           },
         ],
       };
@@ -372,32 +459,14 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     if (target.kind === "comment") {
       return {
         title: t("canvasContext.comment"),
-        items: [
-          copyItem,
-          {
-            label: t("inspector.deleteSelection"),
-            onSelect: () => {
-              actions.select(actionSelection);
-              actions.removeSelection();
-            },
-          },
-        ],
+        items: [selectionItems.copyItem, selectionItems.deleteItem],
       };
     }
 
     if (target.kind === "sheet-port") {
       return {
         title: t("canvasContext.sheetPort"),
-        items: [
-          copyItem,
-          {
-            label: t("inspector.deleteSelection"),
-            onSelect: () => {
-              actions.select(actionSelection);
-              actions.removeSelection();
-            },
-          },
-        ],
+        items: [selectionItems.copyItem, selectionItems.deleteItem],
       };
     }
 
@@ -463,6 +532,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
     if (
       (request.target.kind === "node" ||
         request.target.kind === "label" ||
+        request.target.kind === "label-anchor" ||
         request.target.kind === "comment" ||
         request.target.kind === "sheet-port") &&
       selectionContainsContextTarget(selection, request.target)
@@ -475,6 +545,8 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       actions.select({ kind: "node", id: request.target.id });
     } else if (request.target.kind === "label") {
       actions.select({ kind: "label", id: request.target.id });
+    } else if (request.target.kind === "label-anchor") {
+      actions.select({ kind: "label-anchor", id: request.target.anchorId });
     } else if (request.target.kind === "comment") {
       actions.select({ kind: "comment", id: request.target.id });
     } else if (request.target.kind === "sheet-port") {

@@ -1,3 +1,4 @@
+import { unique } from "remeda";
 import { reconcileProject } from "../project";
 import type { NoHALProject } from "../types";
 import type { ExportResult } from "./context";
@@ -30,7 +31,7 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
     return {
       text: "",
       ...(shutdownText ? { shutdownText } : {}),
-      warnings: Array.from(new Set(ctx.warnings)),
+      warnings: unique(ctx.warnings),
     };
   }
 
@@ -46,6 +47,6 @@ export function exportProjectToHal(project: NoHALProject): ExportResult {
   return {
     ...output,
     ...(shutdownText ? { shutdownText } : {}),
-    warnings: Array.from(new Set(ctx.warnings)),
+    warnings: unique(ctx.warnings),
   };
 }

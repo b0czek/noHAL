@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createEmptyComponentStore } from "../componentStore";
-import { getNodePins } from "../graph";
-import { findSystemSheet, findSystemSheetNode } from "../sheet";
-import type { ComponentDefinition } from "../types";
-import { buildProjectFromHalImport } from "./build";
-import { parseHalImportDraft } from "./parse";
+import { createEmptyComponentStore } from "../../componentStore";
+import { getNodePins } from "../../graph";
+import { findSystemSheet, findSystemSheetNode } from "../../sheet";
+import type { ComponentDefinition } from "../../types";
+import { parseHalImportDraft } from "../parse";
+import { buildProjectFromHalImport } from "./index";
+
+const EXPECTED_MOTION_DIGITAL_PIN_COUNT = 64;
 
 describe("buildProjectFromHalImport", () => {
   it("applies selected LinuxCNC version before motmod reconciliation", () => {
@@ -134,10 +136,10 @@ describe("buildProjectFromHalImport", () => {
     );
     expect(
       motionPins.filter((name) => name.startsWith("digital-in-")).length,
-    ).toBe(64);
+    ).toBe(EXPECTED_MOTION_DIGITAL_PIN_COUNT);
     expect(
       motionPins.filter((name) => name.startsWith("digital-out-")).length,
-    ).toBe(64);
+    ).toBe(EXPECTED_MOTION_DIGITAL_PIN_COUNT);
     expect(
       result.project.library.components["halimport:motion"],
     ).toBeUndefined();

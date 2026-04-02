@@ -1,14 +1,14 @@
-import { createId } from "@nohal/core/src/id";
+import { createId } from "@nohal/core/id";
 import {
   isProtectedSystemNode,
   isProtectedSystemSheet,
-} from "@nohal/core/src/sheet";
+} from "@nohal/core/sheet";
 import type {
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
   XY,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import type { EditorSelection } from "../state/store/actions/types";
 import {
   cloneEndpoint,

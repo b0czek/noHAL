@@ -1,7 +1,7 @@
 import {
   createEmptyMachineConfig,
   createEmptyProject,
-} from "@nohal/core/src/project";
+} from "@nohal/core/project";
 import { describe, expect, it } from "vitest";
 import {
   buildIniReferenceSections,

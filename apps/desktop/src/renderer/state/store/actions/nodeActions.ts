@@ -1,23 +1,28 @@
-import { resolveComponentPinsForInstance } from "@nohal/core/src/componentInstance";
+import { resolveComponentPinsForInstance } from "@nohal/core/componentInstance";
 import {
   fixedExportStageForComponent,
   fixedInstanceNameForComponent,
-} from "@nohal/core/src/componentSystem";
-import { isComponentPlaceable } from "@nohal/core/src/componentVisibility";
-import { reconcileComponentNodesForDefinition } from "@nohal/core/src/customComponent";
-import { getSheet, isNodePinConnected } from "@nohal/core/src/graph";
-import { isValidHalName } from "@nohal/core/src/halNames";
-import { createId } from "@nohal/core/src/id";
-import { createSheetPortDraft } from "@nohal/core/src/project";
+} from "@nohal/core/componentSystem";
+import { isComponentPlaceable } from "@nohal/core/componentVisibility";
+import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
+import {
+  getSheet,
+  getSheetReferenceLocations,
+  isNodePinConnected,
+} from "@nohal/core/graph";
+import { isValidHalName } from "@nohal/core/halNames";
+import { createId } from "@nohal/core/id";
+import { createSheetPortDraft } from "@nohal/core/project";
 import type {
   ComponentNode,
   HalValueType,
   LabelScope,
+  PinDirection,
   SheetComment,
+  SheetDefinition,
   SheetEndpointRef,
-  SheetNode,
   XY,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import {
   componentUsesLockedCanonicalInstanceNames,
   defaultCommentPosition,
@@ -91,6 +96,117 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     });
   };
 
+  const captureMoveDelta = (
+    moveDelta: XY | null,
+    currentPosition: XY,
+    nextPosition: XY,
+  ): XY | null =>
+    moveDelta ?? {
+      x: nextPosition.x - currentPosition.x,
+      y: nextPosition.y - currentPosition.y,
+    };
+
+  const applyPositionUpdates = <T extends { id: string; position: XY }>(
+    entries: T[],
+    updates: Map<string, XY>,
+    moveDelta: XY | null,
+  ): XY | null => {
+    let nextMoveDelta = moveDelta;
+    for (const entry of entries) {
+      const next = updates.get(entry.id);
+      if (!next) continue;
+      nextMoveDelta = captureMoveDelta(nextMoveDelta, entry.position, next);
+      entry.position = { x: next.x, y: next.y };
+    }
+    return nextMoveDelta;
+  };
+
+  const moveConnectionWaypointsWithGroup = (
+    sheet: SheetDefinition,
+    movedNodeIds: ReadonlySet<string>,
+    movedPortIds: ReadonlySet<string>,
+    moveDelta: XY | null,
+  ): void => {
+    if (
+      !moveDelta ||
+      (moveDelta.x === 0 && moveDelta.y === 0) ||
+      (movedNodeIds.size === 0 && movedPortIds.size === 0)
+    ) {
+      return;
+    }
+
+    for (const connection of sheet.directConnections) {
+      if (!connection.waypoints || connection.waypoints.length === 0) {
+        continue;
+      }
+      if (
+        !endpointMovesWithGroup(connection.a, movedNodeIds, movedPortIds) ||
+        !endpointMovesWithGroup(connection.b, movedNodeIds, movedPortIds)
+      ) {
+        continue;
+      }
+      connection.waypoints = connection.waypoints.map((point) => ({
+        x: point.x + moveDelta.x,
+        y: point.y + moveDelta.y,
+      }));
+    }
+  };
+
+  const normalizeInstanceConfigValues = (
+    node: ComponentNode,
+    configKey: string,
+    value: string,
+    defaultValue: string | undefined,
+  ): void => {
+    const nextValues = { ...(node.instanceConfigValues ?? {}) };
+    const normalizedValue = value.trim();
+    if (
+      !normalizedValue ||
+      (defaultValue !== undefined && normalizedValue === defaultValue)
+    ) {
+      delete nextValues[configKey];
+    } else {
+      nextValues[configKey] = normalizedValue;
+    }
+
+    if (Object.keys(nextValues).length > 0) {
+      node.instanceConfigValues = nextValues;
+    } else {
+      delete node.instanceConfigValues;
+    }
+  };
+
+  const pruneNodePinInitialValues = (
+    node: ComponentNode,
+    validPinKeys: ReadonlySet<string>,
+  ): void => {
+    const currentPinInitialValues = node.pinInitialValues ?? {};
+    const nextPinInitialValues: Record<string, string> = {};
+    for (const [key, pinValue] of Object.entries(currentPinInitialValues)) {
+      if (!validPinKeys.has(key) || !pinValue.trim()) continue;
+      nextPinInitialValues[key] = pinValue;
+    }
+    if (Object.keys(nextPinInitialValues).length > 0) {
+      node.pinInitialValues = nextPinInitialValues;
+    } else {
+      delete node.pinInitialValues;
+    }
+  };
+
+  const pruneHiddenPinKeys = (
+    node: ComponentNode,
+    validPinKeys: ReadonlySet<string>,
+  ): void => {
+    const nextHiddenPinKeys = (node.hiddenPinKeys ?? []).filter((key) =>
+      validPinKeys.has(key),
+    );
+    if (nextHiddenPinKeys.length > 0) {
+      node.hiddenPinKeys = [...new Set(nextHiddenPinKeys)];
+    } else {
+      delete node.hiddenPinKeys;
+    }
+  };
+
   return {
     async refreshComponentInStore(componentId: string): Promise<void> {
       const current = deps.state.project.library.components[componentId];
@@ -126,10 +242,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       }
     },
 
-    addComponentNode(
-      componentId: string,
-      position?: { x: number; y: number },
-    ): void {
+    addComponentNode(componentId: string, position?: XY): void {
       const comp = deps.state.project.library.components[componentId];
       if (!comp) return;
       if (!isComponentPlaceable(comp)) {
@@ -218,20 +331,20 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     },
 
     addSheetPort(
-      direction: "in" | "out" | "io",
-      type: "bit" | "float" | "s32" | "u32" | "s64" | "u64" | "port",
+      direction: PinDirection,
+      type: HalValueType,
       position?: XY,
     ): void {
       const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
         const sheet = getSheet(project, activeSheetId);
         const used = new Set(sheet.ports.map((p) => p.name));
-        const base =
-          direction === "in"
-            ? "in_sig"
-            : direction === "out"
-              ? "out_sig"
-              : "io_sig";
+        let base = "io_sig";
+        if (direction === "in") {
+          base = "in_sig";
+        } else if (direction === "out") {
+          base = "out_sig";
+        }
         const name = nextName(base, used);
         const port = createSheetPortDraft(name, direction, type);
         port.position = position ?? defaultPortPosition(sheet, port.side);
@@ -310,72 +423,20 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         const movedPortIds = new Set(portUpdates.keys());
         let moveDelta: XY | null = null;
 
-        for (const node of sheet.nodes) {
-          const next = nodeUpdates.get(node.id);
-          if (!next) continue;
-          if (!moveDelta) {
-            moveDelta = {
-              x: next.x - node.position.x,
-              y: next.y - node.position.y,
-            };
-          }
-          node.position = { x: next.x, y: next.y };
-        }
-        for (const label of sheet.labels) {
-          const next = labelUpdates.get(label.id);
-          if (!next) continue;
-          if (!moveDelta) {
-            moveDelta = {
-              x: next.x - label.position.x,
-              y: next.y - label.position.y,
-            };
-          }
-          label.position = { x: next.x, y: next.y };
-        }
-        for (const comment of sheet.comments) {
-          const next = commentUpdates.get(comment.id);
-          if (!next) continue;
-          if (!moveDelta) {
-            moveDelta = {
-              x: next.x - comment.position.x,
-              y: next.y - comment.position.y,
-            };
-          }
-          comment.position = { x: next.x, y: next.y };
-        }
-        for (const port of sheet.ports) {
-          const next = portUpdates.get(port.id);
-          if (!next) continue;
-          if (!moveDelta) {
-            moveDelta = {
-              x: next.x - port.position.x,
-              y: next.y - port.position.y,
-            };
-          }
-          port.position = { x: next.x, y: next.y };
-        }
-        if (
-          !moveDelta ||
-          (moveDelta.x === 0 && moveDelta.y === 0) ||
-          (movedNodeIds.size === 0 && movedPortIds.size === 0)
-        ) {
-          return;
-        }
-        for (const connection of sheet.directConnections) {
-          if (!connection.waypoints || connection.waypoints.length === 0) {
-            continue;
-          }
-          if (
-            !endpointMovesWithGroup(connection.a, movedNodeIds, movedPortIds) ||
-            !endpointMovesWithGroup(connection.b, movedNodeIds, movedPortIds)
-          ) {
-            continue;
-          }
-          connection.waypoints = connection.waypoints.map((point) => ({
-            x: point.x + moveDelta.x,
-            y: point.y + moveDelta.y,
-          }));
-        }
+        moveDelta = applyPositionUpdates(sheet.nodes, nodeUpdates, moveDelta);
+        moveDelta = applyPositionUpdates(sheet.labels, labelUpdates, moveDelta);
+        moveDelta = applyPositionUpdates(
+          sheet.comments,
+          commentUpdates,
+          moveDelta,
+        );
+        moveDelta = applyPositionUpdates(sheet.ports, portUpdates, moveDelta);
+        moveConnectionWaypointsWithGroup(
+          sheet,
+          movedNodeIds,
+          movedPortIds,
+          moveDelta,
+        );
       });
     },
 
@@ -383,19 +444,25 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       renameNodeInSheet(deps.state.activeSheetId, nodeId, instanceName);
     },
 
+    renameSheetReference(
+      parentSheetId: string,
+      nodeId: string,
+      instanceName: string,
+    ): void {
+      renameNodeInSheet(parentSheetId, nodeId, instanceName);
+    },
+
     renameSheetInstance(sheetId: string, instanceName: string): void {
-      const currentSheet = deps.state.project.sheets[sheetId];
-      if (!currentSheet?.parentSheetId) return;
-      const parentSheet = getSheet(
+      const [reference] = getSheetReferenceLocations(
         deps.state.project,
-        currentSheet.parentSheetId,
+        sheetId,
       );
-      const subsheetNode = parentSheet.nodes.find(
-        (node): node is SheetNode =>
-          node.kind === "sheet" && node.sheetId === sheetId,
+      if (!reference) return;
+      renameNodeInSheet(
+        reference.parentSheetId,
+        reference.nodeId,
+        instanceName,
       );
-      if (!subsheetNode) return;
-      renameNodeInSheet(parentSheet.id, subsheetNode.id, instanceName);
     },
 
     updateSheetNodeThreadMap(
@@ -450,54 +517,19 @@ export function createNodeActions(deps: EditorStoreActionContext) {
           (item) => item.key === configKey,
         );
         if (!field) return;
-
-        const nextValues = { ...(node.instanceConfigValues ?? {}) };
-        const normalizedValue = value.trim();
         const defaultValue =
           field.defaultValue === undefined
             ? undefined
             : `${field.defaultValue}`;
-        if (
-          !normalizedValue ||
-          (defaultValue !== undefined && normalizedValue === defaultValue)
-        ) {
-          delete nextValues[configKey];
-        } else {
-          nextValues[configKey] = normalizedValue;
-        }
-
-        if (Object.keys(nextValues).length > 0) {
-          node.instanceConfigValues = nextValues;
-        } else {
-          delete node.instanceConfigValues;
-        }
+        normalizeInstanceConfigValues(node, configKey, value, defaultValue);
 
         const resolvedPins = resolveComponentPinsForInstance(
           component,
           node.instanceConfigValues,
         );
         const validPinKeys = new Set(resolvedPins.map((pin) => pin.key));
-        const currentPinInitialValues = node.pinInitialValues ?? {};
-        const nextPinInitialValues: Record<string, string> = {};
-        for (const [key, pinValue] of Object.entries(currentPinInitialValues)) {
-          if (!validPinKeys.has(key)) continue;
-          if (!pinValue.trim()) continue;
-          nextPinInitialValues[key] = pinValue;
-        }
-        if (Object.keys(nextPinInitialValues).length > 0) {
-          node.pinInitialValues = nextPinInitialValues;
-        } else {
-          delete node.pinInitialValues;
-        }
-
-        const nextHiddenPinKeys = (node.hiddenPinKeys ?? []).filter((key) =>
-          validPinKeys.has(key),
-        );
-        if (nextHiddenPinKeys.length > 0) {
-          node.hiddenPinKeys = [...new Set(nextHiddenPinKeys)];
-        } else {
-          delete node.hiddenPinKeys;
-        }
+        pruneNodePinInitialValues(node, validPinKeys);
+        pruneHiddenPinKeys(node, validPinKeys);
       });
     },
 

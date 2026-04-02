@@ -1,4 +1,4 @@
-import { isComponentShownInCustomComponents } from "@nohal/core/src/componentVisibility";
+import { isComponentShownInCustomComponents } from "@nohal/core/componentVisibility";
 import { HiOutlineArrowLeft, HiOutlinePlus } from "solid-icons/hi";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { Button } from "../../components/ui/button";
@@ -186,6 +186,9 @@ export default function CustomComponentsTab() {
               }
               onLoadCommandChange={(value) =>
                 actions.updateCustomComponentLoadCommand(component().id, value)
+              }
+              onMaxInstancesChange={(value) =>
+                actions.updateCustomComponentMaxInstances(component().id, value)
               }
               onAddPin={() => actions.addCustomComponentPin(component().id)}
               onRemovePin={(pinKey) =>

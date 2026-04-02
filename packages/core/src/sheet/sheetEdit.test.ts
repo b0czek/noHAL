@@ -7,7 +7,7 @@ describe("sheet model edit helpers", () => {
   it("manages sheet thread outputs and remaps dependent references", () => {
     const project = createEmptyProject("Thread Output Edit");
     const root = project.sheets[project.rootSheetId];
-    const child = createSheet("Child", root.id);
+    const child = createSheet("Child");
     project.sheets[child.id] = child;
 
     const childOutputId = child.hal?.threadOutputs?.[0]?.id;
@@ -90,11 +90,11 @@ describe("sheet model edit helpers", () => {
     expect(project.sheets[second?.sheet.id ?? ""]).toBeTruthy();
   });
 
-  it("deletes sheet subtrees and prunes parent references", () => {
+  it("deletes only the targeted definition and prunes its references", () => {
     const project = createEmptyProject("Delete Sheet Definition");
     const root = project.sheets[project.rootSheetId];
-    const child = createSheet("Child", root.id);
-    const grandchild = createSheet("Grandchild", child.id);
+    const child = createSheet("Child");
+    const grandchild = createSheet("Grandchild");
     project.sheets[child.id] = child;
     project.sheets[grandchild.id] = grandchild;
 
@@ -139,14 +139,49 @@ describe("sheet model edit helpers", () => {
 
     expect(result).toEqual({
       ok: true,
-      deletedSheetIds: expect.arrayContaining([child.id, grandchild.id]),
+      deletedSheetIds: [child.id],
       deletedSheetName: "Child",
-      nextActiveSheetId: root.id,
+      nextActiveSheetId: grandchild.id,
     });
     expect(project.sheets[child.id]).toBeUndefined();
-    expect(project.sheets[grandchild.id]).toBeUndefined();
+    expect(project.sheets[grandchild.id]).toBeDefined();
     expect(root.nodes.some((node) => node.id === "node_child")).toBe(false);
     expect(root.directConnections).toHaveLength(0);
     expect(root.labelAnchors).toHaveLength(0);
+  });
+
+  it("detaches a sheet reference into an independent definition snapshot", () => {
+    const project = createEmptyProject("Detach Sheet Reference");
+    const root = project.sheets[project.rootSheetId];
+    const child = createSheet("Child");
+    child.nodes.push({
+      id: "node_component",
+      kind: "component",
+      componentId: "comp:test",
+      instanceName: "test.0",
+      position: { x: 10, y: 20 },
+      paramValues: {},
+    });
+    project.sheets[child.id] = child;
+    root.nodes.push({
+      id: "node_child",
+      kind: "sheet",
+      sheetId: child.id,
+      instanceName: "child",
+      position: { x: 20, y: 30 },
+    });
+
+    const result = sheetModelEdits.reference.detach(
+      project,
+      root.id,
+      "node_child",
+    );
+
+    expect(result).not.toBeNull();
+    expect(result?.originalSheetId).toBe(child.id);
+    expect(result?.detachedSheet.id).not.toBe(child.id);
+    expect(result?.detachedSheet.name).toBe("Child Copy");
+    expect(result?.node.sheetId).toBe(result?.detachedSheet.id);
+    expect(result?.detachedSheet.nodes[0]?.id).not.toBe("node_component");
   });
 });

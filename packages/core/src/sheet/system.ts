@@ -6,7 +6,9 @@ import type {
   NoHALProject,
   SheetDefinition,
   SheetNode,
+  XY,
 } from "../types";
+import { defaultNodePositionForIndex } from "./layout";
 import { moveSelectionIntoSubsheet } from "./subsheetMove";
 import {
   createDefaultSheetThreadOutputs,
@@ -27,11 +29,11 @@ const KNOWN_SYSTEM_HAL_COMPONENT_NAMES = new Set([
   "iocontrol",
 ]);
 
-function createSystemSheet(parentSheetId: string): SheetDefinition {
+function createSystemSheet(): SheetDefinition {
   return {
     id: createId("sheet"),
     name: SYSTEM_SHEET_NAME,
-    parentSheetId,
+    role: "system",
     nodes: [],
     ports: [],
     labels: [],
@@ -49,14 +51,6 @@ function nextUniqueName(base: string, used: ReadonlySet<string>): string {
   let index = 2;
   while (used.has(`${base}${index}`)) index += 1;
   return `${base}${index}`;
-}
-
-function defaultNodePosition(sheet: SheetDefinition): { x: number; y: number } {
-  const index = sheet.nodes.length;
-  return {
-    x: 120 + (index % 4) * 280,
-    y: 100 + Math.floor(index / 4) * 180,
-  };
 }
 
 function ensureSystemInstanceName(rootSheet: SheetDefinition): string {
@@ -87,21 +81,10 @@ export function isProtectedSystemNode(
 }
 
 export function findSystemSheet(project: NoHALProject): SheetDefinition | null {
-  const rootSheet = project.sheets[project.rootSheetId];
-  if (!rootSheet) return null;
-
-  for (const node of rootSheet.nodes) {
-    if (node.kind !== "sheet") continue;
-    const childSheet = project.sheets[node.sheetId];
-    if (childSheet?.name === SYSTEM_SHEET_NAME) return childSheet;
-  }
-
-  for (const sheet of Object.values(project.sheets)) {
-    if (sheet.parentSheetId !== rootSheet.id) continue;
-    if (sheet.name === SYSTEM_SHEET_NAME) return sheet;
-  }
-
-  return null;
+  return (
+    Object.values(project.sheets).find((sheet) => sheet.role === "system") ??
+    null
+  );
 }
 
 export function isProtectedSystemSheet(
@@ -124,7 +107,7 @@ export function findSystemSheetNode(project: NoHALProject): SheetNode | null {
 
 export function ensureSystemSheet(
   project: NoHALProject,
-  preferredPosition?: { x: number; y: number },
+  preferredPosition?: XY,
 ): {
   rootSheet: SheetDefinition;
   systemSheet: SheetDefinition;
@@ -134,10 +117,8 @@ export function ensureSystemSheet(
 
   let systemSheet = findSystemSheet(project);
   if (!systemSheet) {
-    systemSheet = createSystemSheet(rootSheet.id);
+    systemSheet = createSystemSheet();
     project.sheets[systemSheet.id] = systemSheet;
-  } else if (systemSheet.parentSheetId !== rootSheet.id) {
-    systemSheet.parentSheetId = rootSheet.id;
   }
 
   if (!systemSheet.hal) systemSheet.hal = {};
@@ -150,7 +131,9 @@ export function ensureSystemSheet(
       kind: "sheet",
       sheetId: systemSheet.id,
       instanceName: ensureSystemInstanceName(rootSheet),
-      position: preferredPosition ?? defaultNodePosition(rootSheet),
+      position:
+        preferredPosition ??
+        defaultNodePositionForIndex(rootSheet.nodes.length),
     };
     rootSheet.nodes.push(systemSheetNode);
   } else if (preferredPosition && systemSheetNode.instanceName === "system") {

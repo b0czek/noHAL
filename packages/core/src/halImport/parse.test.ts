@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { parseHalImportDraft } from "./parse";
 
+const EXPECTED_SOFTSTART_LINE_COUNT = 5;
+
 function parseHal(text: string, sourcePath = "/configs/demo/custom.hal") {
   return parseHalImportDraft(text.trim(), sourcePath);
 }
@@ -187,7 +189,7 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
 
     expect(draft.sourcePath).toBe("/machine/configs/softstart.hal");
     expect(draft.sourceFileName).toBe("softstart.hal");
-    expect(draft.lineCount).toBe(5);
+    expect(draft.lineCount).toBe(EXPECTED_SOFTSTART_LINE_COUNT);
 
     expect(draft.addfs).toEqual([
       {

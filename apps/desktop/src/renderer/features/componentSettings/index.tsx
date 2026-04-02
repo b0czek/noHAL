@@ -1,4 +1,4 @@
-import { getNodeTitle } from "@nohal/core/src/graph";
+import { getNodeTitle } from "@nohal/core/graph";
 import { createMemo, createSignal, Show } from "solid-js";
 import type { OverlayDialogProps } from "../../app/types";
 import SettingsDialogShell from "../../components/settings/SettingsDialogShell";

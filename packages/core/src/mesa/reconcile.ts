@@ -6,7 +6,7 @@ import { isManagedBySystemManager } from "../componentSystem";
 import { createId } from "../id";
 import { ensureSystemSheet, findSystemSheet } from "../sheet";
 import { sameComponentDefinition } from "../systemReconcile/shared";
-import type { ComponentNode, NoHALProject } from "../types";
+import type { ComponentNode, NoHALProject, XY } from "../types";
 import { deriveMesaTopology } from "./derive";
 import { createDefaultMesaConfig, normalizeProjectMesaConfig } from "./shared";
 import type { ProjectMesaConfig } from "./types";
@@ -58,8 +58,8 @@ function isMesaManagedNode(
 
 function chooseFreePosition(
   sheet: NoHALProject["sheets"][string],
-  preferred: { x: number; y: number },
-): { x: number; y: number } {
+  preferred: XY,
+): XY {
   const used = new Set(
     sheet.nodes.map(
       (node) => `${Math.round(node.position.x)}:${Math.round(node.position.y)}`,

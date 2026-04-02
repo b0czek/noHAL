@@ -12,6 +12,7 @@ import type {
 } from "../types";
 
 const MESA_LOAD_COMPONENT_NAMES = new Set(["hm2_eth", "hostmot2"]);
+const MESA_RAW_GPIO_DIRECTION_SEGMENT_COUNT = 3;
 
 interface MesaImportNodeBinding {
   component: ComponentDefinition;
@@ -99,7 +100,7 @@ function parseMesaInstancePath(value: string): {
 function isMesaRawGpioDirectionField(fieldName: string): boolean {
   const segments = normalizeMesaPathSegments(fieldName);
   return (
-    segments.length === 3 &&
+    segments.length === MESA_RAW_GPIO_DIRECTION_SEGMENT_COUNT &&
     segments[0] === "gpio" &&
     /^\d+$/.test(segments[1] ?? "") &&
     segments[2] === "is-output"

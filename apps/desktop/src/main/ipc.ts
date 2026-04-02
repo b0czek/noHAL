@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises";
-import { parseCompComponentDefinition } from "@nohal/core/src/compParser";
-import { normalizeLinuxCncVersion } from "@nohal/core/src/linuxcncVersion";
-import { createEmptyProject, reconcileProject } from "@nohal/core/src/project";
+import { parseCompComponentDefinition } from "@nohal/core/compParser";
+import { normalizeLinuxCncVersion } from "@nohal/core/linuxcncVersion";
+import { createEmptyProject, reconcileProject } from "@nohal/core/project";
 import type {
   MachineConfigHalFileSelection,
   NoHALProject,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { BrowserWindow, clipboard, dialog, ipcMain } from "electron";
 import { appSettings } from "./appSettings";
 import { applyChangedAppSettings } from "./appSettingsEffects";
@@ -109,7 +109,11 @@ export function registerIpcHandlers(): void {
     const result = await projectDirectory.readProjectPath(res.filePaths[0]);
     const win = BrowserWindow.fromWebContents(evt.sender);
     await maybeWarnAboutNewerProject(win, result.savedWith);
-    await touchRecentProject(result.projectPath, result.project.name);
+    await touchRecentProject(
+      result.projectPath,
+      result.project.name,
+      result.project.target.linuxcncVersion,
+    );
     return result;
   });
 
@@ -117,7 +121,11 @@ export function registerIpcHandlers(): void {
     const result = await projectDirectory.readProjectPath(projectPath);
     const win = BrowserWindow.fromWebContents(evt.sender);
     await maybeWarnAboutNewerProject(win, result.savedWith);
-    await touchRecentProject(result.projectPath, result.project.name);
+    await touchRecentProject(
+      result.projectPath,
+      result.project.name,
+      result.project.target.linuxcncVersion,
+    );
     return result;
   });
 
@@ -139,7 +147,11 @@ export function registerIpcHandlers(): void {
         target,
         { savedWith: NOHAL_APP_VERSION },
       );
-      await touchRecentProject(savedProjectPath, project.name);
+      await touchRecentProject(
+        savedProjectPath,
+        project.name,
+        project.target.linuxcncVersion,
+      );
       return { projectPath: savedProjectPath };
     },
   );

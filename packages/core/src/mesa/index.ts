@@ -3,6 +3,7 @@ export * from "./catalog";
 export * from "./derive";
 export * from "./edit";
 export * from "./export";
+export * from "./hostValidation";
 export * from "./reconcile";
 export * from "./schema";
 export * from "./shared";

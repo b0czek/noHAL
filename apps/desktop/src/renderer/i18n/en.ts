@@ -13,6 +13,7 @@ export const en = {
   "common.type": "Type",
   "common.rotation": "Rotation",
   "common.status": "Status",
+  "common.cursor": "Cursor",
   "common.file": "File",
   "common.project": "Project",
   "common.unsaved": "(unsaved)",
@@ -34,6 +35,7 @@ export const en = {
   "landing.noRecentProjectsHint":
     "No recent projects yet. Create a blank project, import a machine configuration, or open an existing project.",
   "landing.targetLinuxCncVersion": "Target LinuxCNC version",
+  "landing.recentProjectVersion": "LinuxCNC {version}",
   "landing.importedMachineStatus": "Imported machine configuration{suffix}",
   "landing.generalSettings": "General Settings",
 
@@ -62,6 +64,7 @@ export const en = {
   "canvasContext.component": "Component",
   "canvasContext.subsheet": "Subsheet",
   "canvasContext.label": "Label",
+  "canvasContext.labelAnchor": "Label Anchor",
   "canvasContext.comment": "Text",
   "canvasContext.sheetPort": "Sheet Port",
   "canvasContext.connection": "Connection",
@@ -70,9 +73,11 @@ export const en = {
   "canvasContext.paste": "Paste",
   "canvasContext.move": "Move",
   "canvasContext.newSheet": "New Sheet",
+  "canvasContext.detachSheetReference": "Detach Reference",
   "canvasContext.putEverythingIntoSubsheet": "Into Subsheet",
   "canvasContext.splitConnectionIntoLabels": "Split Into Labels",
   "canvasContext.removeConnection": "Remove Connection",
+  "canvasContext.removeLabelAnchor": "Remove Label Anchor",
   "canvasContext.deleteWaypoint": "Delete Waypoint",
 
   "canvasComponentMenu.ariaLabel": "Place Component",
@@ -80,6 +85,12 @@ export const en = {
   "canvasComponentMenu.empty": "No matching components",
   "canvasComponentMenu.itemTitle": "{name} ({pins} pins)",
   "canvasComponentMenu.itemMeta": "{source} • {pins} pins",
+  "canvasSheetMenu.filterPlaceholder": "Filter sheets...",
+  "canvasSheetMenu.createSheet": "Create New Sheet",
+  "canvasSheetMenu.newInline": "+ New",
+  "canvasSheetMenu.empty": "No matching sheets",
+  "canvasSheetMenu.definition": "definition",
+  "canvasSheetMenu.recursive": "recursive",
 
   "componentSearch.title.sheet": "Find in Sheet",
   "componentSearch.title.project": "Find in Project",
@@ -253,9 +264,15 @@ export const en = {
   "customComponents.runtimeRt": "rt",
   "customComponents.runtimeUserspace": "userspace",
   "customComponents.runtimeUnknown": "unknown",
+  "customComponents.maxInstances": "Max Instances",
   "customComponents.loadString": "Load string",
   "customComponents.loadStringPlaceholder":
-    "Example: loadusr -W hal_manualtoolchange",
+    "Example: loadrt custom_logic count=%{count} or loadusr -Wn %{first_instance} custom_logic",
+  "customComponents.loadStringHelpTitle": "Interpolation",
+  "customComponents.loadStringHelpSubtitle":
+    "Use instance placeholders when you need a custom load command.",
+  "customComponents.loadStringHelpTokens": "Tokens",
+  "customComponents.loadStringHelpAliases": "Short aliases",
   "customComponents.pinsTitle": "Pins",
   "customComponents.addPin": "Add Pin",
   "customComponents.noPins": "No pins.",
@@ -270,16 +287,19 @@ export const en = {
 
   "sheetSettings.ariaLabel": "Sheet Settings",
   "sheetSettings.title": "Sheet Settings",
+  "sheetSettings.tabSheet": "Sheet",
   "sheetSettings.tabInstance": "Instance",
   "sheetSettings.tabThreadOutputs": "Thread Outputs",
   "sheetSettings.tabAddfQueue": "addf Queue",
+  "sheetSettings.sheetTitle": "Sheet Definition",
+  "sheetSettings.sheetHelp": "Rename this sheet definition.",
   "sheetSettings.instanceTitle": "Sheet Instance",
   "sheetSettings.instanceHelp":
-    "Set the instance name used when this sheet is placed in its parent sheet.",
+    "Review the referenced definition, rename this reference, or detach it into a new sheet definition.",
   "sheetSettings.instanceRootHelp":
-    "The root sheet does not have a parent instance name.",
+    "The root sheet is a definition, not a placed reference.",
   "sheetSettings.instanceUnavailable":
-    "This sheet is not currently placed in a parent sheet.",
+    "Rename references from the canvas inspector or a specific placement.",
   "sheetSettings.threadOutputsTitle": "Sheet Thread Outputs",
   "sheetSettings.threadOutputsHelp":
     "Define this sheet's local scheduling outputs. Parent sheets map subsheet outputs into their own outputs.",
@@ -309,14 +329,27 @@ export const en = {
   "sheetSettings.empty": "No RT components or subsheets in this sheet.",
   "sheetSettings.missingSheet": "missing sheet",
   "sheetSettings.missing": "missing",
+  "sheetSettings.referencedSheet": "Referenced Sheet",
+  "sheetSettings.detachReference": "Detach Reference",
 
-  "sidebar.sheets": "Tree",
+  "sidebar.title": "Sheets",
+  "sidebar.sheets": "Sheets",
+  "sidebar.references": "References",
   "sidebar.expandSheet": "Expand {name}",
   "sidebar.collapseSheet": "Collapse {name}",
-  "sidebar.orphan": "orphan",
+  "sidebar.root": "root",
+  "sidebar.system": "system",
+  "sidebar.unused": "unused",
+  "sidebar.usedBy": "Used By",
+  "sidebar.referencesFrom": "References",
+  "sidebar.rootDefinition": "This is the root sheet definition.",
+  "sidebar.unusedDefinition": "This definition is currently unused.",
+  "sidebar.noReferences": "This definition does not reference any sheets.",
   "sidebar.sheetActions": "Sheet actions",
   "sidebar.sheetSettings": "Sheet Settings",
   "sidebar.deleteSheet": "Delete Sheet",
+  "sidebar.confirmDeleteSheet":
+    "Delete sheet definition '{name}' and all {count} reference(s)?",
 
   "projectCreation.projectLocalGenerated": "Project-local (generated)",
   "projectCreation.systemComponent": "System component",
@@ -390,7 +423,14 @@ export const en = {
     "{instances} instances • {pins} pins • {params} params • runtime {runtime}",
   "projectCreation.autoReason": "Auto: {reason}",
   "projectCreation.linkTarget": "Link Target",
+  "projectCreation.linkReviewSectionTitle": "{count} group(s) need review",
   "projectCreation.editGeneratedComponent": "Edit generated component",
+  "projectCreation.allComponentGroupsResolved":
+    "All detected component groups are already resolved to existing system or store components.",
+  "projectCreation.resolvedComponentDrawerTitle":
+    "Resolved existing components ({count})",
+  "projectCreation.resolvedComponentDrawerHelp":
+    "Expand this section to inspect or change groups that already match an existing system or store component.",
   "projectCreation.noComponentGroups": "No component groups were detected.",
   "projectCreation.parserWarnings": "Parser Warnings",
   "projectCreation.parserWarningsTruncated":
@@ -427,6 +467,9 @@ export const en = {
   "generalSettings.interfaceTitle": "Interface",
   "generalSettings.interfaceHelp":
     "Adjust app-wide presentation settings that should persist across projects.",
+  "generalSettings.canvasGridLabel": "Canvas Grid",
+  "generalSettings.canvasGridHelp":
+    "Choose the snap and grid spacing used across projects. Off disables both the visible grid and snapping. Hold Ctrl/Cmd while placing or dragging to temporarily bypass snapping.",
   "generalSettings.interfaceScaleLabel": "Interface Scale",
   "generalSettings.interfaceScaleHelp":
     "Adjust the size of the interface in this window. Changes apply immediately and are remembered for later.",
@@ -605,16 +648,22 @@ export const en = {
   "store.status.pastedSelection": "Pasted selection ({count} items)",
   "store.status.placedComponent": "Placed component {componentName}",
   "store.status.createdSubsheet": "Created subsheet {name}",
+  "store.status.detachedSheetReference": "Detached sheet reference into {name}",
   "store.status.cannotPlaceSheetInsideItself":
     "Cannot place a sheet inside itself",
   "store.status.sheetAlreadyPlaced": "Sheet is already placed",
   "store.status.cannotCreateRecursiveSheetHierarchy":
     "Cannot create recursive sheet hierarchy",
   "store.status.placedSubsheet": "Placed subsheet {name}",
+  "store.status.sheetDefinitionNameRequired":
+    "Sheet definition name is required",
+  "store.status.duplicateSheetDefinitionName":
+    "Sheet definition name already exists: {name}",
+  "store.status.updatedSheetDefinitionName":
+    "Renamed sheet definition to {name}",
   "store.status.cannotDeleteRootSheet": "Cannot delete the root sheet",
   "store.status.cannotDeleteSystemSheet": "The System sheet cannot be deleted",
-  "store.status.deletedSheet":
-    "Deleted sheet {name} ({count} sheet definitions removed)",
+  "store.status.deletedSheet": "Deleted sheet definition {name}",
   "store.status.addedLabel": "Added {scope} label",
   "store.status.addedComment": "Added text comment",
   "store.status.addedSheetPort": "Added sheet port",

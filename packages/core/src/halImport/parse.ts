@@ -1,3 +1,4 @@
+import { flatMap, fromEntries, map, pipe, sortBy, unique } from "remeda";
 import { slugify } from "../id";
 import { interpolateLoadrtImport } from "../loadrt";
 import type {
@@ -8,6 +9,8 @@ import type {
   HalImportObservedPin,
   PinDirection,
 } from "../types";
+
+const HAL_INSTANCE_FIELD_SEGMENT_COUNT = 3;
 
 interface ParsedLine {
   line: number;
@@ -127,7 +130,10 @@ function splitHalPath(
       fieldName: segments.slice(1).join("."),
     };
   }
-  if (segments.length >= 3 && /^\d+$/.test(segments[1] ?? "")) {
+  if (
+    segments.length >= HAL_INSTANCE_FIELD_SEGMENT_COUNT &&
+    /^\d+$/.test(segments[1] ?? "")
+  ) {
     return {
       instanceName: `${segments[0]}.${segments[1]}`,
       fieldName: segments.slice(2).join("."),
@@ -180,7 +186,10 @@ function splitAddfFunctionTarget(
   if (segments.length === 2 && /^\d+$/.test(segments[1] ?? "")) {
     return { instanceName: rawTarget };
   }
-  if (segments.length >= 3 && /^\d+$/.test(segments[1] ?? "")) {
+  if (
+    segments.length >= HAL_INSTANCE_FIELD_SEGMENT_COUNT &&
+    /^\d+$/.test(segments[1] ?? "")
+  ) {
     const functionSuffix = segments.slice(2).join(".");
     return {
       instanceName: `${segments[0]}.${segments[1]}`,
@@ -267,7 +276,7 @@ function inferLoadusrInstanceName(
 
   const explicitName = explicitNames[0];
   if (explicitNames.length > 1) {
-    const distinct = [...new Set(explicitNames)];
+    const distinct = unique(explicitNames);
     if (distinct.length > 1) {
       warnings.push(
         `loadusr has multiple component-name candidates (${distinct.join(", ")})`,
@@ -353,13 +362,16 @@ function addObservedParam(
 }
 
 function parseKeyValueArgs(tokens: string[]): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const token of tokens) {
-    const eq = token.indexOf("=");
-    if (eq <= 0) continue;
-    out[token.slice(0, eq)] = token.slice(eq + 1);
-  }
-  return out;
+  return pipe(
+    tokens,
+    flatMap((token) => {
+      const eq = token.indexOf("=");
+      return eq <= 0
+        ? []
+        : [[token.slice(0, eq), token.slice(eq + 1)] as const];
+    }),
+    fromEntries(),
+  );
 }
 
 function isArrowToken(token: string): boolean {
@@ -381,242 +393,289 @@ function looksLikeHalPinPath(token: string): boolean {
   return /^[A-Za-z0-9_:-][A-Za-z0-9_.:#/-]*$/.test(token);
 }
 
-export function parseHalImportDraft(
-  text: string,
-  sourcePath?: string,
-): HalImportDraft {
-  const normalized = normalizeLines(text);
-  const warnings: string[] = [];
-  const loadCommandByComponentName = new Map<string, string>();
-  const knownInstances = new Set<string>();
-  const instances = new Map<string, MutableInstance>();
-  const nets: HalImportNet[] = [];
-  const setps: HalImportDraft["setps"] = [];
-  const addfs: HalImportDraft["addfs"] = [];
-  let motmodDraft: HalImportDraft["motmod"] | undefined;
+function rememberLoadCommand(args: {
+  loadCommandByComponentName: Map<string, string>;
+  warnings: string[];
+  componentName: string;
+  loadCommand: string;
+  lineNo: number;
+}): void {
+  const normalizedCommand = args.loadCommand.trim();
+  if (!normalizedCommand) return;
+  const existing = args.loadCommandByComponentName.get(args.componentName);
+  if (!existing) {
+    args.loadCommandByComponentName.set(args.componentName, normalizedCommand);
+    return;
+  }
+  if (existing === normalizedCommand) return;
+  args.warnings.push(
+    `Line ${args.lineNo}: multiple load commands detected for '${args.componentName}'; keeping first`,
+  );
+}
 
-  const rememberLoadCommand = (
-    componentName: string,
-    loadCommand: string,
-    lineNo: number,
-  ): void => {
-    const normalizedCommand = loadCommand.trim();
-    if (!normalizedCommand) return;
-    const existing = loadCommandByComponentName.get(componentName);
-    if (!existing) {
-      loadCommandByComponentName.set(componentName, normalizedCommand);
-      return;
+function processLoadrtLine(args: {
+  line: ParsedLine;
+  tokens: string[];
+  warnings: string[];
+  loadCommandByComponentName: Map<string, string>;
+  knownInstances: Set<string>;
+  instances: Map<string, MutableInstance>;
+  setMotmodDraft: (value: HalImportDraft["motmod"]) => void;
+}): void {
+  const componentName = args.tokens[1];
+  if (!componentName) {
+    args.warnings.push(`Line ${args.line.line}: loadrt missing component name`);
+    return;
+  }
+  rememberLoadCommand({
+    loadCommandByComponentName: args.loadCommandByComponentName,
+    warnings: args.warnings,
+    componentName,
+    loadCommand: args.line.text,
+    lineNo: args.line.line,
+  });
+  const loadrtImport = interpolateLoadrtImport({
+    componentName,
+    args: parseKeyValueArgs(args.tokens.slice(2)),
+  });
+  for (const event of loadrtImport.events ?? []) {
+    if (event.topic === "project.motmod" && event.payload) {
+      args.setMotmodDraft(event.payload as HalImportDraft["motmod"]);
     }
-    if (existing === normalizedCommand) return;
-    warnings.push(
-      `Line ${lineNo}: multiple load commands detected for '${componentName}'; keeping first`,
+  }
+  for (const warning of loadrtImport.warnings ?? []) {
+    args.warnings.push(`Line ${args.line.line}: ${warning}`);
+  }
+  for (const instanceName of loadrtImport.instancePaths) {
+    args.knownInstances.add(instanceName);
+    ensureInstanceRecord(
+      args.instances,
+      instanceName,
+      componentName,
+      "rt",
+      loadrtImport.instanceConfigByPath?.[instanceName],
     );
-  };
+  }
+}
 
-  for (const line of normalized) {
-    const tokens = tokenizeHal(line.text);
-    if (tokens.length === 0) continue;
-    const cmd = tokens[0]?.toLowerCase();
-    if (!cmd) continue;
+function processLoadusrLine(args: {
+  line: ParsedLine;
+  tokens: string[];
+  warnings: string[];
+  loadCommandByComponentName: Map<string, string>;
+  knownInstances: Set<string>;
+  instances: Map<string, MutableInstance>;
+}): void {
+  const parsed = inferLoadusrProgramAndArgs(args.tokens);
+  for (const warning of parsed.warnings) {
+    args.warnings.push(`Line ${args.line.line}: ${warning}`);
+  }
+  if (!parsed.programToken) return;
+  const componentNameHint = basename(parsed.programToken);
+  rememberLoadCommand({
+    loadCommandByComponentName: args.loadCommandByComponentName,
+    warnings: args.warnings,
+    componentName: componentNameHint,
+    loadCommand: args.line.text,
+    lineNo: args.line.line,
+  });
 
-    if (cmd === "loadrt") {
-      const componentName = tokens[1];
-      if (!componentName) {
-        warnings.push(`Line ${line.line}: loadrt missing component name`);
-        continue;
-      }
-      rememberLoadCommand(componentName, line.text, line.line);
-      const args = parseKeyValueArgs(tokens.slice(2));
-      const loadrtImport = interpolateLoadrtImport({ componentName, args });
-      for (const event of loadrtImport.events ?? []) {
-        if (event.topic === "project.motmod" && event.payload) {
-          motmodDraft = {
-            ...(motmodDraft ?? {}),
-            ...(event.payload as HalImportDraft["motmod"]),
-          };
-        }
-      }
-      if (loadrtImport.warnings?.length) {
-        for (const warning of loadrtImport.warnings) {
-          warnings.push(`Line ${line.line}: ${warning}`);
-        }
-      }
-      for (const instanceName of loadrtImport.instancePaths) {
-        knownInstances.add(instanceName);
-        ensureInstanceRecord(
-          instances,
-          instanceName,
-          componentName,
-          "rt",
-          loadrtImport.instanceConfigByPath?.[instanceName],
-        );
-      }
-      continue;
-    }
-
-    if (cmd === "loadusr") {
-      const parsed = inferLoadusrProgramAndArgs(tokens);
-      for (const warning of parsed.warnings) {
-        warnings.push(`Line ${line.line}: ${warning}`);
-      }
-      if (!parsed.programToken) continue;
-      const componentNameHint = basename(parsed.programToken);
-      rememberLoadCommand(componentNameHint, line.text, line.line);
-
-      const named = inferLoadusrInstanceName(
-        parsed.programToken,
-        parsed.programArgs,
-      );
-      for (const warning of named.warnings) {
-        warnings.push(`Line ${line.line}: ${warning}`);
-      }
-
-      const instanceName = parsed.waitForName ?? named.instanceName;
-      if (
-        parsed.waitForName &&
-        named.explicitName &&
-        parsed.waitForName !== named.explicitName
-      ) {
-        warnings.push(
-          `Line ${line.line}: loadusr -Wn name '${parsed.waitForName}' does not match component name option '${named.explicitName}'`,
-        );
-      }
-
-      knownInstances.add(instanceName);
-      ensureInstanceRecord(
-        instances,
-        instanceName,
-        componentNameHint,
-        "userspace",
-      );
-      continue;
-    }
-
-    if (cmd === "addf") {
-      const functionName = tokens[1];
-      if (!functionName) {
-        warnings.push(`Line ${line.line}: addf missing function name`);
-        continue;
-      }
-      const thread = tokens[2];
-      const position = Number.parseInt(tokens[3] ?? "", 10);
-      const parsedTarget = splitAddfFunctionTarget(
-        functionName,
-        knownInstances,
-      );
-      addfs.push({
-        line: line.line,
-        functionName,
-        ...(parsedTarget ? { instanceName: parsedTarget.instanceName } : {}),
-        ...(parsedTarget?.functionSuffix
-          ? { functionSuffix: parsedTarget.functionSuffix }
-          : {}),
-        ...(parsedTarget
-          ? { isDefaultFunction: !parsedTarget.functionSuffix }
-          : {}),
-        ...(thread ? { thread } : {}),
-        ...(Number.isFinite(position) ? { position } : {}),
-      });
-      continue;
-    }
-
-    if (cmd === "setp") {
-      const rawPath = tokens[1];
-      if (!rawPath) {
-        warnings.push(`Line ${line.line}: setp missing path`);
-        continue;
-      }
-      const value = tokens.slice(2).join(" ").trim();
-      const split = splitHalPath(rawPath, knownInstances);
-      if (!split || !split.fieldName) {
-        warnings.push(
-          `Line ${line.line}: could not parse setp path '${rawPath}'`,
-        );
-        continue;
-      }
-      const record = ensureInstanceRecord(instances, split.instanceName);
-      addObservedParam(record, split.fieldName, value);
-      setps.push({
-        line: line.line,
-        rawPath,
-        instanceName: split.instanceName,
-        fieldName: split.fieldName,
-        value,
-      });
-      continue;
-    }
-
-    if (cmd === "net") {
-      const netName = tokens[1];
-      if (!netName) {
-        warnings.push(`Line ${line.line}: net missing signal name`);
-        continue;
-      }
-      const endpointTokens = tokens.slice(2);
-      const endpoints: HalImportNet["endpoints"] = [];
-      const endpointRoles: Array<PinDirection | null> = [];
-      let arrowRoleAfter: PinDirection | null = null;
-      let sawArrow = false;
-
-      for (const token of endpointTokens) {
-        if (isArrowToken(token)) {
-          const roles = arrowRoles(token);
-          if (!roles) continue;
-          if (!sawArrow) {
-            for (let i = 0; i < endpointRoles.length; i += 1) {
-              if (endpointRoles[i] == null) endpointRoles[i] = roles.before;
-            }
-          }
-          sawArrow = true;
-          arrowRoleAfter = roles.after;
-          continue;
-        }
-        if (!looksLikeHalPinPath(token)) continue;
-        const split = splitHalPath(token, knownInstances);
-        if (!split || !split.fieldName) {
-          warnings.push(
-            `Line ${line.line}: could not parse net pin '${token}'`,
-          );
-          continue;
-        }
-        endpoints.push({
-          rawPath: token,
-          instanceName: split.instanceName,
-          pinName: split.fieldName,
-        });
-        endpointRoles.push(arrowRoleAfter);
-        ensureInstanceRecord(instances, split.instanceName).pinNames.add(
-          split.fieldName,
-        );
-      }
-
-      for (let i = 0; i < endpoints.length; i += 1) {
-        const endpoint = endpoints[i];
-        const explicit = endpointRoles[i];
-        const direction =
-          explicit ?? (endpoints.length <= 1 ? "io" : i === 0 ? "out" : "in");
-        const record = ensureInstanceRecord(instances, endpoint.instanceName);
-        addObservedPin(record, endpoint.pinName, direction);
-      }
-
-      nets.push({ line: line.line, name: netName, endpoints });
-    }
+  const named = inferLoadusrInstanceName(
+    parsed.programToken,
+    parsed.programArgs,
+  );
+  for (const warning of named.warnings) {
+    args.warnings.push(`Line ${args.line.line}: ${warning}`);
   }
 
-  const groupsByName = new Map<string, MutableInstance[]>();
-  for (const instance of instances.values()) {
-    const componentName =
-      instance.componentNameHint ?? inferComponentName(instance.instanceName);
-    const list = groupsByName.get(componentName);
-    if (list) list.push(instance);
-    else groupsByName.set(componentName, [instance]);
+  const instanceName = parsed.waitForName ?? named.instanceName;
+  if (
+    parsed.waitForName &&
+    named.explicitName &&
+    parsed.waitForName !== named.explicitName
+  ) {
+    args.warnings.push(
+      `Line ${args.line.line}: loadusr -Wn name '${parsed.waitForName}' does not match component name option '${named.explicitName}'`,
+    );
   }
 
+  args.knownInstances.add(instanceName);
+  ensureInstanceRecord(
+    args.instances,
+    instanceName,
+    componentNameHint,
+    "userspace",
+  );
+}
+
+function processAddfLine(args: {
+  line: ParsedLine;
+  tokens: string[];
+  warnings: string[];
+  knownInstances: Set<string>;
+  addfs: HalImportDraft["addfs"];
+}): void {
+  const functionName = args.tokens[1];
+  if (!functionName) {
+    args.warnings.push(`Line ${args.line.line}: addf missing function name`);
+    return;
+  }
+  const thread = args.tokens[2];
+  const position = Number.parseInt(args.tokens[3] ?? "", 10);
+  const parsedTarget = splitAddfFunctionTarget(
+    functionName,
+    args.knownInstances,
+  );
+  args.addfs.push({
+    line: args.line.line,
+    functionName,
+    ...(parsedTarget ? { instanceName: parsedTarget.instanceName } : {}),
+    ...(parsedTarget?.functionSuffix
+      ? { functionSuffix: parsedTarget.functionSuffix }
+      : {}),
+    ...(parsedTarget
+      ? { isDefaultFunction: !parsedTarget.functionSuffix }
+      : {}),
+    ...(thread ? { thread } : {}),
+    ...(Number.isFinite(position) ? { position } : {}),
+  });
+}
+
+function processSetpLine(args: {
+  line: ParsedLine;
+  tokens: string[];
+  warnings: string[];
+  knownInstances: Set<string>;
+  instances: Map<string, MutableInstance>;
+  setps: HalImportDraft["setps"];
+}): void {
+  const rawPath = args.tokens[1];
+  if (!rawPath) {
+    args.warnings.push(`Line ${args.line.line}: setp missing path`);
+    return;
+  }
+  const value = args.tokens.slice(2).join(" ").trim();
+  const split = splitHalPath(rawPath, args.knownInstances);
+  if (!split || !split.fieldName) {
+    args.warnings.push(
+      `Line ${args.line.line}: could not parse setp path '${rawPath}'`,
+    );
+    return;
+  }
+  const record = ensureInstanceRecord(args.instances, split.instanceName);
+  addObservedParam(record, split.fieldName, value);
+  args.setps.push({
+    line: args.line.line,
+    rawPath,
+    instanceName: split.instanceName,
+    fieldName: split.fieldName,
+    value,
+  });
+}
+
+function collectNetEndpoints(args: {
+  line: ParsedLine;
+  tokens: string[];
+  warnings: string[];
+  knownInstances: Set<string>;
+  instances: Map<string, MutableInstance>;
+}): {
+  endpoints: HalImportNet["endpoints"];
+  endpointRoles: Array<PinDirection | null>;
+} {
+  const endpointTokens = args.tokens.slice(2);
+  const endpoints: HalImportNet["endpoints"] = [];
+  const endpointRoles: Array<PinDirection | null> = [];
+  let arrowRoleAfter: PinDirection | null = null;
+  let sawArrow = false;
+
+  for (const token of endpointTokens) {
+    if (isArrowToken(token)) {
+      const roles = arrowRoles(token);
+      if (!roles) continue;
+      if (!sawArrow) {
+        for (let i = 0; i < endpointRoles.length; i += 1) {
+          if (endpointRoles[i] == null) endpointRoles[i] = roles.before;
+        }
+      }
+      sawArrow = true;
+      arrowRoleAfter = roles.after;
+      continue;
+    }
+    if (!looksLikeHalPinPath(token)) continue;
+    const split = splitHalPath(token, args.knownInstances);
+    if (!split || !split.fieldName) {
+      args.warnings.push(
+        `Line ${args.line.line}: could not parse net pin '${token}'`,
+      );
+      continue;
+    }
+    endpoints.push({
+      rawPath: token,
+      instanceName: split.instanceName,
+      pinName: split.fieldName,
+    });
+    endpointRoles.push(arrowRoleAfter);
+    ensureInstanceRecord(args.instances, split.instanceName).pinNames.add(
+      split.fieldName,
+    );
+  }
+
+  return { endpoints, endpointRoles };
+}
+
+function defaultNetEndpointDirection(
+  endpointCount: number,
+  index: number,
+): PinDirection {
+  if (endpointCount <= 1) return "io";
+  return index === 0 ? "out" : "in";
+}
+
+function applyNetEndpointDirections(args: {
+  endpoints: HalImportNet["endpoints"];
+  endpointRoles: Array<PinDirection | null>;
+  instances: Map<string, MutableInstance>;
+}): void {
+  for (let i = 0; i < args.endpoints.length; i += 1) {
+    const endpoint = args.endpoints[i];
+    const explicit = args.endpointRoles[i];
+    const direction =
+      explicit ?? defaultNetEndpointDirection(args.endpoints.length, i);
+    const record = ensureInstanceRecord(args.instances, endpoint.instanceName);
+    addObservedPin(record, endpoint.pinName, direction);
+  }
+}
+
+function processNetLine(args: {
+  line: ParsedLine;
+  tokens: string[];
+  warnings: string[];
+  knownInstances: Set<string>;
+  instances: Map<string, MutableInstance>;
+  nets: HalImportNet[];
+}): void {
+  const netName = args.tokens[1];
+  if (!netName) {
+    args.warnings.push(`Line ${args.line.line}: net missing signal name`);
+    return;
+  }
+  const { endpoints, endpointRoles } = collectNetEndpoints(args);
+  applyNetEndpointDirections({
+    endpoints,
+    endpointRoles,
+    instances: args.instances,
+  });
+
+  args.nets.push({ line: args.line.line, name: netName, endpoints });
+}
+
+function buildGroupIdByComponentName(
+  groupsByName: Map<string, MutableInstance[]>,
+): Map<string, string> {
   const groupIdsByName = new Map<string, string>();
   const usedGroupIds = new Set<string>();
-  for (const name of [...groupsByName.keys()].sort((a, b) =>
-    a.localeCompare(b),
-  )) {
+  for (const name of sortBy([...groupsByName.keys()], (name) => name)) {
     let id = `halcmp:${slugify(name)}`;
     let suffix = 2;
     while (usedGroupIds.has(id)) {
@@ -626,109 +685,301 @@ export function parseHalImportDraft(
     usedGroupIds.add(id);
     groupIdsByName.set(name, id);
   }
+  return groupIdsByName;
+}
 
-  const componentGroups: HalImportComponentGroup[] = [...groupsByName.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([componentName, groupInstances]) => {
-      const runtimeHint = groupInstances.some(
-        (item) => item.runtimeHint === "rt",
-      )
-        ? "rt"
-        : groupInstances.some((item) => item.runtimeHint === "userspace")
-          ? "userspace"
-          : "unknown";
+function buildComponentGroups(args: {
+  groupsByName: Map<string, MutableInstance[]>;
+  groupIdsByName: Map<string, string>;
+  loadCommandByComponentName: Map<string, string>;
+}): HalImportComponentGroup[] {
+  function inferGroupRuntimeHint(
+    groupInstances: MutableInstance[],
+  ): "rt" | "userspace" | "unknown" {
+    if (groupInstances.some((item) => item.runtimeHint === "rt")) return "rt";
+    if (groupInstances.some((item) => item.runtimeHint === "userspace")) {
+      return "userspace";
+    }
+    return "unknown";
+  }
 
+  function mergeGroupPins(
+    pinMap: Map<string, HalImportObservedPin>,
+    item: MutableInstance,
+  ): void {
+    for (const pin of item.pins.values()) {
+      const existing = pinMap.get(pin.name);
+      const directions = [...pin.directionHints].sort();
+      if (existing) {
+        for (const direction of directions) {
+          if (!existing.observedDirections.includes(direction)) {
+            existing.observedDirections.push(direction);
+          }
+        }
+        continue;
+      }
+      pinMap.set(pin.name, {
+        name: pin.name,
+        observedDirections: directions,
+      });
+    }
+  }
+
+  function mergeGroupParams(
+    paramMap: Map<string, HalImportObservedParam>,
+    item: MutableInstance,
+  ): void {
+    for (const param of item.params.values()) {
+      const existing = paramMap.get(param.name);
+      if (existing) {
+        for (const sample of param.sampleValues) {
+          if (!existing.sampleValues.includes(sample)) {
+            existing.sampleValues.push(sample);
+          }
+        }
+        continue;
+      }
+      paramMap.set(param.name, {
+        name: param.name,
+        sampleValues: [...param.sampleValues],
+      });
+    }
+  }
+
+  function buildGroupInstanceOutput(
+    pinMap: Map<string, HalImportObservedPin>,
+    paramMap: Map<string, HalImportObservedParam>,
+    componentName: string,
+    item: MutableInstance,
+  ) {
+    mergeGroupPins(pinMap, item);
+    mergeGroupParams(paramMap, item);
+    return {
+      instanceName: item.instanceName,
+      componentGroupId: args.groupIdsByName.get(componentName) ?? componentName,
+      pinNames: [...item.pinNames].sort((a, b) => a.localeCompare(b)),
+      ...(Object.keys(item.instanceConfigValues).length > 0
+        ? { instanceConfigValues: { ...item.instanceConfigValues } }
+        : {}),
+      paramValues: { ...item.paramValues },
+    };
+  }
+
+  function buildComponentGroup(
+    pinMap: Map<string, HalImportObservedPin>,
+    paramMap: Map<string, HalImportObservedParam>,
+    componentName: string,
+    groupInstances: MutableInstance[],
+  ): HalImportComponentGroup {
+    const runtimeHint = inferGroupRuntimeHint(groupInstances);
+    const instancesOut = pipe(
+      groupInstances,
+      sortBy((item) => item.instanceName),
+      map((item) =>
+        buildGroupInstanceOutput(pinMap, paramMap, componentName, item),
+      ),
+    );
+
+    return {
+      id: args.groupIdsByName.get(componentName) ?? componentName,
+      inferredHalComponentName: componentName,
+      ...(args.loadCommandByComponentName.get(componentName)
+        ? { loadCommand: args.loadCommandByComponentName.get(componentName) }
+        : {}),
+      runtimeHint,
+      instances: instancesOut,
+      pins: [...pinMap.values()].sort((a, b) => a.name.localeCompare(b.name)),
+      params: [...paramMap.values()].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
+    };
+  }
+
+  return pipe(
+    [...args.groupsByName.entries()],
+    sortBy(([componentName]) => componentName),
+    map(([componentName, groupInstances]) => {
       const pinMap = new Map<string, HalImportObservedPin>();
       const paramMap = new Map<string, HalImportObservedParam>();
+      return buildComponentGroup(
+        pinMap,
+        paramMap,
+        componentName,
+        groupInstances,
+      );
+    }),
+  );
+}
 
-      const instancesOut = groupInstances
-        .sort((a, b) => a.instanceName.localeCompare(b.instanceName))
-        .map((item) => {
-          for (const pin of item.pins.values()) {
-            const existing = pinMap.get(pin.name);
-            const directions = [...pin.directionHints].sort();
-            if (existing) {
-              for (const direction of directions) {
-                if (!existing.observedDirections.includes(direction)) {
-                  existing.observedDirections.push(direction);
-                }
-              }
-            } else {
-              pinMap.set(pin.name, {
-                name: pin.name,
-                observedDirections: directions,
-              });
-            }
-          }
-          for (const param of item.params.values()) {
-            const existing = paramMap.get(param.name);
-            if (existing) {
-              for (const sample of param.sampleValues) {
-                if (!existing.sampleValues.includes(sample)) {
-                  existing.sampleValues.push(sample);
-                }
-              }
-            } else {
-              paramMap.set(param.name, {
-                name: param.name,
-                sampleValues: [...param.sampleValues],
-              });
-            }
-          }
-          return {
-            instanceName: item.instanceName,
-            componentGroupId:
-              groupIdsByName.get(componentName) ?? componentName,
-            pinNames: [...item.pinNames].sort((a, b) => a.localeCompare(b)),
-            ...(Object.keys(item.instanceConfigValues).length > 0
-              ? { instanceConfigValues: { ...item.instanceConfigValues } }
-              : {}),
-            paramValues: { ...item.paramValues },
-          };
-        });
+interface ParseHalImportState {
+  warnings: string[];
+  loadCommandByComponentName: Map<string, string>;
+  knownInstances: Set<string>;
+  instances: Map<string, MutableInstance>;
+  nets: HalImportNet[];
+  setps: HalImportDraft["setps"];
+  addfs: HalImportDraft["addfs"];
+  motmodDraft?: HalImportDraft["motmod"];
+}
 
-      return {
-        id: groupIdsByName.get(componentName) ?? componentName,
-        inferredHalComponentName: componentName,
-        ...(loadCommandByComponentName.get(componentName)
-          ? { loadCommand: loadCommandByComponentName.get(componentName) }
-          : {}),
-        runtimeHint,
-        instances: instancesOut,
-        pins: [...pinMap.values()].sort((a, b) => a.name.localeCompare(b.name)),
-        params: [...paramMap.values()].sort((a, b) =>
-          a.name.localeCompare(b.name),
-        ),
-      };
+function processParsedHalLine(
+  line: ParsedLine,
+  state: ParseHalImportState,
+): void {
+  const tokens = tokenizeHal(line.text);
+  if (tokens.length === 0) return;
+  const cmd = tokens[0]?.toLowerCase();
+  if (!cmd) return;
+
+  if (cmd === "loadrt") {
+    processLoadrtLine({
+      line,
+      tokens,
+      warnings: state.warnings,
+      loadCommandByComponentName: state.loadCommandByComponentName,
+      knownInstances: state.knownInstances,
+      instances: state.instances,
+      setMotmodDraft: (value) => {
+        state.motmodDraft = { ...(state.motmodDraft ?? {}), ...(value ?? {}) };
+      },
     });
+    return;
+  }
 
+  if (cmd === "loadusr") {
+    processLoadusrLine({
+      line,
+      tokens,
+      warnings: state.warnings,
+      loadCommandByComponentName: state.loadCommandByComponentName,
+      knownInstances: state.knownInstances,
+      instances: state.instances,
+    });
+    return;
+  }
+
+  if (cmd === "addf") {
+    processAddfLine({
+      line,
+      tokens,
+      warnings: state.warnings,
+      knownInstances: state.knownInstances,
+      addfs: state.addfs,
+    });
+    return;
+  }
+
+  if (cmd === "setp") {
+    processSetpLine({
+      line,
+      tokens,
+      warnings: state.warnings,
+      knownInstances: state.knownInstances,
+      instances: state.instances,
+      setps: state.setps,
+    });
+    return;
+  }
+
+  if (cmd === "net") {
+    processNetLine({
+      line,
+      tokens,
+      warnings: state.warnings,
+      knownInstances: state.knownInstances,
+      instances: state.instances,
+      nets: state.nets,
+    });
+  }
+}
+
+function groupInstancesByComponent(
+  instances: Map<string, MutableInstance>,
+): Map<string, MutableInstance[]> {
+  const groupsByName = new Map<string, MutableInstance[]>();
+  for (const instance of instances.values()) {
+    const componentName =
+      instance.componentNameHint ?? inferComponentName(instance.instanceName);
+    const list = groupsByName.get(componentName);
+    if (list) list.push(instance);
+    else groupsByName.set(componentName, [instance]);
+  }
+  return groupsByName;
+}
+
+function buildGroupIdByInstanceName(
+  componentGroups: HalImportComponentGroup[],
+): Map<string, string> {
   const groupIdByInstanceName = new Map<string, string>();
   for (const group of componentGroups) {
     for (const instance of group.instances) {
       groupIdByInstanceName.set(instance.instanceName, group.id);
     }
   }
+  return groupIdByInstanceName;
+}
 
-  for (const net of nets) {
+function warnForUngroupedNetEndpoints(args: {
+  warnings: string[];
+  nets: HalImportNet[];
+  groupIdByInstanceName: Map<string, string>;
+}): void {
+  for (const net of args.nets) {
     for (const endpoint of net.endpoints) {
-      const groupId = groupIdByInstanceName.get(endpoint.instanceName);
+      const groupId = args.groupIdByInstanceName.get(endpoint.instanceName);
       if (!groupId) {
-        warnings.push(
+        args.warnings.push(
           `Line ${net.line}: endpoint '${endpoint.rawPath}' was not assigned to a component group`,
         );
       }
     }
   }
+}
+
+export function parseHalImportDraft(
+  text: string,
+  sourcePath?: string,
+): HalImportDraft {
+  const normalized = normalizeLines(text);
+  const state: ParseHalImportState = {
+    warnings: [],
+    loadCommandByComponentName: new Map<string, string>(),
+    knownInstances: new Set<string>(),
+    instances: new Map<string, MutableInstance>(),
+    nets: [],
+    setps: [],
+    addfs: [],
+  };
+
+  for (const line of normalized) {
+    processParsedHalLine(line, state);
+  }
+
+  const groupsByName = groupInstancesByComponent(state.instances);
+
+  const groupIdsByName = buildGroupIdByComponentName(groupsByName);
+  const componentGroups = buildComponentGroups({
+    groupsByName,
+    groupIdsByName,
+    loadCommandByComponentName: state.loadCommandByComponentName,
+  });
+
+  const groupIdByInstanceName = buildGroupIdByInstanceName(componentGroups);
+  warnForUngroupedNetEndpoints({
+    warnings: state.warnings,
+    nets: state.nets,
+    groupIdByInstanceName,
+  });
 
   return {
     parser: "nohal-hal-v1",
     ...(sourcePath ? { sourcePath, sourceFileName: basename(sourcePath) } : {}),
     lineCount: text.replace(/\r\n/g, "\n").split("\n").length,
     componentGroups,
-    nets,
-    setps,
-    addfs,
-    ...(motmodDraft ? { motmod: motmodDraft } : {}),
-    warnings,
+    nets: state.nets,
+    setps: state.setps,
+    addfs: state.addfs,
+    ...(state.motmodDraft ? { motmod: state.motmodDraft } : {}),
+    warnings: state.warnings,
   };
 }

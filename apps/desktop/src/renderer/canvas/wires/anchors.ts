@@ -1,6 +1,7 @@
-import type { SplitConnectionLabelPositions } from "@nohal/core/src/sheet";
-import type { Pt } from "../layout";
+import type { SplitConnectionLabelPositions } from "@nohal/core/sheet";
+import type { XY } from "@nohal/core/types";
 import { measureLabelBoxForLabel } from "../measurements";
+import { DEGREES_TO_RADIANS } from "../scene/geometry";
 import type { SceneRuntime } from "../scene/types";
 import { getEndpointNormal, getEndpointPoint } from "./endpoints";
 import { clamp, computeSplitLabelPositions, rotateVec } from "./geometry";
@@ -52,8 +53,8 @@ export function getLabelAnchorPoint(
   runtime: SceneRuntime,
   lookup: SheetLookup,
   labelId: string,
-  toward: Pt,
-): Pt | null {
+  toward: XY,
+): XY | null {
   const live = runtime.graph.liveLabelPositions.get(labelId);
   const label = lookup.labelsById.get(labelId);
   if (!label) return null;
@@ -68,7 +69,7 @@ export function getLabelAnchorPoint(
     top: -height / 2,
     bottom: height / 2,
   };
-  const rotationRad = ((labelForBounds.rotation ?? 0) * Math.PI) / 180;
+  const rotationRad = (labelForBounds.rotation ?? 0) * DEGREES_TO_RADIANS;
   const towardLocal =
     rotationRad === 0
       ? {

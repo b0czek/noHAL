@@ -1,4 +1,4 @@
-import { isRequiredHalThreadName } from "@nohal/core/src/project";
+import { isRequiredHalThreadName } from "@nohal/core/project";
 import { HiOutlineTrash } from "solid-icons/hi";
 import { For, Show } from "solid-js";
 import { Badge } from "../../components/ui/badge";

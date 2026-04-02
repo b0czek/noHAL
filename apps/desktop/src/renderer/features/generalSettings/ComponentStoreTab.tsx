@@ -1,9 +1,9 @@
-import { listStoreEntriesForLinuxCncVersion } from "@nohal/core/src/componentStore";
+import { listStoreEntriesForLinuxCncVersion } from "@nohal/core/componentStore";
 import {
   type LinuxCncVersion,
   SUPPORTED_LINUXCNC_VERSIONS,
-} from "@nohal/core/src/linuxcncVersion";
-import type { ComponentStore } from "@nohal/core/src/types";
+} from "@nohal/core/linuxcncVersion";
+import type { ComponentStore } from "@nohal/core/types";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import StringSelect from "../../components/form/StringSelect";
 import { Badge } from "../../components/ui/badge";
@@ -56,6 +56,18 @@ export default function ComponentStoreTab(props: ComponentStoreTabProps) {
     if (source.kind === "comp-dir") return source.dirPath;
     if (source.kind === "comp-file") return source.filePath;
     return `${source.linuxcncVersion} ${source.refName}`;
+  };
+  const sourceKindLabel = (
+    kind: ComponentStore["components"][string]["sourceRef"]["kind"],
+  ) => {
+    switch (kind) {
+      case "comp-dir":
+        return t("componentStore.dirSource");
+      case "comp-file":
+        return t("componentStore.fileImport");
+      case "linuxcnc-builtin":
+        return t("componentStore.builtinSource");
+    }
   };
 
   const componentSources = createMemo(() =>
@@ -259,11 +271,7 @@ export default function ComponentStoreTab(props: ComponentStoreTabProps) {
                         : ""}
                     </div>
                     <div class="mt-1 text-xs text-muted-foreground">
-                      {entry.sourceRef.kind === "comp-dir"
-                        ? t("componentStore.dirSource")
-                        : entry.sourceRef.kind === "comp-file"
-                          ? t("componentStore.fileImport")
-                          : t("componentStore.builtinSource")}
+                      {sourceKindLabel(entry.sourceRef.kind)}
                     </div>
                     <div class="mono mt-1 truncate text-xs text-muted-foreground">
                       {entry.sourceRef.filePath}

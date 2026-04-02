@@ -1,7 +1,8 @@
 import {
   isComponentPlaceable,
   isComponentSearchable,
-} from "@nohal/core/src/componentVisibility";
+} from "@nohal/core/componentVisibility";
+import { isProtectedSystemSheet } from "@nohal/core/sheet";
 import {
   HiOutlineArchiveBoxArrowDown,
   HiOutlineArrowsRightLeft,
@@ -17,6 +18,7 @@ import {
 import { createMemo, createSignal } from "solid-js";
 import BrandLogo from "../components/BrandLogo";
 import CanvasComponentMenu from "../components/CanvasComponentMenu";
+import CanvasSheetMenu from "../components/CanvasSheetMenu";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
@@ -28,6 +30,7 @@ import { Separator } from "../components/ui/separator";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { type CanvasPlacement, useEditorUi } from "../state/EditorUiProvider";
+import { sheetContainsSheet } from "../state/store/helpers";
 
 interface EditorTopbarProps {
   onGoToLanding: () => void;
@@ -38,6 +41,7 @@ export default function EditorTopbar(props: EditorTopbarProps) {
   const { state, actions } = useEditorStore();
   const editorUi = useEditorUi();
   const [componentMenuOpen, setComponentMenuOpen] = createSignal(false);
+  const [sheetMenuOpen, setSheetMenuOpen] = createSignal(false);
   const componentChoices = createMemo(() =>
     Object.values(state.project.library.components)
       .filter(
@@ -50,12 +54,39 @@ export default function EditorTopbar(props: EditorTopbarProps) {
     const current = editorUi.placementMode();
     return current?.kind === "component" ? current : null;
   });
+  const activeSheetPlacement = createMemo(() => {
+    const current = editorUi.placementMode();
+    return current?.kind === "subsheet" ? current : null;
+  });
   const activeComponentLabel = createMemo(() => {
     const active = activeComponentPlacement();
     if (!active) return t("topbar.addComponent");
     return (
       state.project.library.components[active.componentId]?.halComponentName ??
       t("topbar.addComponent")
+    );
+  });
+  const availableSheets = createMemo(() =>
+    Object.values(state.project.sheets)
+      .filter((sheet) => !isProtectedSystemSheet(state.project, sheet.id))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  );
+  const disabledSheetIds = createMemo(
+    () =>
+      new Set(
+        availableSheets()
+          .filter((sheet) =>
+            sheetContainsSheet(state.project, sheet.id, state.activeSheetId),
+          )
+          .map((sheet) => sheet.id),
+      ),
+  );
+  const activeSheetLabel = createMemo(() => {
+    const active = activeSheetPlacement();
+    if (!active) return t("topbar.addSubsheet");
+    if (!active.sheetId) return t("canvasSheetMenu.createSheet");
+    return (
+      state.project.sheets[active.sheetId]?.name ?? t("topbar.addSubsheet")
     );
   });
   const toggleComponentPlacement = (componentId: string) => {
@@ -189,18 +220,38 @@ export default function EditorTopbar(props: EditorTopbarProps) {
             />
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button
-          variant="secondary"
-          onClick={() => editorUi.togglePlacementMode({ kind: "subsheet" })}
-          class={`gap-2 ${
-            placementModeMatches({ kind: "subsheet" })
-              ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
-              : ""
-          }`}
-        >
-          <HiOutlineDocumentDuplicate size={16} aria-hidden="true" />
-          {t("topbar.addSubsheet")}
-        </Button>
+        <DropdownMenu open={sheetMenuOpen()} onOpenChange={setSheetMenuOpen}>
+          <DropdownMenuTrigger
+            as={Button<"button">}
+            variant="secondary"
+            class={`gap-2 ${
+              activeSheetPlacement()
+                ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
+                : ""
+            }`}
+            title={activeSheetLabel()}
+          >
+            <HiOutlineDocumentDuplicate size={16} aria-hidden="true" />
+            <span class="max-w-52 truncate">{activeSheetLabel()}</span>
+            <HiOutlineChevronDown size={16} aria-hidden="true" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent class="w-[360px] max-h-[26rem] overflow-hidden p-3">
+            <CanvasSheetMenu
+              sheets={availableSheets()}
+              disabledSheetIds={disabledSheetIds()}
+              onSelectSheet={(sheetId) => {
+                editorUi.beginPlacementMode({ kind: "subsheet", sheetId });
+                setSheetMenuOpen(false);
+              }}
+              onCreateSheet={() => {
+                editorUi.beginPlacementMode({ kind: "subsheet" });
+                setSheetMenuOpen(false);
+              }}
+              onClose={() => setSheetMenuOpen(false)}
+              listClass="max-h-[18rem] overflow-y-auto"
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="secondary"
           onClick={() => editorUi.togglePlacementMode({ kind: "comment" })}

@@ -12,7 +12,7 @@ import {
   syncMesaManagedProjection as syncMesaManagedProjectionEdit,
   updateMesaHostIp as updateMesaHostIpEdit,
   updateMesaHostKind as updateMesaHostKindEdit,
-} from "@nohal/core/src/mesa";
+} from "@nohal/core/mesa";
 import type { EditorStoreActionContext } from "./types";
 
 export function createMesaActions(deps: EditorStoreActionContext) {

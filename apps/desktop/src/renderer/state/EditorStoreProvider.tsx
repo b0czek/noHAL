@@ -1,4 +1,4 @@
-import { createEmptyProject } from "@nohal/core/src/project";
+import { createEmptyProject } from "@nohal/core/project";
 import { createContext, type ParentProps, useContext } from "solid-js";
 import { useI18n } from "../i18n";
 import { createEditorStore } from "./store";

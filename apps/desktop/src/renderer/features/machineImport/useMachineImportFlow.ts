@@ -1,22 +1,22 @@
-import { customComponentDefinitionEdits } from "@nohal/core/src/customComponent";
+import { customComponentDefinitionEdits } from "@nohal/core/customComponent";
 import {
   buildProjectFromHalImport as buildImportedProject,
   detectMesaHalImport,
-} from "@nohal/core/src/halImport";
-import type {
-  ProjectMesaConnectorCardKind,
-  ProjectMesaGpioDirection,
-  ProjectMesaHostKind,
-  ProjectMesaSmartSerialCardKind,
-  ProjectMesaSmartSerialTarget,
-} from "@nohal/core/src/mesa";
-import { createDefaultMesaConfig } from "@nohal/core/src/project";
+} from "@nohal/core/halImport";
+import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
+import {
+  createDefaultMesaConfig,
+  type ProjectMesaConnectorCardKind,
+  type ProjectMesaGpioDirection,
+  type ProjectMesaHostKind,
+  type ProjectMesaSmartSerialCardKind,
+  type ProjectMesaSmartSerialTarget,
+} from "@nohal/core/mesa";
 import type {
   ComponentDefinition,
   HalImportPlacementHeuristic,
   HalValueType,
-  LinuxCncVersion,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import type { Accessor } from "solid-js";
 import { createStore, unwrap } from "solid-js/store";
 import { useI18n } from "../../i18n";
@@ -259,14 +259,17 @@ export function useMachineImportFlow({
           unwrap(machineImportFlow.machineConfigImport.machineConfig),
         );
       }
+      let statusSuffix = "";
+      if (
+        machineImportFlow.machineConfigImport?.machineConfig.userIni.sourcePath
+      ) {
+        statusSuffix = `: ${machineImportFlow.machineConfigImport.machineConfig.userIni.sourcePath}`;
+      } else if (draft.sourcePath) {
+        statusSuffix = `: ${draft.sourcePath}`;
+      }
       const opened = await actions.openPreparedProject(result.project, {
         status: t("landing.importedMachineStatus", {
-          suffix: machineImportFlow.machineConfigImport?.machineConfig.userIni
-            .sourcePath
-            ? `: ${machineImportFlow.machineConfigImport.machineConfig.userIni.sourcePath}`
-            : draft.sourcePath
-              ? `: ${draft.sourcePath}`
-              : "",
+          suffix: statusSuffix,
         }),
         warnings: result.warnings,
       });
@@ -438,6 +441,14 @@ export function useMachineImportFlow({
       customComponentDefinitionEdits.loadCommand.update(component, value);
     });
 
+  const updateGeneratedLocalComponentMaxInstances = (
+    groupId: string,
+    value: number | undefined,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      customComponentDefinitionEdits.maxInstances.update(component, value);
+    });
+
   const addGeneratedLocalComponentPin = (groupId: string) =>
     updateGeneratedLocalComponent(groupId, (component) => {
       customComponentDefinitionEdits.pin.add(component);
@@ -553,6 +564,8 @@ export function useMachineImportFlow({
       updateGeneratedLocalComponentRuntimeKind(groupId, value),
     onLoadCommandChange: (value) =>
       updateGeneratedLocalComponentLoadCommand(groupId, value),
+    onMaxInstancesChange: (value) =>
+      updateGeneratedLocalComponentMaxInstances(groupId, value),
     onAddPin: () => addGeneratedLocalComponentPin(groupId),
     onRemovePin: (pinKey) => removeGeneratedLocalComponentPin(groupId, pinKey),
     onPinNameChange: (pinKey, value) =>
@@ -601,6 +614,7 @@ export function useMachineImportFlow({
     updateGeneratedLocalComponentHalComponentName,
     updateGeneratedLocalComponentRuntimeKind,
     updateGeneratedLocalComponentLoadCommand,
+    updateGeneratedLocalComponentMaxInstances,
     addGeneratedLocalComponentPin,
     removeGeneratedLocalComponentPin,
     updateGeneratedLocalComponentPinName,

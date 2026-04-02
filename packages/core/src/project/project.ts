@@ -1,3 +1,4 @@
+import { filter, pipe, unique } from "remeda";
 import { fixedExportStageForComponent } from "../componentSystem";
 import { reconcileHaluiManagedNodes } from "../halui";
 import { createId, slugify } from "../id";
@@ -8,9 +9,16 @@ import {
   createEmptyLinuxCncIniDocument,
   normalizeProjectMachineConfig,
 } from "../machineConfig/shared";
-import { normalizeProjectMesaConfig, reconcileMesaManagedNodes } from "../mesa";
-import type { ProjectMesaConfig } from "../mesa/types";
+import {
+  createDefaultMesaConfig,
+  normalizeProjectMesaConfig,
+  reconcileMesaManagedNodes,
+} from "../mesa";
 import { reconcileMotmodManagedNodes } from "../motmod";
+import {
+  DEFAULT_MOTMOD_CONFIG,
+  normalizeProjectMotmodConfigValue,
+} from "../motmod/config";
 import {
   createDefaultSheetThreadOutputs,
   moveRootSystemComponentsToSystemSheet,
@@ -18,6 +26,7 @@ import {
 } from "../sheet";
 import type {
   ComponentDefinition,
+  ComponentNode,
   HalThreadDefinition,
   NoHALProject,
   ProjectMachineConfig,
@@ -31,6 +40,7 @@ import { NOHAL_PROJECT_FORMAT, NOHAL_PROJECT_VERSION } from "./formats";
 import { migrateProjectDocumentToCurrentVersion } from "./migrations";
 
 export const REQUIRED_HAL_THREAD_NAME = "servo-thread";
+const DEFAULT_HAL_THREAD_PERIOD_NS = 1_000_000;
 
 export function isRequiredHalThreadName(name: string): boolean {
   return name.trim() === REQUIRED_HAL_THREAD_NAME;
@@ -40,7 +50,6 @@ function createDefaultTopSheet(): SheetDefinition {
   return {
     id: createId("sheet"),
     name: "Top",
-    parentSheetId: null,
     nodes: [],
     ports: [],
     labels: [],
@@ -58,10 +67,18 @@ export function createDefaultHalThreads(): HalThreadDefinition[] {
     {
       id: createId("thread"),
       name: REQUIRED_HAL_THREAD_NAME,
-      periodNs: 1_000_000,
+      periodNs: DEFAULT_HAL_THREAD_PERIOD_NS,
       floatMode: "fp",
     },
   ];
+}
+
+function defaultSheetPortSide(
+  direction: SheetPort["direction"],
+): SheetPort["side"] {
+  if (direction === "in") return "right";
+  if (direction === "out") return "left";
+  return "top";
 }
 
 function normalizeHalThreads(value: unknown): HalThreadDefinition[] {
@@ -76,7 +93,7 @@ function normalizeHalThreads(value: unknown): HalThreadDefinition[] {
     if (!name || usedNames.has(name)) continue;
     const periodNs = Number.isFinite(candidate.periodNs)
       ? Math.max(1, Math.round(candidate.periodNs as number))
-      : 1_000_000;
+      : DEFAULT_HAL_THREAD_PERIOD_NS;
     out.push({
       id:
         typeof candidate.id === "string" && candidate.id.trim()
@@ -96,7 +113,7 @@ function normalizeHalThreads(value: unknown): HalThreadDefinition[] {
     out.unshift({
       id: createId("thread"),
       name: REQUIRED_HAL_THREAD_NAME,
-      periodNs: 1_000_000,
+      periodNs: DEFAULT_HAL_THREAD_PERIOD_NS,
       floatMode: "fp",
     });
   }
@@ -114,20 +131,7 @@ export function createEmptyMachineConfig(): ProjectMachineConfig {
 }
 
 export function createDefaultMotmodConfig(): ProjectMotmodConfig {
-  return {
-    numJoints: 3,
-    numDio: 4,
-    numAio: 4,
-    numSpindles: 1,
-    numMiscError: 0,
-    trajPeriodNs: 0,
-  };
-}
-
-export function createDefaultMesaConfig(): ProjectMesaConfig {
-  return {
-    hosts: [],
-  };
+  return { ...DEFAULT_MOTMOD_CONFIG };
 }
 
 export function createDefaultProjectUi(activeSheetId: string): ProjectUiConfig {
@@ -162,30 +166,7 @@ export function reconcileProject(project: NoHALProject): NoHALProject {
 
 function normalizeMotmodConfig(value: unknown): ProjectMotmodConfig {
   const raw = value && typeof value === "object" ? value : {};
-  const candidate = raw as Partial<ProjectMotmodConfig>;
-  const defaults = createDefaultMotmodConfig();
-  const clampInt = (n: unknown, fallback: number, min = 0, max = 9999) => {
-    if (!Number.isFinite(n)) return fallback;
-    return Math.max(min, Math.min(max, Math.round(n as number)));
-  };
-  return {
-    numJoints: clampInt(candidate.numJoints, defaults.numJoints, 1, 64),
-    numDio: clampInt(candidate.numDio, defaults.numDio, 0, 256),
-    numAio: clampInt(candidate.numAio, defaults.numAio, 0, 256),
-    numSpindles: clampInt(candidate.numSpindles, defaults.numSpindles, 1, 16),
-    numMiscError: clampInt(
-      candidate.numMiscError,
-      defaults.numMiscError,
-      0,
-      256,
-    ),
-    trajPeriodNs: clampInt(
-      candidate.trajPeriodNs,
-      defaults.trajPeriodNs,
-      0,
-      100_000_000,
-    ),
-  };
+  return normalizeProjectMotmodConfigValue(raw as Partial<ProjectMotmodConfig>);
 }
 
 function normalizeProjectUi(
@@ -278,6 +259,59 @@ function assertProjectShape(input: unknown): asserts input is NoHALProject {
   }
 }
 
+function normalizeParsedComponentNode(node: ComponentNode): void {
+  if (Array.isArray(node.hiddenPinKeys)) {
+    const hiddenPinKeys = pipe(
+      node.hiddenPinKeys,
+      filter(
+        (key): key is string =>
+          typeof key === "string" && key.trim().length > 0,
+      ),
+      unique(),
+    );
+    if (hiddenPinKeys.length > 0) {
+      node.hiddenPinKeys = hiddenPinKeys;
+    } else {
+      delete node.hiddenPinKeys;
+    }
+  } else {
+    delete node.hiddenPinKeys;
+  }
+
+  if (node.exportStage === "main" || node.exportStage === "postgui") return;
+  delete node.exportStage;
+}
+
+function normalizeParsedSheet(sheet: SheetDefinition): void {
+  if (!Array.isArray((sheet as Partial<SheetDefinition>).comments)) {
+    sheet.comments = [];
+  }
+  if (sheet.role !== "system") {
+    delete sheet.role;
+  }
+  for (const node of sheet.nodes) {
+    if (node.kind !== "component") continue;
+    normalizeParsedComponentNode(node);
+  }
+  if (!sheet.hal) sheet.hal = {};
+  sheet.hal.threadOutputs = normalizeSheetThreadOutputs(
+    sheet.hal.threadOutputs,
+  );
+}
+
+function inferRootSheetThreadOutputIds(project: NoHALProject): void {
+  const rootSheet = project.sheets[project.rootSheetId];
+  const halThreads = project.halThreads ?? [];
+  const halThreadIdByName = new Map(
+    halThreads.map((thread) => [thread.name, thread.id]),
+  );
+  for (const output of rootSheet.hal?.threadOutputs ?? []) {
+    if (output.halThreadId) continue;
+    const inferred = halThreadIdByName.get(output.name);
+    if (inferred) output.halThreadId = inferred;
+  }
+}
+
 export function parseNoHALProject(content: string): NoHALProject {
   const parsed = JSON.parse(content) as unknown;
   const migrated = migrateProjectDocumentToCurrentVersion(parsed);
@@ -294,44 +328,9 @@ export function parseNoHALProject(content: string): NoHALProject {
     project.rootSheetId,
     project.sheets,
   );
-  for (const sheet of Object.values(project.sheets)) {
-    if (!Array.isArray((sheet as Partial<SheetDefinition>).comments)) {
-      (sheet as SheetDefinition).comments = [];
-    }
-    for (const node of sheet.nodes) {
-      if (node.kind !== "component") continue;
-      if (Array.isArray(node.hiddenPinKeys)) {
-        const hiddenPinKeys = [...new Set(node.hiddenPinKeys)].filter(
-          (key): key is string =>
-            typeof key === "string" && key.trim().length > 0,
-        );
-        if (hiddenPinKeys.length > 0) {
-          node.hiddenPinKeys = hiddenPinKeys;
-        } else {
-          delete node.hiddenPinKeys;
-        }
-      } else {
-        delete node.hiddenPinKeys;
-      }
-      if (node.exportStage === "main" || node.exportStage === "postgui") {
-        continue;
-      }
-      delete node.exportStage;
-    }
-    if (!sheet.hal) sheet.hal = {};
-    sheet.hal.threadOutputs = normalizeSheetThreadOutputs(
-      sheet.hal.threadOutputs,
-    );
-  }
-  const rootSheet = project.sheets[project.rootSheetId];
-  const halThreadIdByName = new Map(
-    project.halThreads.map((thread) => [thread.name, thread.id]),
-  );
-  for (const output of rootSheet.hal?.threadOutputs ?? []) {
-    if (output.halThreadId) continue;
-    const inferred = halThreadIdByName.get(output.name);
-    if (inferred) output.halThreadId = inferred;
-  }
+  for (const sheet of Object.values(project.sheets))
+    normalizeParsedSheet(sheet);
+  inferRootSheetThreadOutputIds(project);
   moveRootSystemComponentsToSystemSheet(project);
   return reconcileProject(project);
 }
@@ -341,14 +340,10 @@ export function stringifyNoHALProject(project: NoHALProject): string {
   return `${JSON.stringify(project, null, 2)}\n`;
 }
 
-export function createSheet(
-  name: string,
-  parentSheetId: string | null,
-): SheetDefinition {
+export function createSheet(name: string): SheetDefinition {
   return {
     id: createId("sheet"),
     name,
-    parentSheetId,
     nodes: [],
     ports: [],
     labels: [],
@@ -372,9 +367,7 @@ export function createSheetPortDraft(
     name: slugify(name).replace(/-/g, "_"),
     direction,
     type,
-    side:
-      side ??
-      (direction === "in" ? "right" : direction === "out" ? "left" : "top"),
+    side: side ?? defaultSheetPortSide(direction),
     position: { x: 0, y: 0 },
     rotation: 0,
   };

@@ -1,6 +1,7 @@
+import type { Bounds, Rect, XY } from "@nohal/core/types";
 import type Konva from "konva";
-import { SCENE_HEIGHT, SCENE_WIDTH } from "../constants";
-import type { NodeLayout, Pt } from "../layout";
+import { scene } from "../constants/scene";
+import type { NodeLayout } from "../layout";
 import {
   estimateCommentSize,
   estimatePortBox,
@@ -8,23 +9,20 @@ import {
 } from "../measurements";
 import type { SceneRenderState } from "../types";
 import {
+  DEGREES_TO_RADIANS,
   expandBoundsWithRotatedRect,
   rectIntersects,
   worldBoundsFromLocalRect,
 } from "./geometry";
-import type {
-  CullGroupMap,
-  CullModel,
-  Rect,
-  SceneBounds,
-  SceneGraphState,
-} from "./types";
+import type { CullGroupMap, CullModel, SceneGraphState } from "./types";
+
+const SCENE_BOUNDS_MARGIN = 160;
 
 export function focusCenterFromCullModel(
   id: string,
   groups: CullGroupMap,
   models: Map<string, CullModel>,
-): Pt | null {
+): XY | null {
   const group = groups.get(id);
   const model = models.get(id);
   if (!group || !model) return null;
@@ -34,7 +32,7 @@ export function focusCenterFromCullModel(
     x: model.localRect.x + model.localRect.width / 2,
     y: model.localRect.y + model.localRect.height / 2,
   };
-  const rad = (model.rotationDeg * Math.PI) / 180;
+  const rad = model.rotationDeg * DEGREES_TO_RADIANS;
   const c = Math.cos(rad);
   const s = Math.sin(rad);
   return {
@@ -149,15 +147,15 @@ export function rebuildCullModels(state: SceneRenderState): {
 export function computeSceneBounds(args: {
   state: SceneRenderState;
   nodeLayouts: Map<string, NodeLayout>;
-}): SceneBounds {
+}): Bounds {
   const { state, nodeLayouts } = args;
-  const bounds: SceneBounds = {
+  const bounds: Bounds = {
     minX: 0,
     minY: 0,
-    maxX: SCENE_WIDTH,
-    maxY: SCENE_HEIGHT,
+    maxX: scene.width,
+    maxY: scene.height,
   };
-  const margin = 160;
+  const margin = SCENE_BOUNDS_MARGIN;
 
   for (const node of state.sheet.nodes) {
     const layout = nodeLayouts.get(node.id);

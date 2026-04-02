@@ -1,11 +1,11 @@
-import { getSheet } from "@nohal/core/src/graph";
+import { getSheet } from "@nohal/core/graph";
 import type {
   ComponentStore,
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
   XY,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { createStore, reconcile, unwrap } from "solid-js/store";
 import type { TranslationKey } from "../i18n";
 import { createComponentStoreActions } from "./store/actions/componentStoreActions";
@@ -59,6 +59,7 @@ export function createEditorStore(
     componentStore: createEmptyComponentStore(),
     projectPath: null,
     isDirty: false,
+    canvasCursorPos: null,
     activeSheetId: initialProject.ui.activeSheetId,
     canUndo: false,
     canRedo: false,
@@ -201,6 +202,7 @@ export function createEditorStore(
       componentStore: state.componentStore,
       projectPath,
       isDirty: false,
+      canvasCursorPos: null,
       activeSheetId: project.ui.activeSheetId,
       canUndo: false,
       canRedo: false,
@@ -319,8 +321,8 @@ export function createEditorStore(
   const nodeActions = createNodeActions(actionCtx);
   const sheetActions = createSheetActions(actionCtx);
   const selectionActions = createSelectionActions(actionCtx, {
-    deleteSheetDefinition: sheetActions.deleteSheetDefinition,
     removeDirectConnection: wireActions.removeDirectConnection,
+    removeLabelAnchor: wireActions.removeLabelAnchor,
   });
 
   const actions = {

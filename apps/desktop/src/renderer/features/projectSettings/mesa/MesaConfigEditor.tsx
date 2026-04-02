@@ -1,12 +1,13 @@
-import type {
-  ProjectMesaConfig,
-  ProjectMesaConnectorCardKind,
-  ProjectMesaGpioDirection,
-  ProjectMesaHostKind,
-  ProjectMesaSmartSerialCardKind,
-  ProjectMesaSmartSerialTarget,
-} from "@nohal/core/src/mesa";
-import { deriveMesaTopology, planMesaReconcile } from "@nohal/core/src/mesa";
+import {
+  deriveMesaTopology,
+  type ProjectMesaConfig,
+  type ProjectMesaConnectorCardKind,
+  type ProjectMesaGpioDirection,
+  type ProjectMesaHostKind,
+  type ProjectMesaSmartSerialCardKind,
+  type ProjectMesaSmartSerialTarget,
+  planMesaReconcile,
+} from "@nohal/core/mesa";
 import { For, Show } from "solid-js";
 import {
   Alert,

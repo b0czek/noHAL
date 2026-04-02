@@ -3,7 +3,7 @@ import type {
   NoHALProject,
   SheetEndpointRef,
   XY,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import type { TranslationKey } from "../../../i18n";
 import type { Selection } from "../selectionTypes";
 
@@ -34,6 +34,7 @@ export interface EditorState {
   componentStore: ComponentStore;
   projectPath: string | null;
   isDirty: boolean;
+  canvasCursorPos: XY | null;
   activeSheetId: string;
   canUndo: boolean;
   canRedo: boolean;

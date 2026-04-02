@@ -1,5 +1,6 @@
+import type { XY } from "@nohal/core/types";
 import type Konva from "konva";
-import type { Pt } from "../layout";
+import { snapPointToGrid } from "../grid";
 import type { SceneRenderState } from "../types";
 import { clampRuntimePos } from "./bounds";
 import {
@@ -12,18 +13,214 @@ import type { SceneRuntime } from "./types";
 
 const EVENT_NS = ".sceneInteraction";
 const BACKGROUND_TAP_THRESHOLD_PX = 4;
+const KEYBOARD_ZOOM_FACTOR = 1.08;
+const WHEEL_LINE_DELTA_PX = 16;
 
 type SceneInteractionOps = {
   syncPlacementPreview: () => void;
   applyCamera: () => void;
   redrawWires: () => void;
-  zoomByFactor: (zoomFactor: number, pointer?: Pt) => void;
+  zoomByFactor: (zoomFactor: number, pointer?: XY) => void;
   deleteSelectedWaypoint: () => boolean;
-  startMarqueeSelection: (screenPos: Pt, additive: boolean) => void;
+  startMarqueeSelection: (screenPos: XY, additive: boolean) => void;
   cancelMarqueeSelection: () => void;
   finishMarqueeSelection: () => void;
   updateMarqueeRect: () => void;
 };
+
+function resetBackgroundTapState(runtime: SceneRuntime): void {
+  runtime.state.interaction.backgroundTapStartScreenPos = null;
+  runtime.state.interaction.backgroundTapAdditive = false;
+}
+
+function preventCancelableEvent(
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>,
+): void {
+  if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+}
+
+function syncGridSnapOverrideFromKeyboardEvent(
+  runtime: SceneRuntime,
+  evt: KeyboardEvent,
+): void {
+  runtime.state.interaction.gridSnapOverridePressed =
+    evt.ctrlKey || evt.metaKey;
+}
+
+function syncGridSnapOverrideFromPointerEvent(
+  runtime: SceneRuntime,
+  evt: MouseEvent | TouchEvent | WheelEvent,
+): void {
+  if (evt instanceof TouchEvent) return;
+  runtime.state.interaction.gridSnapOverridePressed =
+    evt.ctrlKey || evt.metaKey;
+}
+
+function maybeSnapWorldPos(runtime: SceneRuntime, pos: XY): XY {
+  const clamped = clampRuntimePos(runtime, pos);
+  const state = runtime.state.lastState;
+  if (
+    !state ||
+    !state.gridResolution ||
+    runtime.state.interaction.gridSnapOverridePressed
+  ) {
+    return clamped;
+  }
+  return clampRuntimePos(
+    runtime,
+    snapPointToGrid(clamped, state.gridResolution),
+  );
+}
+
+function syncCursorPos(runtime: SceneRuntime, pos: XY | null): void {
+  runtime.state.cursorPos = pos;
+  runtime.callbacks.onCursorPosChange?.(
+    pos ? { x: Math.round(pos.x), y: Math.round(pos.y) } : null,
+  );
+}
+
+function syncCursorPosFromScreenPos(
+  runtime: SceneRuntime,
+  screenPos: XY | null,
+  toWorld: (pos: XY) => XY,
+): void {
+  syncCursorPos(runtime, screenPos ? toWorld(screenPos) : null);
+}
+
+function handlePendingEndpointBackgroundClick(args: {
+  runtime: SceneRuntime;
+  stage: Konva.Stage;
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+  toWorld: (pos: XY) => XY;
+}): boolean {
+  const { runtime, stage, evt, toWorld } = args;
+  const pos = stage.getPointerPosition();
+  if (
+    !pos ||
+    !runtime.state.lastState?.pendingEndpoint ||
+    !(evt.evt instanceof MouseEvent) ||
+    evt.evt.button !== 0 ||
+    runtime.state.interaction.spacePressed ||
+    !isBackgroundTarget(stage, evt.target)
+  ) {
+    return false;
+  }
+
+  evt.cancelBubble = true;
+  evt.evt.preventDefault();
+  runtime.callbacks.onBackgroundClick?.(toWorld({ x: pos.x, y: pos.y }));
+  resetBackgroundTapState(runtime);
+  return true;
+}
+
+function handleMarqueeStart(args: {
+  runtime: SceneRuntime;
+  stage: Konva.Stage;
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+  startMarqueeSelection: SceneInteractionOps["startMarqueeSelection"];
+}): boolean {
+  const { runtime, stage, evt, startMarqueeSelection } = args;
+  if (
+    !shouldStartMarquee(
+      stage,
+      evt,
+      runtime.state.lastState,
+      runtime.state.interaction.spacePressed,
+    )
+  ) {
+    return false;
+  }
+
+  const pos = stage.getPointerPosition();
+  if (!pos) return true;
+  evt.cancelBubble = true;
+  startMarqueeSelection(
+    { x: pos.x, y: pos.y },
+    evt.evt instanceof MouseEvent && evt.evt.shiftKey,
+  );
+  resetBackgroundTapState(runtime);
+  preventCancelableEvent(evt);
+  return true;
+}
+
+function handlePanStart(args: {
+  runtime: SceneRuntime;
+  stage: Konva.Stage;
+  container: HTMLDivElement;
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+}): boolean {
+  const { runtime, stage, container, evt } = args;
+  if (!shouldStartPan(stage, evt, runtime.state.interaction.spacePressed)) {
+    return false;
+  }
+
+  const pos = stage.getPointerPosition();
+  if (!pos) return true;
+  evt.cancelBubble = true;
+  runtime.state.interaction.isPanning = true;
+  runtime.state.interaction.panLastScreenPos = { x: pos.x, y: pos.y };
+  runtime.state.interaction.backgroundTapStartScreenPos = null;
+  container.style.cursor = "grabbing";
+  preventCancelableEvent(evt);
+  return true;
+}
+
+function handleTouchBackgroundTapTracking(args: {
+  runtime: SceneRuntime;
+  stage: Konva.Stage;
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+}): boolean {
+  const { runtime, stage, evt } = args;
+  if (
+    !shouldTrackBackgroundTap(
+      stage,
+      evt,
+      runtime.state.lastState,
+      runtime.state.interaction.spacePressed,
+    )
+  ) {
+    return false;
+  }
+
+  const pos = stage.getPointerPosition();
+  if (!pos) return true;
+  runtime.state.interaction.backgroundTapStartScreenPos = {
+    x: pos.x,
+    y: pos.y,
+  };
+  runtime.state.interaction.backgroundTapAdditive = false;
+  preventCancelableEvent(evt);
+  return true;
+}
+
+function handlePlainBackgroundTapTracking(args: {
+  runtime: SceneRuntime;
+  stage: Konva.Stage;
+  evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+}): boolean {
+  const { runtime, stage, evt } = args;
+  if (
+    runtime.state.lastState?.pendingEndpoint ||
+    runtime.state.lastState?.placement ||
+    !(evt.evt instanceof MouseEvent) ||
+    evt.evt.button !== 0 ||
+    runtime.state.interaction.spacePressed ||
+    !isBackgroundTarget(stage, evt.target)
+  ) {
+    return false;
+  }
+
+  const pos = stage.getPointerPosition();
+  if (!pos) return true;
+  runtime.state.interaction.backgroundTapStartScreenPos = {
+    x: pos.x,
+    y: pos.y,
+  };
+  runtime.state.interaction.backgroundTapAdditive = evt.evt.shiftKey;
+  evt.cancelBubble = true;
+  evt.evt.preventDefault();
+  return true;
+}
 
 export function bindSceneInteractions(
   runtime: SceneRuntime,
@@ -41,11 +238,14 @@ export function bindSceneInteractions(
     updateMarqueeRect,
   } = ops;
   const { stage, container, placementHitRect } = runtime.view;
-  const toClampedWorld = (pos: Pt): Pt =>
-    clampRuntimePos(runtime, screenToWorld(runtime.state.camera, pos));
+  const toWorld = (pos: XY): XY =>
+    maybeSnapWorldPos(runtime, screenToWorld(runtime.state.camera, pos));
 
   const onKeyDown = (evt: KeyboardEvent) => {
+    syncGridSnapOverrideFromKeyboardEvent(runtime, evt);
     if (evt.code === "Space") runtime.state.interaction.spacePressed = true;
+    syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
+    syncPlacementPreview();
     const primaryModifier = evt.ctrlKey || evt.metaKey;
     if (
       primaryModifier &&
@@ -56,7 +256,15 @@ export function bindSceneInteractions(
       const isZoomIn = isZoomInShortcut(evt);
       const isZoomOut = isZoomOutShortcut(evt);
       if (isZoomIn || isZoomOut) {
-        zoomByFactor(isZoomIn ? 1.08 : 1 / 1.08);
+        zoomByFactor(
+          isZoomIn ? KEYBOARD_ZOOM_FACTOR : 1 / KEYBOARD_ZOOM_FACTOR,
+        );
+        syncCursorPosFromScreenPos(
+          runtime,
+          stage.getPointerPosition(),
+          toWorld,
+        );
+        syncPlacementPreview();
         evt.preventDefault();
         evt.stopPropagation();
         evt.stopImmediatePropagation();
@@ -75,21 +283,31 @@ export function bindSceneInteractions(
   };
 
   const onKeyUp = (evt: KeyboardEvent) => {
+    syncGridSnapOverrideFromKeyboardEvent(runtime, evt);
     if (evt.code === "Space") runtime.state.interaction.spacePressed = false;
+    syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
+    syncPlacementPreview();
+  };
+
+  const onWindowBlur = () => {
+    runtime.state.interaction.gridSnapOverridePressed = false;
+    runtime.state.interaction.spacePressed = false;
+    syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
+    syncPlacementPreview();
   };
 
   window.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("keyup", onKeyUp);
+  window.addEventListener("blur", onWindowBlur);
 
   placementHitRect.on(`mousedown${EVENT_NS} touchstart${EVENT_NS}`, (evt) => {
     if (!runtime.state.lastState?.placement) return;
+    syncGridSnapOverrideFromPointerEvent(runtime, evt.evt);
     const pos = stage.getPointerPosition();
     if (!pos) return;
     evt.cancelBubble = true;
     if ("preventDefault" in evt.evt) evt.evt.preventDefault();
-    runtime.callbacks.onBackgroundClick?.(
-      toClampedWorld({ x: pos.x, y: pos.y }),
-    );
+    runtime.callbacks.onBackgroundClick?.(toWorld({ x: pos.x, y: pos.y }));
   });
 
   placementHitRect.on(`contextmenu${EVENT_NS}`, (evt) => {
@@ -97,11 +315,10 @@ export function bindSceneInteractions(
     if ("preventDefault" in evt.evt) evt.evt.preventDefault();
   });
 
-  stage.on(`mousemove${EVENT_NS} touchmove${EVENT_NS}`, () => {
+  stage.on(`mousemove${EVENT_NS} touchmove${EVENT_NS}`, (evt) => {
+    syncGridSnapOverrideFromPointerEvent(runtime, evt.evt);
     const pos = stage.getPointerPosition();
     const screenPos = pos ? { x: pos.x, y: pos.y } : null;
-    runtime.state.cursorPos = screenPos ? toClampedWorld(screenPos) : null;
-    syncPlacementPreview();
 
     const { interaction } = runtime.state;
     if (interaction.isPanning && screenPos && interaction.panLastScreenPos) {
@@ -111,6 +328,9 @@ export function bindSceneInteractions(
       interaction.panLastScreenPos = screenPos;
       applyCamera();
     }
+
+    syncCursorPosFromScreenPos(runtime, screenPos, toWorld);
+    syncPlacementPreview();
 
     if (interaction.isMarqueeSelecting && screenPos) {
       interaction.marqueeCurrentScreenPos = screenPos;
@@ -132,108 +352,44 @@ export function bindSceneInteractions(
     if (runtime.state.lastState?.pendingEndpoint) redrawWires();
   });
 
+  stage.on(
+    `dragstart${EVENT_NS} dragmove${EVENT_NS} dragend${EVENT_NS}`,
+    () => {
+      syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
+      syncPlacementPreview();
+    },
+  );
+
   stage.on(`mouseleave${EVENT_NS}`, () => {
     runtime.state.interaction.isPanning = false;
     runtime.state.interaction.panLastScreenPos = null;
     runtime.state.interaction.backgroundTapStartScreenPos = null;
     runtime.state.interaction.backgroundTapAdditive = false;
     cancelMarqueeSelection();
-    runtime.state.cursorPos = null;
+    syncCursorPos(runtime, null);
     syncPlacementPreview();
     if (runtime.state.lastState?.pendingEndpoint) redrawWires();
   });
 
   stage.on(`mousedown${EVENT_NS} touchstart${EVENT_NS}`, (evt) => {
-    const pos = stage.getPointerPosition();
+    syncGridSnapOverrideFromPointerEvent(runtime, evt.evt);
     if (
-      pos &&
-      runtime.state.lastState?.pendingEndpoint &&
-      evt.evt instanceof MouseEvent &&
-      evt.evt.button === 0 &&
-      !runtime.state.interaction.spacePressed &&
-      isBackgroundTarget(stage, evt.target)
-    ) {
-      evt.cancelBubble = true;
-      evt.evt.preventDefault();
-      runtime.callbacks.onBackgroundClick?.(
-        toClampedWorld({ x: pos.x, y: pos.y }),
-      );
-      runtime.state.interaction.backgroundTapStartScreenPos = null;
-      return;
-    }
-
-    if (
-      shouldStartMarquee(
+      handlePendingEndpointBackgroundClick({
+        runtime,
         stage,
         evt,
-        runtime.state.lastState,
-        runtime.state.interaction.spacePressed,
-      )
+        toWorld,
+      })
     ) {
-      if (!pos) return;
-      evt.cancelBubble = true;
-      startMarqueeSelection(
-        { x: pos.x, y: pos.y },
-        evt.evt instanceof MouseEvent && evt.evt.shiftKey,
-      );
-      runtime.state.interaction.backgroundTapStartScreenPos = null;
-      runtime.state.interaction.backgroundTapAdditive = false;
-      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
       return;
     }
-
-    if (shouldStartPan(stage, evt, runtime.state.interaction.spacePressed)) {
-      if (!pos) return;
-      evt.cancelBubble = true;
-      runtime.state.interaction.isPanning = true;
-      runtime.state.interaction.panLastScreenPos = { x: pos.x, y: pos.y };
-      runtime.state.interaction.backgroundTapStartScreenPos = null;
-      container.style.cursor = "grabbing";
-      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
+    if (handleMarqueeStart({ runtime, stage, evt, startMarqueeSelection })) {
       return;
     }
-
-    if (
-      shouldTrackBackgroundTap(
-        stage,
-        evt,
-        runtime.state.lastState,
-        runtime.state.interaction.spacePressed,
-      )
-    ) {
-      if (!pos) return;
-      runtime.state.interaction.backgroundTapStartScreenPos = {
-        x: pos.x,
-        y: pos.y,
-      };
-      runtime.state.interaction.backgroundTapAdditive = false;
-      if ("preventDefault" in evt.evt) evt.evt.preventDefault();
-      return;
-    }
-
-    // Track plain background clicks so mouseup can clear selection, but keep
-    // Shift-background clicks non-destructive for additive selection flows.
-    if (
-      !runtime.state.lastState?.pendingEndpoint &&
-      !runtime.state.lastState?.placement &&
-      evt.evt instanceof MouseEvent &&
-      evt.evt.button === 0 &&
-      !runtime.state.interaction.spacePressed &&
-      isBackgroundTarget(stage, evt.target)
-    ) {
-      if (!pos) return;
-      runtime.state.interaction.backgroundTapStartScreenPos = {
-        x: pos.x,
-        y: pos.y,
-      };
-      runtime.state.interaction.backgroundTapAdditive = evt.evt.shiftKey;
-      evt.cancelBubble = true;
-      evt.evt.preventDefault();
-      return;
-    }
-
-    runtime.state.interaction.backgroundTapStartScreenPos = null;
-    runtime.state.interaction.backgroundTapAdditive = false;
+    if (handlePanStart({ runtime, stage, container, evt })) return;
+    if (handleTouchBackgroundTapTracking({ runtime, stage, evt })) return;
+    if (handlePlainBackgroundTapTracking({ runtime, stage, evt })) return;
+    resetBackgroundTapState(runtime);
   });
 
   stage.on(`mouseup${EVENT_NS} touchend${EVENT_NS}`, () => {
@@ -259,33 +415,40 @@ export function bindSceneInteractions(
 
   stage.on(`wheel${EVENT_NS}`, (evt) => {
     const wheelEvt = evt.evt;
+    syncGridSnapOverrideFromPointerEvent(runtime, wheelEvt);
     evt.evt.preventDefault();
 
     if (!(wheelEvt.ctrlKey || wheelEvt.metaKey)) {
-      const deltaScale =
-        wheelEvt.deltaMode === WheelEvent.DOM_DELTA_LINE
-          ? 16
-          : wheelEvt.deltaMode === WheelEvent.DOM_DELTA_PAGE
-            ? stage.height()
-            : 1;
+      let deltaScale = 1;
+      if (wheelEvt.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+        deltaScale = WHEEL_LINE_DELTA_PX;
+      } else if (wheelEvt.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+        deltaScale = stage.height();
+      }
       panCamera(
         runtime.state.camera,
         -wheelEvt.deltaX * deltaScale,
         -wheelEvt.deltaY * deltaScale,
       );
       applyCamera();
+      syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
       if (runtime.state.lastState?.pendingEndpoint) redrawWires();
       return;
     }
 
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
-    zoomByFactor(wheelEvt.deltaY > 0 ? 1 / 1.08 : 1.08, pointer);
+    zoomByFactor(
+      wheelEvt.deltaY > 0 ? 1 / KEYBOARD_ZOOM_FACTOR : KEYBOARD_ZOOM_FACTOR,
+      pointer,
+    );
+    syncCursorPosFromScreenPos(runtime, pointer, toWorld);
   });
 
   return () => {
     window.removeEventListener("keydown", onKeyDown, true);
     window.removeEventListener("keyup", onKeyUp);
+    window.removeEventListener("blur", onWindowBlur);
     stage.off(EVENT_NS);
     placementHitRect.off(EVENT_NS);
   };
@@ -340,8 +503,8 @@ function shouldTrackBackgroundTap(
 }
 
 function movementExceededThreshold(
-  start: Pt,
-  current: Pt,
+  start: XY,
+  current: XY,
   thresholdPx: number,
 ) {
   return (

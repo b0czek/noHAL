@@ -1,7 +1,7 @@
 import {
   buildManagedMachineConfigIniSections,
   getMachineConfigIniEntryLockMode,
-} from "@nohal/core/src/machineConfig/policy";
+} from "@nohal/core/machineConfig";
 import {
   HiOutlineCheck,
   HiOutlineLockClosed,

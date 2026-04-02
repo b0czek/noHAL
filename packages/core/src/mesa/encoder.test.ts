@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { createEmptyProject, reconcileProject } from "../project";
 import { addMesaHost, setMesaConnectorCard, updateMesaHostIp } from "./edit";
 
+const EXPECTED_ENCODER_PSEUDO_COMPONENT_COUNT = 6;
+
 describe("Mesa encoder HAL projection", () => {
   it("projects host-facing encoders onto dedicated per-encoder pseudo-components", () => {
     const project = createEmptyProject("Mesa Encoders");
@@ -29,7 +31,9 @@ describe("Mesa encoder HAL projection", () => {
       hostComponent?.pins.some((pin) => pin.name === "encoder.00.position"),
     ).toBe(false);
 
-    expect(encoderComponents).toHaveLength(6);
+    expect(encoderComponents).toHaveLength(
+      EXPECTED_ENCODER_PSEUDO_COMPONENT_COUNT,
+    );
     expect(
       encoderComponents.map(
         (component) => component.constraints?.fixedInstanceName,

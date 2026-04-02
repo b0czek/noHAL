@@ -1,5 +1,8 @@
-import { SUPPORTED_LINUXCNC_VERSIONS } from "../../linuxcncVersion";
-import type { ComponentStore, LinuxCncVersion } from "../../types";
+import {
+  type LinuxCncVersion,
+  SUPPORTED_LINUXCNC_VERSIONS,
+} from "../../linuxcncVersion";
+import type { ComponentStore } from "../../types";
 import { loadAllLinuxCncVersionCatalogs } from "../catalog";
 import { upsertStoredComponentEntry } from "./shared";
 

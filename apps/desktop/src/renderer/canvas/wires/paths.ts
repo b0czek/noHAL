@@ -1,37 +1,35 @@
-import type { ProjectWireStyle, SheetEndpointRef } from "@nohal/core/src/types";
+import type { ProjectWireStyle, SheetEndpointRef, XY } from "@nohal/core/types";
 import Konva from "konva";
-import {
-  WIRE_BEZIER_PULL,
-  WIRE_ENDPOINT_STUB_LEN,
-  WIRE_PATH_TENSION,
-} from "../constants";
-import type { Pt } from "../layout";
+import { wire } from "../constants/wires";
 import type { SceneRuntime } from "../scene/types";
+import { boundsFromPoints, getPathCullPadding, setCullBounds } from "./culling";
 import { getEndpointNormal } from "./endpoints";
-import type { CullBounds, SheetLookup, WireAttrs } from "./types";
+import type { SheetLookup, WireAttrs } from "./types";
+
+const POINT_EPSILON = 0.01;
 
 export function buildDisplayWirePoints(args: {
   lookup: SheetLookup;
-  rawPoints: Pt[];
+  rawPoints: XY[];
   startEndpoint: SheetEndpointRef;
   endEndpoint?: SheetEndpointRef | null;
-}): Pt[] {
+}): XY[] {
   const { lookup, rawPoints, startEndpoint, endEndpoint } = args;
   if (rawPoints.length < 2) return rawPoints;
 
-  const out: Pt[] = [];
-  const pushDistinct = (p: Pt) => {
+  const out: XY[] = [];
+  const pushDistinct = (p: XY) => {
     const prev = out[out.length - 1];
     if (
       !prev ||
-      Math.abs(prev.x - p.x) > 0.01 ||
-      Math.abs(prev.y - p.y) > 0.01
+      Math.abs(prev.x - p.x) > POINT_EPSILON ||
+      Math.abs(prev.y - p.y) > POINT_EPSILON
     ) {
       out.push(p);
     }
   };
 
-  const stubLen = WIRE_ENDPOINT_STUB_LEN;
+  const stubLen = wire.path.endpointStubLength;
   const start = rawPoints[0];
   const end = rawPoints[rawPoints.length - 1];
 
@@ -62,8 +60,8 @@ export function buildDisplayWirePoints(args: {
   return out;
 }
 
-function makeBezierWire(a: Pt, b: Pt, attrs: WireAttrs): Konva.Line {
-  const dx = Math.abs(b.x - a.x) * WIRE_BEZIER_PULL;
+function makeBezierWire(a: XY, b: XY, attrs: WireAttrs): Konva.Line {
+  const dx = Math.abs(b.x - a.x) * wire.path.bezierPull;
   const c1x = a.x + (b.x >= a.x ? dx : -dx);
   const c2x = b.x - (b.x >= a.x ? dx : -dx);
   return new Konva.Line({
@@ -79,16 +77,16 @@ function makeBezierWire(a: Pt, b: Pt, attrs: WireAttrs): Konva.Line {
   });
 }
 
-function buildRightAngleWirePoints(points: Pt[]): Pt[] {
+function buildRightAngleWirePoints(points: XY[]): XY[] {
   if (points.length < 2) return [...points];
 
-  const out: Pt[] = [];
-  const pushDistinct = (p: Pt) => {
+  const out: XY[] = [];
+  const pushDistinct = (p: XY) => {
     const prev = out[out.length - 1];
     if (
       !prev ||
-      Math.abs(prev.x - p.x) > 0.01 ||
-      Math.abs(prev.y - p.y) > 0.01
+      Math.abs(prev.x - p.x) > POINT_EPSILON ||
+      Math.abs(prev.y - p.y) > POINT_EPSILON
     ) {
       out.push(p);
     }
@@ -103,26 +101,32 @@ function buildRightAngleWirePoints(points: Pt[]): Pt[] {
       continue;
     }
     if (
-      Math.abs(prev.x - next.x) <= 0.01 ||
-      Math.abs(prev.y - next.y) <= 0.01
+      Math.abs(prev.x - next.x) <= POINT_EPSILON ||
+      Math.abs(prev.y - next.y) <= POINT_EPSILON
     ) {
       pushDistinct(next);
       continue;
     }
 
     const prior = out[out.length - 2];
-    const elbow =
+    let elbow = { x: prev.x, y: next.y };
+    if (
       prior &&
-      Math.abs(prev.x - prior.x) > 0.01 &&
-      Math.abs(prev.y - prior.y) <= 0.01
-        ? { x: prev.x, y: next.y }
-        : prior &&
-            Math.abs(prev.y - prior.y) > 0.01 &&
-            Math.abs(prev.x - prior.x) <= 0.01
-          ? { x: next.x, y: prev.y }
-          : Math.abs(next.x - prev.x) >= Math.abs(next.y - prev.y)
-            ? { x: next.x, y: prev.y }
-            : { x: prev.x, y: next.y };
+      Math.abs(prev.x - prior.x) > POINT_EPSILON &&
+      Math.abs(prev.y - prior.y) <= POINT_EPSILON
+    ) {
+      elbow = { x: prev.x, y: next.y };
+    } else if (
+      prior &&
+      Math.abs(prev.y - prior.y) > POINT_EPSILON &&
+      Math.abs(prev.x - prior.x) <= POINT_EPSILON
+    ) {
+      elbow = { x: next.x, y: prev.y };
+    } else if (Math.abs(next.x - prev.x) >= Math.abs(next.y - prev.y)) {
+      elbow = { x: next.x, y: prev.y };
+    } else {
+      elbow = { x: prev.x, y: next.y };
+    }
 
     pushDistinct(elbow);
     pushDistinct(next);
@@ -130,47 +134,24 @@ function buildRightAngleWirePoints(points: Pt[]): Pt[] {
   return out;
 }
 
-function buildWireShapePoints(points: Pt[], style: ProjectWireStyle): Pt[] {
+function buildWireShapePoints(points: XY[], style: ProjectWireStyle): XY[] {
   if (style === "right-angle") return buildRightAngleWirePoints(points);
   return points;
 }
 
-export function boundsFromPoints(points: Pt[], pad = 0): CullBounds {
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  for (const p of points) {
-    minX = Math.min(minX, p.x);
-    minY = Math.min(minY, p.y);
-    maxX = Math.max(maxX, p.x);
-    maxY = Math.max(maxY, p.y);
-  }
-  if (!Number.isFinite(minX)) {
-    return { x: 0, y: 0, width: 0, height: 0 };
-  }
-  return {
-    x: minX - pad,
-    y: minY - pad,
-    width: maxX - minX + pad * 2,
-    height: maxY - minY + pad * 2,
-  };
-}
-
-export function setCullBounds(node: Konva.Node, bounds: CullBounds): void {
-  node.setAttr("cullBounds", bounds);
-}
-
 function drawWire(
   runtime: SceneRuntime,
-  a: Pt,
-  b: Pt,
+  a: XY,
+  b: XY,
   attrs: WireAttrs,
 ): Konva.Line {
   const line = makeBezierWire(a, b, attrs);
   const hitStroke =
     typeof attrs.hitStrokeWidth === "number" ? attrs.hitStrokeWidth : 0;
-  const pad = Math.max(attrs.strokeWidth, hitStroke) * 0.5 + 10;
+  const pad = getPathCullPadding({
+    strokeWidth: attrs.strokeWidth,
+    hitStrokeWidth: hitStroke,
+  });
   setCullBounds(line, boundsFromPoints([a, b], pad));
   runtime.view.wireWorld.add(line);
   return line;
@@ -178,14 +159,17 @@ function drawWire(
 
 export function updateWirePathShape(
   line: Konva.Line,
-  points: Pt[],
+  points: XY[],
   style: ProjectWireStyle,
 ): void {
   if (points.length < 2) return;
   const shapePoints = buildWireShapePoints(points, style);
   const rawHitStroke = line.hitStrokeWidth();
   const hitStroke = typeof rawHitStroke === "number" ? rawHitStroke : 0;
-  const pad = Math.max(line.strokeWidth(), hitStroke) * 0.5 + 10;
+  const pad = getPathCullPadding({
+    strokeWidth: line.strokeWidth(),
+    hitStrokeWidth: hitStroke,
+  });
   setCullBounds(line, boundsFromPoints(shapePoints, pad));
   if (style === "curved" && shapePoints.length === 2) {
     const bez = makeBezierWire(shapePoints[0], shapePoints[1], {
@@ -208,13 +192,13 @@ export function updateWirePathShape(
   line.setAttrs({
     points: flatPoints,
     bezier: false,
-    tension: style === "curved" ? WIRE_PATH_TENSION : 0,
+    tension: style === "curved" ? wire.path.tension : 0,
   });
 }
 
 export function drawWirePath(
   runtime: SceneRuntime,
-  points: Pt[],
+  points: XY[],
   style: ProjectWireStyle,
   attrs: WireAttrs,
 ): Konva.Line | null {
@@ -228,7 +212,7 @@ export function drawWirePath(
   for (const p of shapePoints) flatPoints.push(p.x, p.y);
   const line = new Konva.Line({
     points: flatPoints,
-    tension: style === "curved" ? WIRE_PATH_TENSION : 0,
+    tension: style === "curved" ? wire.path.tension : 0,
     stroke: attrs.stroke,
     strokeWidth: attrs.strokeWidth,
     dash: attrs.dash,
@@ -239,7 +223,10 @@ export function drawWirePath(
   });
   const hitStroke =
     typeof attrs.hitStrokeWidth === "number" ? attrs.hitStrokeWidth : 0;
-  const pad = Math.max(attrs.strokeWidth, hitStroke) * 0.5 + 10;
+  const pad = getPathCullPadding({
+    strokeWidth: attrs.strokeWidth,
+    hitStrokeWidth: hitStroke,
+  });
   setCullBounds(line, boundsFromPoints(shapePoints, pad));
   runtime.view.wireWorld.add(line);
   return line;

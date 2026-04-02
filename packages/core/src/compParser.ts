@@ -35,6 +35,14 @@ const HAL_TYPES = new Set([
   "s64",
   "port",
 ]);
+const TRIPLE_QUOTE_DELIMITER_LENGTH = 3;
+const RAW_TRIPLE_QUOTE_PREFIX_LENGTH = 4;
+const MAX_OCTAL_ESCAPE_DIGITS = 3;
+const SHORT_UNICODE_ESCAPE_HEX_PATTERN = /^[0-9a-fA-F]{4}$/;
+const SHORT_UNICODE_ESCAPE_LENGTH = 6;
+const LONG_UNICODE_ESCAPE_HEX_PATTERN = /^[0-9a-fA-F]{8}$/;
+const LONG_UNICODE_ESCAPE_LENGTH = 10;
+const MIN_PIN_OR_PARAM_TOKENS = 4;
 
 function basename(input: string): string {
   const normalized = input.replaceAll("\\", "/");
@@ -85,17 +93,20 @@ function scanString(
   start: number,
 ): { token: string; end: number } {
   if (input.startsWith('r"""', start) || input.startsWith('R"""', start)) {
-    const end = input.indexOf('"""', start + 4);
+    const end = input.indexOf('"""', start + RAW_TRIPLE_QUOTE_PREFIX_LENGTH);
     if (end < 0) throw new Error("Unterminated raw triple string");
-    return { token: input.slice(start, end + 3), end: end + 3 };
+    return {
+      token: input.slice(start, end + TRIPLE_QUOTE_DELIMITER_LENGTH),
+      end: end + TRIPLE_QUOTE_DELIMITER_LENGTH,
+    };
   }
   if (input.startsWith('"""', start)) {
-    const i = start + 3;
-    while (i < input.length) {
-      const hit = input.indexOf('"""', i);
-      if (hit < 0) break;
-      return { token: input.slice(start, hit + 3), end: hit + 3 };
-    }
+    const hit = input.indexOf('"""', start + TRIPLE_QUOTE_DELIMITER_LENGTH);
+    if (hit >= 0)
+      return {
+        token: input.slice(start, hit + TRIPLE_QUOTE_DELIMITER_LENGTH),
+        end: hit + TRIPLE_QUOTE_DELIMITER_LENGTH,
+      };
     throw new Error("Unterminated triple string");
   }
   if (input[start] !== '"') {
@@ -168,15 +179,67 @@ function collectStatements(header: string): string[] {
   return statements;
 }
 
+/** Detects whether a tokenizer position starts a comp string literal. */
+function startsCompString(input: string, pos: number): boolean {
+  return (
+    input.startsWith('r"""', pos) ||
+    input.startsWith('R"""', pos) ||
+    input.startsWith('"""', pos) ||
+    input[pos] === '"'
+  );
+}
+
+/** Advances past a balanced bracket expression, skipping nested strings. */
+function scanBracketToken(raw: string, start: number): number {
+  let depth = 1;
+  let j = start + 1;
+  while (j < raw.length && depth > 0) {
+    if (raw[j] === "[") depth += 1;
+    else if (raw[j] === "]") depth -= 1;
+    else if (raw[j] === '"') {
+      const s = scanString(raw, j);
+      j = s.end;
+      continue;
+    }
+    j += 1;
+  }
+  if (depth !== 0) {
+    throw new Error(`Unterminated [] expression in statement: ${raw}`);
+  }
+  return j;
+}
+
+/** Scans a non-whitespace token, allowing embedded brackets and strings. */
+function scanPlainToken(raw: string, start: number): number {
+  let j = start;
+  let bracketDepth = 0;
+  while (j < raw.length) {
+    if (startsCompString(raw, j)) {
+      if (j > start && bracketDepth === 0) break;
+      const s = scanString(raw, j);
+      j = s.end;
+      continue;
+    }
+    const current = raw[j];
+    if (current === "[") {
+      bracketDepth += 1;
+      j += 1;
+      continue;
+    }
+    if (current === "]") {
+      if (bracketDepth > 0) bracketDepth -= 1;
+      j += 1;
+      continue;
+    }
+    if (bracketDepth === 0 && (/\s/.test(current) || current === "=")) break;
+    j += 1;
+  }
+  return j;
+}
+
 function tokenizeStatement(raw: string): TokenizedStatement {
   const tokens: string[] = [];
   let i = 0;
-
-  const startsString = (pos: number): boolean =>
-    raw.startsWith('r"""', pos) ||
-    raw.startsWith('R"""', pos) ||
-    raw.startsWith('"""', pos) ||
-    raw[pos] === '"';
 
   while (i < raw.length) {
     const ch = raw[i];
@@ -184,27 +247,14 @@ function tokenizeStatement(raw: string): TokenizedStatement {
       i += 1;
       continue;
     }
-    if (startsString(i)) {
+    if (startsCompString(raw, i)) {
       const token = scanString(raw, i);
       tokens.push(token.token);
       i = token.end;
       continue;
     }
     if (ch === "[") {
-      let depth = 1;
-      let j = i + 1;
-      while (j < raw.length && depth > 0) {
-        if (raw[j] === "[") depth += 1;
-        else if (raw[j] === "]") depth -= 1;
-        else if (raw[j] === '"') {
-          const s = scanString(raw, j);
-          j = s.end;
-          continue;
-        }
-        j += 1;
-      }
-      if (depth !== 0)
-        throw new Error(`Unterminated [] expression in statement: ${raw}`);
+      const j = scanBracketToken(raw, i);
       tokens.push(raw.slice(i, j));
       i = j;
       continue;
@@ -214,33 +264,89 @@ function tokenizeStatement(raw: string): TokenizedStatement {
       i += 1;
       continue;
     }
-    let j = i;
-    let bracketDepth = 0;
-    while (j < raw.length) {
-      if (startsString(j)) {
-        if (j > i && bracketDepth === 0) break;
-        const s = scanString(raw, j);
-        j = s.end;
-        continue;
-      }
-      const cj = raw[j];
-      if (cj === "[") {
-        bracketDepth += 1;
-        j += 1;
-        continue;
-      }
-      if (cj === "]") {
-        if (bracketDepth > 0) bracketDepth -= 1;
-        j += 1;
-        continue;
-      }
-      if (bracketDepth === 0 && (/\s/.test(cj) || cj === "=")) break;
-      j += 1;
-    }
+    const j = scanPlainToken(raw, i);
     tokens.push(raw.slice(i, j));
     i = j;
   }
   return { raw, tokens };
+}
+
+/** Decodes a `\x..` style escape and returns the next scan position. */
+function decodeHexEscape(
+  token: string,
+  start: number,
+  last: number,
+): { value: string; nextIndex: number } | null {
+  if (token[start + 1] !== "x") return null;
+  let j = start + 2;
+  while (j < last && /[0-9a-fA-F]/.test(token[j])) j += 1;
+  if (j <= start + 2) return null;
+  const value = Number.parseInt(token.slice(start + 2, j), 16);
+  return { value: String.fromCodePoint(value), nextIndex: j };
+}
+
+/** Decodes a backslash-prefixed octal escape with up to three digits. */
+function decodeOctalEscape(
+  token: string,
+  start: number,
+  last: number,
+): { value: string; nextIndex: number } | null {
+  const next = token[start + 1];
+  if (!/[0-7]/.test(next)) return null;
+  let j = start + 1;
+  let count = 0;
+  while (
+    j < last &&
+    /[0-7]/.test(token[j]) &&
+    count < MAX_OCTAL_ESCAPE_DIGITS
+  ) {
+    j += 1;
+    count += 1;
+  }
+  const value = Number.parseInt(token.slice(start + 1, j), 8);
+  return { value: String.fromCharCode(value), nextIndex: j };
+}
+
+/** Decodes `\u`, `\U`, and `\N{...}` escapes and advances past them. */
+function decodeUnicodeEscape(
+  token: string,
+  start: number,
+  last: number,
+): { value: string; nextIndex: number } | null {
+  const next = token[start + 1];
+  if (
+    next === "u" &&
+    start + SHORT_UNICODE_ESCAPE_LENGTH <= last &&
+    SHORT_UNICODE_ESCAPE_HEX_PATTERN.test(
+      token.slice(start + 2, start + SHORT_UNICODE_ESCAPE_LENGTH),
+    )
+  ) {
+    const value = Number.parseInt(
+      token.slice(start + 2, start + SHORT_UNICODE_ESCAPE_LENGTH),
+      16,
+    );
+    return {
+      value: String.fromCodePoint(value),
+      nextIndex: start + SHORT_UNICODE_ESCAPE_LENGTH,
+    };
+  }
+  if (
+    next === "U" &&
+    start + LONG_UNICODE_ESCAPE_LENGTH <= last &&
+    LONG_UNICODE_ESCAPE_HEX_PATTERN.test(
+      token.slice(start + 2, start + LONG_UNICODE_ESCAPE_LENGTH),
+    )
+  ) {
+    const value = Number.parseInt(
+      token.slice(start + 2, start + LONG_UNICODE_ESCAPE_LENGTH),
+      16,
+    );
+    return {
+      value: String.fromCodePoint(value),
+      nextIndex: start + LONG_UNICODE_ESCAPE_LENGTH,
+    };
+  }
+  return null;
 }
 
 function decodeCompDoubleQuotedString(token: string): string {
@@ -268,57 +374,35 @@ function decodeCompDoubleQuotedString(token: string): string {
       continue;
     }
     if (next === "\r") {
-      if (i + 2 < last && token[i + 2] === "\n") i += 3;
+      if (i + 2 < last && token[i + 2] === "\n")
+        i += TRIPLE_QUOTE_DELIMITER_LENGTH;
       else i += 2;
       continue;
     }
 
+    const hexEscape = decodeHexEscape(token, i, last);
+    if (hexEscape) {
+      out += hexEscape.value;
+      i = hexEscape.nextIndex;
+      continue;
+    }
     if (next === "x") {
-      let j = i + 2;
-      while (j < last && /[0-9a-fA-F]/.test(token[j])) j += 1;
-      if (j > i + 2) {
-        const value = Number.parseInt(token.slice(i + 2, j), 16);
-        out += String.fromCodePoint(value);
-        i = j;
-        continue;
-      }
       out += "x";
       i += 2;
       continue;
     }
 
-    if (/[0-7]/.test(next)) {
-      let j = i + 1;
-      let count = 0;
-      while (j < last && /[0-7]/.test(token[j]) && count < 3) {
-        j += 1;
-        count += 1;
-      }
-      const value = Number.parseInt(token.slice(i + 1, j), 8);
-      out += String.fromCharCode(value);
-      i = j;
+    const octalEscape = decodeOctalEscape(token, i, last);
+    if (octalEscape) {
+      out += octalEscape.value;
+      i = octalEscape.nextIndex;
       continue;
     }
 
-    if (
-      next === "u" &&
-      i + 6 <= last &&
-      /^[0-9a-fA-F]{4}$/.test(token.slice(i + 2, i + 6))
-    ) {
-      const value = Number.parseInt(token.slice(i + 2, i + 6), 16);
-      out += String.fromCodePoint(value);
-      i += 6;
-      continue;
-    }
-
-    if (
-      next === "U" &&
-      i + 10 <= last &&
-      /^[0-9a-fA-F]{8}$/.test(token.slice(i + 2, i + 10))
-    ) {
-      const value = Number.parseInt(token.slice(i + 2, i + 10), 16);
-      out += String.fromCodePoint(value);
-      i += 10;
+    const unicodeEscape = decodeUnicodeEscape(token, i, last);
+    if (unicodeEscape) {
+      out += unicodeEscape.value;
+      i = unicodeEscape.nextIndex;
       continue;
     }
 
@@ -368,10 +452,16 @@ function decodeCompString(token: string): string {
     (token.startsWith('r"""') || token.startsWith('R"""')) &&
     token.endsWith('"""')
   ) {
-    return token.slice(4, -3);
+    return token.slice(
+      RAW_TRIPLE_QUOTE_PREFIX_LENGTH,
+      -TRIPLE_QUOTE_DELIMITER_LENGTH,
+    );
   }
   if (token.startsWith('"""') && token.endsWith('"""')) {
-    return token.slice(3, -3);
+    return token.slice(
+      TRIPLE_QUOTE_DELIMITER_LENGTH,
+      -TRIPLE_QUOTE_DELIMITER_LENGTH,
+    );
   }
   if (token.startsWith('"') && token.endsWith('"')) {
     return decodeCompDoubleQuotedString(token);
@@ -426,7 +516,7 @@ function parsePinOrParam(
   warnings: string[],
 ): ComponentPinDefinition | ComponentParamDefinition {
   const { tokens, raw } = stmt;
-  if (tokens.length < 4)
+  if (tokens.length < MIN_PIN_OR_PARAM_TOKENS)
     throw new Error(`Malformed ${kind} declaration: ${raw}`);
 
   const direction = tokens[1] as PinDirection | ParamDirection;
@@ -581,12 +671,87 @@ function parseFunctionStatement(
 }
 
 function toComponentId(halComponentName: string, filePath?: string): string {
-  const base = filePath
-    ? filePath.endsWith(".comp")
+  let base = halComponentName;
+  if (filePath) {
+    base = filePath.endsWith(".comp")
       ? basename(filePath).slice(0, -".comp".length)
-      : basename(filePath)
-    : halComponentName;
+      : basename(filePath);
+  }
   return `comp:${slugify(base)}:${slugify(halComponentName)}`;
+}
+
+function applyCompOptionStatement(
+  stmt: TokenizedStatement,
+  runtimeOptions: Record<string, string | number | boolean>,
+): void {
+  const key = stmt.tokens[1];
+  if (!key) return;
+  const rawValue = stmt.tokens[2];
+  if (rawValue === undefined) {
+    runtimeOptions[key] = true;
+    return;
+  }
+  if (rawValue === "yes" || rawValue === "true" || rawValue === "TRUE") {
+    runtimeOptions[key] = true;
+    return;
+  }
+  if (rawValue === "no" || rawValue === "false" || rawValue === "FALSE") {
+    runtimeOptions[key] = false;
+    return;
+  }
+  runtimeOptions[key] = /^[+-]?\d+$/.test(rawValue)
+    ? Number.parseInt(rawValue, 10)
+    : rawValue;
+}
+
+function applyCompStatement(
+  stmt: TokenizedStatement,
+  warnings: string[],
+  pins: ComponentPinDefinition[],
+  params: ComponentParamDefinition[],
+  functions: ComponentFunctionDefinition[],
+  functionKeys: Set<string>,
+  docs: NonNullable<ComponentDefinition["docs"]>,
+  runtimeOptions: Record<string, string | number | boolean>,
+  componentName: string | null,
+): string | null {
+  const [head] = stmt.tokens;
+  if (!head) return componentName;
+
+  if (head === "component") {
+    if (stmt.tokens.length < 2) {
+      throw new Error(`Malformed component declaration: ${stmt.raw}`);
+    }
+    const docToken = stmt.tokens.find(
+      (token, idx) =>
+        idx > 1 && (token.startsWith('"') || token.includes('"""')),
+    );
+    if (docToken) docs.component = decodeCompString(docToken);
+    return stmt.tokens[1];
+  }
+
+  if (head === "pin") {
+    pins.push(parsePinOrParam(stmt, "pin", warnings) as ComponentPinDefinition);
+    return componentName;
+  }
+  if (head === "param") {
+    params.push(
+      parsePinOrParam(stmt, "param", warnings) as ComponentParamDefinition,
+    );
+    return componentName;
+  }
+  if (head === "function") {
+    functions.push(parseFunctionStatement(stmt, functionKeys));
+    return componentName;
+  }
+  if (head === "option") {
+    applyCompOptionStatement(stmt, runtimeOptions);
+    return componentName;
+  }
+
+  const doc = parseDocStatement(stmt.tokens);
+  if (doc) docs[doc.key] = doc.value;
+  return componentName;
 }
 
 export function parseCompComponentDefinition(
@@ -600,73 +765,22 @@ export function parseCompComponentDefinition(
   const params: ComponentParamDefinition[] = [];
   const functions: ComponentFunctionDefinition[] = [];
   const functionKeys = new Set<string>();
-  const docs: ComponentDefinition["docs"] = {};
+  const docs: NonNullable<ComponentDefinition["docs"]> = {};
   const runtimeOptions: Record<string, string | number | boolean> = {};
   let componentName: string | null = null;
 
   for (const stmt of statements) {
-    const [head] = stmt.tokens;
-    if (!head) continue;
-
-    if (head === "component") {
-      if (stmt.tokens.length < 2)
-        throw new Error(`Malformed component declaration: ${stmt.raw}`);
-      componentName = stmt.tokens[1];
-      const docToken = stmt.tokens.find(
-        (token, idx) =>
-          idx > 1 && (token.startsWith('"') || token.includes('"""')),
-      );
-      if (docToken) docs.component = decodeCompString(docToken);
-      continue;
-    }
-
-    if (head === "pin") {
-      pins.push(
-        parsePinOrParam(stmt, "pin", warnings) as ComponentPinDefinition,
-      );
-      continue;
-    }
-
-    if (head === "param") {
-      params.push(
-        parsePinOrParam(stmt, "param", warnings) as ComponentParamDefinition,
-      );
-      continue;
-    }
-
-    if (head === "function") {
-      functions.push(parseFunctionStatement(stmt, functionKeys));
-      continue;
-    }
-
-    if (head === "option") {
-      const key = stmt.tokens[1];
-      if (key) {
-        const rawValue = stmt.tokens[2];
-        if (rawValue === undefined) runtimeOptions[key] = true;
-        else if (
-          rawValue === "yes" ||
-          rawValue === "true" ||
-          rawValue === "TRUE"
-        )
-          runtimeOptions[key] = true;
-        else if (
-          rawValue === "no" ||
-          rawValue === "false" ||
-          rawValue === "FALSE"
-        )
-          runtimeOptions[key] = false;
-        else if (/^[+-]?\d+$/.test(rawValue))
-          runtimeOptions[key] = Number.parseInt(rawValue, 10);
-        else runtimeOptions[key] = rawValue;
-      }
-      continue;
-    }
-
-    const doc = parseDocStatement(stmt.tokens);
-    if (doc) {
-      docs[doc.key] = doc.value;
-    }
+    componentName = applyCompStatement(
+      stmt,
+      warnings,
+      pins,
+      params,
+      functions,
+      functionKeys,
+      docs,
+      runtimeOptions,
+      componentName,
+    );
   }
 
   if (!componentName) {

@@ -1,16 +1,16 @@
-import type { ProjectReadResult } from "@nohal/core/src/project";
+import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
+import type { ProjectReadResult } from "@nohal/core/project";
 import type {
   ComponentStore,
   ComponentStoreEntry,
   ImportedComponentDefinition,
-  LinuxCncVersion,
   MachineConfigHalFileSelection,
   MachineConfigImportDraft,
   MachineConfigImportSetupDraft,
   NoHALProject,
-  RecentProjectEntry,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import type { AppSettings, AppSettingsPatch } from "../shared/appSettings";
+import type { RecentProjectEntry } from "../shared/recentProjects";
 
 export type UnsavedChangesChoice = "save" | "discard" | "cancel";
 

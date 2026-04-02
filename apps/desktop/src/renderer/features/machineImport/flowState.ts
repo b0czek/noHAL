@@ -1,4 +1,4 @@
-import type { ProjectMesaConfig } from "@nohal/core/src/mesa";
+import type { ProjectMesaConfig } from "@nohal/core/mesa";
 import type {
   ComponentDefinition,
   HalImportDraft,
@@ -6,7 +6,7 @@ import type {
   MachineConfigHalFileSelection,
   MachineConfigImportDraft,
   MachineConfigImportSetupDraft,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 
 export type MachineImportFlowStep = "machine-files" | "mesa" | "link";
 

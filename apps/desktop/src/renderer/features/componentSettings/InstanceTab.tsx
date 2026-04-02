@@ -1,7 +1,7 @@
 import {
   fixedExportStageForComponent,
   fixedInstanceNameForComponent,
-} from "@nohal/core/src/componentSystem";
+} from "@nohal/core/componentSystem";
 import { createMemo, Show } from "solid-js";
 import BufferedInput from "../../components/form/BufferedInput";
 import StringSelect from "../../components/form/StringSelect";

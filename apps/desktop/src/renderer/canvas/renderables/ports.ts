@@ -1,19 +1,14 @@
-import { endpointKey } from "@nohal/core/src/graph";
-import type { SheetEndpointRef } from "@nohal/core/src/types";
+import { endpointKey } from "@nohal/core/graph";
+import type { SheetEndpointRef } from "@nohal/core/types";
 import Konva from "konva";
-import {
-  CORNER_RADIUS_MD,
-  FONT_MONO,
-  FONT_SANS,
-  NEUTRAL_BORDER,
-  PORT_LABEL_H,
-  PORT_PANEL_FILL,
-  SELECTED_BORDER,
-  TEXT_PRIMARY,
-} from "../constants";
+import { port as portConst } from "../constants/ports";
+import { surface } from "../constants/surfaces";
+import { typography } from "../constants/typography";
+import { estimatePortBox } from "../measurements";
 import {
   addPinDot,
   bindDraggableRenderable,
+  isPrimaryScenePointerButton,
   type RenderPortsArgs,
   type RenderSceneContext,
 } from "./shared";
@@ -48,25 +43,12 @@ export function renderPorts(
     });
     portGroups.set(port.id, portGroup);
 
-    const measure = new Konva.Text({
-      text: port.name,
-      fontFamily: FONT_SANS,
-      fontSize: 12,
-    });
-    const width = Math.ceil(measure.width()) + 20;
-    const h = PORT_LABEL_H;
-
-    let labelRectX = 12;
-    let labelRectY = -h / 2;
-    if (port.side === "right") labelRectX = -width - 12;
-    if (port.side === "top") {
-      labelRectX = -width / 2;
-      labelRectY = 12;
-    }
-    if (port.side === "bottom") {
-      labelRectX = -width / 2;
-      labelRectY = -h - 12;
-    }
+    const {
+      x: labelRectX,
+      y: labelRectY,
+      width,
+      height: h,
+    } = estimatePortBox(port, { x: 0, y: 0 });
 
     portGroup.add(
       new Konva.Rect({
@@ -74,21 +56,23 @@ export function renderPorts(
         y: labelRectY,
         width,
         height: h,
-        cornerRadius: CORNER_RADIUS_MD,
-        fill: PORT_PANEL_FILL,
-        stroke: selectedPortIds.has(port.id) ? SELECTED_BORDER : NEUTRAL_BORDER,
+        cornerRadius: surface.radius.md,
+        fill: surface.portPanelFill,
+        stroke: selectedPortIds.has(port.id)
+          ? surface.border.selected
+          : surface.border.neutral,
         strokeWidth: selectedPortIds.has(port.id) ? 2 : 1,
       }),
     );
 
     portGroup.add(
       new Konva.Text({
-        x: labelRectX + 9,
-        y: labelRectY + 5,
+        x: labelRectX + portConst.text.x,
+        y: labelRectY + portConst.text.y,
         text: port.name,
-        fontFamily: FONT_MONO,
-        fontSize: 12,
-        fill: TEXT_PRIMARY,
+        fontFamily: typography.family.mono,
+        fontSize: portConst.text.fontSize,
+        fill: typography.color.primary,
       }),
     );
 
@@ -106,6 +90,7 @@ export function renderPorts(
       },
     });
     portGroup.on("click tap", (evt) => {
+      if (!isPrimaryScenePointerButton(evt.evt)) return;
       evt.cancelBubble = true;
       callbacks.onSelect(
         { kind: "sheet-port", id: port.id },

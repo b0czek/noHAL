@@ -1,11 +1,11 @@
-import { getNodeTitle, getSheet } from "@nohal/core/src/graph";
+import { getNodeTitle, getSheet } from "@nohal/core/graph";
 import type {
   ComponentStore,
   HalValueType,
   LabelScope,
   NoHALProject,
   SheetNodeInstance,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { For, Show } from "solid-js";
 import { useI18n } from "../i18n";
 import { useEditorStore } from "../state/EditorStoreProvider";
@@ -26,6 +26,7 @@ const PORT_TYPE_OPTIONS: ReadonlyArray<StringSelectOption> = [
   { value: "u64", label: "u64" },
   { value: "port", label: "port" },
 ];
+const ROTATION_STEP_DEGREES = 90;
 
 export default function Inspector() {
   const { t } = useI18n();
@@ -52,6 +53,22 @@ export default function Inspector() {
       const selection = state.selection;
       if (!selection || selection.kind !== "label") return undefined;
       return currentSheet().labels.find((l) => l.id === selection.id);
+    })();
+  // Label anchors don't have their own inspector UI, but we still want to show some info about them in the inspector when they're selected
+  const selectedLabelAnchor = () =>
+    (() => {
+      const selection = state.selection;
+      if (!selection || selection.kind !== "label-anchor") return undefined;
+      return currentSheet().labelAnchors.find(
+        (anchor) => anchor.id === selection.id,
+      );
+    })();
+  // For label anchors, also show the associated label in the inspector
+  const selectedLabelAnchorLabel = () =>
+    (() => {
+      const anchor = selectedLabelAnchor();
+      if (!anchor) return undefined;
+      return currentSheet().labels.find((label) => label.id === anchor.labelId);
     })();
   const selectedPort = () =>
     (() => {
@@ -134,6 +151,31 @@ export default function Inspector() {
                           actions.updateLabel(label().id, { rotation })
                         }
                       />
+                    </div>
+                  )}
+                </Show>
+
+                <Show when={selectedLabelAnchor()}>
+                  {(anchor) => (
+                    <div class="grid gap-3">
+                      <div class="grid gap-2">
+                        <FieldLabel>
+                          {t("canvasContext.labelAnchor")}
+                        </FieldLabel>
+                        <div class="mono break-all px-1 text-sm text-muted-foreground">
+                          {anchor().id}
+                        </div>
+                      </div>
+                      <Show when={selectedLabelAnchorLabel()}>
+                        {(label) => (
+                          <div class="grid gap-2">
+                            <FieldLabel>{t("canvasContext.label")}</FieldLabel>
+                            <div class="mono break-all px-1 text-sm text-muted-foreground">
+                              {label().name}
+                            </div>
+                          </div>
+                        )}
+                      </Show>
                     </div>
                   )}
                 </Show>
@@ -295,7 +337,9 @@ function RotationEditor(props: {
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => props.onChange((props.value || 0) - 90)}
+          onClick={() =>
+            props.onChange((props.value || 0) - ROTATION_STEP_DEGREES)
+          }
           title={t("inspector.rotateNeg90")}
         >
           -90
@@ -314,7 +358,9 @@ function RotationEditor(props: {
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => props.onChange((props.value || 0) + 90)}
+          onClick={() =>
+            props.onChange((props.value || 0) + ROTATION_STEP_DEGREES)
+          }
           title={t("inspector.rotatePos90")}
         >
           +90

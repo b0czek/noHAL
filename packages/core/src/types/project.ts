@@ -8,12 +8,6 @@ import type { ComponentDefinition } from "./components";
 import type { ProjectMachineConfig } from "./ini";
 import type { SheetDefinition } from "./sheet";
 
-export interface RecentProjectEntry {
-  projectPath: string;
-  name?: string;
-  lastOpenedAt: string;
-}
-
 export interface ProjectLibrary {
   components: Record<string, ComponentDefinition>;
 }

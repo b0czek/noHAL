@@ -1,3 +1,4 @@
+import process from "node:process";
 import { app, BrowserWindow } from "electron";
 import { registerIpcHandlers } from "./ipc";
 import { createWindow } from "./window";

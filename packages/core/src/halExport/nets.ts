@@ -1,3 +1,4 @@
+import { unique } from "remeda";
 import { isValidHalName } from "../halNames";
 import type { EndpointRecord, ExportContext } from "./context";
 import { pushFatal } from "./context";
@@ -88,7 +89,7 @@ export function collectNetLines(ctx: ExportContext): NetLines {
       );
       continue;
     }
-    const netLine = formatNetLine(netName, Array.from(new Set(pinPaths)));
+    const netLine = formatNetLine(netName, unique(pinPaths));
     if (sortedLeafs.some((r) => r.exportStage === "postgui")) {
       postguiNetLines.push(netLine);
     } else {

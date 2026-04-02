@@ -1,7 +1,7 @@
 import {
   addfQueueEntryKey,
   makeAddfQueueNodeEntry,
-} from "@nohal/core/src/addfQueue";
+} from "@nohal/core/addfQueue";
 import { HiOutlineChevronDown, HiOutlineChevronUp } from "solid-icons/hi";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { Badge } from "../../components/ui/badge";
@@ -15,6 +15,25 @@ export default function AddfQueueTab() {
   const settings = useSheetSettings();
   const [draggingRowKey, setDraggingRowKey] = createSignal<string | null>(null);
   const [dropTargetId, setDropTargetId] = createSignal<string | null>(null);
+  const rowContainerClass = (rowKey: string) => {
+    if (draggingRowKey() === rowKey) {
+      return "border-accent/30 bg-accent/10 opacity-65";
+    }
+    if (dropTargetId() === `row:${rowKey}`) {
+      return "border-accent/30 bg-accent/10";
+    }
+    return "bg-black/20";
+  };
+  const rowKindLabel = (kind: SheetQueueRow["kind"]) => {
+    switch (kind) {
+      case "subsheet":
+        return t("sheetSettings.kindSheet");
+      case "function":
+        return t("sheetSettings.kindFunction");
+      case "component":
+        return t("sheetSettings.kindRt");
+    }
+  };
 
   const moveRowBefore = (
     draggedRowKey: string,
@@ -159,13 +178,7 @@ export default function AddfQueueTab() {
                   <For each={group.rows}>
                     {(row, index) => (
                       <div
-                        class={`grid gap-3 rounded-xl p-3 transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center ${
-                          draggingRowKey() === row.rowKey
-                            ? "border-accent/30 bg-accent/10 opacity-65"
-                            : dropTargetId() === `row:${row.rowKey}`
-                              ? "border-accent/30 bg-accent/10"
-                              : "bg-black/20"
-                        }`}
+                        class={`grid gap-3 rounded-xl p-3 transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center ${rowContainerClass(row.rowKey)}`}
                         role="presentation"
                         onPointerEnter={() => {
                           const dragged = draggingRowKey();
@@ -214,11 +227,7 @@ export default function AddfQueueTab() {
                           </div>
                           <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                             <Badge variant="outline">
-                              {row.kind === "subsheet"
-                                ? t("sheetSettings.kindSheet")
-                                : row.kind === "function"
-                                  ? t("sheetSettings.kindFunction")
-                                  : t("sheetSettings.kindRt")}
+                              {rowKindLabel(row.kind)}
                             </Badge>
                             <span>{row.subtitle}</span>
                           </div>

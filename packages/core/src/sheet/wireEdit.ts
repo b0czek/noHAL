@@ -1,5 +1,6 @@
 import { createId } from "../id";
 import type { SheetDefinition, SheetEndpointRef, XY } from "../types";
+import { defaultSplitConnectionLabelPositionsForIndex } from "./layout";
 
 export interface SplitConnectionLabelPositions {
   firstLabelPosition: XY;
@@ -58,13 +59,7 @@ function chooseLabelName(
 function fallbackLabelPositions(
   sheet: SheetDefinition,
 ): SplitConnectionLabelPositions {
-  const index = sheet.labels.length;
-  const baseX = 160 + (index % 5) * 160;
-  const baseY = 520 + Math.floor(index / 5) * 70;
-  return {
-    firstLabelPosition: { x: baseX, y: baseY },
-    secondLabelPosition: { x: baseX + 108, y: baseY + 34 },
-  };
+  return defaultSplitConnectionLabelPositionsForIndex(sheet.labels.length);
 }
 
 function addDirectConnection(

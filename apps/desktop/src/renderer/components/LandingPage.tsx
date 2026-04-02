@@ -1,10 +1,10 @@
 import {
   type LinuxCncVersion,
   SUPPORTED_LINUXCNC_VERSIONS,
-} from "@nohal/core/src/linuxcncVersion";
-import type { RecentProjectEntry } from "@nohal/core/src/types";
+} from "@nohal/core/linuxcncVersion";
 import { HiOutlineDocumentPlus, HiOutlineFolderOpen } from "solid-icons/hi";
 import { createSignal, For, Show } from "solid-js";
+import type { RecentProjectEntry } from "../../shared/recentProjects";
 import type { LandingProjectFlowController } from "../app/useLandingProjectFlow";
 import GeneralSettingsDialog from "../features/generalSettings";
 import { useI18n } from "../i18n";
@@ -27,6 +27,8 @@ interface LandingPageProps {
   onImportMachineConfiguration: () => void;
 }
 
+const RECENT_PROJECT_VISIBLE_PATH_SEGMENTS = 3;
+
 function recentProjectName(entry: RecentProjectEntry): string {
   if (entry.name?.trim()) return entry.name;
   return entry.projectPath.split(/[\\/]/).pop() ?? entry.projectPath;
@@ -34,8 +36,12 @@ function recentProjectName(entry: RecentProjectEntry): string {
 
 function recentProjectPathTail(projectPath: string): string {
   const segments = projectPath.split(/[\\/]/).filter(Boolean);
-  if (segments.length <= 3) return projectPath;
-  return `.../${segments.slice(-3).join("/")}`;
+  if (segments.length <= RECENT_PROJECT_VISIBLE_PATH_SEGMENTS) {
+    return projectPath;
+  }
+  return `.../${segments
+    .slice(-RECENT_PROJECT_VISIBLE_PATH_SEGMENTS)
+    .join("/")}`;
 }
 
 export default function LandingPage(props: LandingPageProps) {
@@ -187,8 +193,17 @@ export default function LandingPage(props: LandingPageProps) {
                             {recentProjectPathTail(entry.projectPath)}
                           </div>
                         </div>
-                        <div class="justify-self-end text-xs text-muted-foreground max-sm:justify-self-start">
-                          {formatDateTime(entry.lastOpenedAt)}
+                        <div class="flex flex-col items-end gap-1 justify-self-end text-xs text-muted-foreground max-sm:items-start max-sm:justify-self-start">
+                          <Show when={entry.linuxCncVersion}>
+                            {(version) => (
+                              <div class="font-medium text-foreground/75">
+                                {t("landing.recentProjectVersion", {
+                                  version: version(),
+                                })}
+                              </div>
+                            )}
+                          </Show>
+                          <div>{formatDateTime(entry.lastOpenedAt)}</div>
                         </div>
                       </button>
                     )}

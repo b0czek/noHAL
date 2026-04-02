@@ -97,7 +97,7 @@ describe("moveSelectionIntoSubsheet", () => {
       ],
     };
 
-    const child = createSheet("Child", root.id);
+    const child = createSheet("Child");
     project.sheets[child.id] = child;
     const subsheetNode: SheetNode = {
       id: "node_child",
@@ -242,7 +242,7 @@ describe("moveSelectionIntoSubsheet", () => {
       },
     );
 
-    const child = createSheet("Child", root.id);
+    const child = createSheet("Child");
     project.sheets[child.id] = child;
     const subsheetNode: SheetNode = {
       id: "node_child",

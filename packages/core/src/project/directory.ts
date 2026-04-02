@@ -1,3 +1,4 @@
+import { pickBy } from "remeda";
 import corePackageJson from "../../package.json";
 import { isSystemComponent } from "../componentSystem";
 import { slugify } from "../id";
@@ -26,6 +27,9 @@ const NOHAL_CORE_VERSION =
   typeof corePackageJson.version === "string"
     ? corePackageJson.version
     : "0.0.0";
+const ATOMIC_WRITE_RANDOM_SUFFIX_RADIX = 36;
+const ATOMIC_WRITE_RANDOM_SUFFIX_START = 2;
+const ATOMIC_WRITE_RANDOM_SUFFIX_END = 10;
 
 export interface ProjectPersistenceOptions {
   savedWith?: string;
@@ -84,7 +88,9 @@ let atomicWriteCounter = 0;
 
 function atomicTempPathFor(filePath: string): string {
   atomicWriteCounter += 1;
-  const randomSuffix = Math.random().toString(36).slice(2, 10);
+  const randomSuffix = Math.random()
+    .toString(ATOMIC_WRITE_RANDOM_SUFFIX_RADIX)
+    .slice(ATOMIC_WRITE_RANDOM_SUFFIX_START, ATOMIC_WRITE_RANDOM_SUFFIX_END);
   return `${filePath}.tmp-${Date.now()}-${atomicWriteCounter}-${randomSuffix}`;
 }
 
@@ -115,10 +121,6 @@ function isSheetDefinitionLike(value: unknown): value is SheetDefinition {
   if (!isRecord(value)) return false;
   if (typeof value.id !== "string") return false;
   if (typeof value.name !== "string") return false;
-  if (
-    !(value.parentSheetId === null || typeof value.parentSheetId === "string")
-  )
-    return false;
   return (
     Array.isArray(value.nodes) &&
     Array.isArray(value.ports) &&
@@ -208,13 +210,13 @@ function getUsedComponentIds(project: NoHALProject): Set<string> {
 
 function createPersistedProjectLibrary(project: NoHALProject): ProjectLibrary {
   const usedComponentIds = getUsedComponentIds(project);
-  const components: ProjectLibrary["components"] = {};
-  for (const componentId of usedComponentIds) {
-    const component = project.library.components[componentId];
-    if (!component) continue;
-    components[componentId] = component;
-  }
-  return { components };
+  return {
+    components: pickBy(
+      project.library.components,
+      (component, componentId) =>
+        Boolean(component) && usedComponentIds.has(componentId),
+    ),
+  };
 }
 
 function createProjectLibraryFile(

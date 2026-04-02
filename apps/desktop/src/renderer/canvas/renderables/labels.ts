@@ -1,16 +1,12 @@
 import Konva from "konva";
-import {
-  CORNER_RADIUS_MD,
-  FONT_MONO,
-  FONT_SANS,
-  NEUTRAL_BORDER,
-  SELECTED_LABEL_BORDER,
-  TEXT_PRIMARY,
-  TEXT_SOFT,
-} from "../constants";
+import { label as labelConst } from "../constants/labels";
+import { surface } from "../constants/surfaces";
+import { typography } from "../constants/typography";
+import { measureLabelBox, measureLabelScopeWidth } from "../measurements";
 import { labelFill } from "../theme";
 import {
   bindDraggableRenderable,
+  isPrimaryScenePointerButton,
   type RenderLabelsArgs,
   type RenderSceneContext,
 } from "./shared";
@@ -37,55 +33,40 @@ export function renderLabels(
       dragBoundFunc: (pos) => clampPos(pos),
     });
     labelGroups.set(label.id, group);
-    const scopeMeasure = new Konva.Text({
-      text: label.scope,
-      fontFamily: FONT_SANS,
-      fontSize: 10,
-    });
-    const nameMeasure = new Konva.Text({
-      text: label.name,
-      fontFamily: FONT_MONO,
-      fontSize: 12,
-    });
-    const w =
-      16 +
-      Math.ceil(scopeMeasure.width()) +
-      8 +
-      Math.ceil(nameMeasure.width()) +
-      10;
-    const h = 22;
+    const scopeWidth = measureLabelScopeWidth(label.scope);
+    const { width, height } = measureLabelBox(label.scope, label.name);
     group.add(
       new Konva.Rect({
         x: 0,
-        y: -11,
-        width: w,
-        height: h,
-        cornerRadius: CORNER_RADIUS_MD,
+        y: -height / 2,
+        width,
+        height,
+        cornerRadius: surface.radius.md,
         fill: labelFill(label.scope),
         stroke: selectedLabelIds.has(label.id)
-          ? SELECTED_LABEL_BORDER
-          : NEUTRAL_BORDER,
+          ? surface.border.selectedLabel
+          : surface.border.neutral,
         strokeWidth: selectedLabelIds.has(label.id) ? 2 : 1,
       }),
     );
     group.add(
       new Konva.Text({
-        x: 8,
-        y: -4,
+        x: labelConst.scope.text.x,
+        y: labelConst.scope.text.y,
         text: label.scope,
-        fontFamily: FONT_SANS,
-        fontSize: 10,
-        fill: TEXT_SOFT,
+        fontFamily: typography.family.sans,
+        fontSize: labelConst.scope.fontSize,
+        fill: typography.color.soft,
       }),
     );
     group.add(
       new Konva.Text({
-        x: 14 + Math.ceil(scopeMeasure.width()) + 6,
-        y: -2,
+        x: labelConst.name.text.baseX + scopeWidth + labelConst.name.text.gap,
+        y: labelConst.name.text.y,
         text: label.name,
-        fontFamily: FONT_MONO,
-        fontSize: 12,
-        fill: TEXT_PRIMARY,
+        fontFamily: typography.family.mono,
+        fontSize: labelConst.name.fontSize,
+        fill: typography.color.primary,
       }),
     );
 
@@ -103,6 +84,7 @@ export function renderLabels(
       },
     });
     group.on("click tap", (evt) => {
+      if (!isPrimaryScenePointerButton(evt.evt)) return;
       evt.cancelBubble = true;
       callbacks.onLabelClick(label.id, {
         mode:

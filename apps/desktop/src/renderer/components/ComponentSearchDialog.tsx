@@ -33,6 +33,35 @@ interface ComponentSearchDialogProps extends OverlayDialogProps {
   scope: ComponentSearchScope;
 }
 
+function resultChromeForKind(
+  kind: CanvasSearchResult["kind"],
+  isActive: boolean,
+): string {
+  if (kind === "component") {
+    return isActive
+      ? "border-sky-400/50 bg-sky-500/10 ring-1 ring-inset ring-sky-300/30"
+      : "border-sky-500/20 bg-sky-500/[0.06] hover:bg-sky-500/[0.1]";
+  }
+  if (kind === "subsheet") {
+    return isActive
+      ? "border-cyan-400/50 bg-cyan-500/10 ring-1 ring-inset ring-cyan-300/30"
+      : "border-cyan-500/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.1]";
+  }
+  if (kind === "label") {
+    return isActive
+      ? "border-amber-400/50 bg-amber-500/10 ring-1 ring-inset ring-amber-300/30"
+      : "border-amber-500/20 bg-amber-500/[0.06] hover:bg-amber-500/[0.1]";
+  }
+  if (kind === "port") {
+    return isActive
+      ? "border-violet-400/50 bg-violet-500/10 ring-1 ring-inset ring-violet-300/30"
+      : "border-violet-500/20 bg-violet-500/[0.06] hover:bg-violet-500/[0.1]";
+  }
+  return isActive
+    ? "border-emerald-400/50 bg-emerald-500/10 ring-1 ring-inset ring-emerald-300/30"
+    : "border-emerald-500/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.1]";
+}
+
 export default function ComponentSearchDialog(
   props: ComponentSearchDialogProps,
 ) {
@@ -120,12 +149,12 @@ export default function ComponentSearchDialog(
     const count = list.length;
     if (count === 0) return;
     const current = activeIndex();
-    const target =
-      current < 0
-        ? step > 0
-          ? 0
-          : count - 1
-        : (current + step + count) % count;
+    let target = 0;
+    if (current < 0) {
+      target = step > 0 ? 0 : count - 1;
+    } else {
+      target = (current + step + count) % count;
+    }
     setActiveIndex(target);
     selectResult(list[target]);
   };
@@ -178,31 +207,8 @@ export default function ComponentSearchDialog(
         return <HiOutlineDocumentText size={18} aria-hidden="true" />;
     }
   };
-  const resultChrome = (result: CanvasSearchResult, isActive: boolean) => {
-    if (result.kind === "component") {
-      return isActive
-        ? "border-sky-400/50 bg-sky-500/10 ring-1 ring-inset ring-sky-300/30"
-        : "border-sky-500/20 bg-sky-500/[0.06] hover:bg-sky-500/[0.1]";
-    }
-    if (result.kind === "subsheet") {
-      return isActive
-        ? "border-cyan-400/50 bg-cyan-500/10 ring-1 ring-inset ring-cyan-300/30"
-        : "border-cyan-500/20 bg-cyan-500/[0.06] hover:bg-cyan-500/[0.1]";
-    }
-    if (result.kind === "label") {
-      return isActive
-        ? "border-amber-400/50 bg-amber-500/10 ring-1 ring-inset ring-amber-300/30"
-        : "border-amber-500/20 bg-amber-500/[0.06] hover:bg-amber-500/[0.1]";
-    }
-    if (result.kind === "port") {
-      return isActive
-        ? "border-violet-400/50 bg-violet-500/10 ring-1 ring-inset ring-violet-300/30"
-        : "border-violet-500/20 bg-violet-500/[0.06] hover:bg-violet-500/[0.1]";
-    }
-    return isActive
-      ? "border-emerald-400/50 bg-emerald-500/10 ring-1 ring-inset ring-emerald-300/30"
-      : "border-emerald-500/20 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.1]";
-  };
+  const resultChrome = (result: CanvasSearchResult, isActive: boolean) =>
+    resultChromeForKind(result.kind, isActive);
   const resultBadgeClass = (result: CanvasSearchResult) => {
     switch (result.kind) {
       case "component":
@@ -231,6 +237,38 @@ export default function ComponentSearchDialog(
         return "mono";
     }
   };
+  const handleQueryKeyDown = (evt: KeyboardEvent) => {
+    if (evt.key === "Escape") {
+      evt.preventDefault();
+      props.onClose();
+      return;
+    }
+
+    if (evt.key === "ArrowDown") {
+      evt.preventDefault();
+      props.scope === "project" ? moveProjectActive(1) : jumpToResult(1);
+      return;
+    }
+
+    if (evt.key === "ArrowUp") {
+      evt.preventDefault();
+      props.scope === "project" ? moveProjectActive(-1) : jumpToResult(-1);
+      return;
+    }
+
+    if (evt.key !== "Enter") return;
+
+    evt.preventDefault();
+    if (props.scope === "sheet") {
+      jumpToResult(evt.shiftKey ? -1 : 1);
+      return;
+    }
+
+    const list = filteredResults();
+    if (list.length === 0) return;
+    const index = activeIndex() < 0 ? 0 : activeIndex();
+    selectResult(list[index], { close: true });
+  };
 
   const content = (
     <>
@@ -248,37 +286,7 @@ export default function ComponentSearchDialog(
           setQuery(evt.currentTarget.value);
           setActiveIndex(props.scope === "project" ? 0 : -1);
         }}
-        onKeyDown={(evt) => {
-          if (props.scope === "sheet" && evt.key === "Enter") {
-            evt.preventDefault();
-            jumpToResult(evt.shiftKey ? -1 : 1);
-            return;
-          }
-          if (evt.key === "ArrowDown") {
-            evt.preventDefault();
-            props.scope === "project" ? moveProjectActive(1) : jumpToResult(1);
-            return;
-          }
-          if (evt.key === "ArrowUp") {
-            evt.preventDefault();
-            props.scope === "project"
-              ? moveProjectActive(-1)
-              : jumpToResult(-1);
-            return;
-          }
-          if (props.scope === "project" && evt.key === "Enter") {
-            evt.preventDefault();
-            const list = filteredResults();
-            if (list.length === 0) return;
-            const index = activeIndex() < 0 ? 0 : activeIndex();
-            selectResult(list[index], { close: true });
-            return;
-          }
-          if (evt.key === "Escape") {
-            evt.preventDefault();
-            props.onClose();
-          }
-        }}
+        onKeyDown={handleQueryKeyDown}
       />
       <Show
         when={props.scope === "sheet"}

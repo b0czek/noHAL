@@ -1,6 +1,7 @@
 #!/usr/bin/env ts-node
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 import { parseCompComponentDefinition } from "../src/compParser.ts";
@@ -155,54 +156,46 @@ function buildVersionStore(
   const revision = runGit(repoPath, ["rev-parse", refName]).trim();
 
   const compComponents: ImportedComponentDefinition[] = [];
-
-  const compFiles = listTreeFiles(
-    repoPath,
-    refName,
-    "src/hal/components",
-  ).filter((filePath) => filePath.endsWith(".comp"));
-  const compFileSet = new Set(compFiles);
-  let syntheticConvFiles: string[] = [];
-  try {
-    const submakefile = readGitFile(
-      repoPath,
-      refName,
-      COMPONENTS_SUBMAKEFILE_PATH,
-    );
-    syntheticConvFiles = listSyntheticConvCompFiles(submakefile).filter(
-      (filePath) => !compFileSet.has(filePath),
-    );
-  } catch {
-    syntheticConvFiles = [];
-  }
-
-  for (const filePath of compFiles) {
+  const pushFallbackComponent = (filePath: string, message: string) => {
+    compComponents.push(parseCompFallback(version, refName, filePath, message));
+  };
+  const readSyntheticConvFiles = (): string[] => {
     try {
-      const content = readGitFile(repoPath, refName, filePath);
-      compComponents.push(
-        parseCompForStore(version, refName, filePath, content),
+      const submakefile = readGitFile(
+        repoPath,
+        refName,
+        COMPONENTS_SUBMAKEFILE_PATH,
       );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      compComponents.push(
-        parseCompFallback(version, refName, filePath, message),
+      return listSyntheticConvCompFiles(submakefile).filter(
+        (filePath) => !compFileSet.has(filePath),
       );
+    } catch {
+      return [];
     }
-  }
-
-  if (syntheticConvFiles.length > 0) {
+  };
+  const collectCompFileComponents = () => {
+    for (const filePath of compFiles) {
+      try {
+        const content = readGitFile(repoPath, refName, filePath);
+        compComponents.push(
+          parseCompForStore(version, refName, filePath, content),
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        pushFallbackComponent(filePath, message);
+      }
+    }
+  };
+  const collectSyntheticConvComponents = (syntheticConvFiles: string[]) => {
+    if (syntheticConvFiles.length === 0) return;
     try {
       const convTemplate = readGitFile(repoPath, refName, CONV_TEMPLATE_PATH);
       for (const filePath of syntheticConvFiles) {
         const convTypes = parseConvCompTypesFromPath(filePath);
         if (!convTypes) {
-          compComponents.push(
-            parseCompFallback(
-              version,
-              refName,
-              filePath,
-              "Unsupported conv component filename pattern",
-            ),
+          pushFallbackComponent(
+            filePath,
+            "Unsupported conv component filename pattern",
           );
           continue;
         }
@@ -226,20 +219,26 @@ function buildVersionStore(
         } catch (error) {
           const message =
             error instanceof Error ? error.message : String(error);
-          compComponents.push(
-            parseCompFallback(version, refName, filePath, message),
-          );
+          pushFallbackComponent(filePath, message);
         }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       for (const filePath of syntheticConvFiles) {
-        compComponents.push(
-          parseCompFallback(version, refName, filePath, message),
-        );
+        pushFallbackComponent(filePath, message);
       }
     }
-  }
+  };
+
+  const compFiles = listTreeFiles(
+    repoPath,
+    refName,
+    "src/hal/components",
+  ).filter((filePath) => filePath.endsWith(".comp"));
+  const compFileSet = new Set(compFiles);
+  const syntheticConvFiles = readSyntheticConvFiles();
+  collectCompFileComponents();
+  collectSyntheticConvComponents(syntheticConvFiles);
 
   const nowIso = new Date().toISOString();
   return {
@@ -338,6 +337,8 @@ function buildComponentHistories(
   return histories;
 }
 
+const STORE_REVISION_PREVIEW_LENGTH = 12;
+
 function main(): void {
   const repoPath = findRepoPath();
   const outputDir = path.resolve(
@@ -356,7 +357,7 @@ function main(): void {
     snapshots[version] = snapshot;
     metadata[version] = snapshot.meta;
     process.stdout.write(
-      `[linuxcnc-store] ${version} (${snapshot.meta.refName}, ${snapshot.meta.revision.slice(0, 12)}): ${snapshot.components.length} components (.comp files=${stats.compFiles}, synthetic conv files=${stats.syntheticCompFiles}, parsed components=${stats.compComponents})\n`,
+      `[linuxcnc-store] ${version} (${snapshot.meta.refName}, ${snapshot.meta.revision.slice(0, STORE_REVISION_PREVIEW_LENGTH)}): ${snapshot.components.length} components (.comp files=${stats.compFiles}, synthetic conv files=${stats.syntheticCompFiles}, parsed components=${stats.compComponents})\n`,
     );
   }
 

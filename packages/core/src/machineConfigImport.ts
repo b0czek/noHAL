@@ -1,3 +1,4 @@
+import { difference, flatMap, pipe, sortBy, unique } from "remeda";
 import { parseHalImportDraft } from "./halImport";
 import { collectLinuxCncHalReferences, parseLinuxCncIni } from "./linuxcncIni";
 import { stripManagedEntriesFromIni } from "./machineConfig/policy";
@@ -156,6 +157,208 @@ function pickSelectedMatchForRef(
   return undefined;
 }
 
+function buildSelectedHalIndexes(
+  io: CoreIo,
+  normalized: string[],
+): {
+  selectedByAbs: Set<string>;
+  selectedByBase: Map<string, string[]>;
+} {
+  const selectedByAbs = new Set(normalized);
+  const selectedByBase = new Map<string, string[]>();
+  for (const filePath of normalized) {
+    const key = fileNameLower(io, filePath);
+    const list = selectedByBase.get(key);
+    if (list) list.push(filePath);
+    else selectedByBase.set(key, [filePath]);
+  }
+  return { selectedByAbs, selectedByBase };
+}
+
+async function loadReferencedHalSources(args: {
+  io: CoreIo;
+  ini: LinuxCncIniDocument;
+  iniDir: string;
+  iniPath: string;
+  refs: ReturnType<typeof collectLinuxCncHalReferences>;
+  normalized: string[];
+  resolveIniByPath: Map<string, boolean>;
+  selectedByAbs: Set<string>;
+  selectedByBase: Map<string, string[]>;
+}): Promise<{
+  halSources: MachineConfigHalSource[];
+  resolverWarnings: string[];
+  loadedHalPaths: Set<string>;
+  halChunks: string[];
+  parsedInstanceNamesByPath: Map<string, Set<string>>;
+}> {
+  const halSources: MachineConfigHalSource[] = [];
+  const resolverWarnings: string[] = [];
+  const loadedHalPaths = new Set<string>();
+  const halChunks: string[] = [];
+  const parsedInstanceNamesByPath = new Map<string, Set<string>>();
+  const loadRefSource = async (
+    ref: (typeof args.refs)[number],
+  ): Promise<void> => {
+    if (ref.fileToken.startsWith("LIB:")) {
+      halSources.push({
+        kind: ref.kind,
+        iniLine: ref.line,
+        iniValue: ref.rawValue,
+        requestedPath: ref.fileToken,
+        status: "skipped-lib",
+      });
+      resolverWarnings.push(
+        `INI line ${ref.line}: '${ref.fileToken}' uses LIB: lookup and was not auto-loaded`,
+      );
+      return;
+    }
+
+    if (args.io.path.extname(ref.fileToken).toLowerCase() !== ".hal") {
+      halSources.push({
+        kind: ref.kind,
+        iniLine: ref.line,
+        iniValue: ref.rawValue,
+        requestedPath: ref.fileToken,
+        status: "skipped-non-hal",
+      });
+      resolverWarnings.push(
+        `INI line ${ref.line}: '${ref.fileToken}' is not a .hal file (tcl/haltcl import is not implemented yet)`,
+      );
+      return;
+    }
+
+    const resolvedPathCandidate = pickSelectedMatchForRef(
+      args.io,
+      ref.fileToken,
+      args.iniDir,
+      args.selectedByAbs,
+      args.selectedByBase,
+    );
+    const resolvedPath =
+      resolvedPathCandidate && (await args.io.fs.exists(resolvedPathCandidate))
+        ? resolvedPathCandidate
+        : undefined;
+
+    if (!resolvedPath) {
+      halSources.push({
+        kind: ref.kind,
+        iniLine: ref.line,
+        iniValue: ref.rawValue,
+        requestedPath: ref.fileToken,
+        status: "missing",
+      });
+      resolverWarnings.push(
+        `INI line ${ref.line}: no selected HAL file matched '${ref.fileToken}'`,
+      );
+      return;
+    }
+
+    halSources.push({
+      kind: ref.kind,
+      iniLine: ref.line,
+      iniValue: ref.rawValue,
+      requestedPath: ref.fileToken,
+      resolvedPath,
+      status: "loaded",
+    });
+  };
+
+  const loadStandaloneSelectedFile = async (
+    selectedPath: string,
+  ): Promise<void> => {
+    if (!isHalPath(selectedPath)) {
+      resolverWarnings.push(
+        `Selected file is not a .hal file and was ignored: ${selectedPath}`,
+      );
+      return;
+    }
+    if (!(await args.io.fs.exists(selectedPath))) {
+      resolverWarnings.push(
+        `Selected HAL file does not exist: ${selectedPath}`,
+      );
+      return;
+    }
+    if (loadedHalPaths.has(selectedPath)) return;
+    loadedHalPaths.add(selectedPath);
+    let halText = await args.io.fs.readTextFile(selectedPath);
+    if (args.resolveIniByPath.get(selectedPath)) {
+      const resolved = resolveIniSubstitutionsInHalText(
+        halText,
+        args.ini,
+        selectedPath,
+      );
+      halText = resolved.text;
+      resolverWarnings.push(...resolved.warnings);
+    }
+    const parsedSingleDraft = parseHalImportDraft(halText, selectedPath);
+    const parsedSingleInstances = new Set<string>();
+    for (const group of parsedSingleDraft.componentGroups) {
+      for (const instance of group.instances) {
+        if (instance.instanceName.trim()) {
+          parsedSingleInstances.add(instance.instanceName.trim());
+        }
+      }
+    }
+    parsedInstanceNamesByPath.set(selectedPath, parsedSingleInstances);
+    halChunks.push(
+      `# noHAL import source: ${selectedPath}\n${halText.trimEnd()}\n`,
+    );
+  };
+
+  for (const ref of args.refs) await loadRefSource(ref);
+  for (const selectedPath of args.normalized) {
+    await loadStandaloneSelectedFile(selectedPath);
+  }
+
+  return {
+    halSources,
+    resolverWarnings,
+    loadedHalPaths,
+    halChunks,
+    parsedInstanceNamesByPath,
+  };
+}
+
+function computePostguiOnlyInstances(args: {
+  halSources: MachineConfigHalSource[];
+  parsedInstanceNamesByPath: Map<string, Set<string>>;
+}): string[] {
+  const resolvedPathsForKind = (
+    kind: "HALFILE" | "POSTGUI_HALFILE",
+  ): string[] =>
+    pipe(
+      args.halSources,
+      flatMap((source) =>
+        source.status === "loaded" &&
+        source.kind === kind &&
+        source.resolvedPath
+          ? [source.resolvedPath]
+          : [],
+      ),
+      unique(),
+    );
+
+  const postguiResolvedPaths = resolvedPathsForKind("POSTGUI_HALFILE");
+  const mainResolvedPaths = resolvedPathsForKind("HALFILE");
+  const instanceNamesForPaths = (paths: string[]): string[] =>
+    pipe(
+      paths,
+      flatMap((sourcePath) => [
+        ...(args.parsedInstanceNamesByPath.get(sourcePath) ?? []),
+      ]),
+      unique(),
+    );
+
+  const postguiInstances = instanceNamesForPaths(postguiResolvedPaths);
+  const mainInstances = instanceNamesForPaths(mainResolvedPaths);
+  return pipe(
+    postguiInstances,
+    difference(mainInstances),
+    sortBy((name) => name),
+  );
+}
+
 export const parseMachineConfigImportSetupDraft =
   (io: CoreIo) =>
   async (iniPathInput: string): Promise<MachineConfigImportSetupDraft> => {
@@ -198,169 +401,32 @@ export const buildMachineConfigImportDraft =
     const ini = parseLinuxCncIni(iniText, iniPath);
     const iniDir = io.path.dirname(iniPath);
     const refs = collectLinuxCncHalReferences(ini);
-
-    const selectedByAbs = new Set(normalized);
-    const selectedByBase = new Map<string, string[]>();
-    for (const filePath of normalized) {
-      const key = fileNameLower(io, filePath);
-      const list = selectedByBase.get(key);
-      if (list) list.push(filePath);
-      else selectedByBase.set(key, [filePath]);
-    }
-
-    const halSources: MachineConfigHalSource[] = [];
-    const resolverWarnings: string[] = [];
-    const loadedHalPaths = new Set<string>();
-    const halChunks: string[] = [];
-    const parsedInstanceNamesByPath = new Map<string, Set<string>>();
-
-    for (const ref of refs) {
-      if (ref.fileToken.startsWith("LIB:")) {
-        halSources.push({
-          kind: ref.kind,
-          iniLine: ref.line,
-          iniValue: ref.rawValue,
-          requestedPath: ref.fileToken,
-          status: "skipped-lib",
-        });
-        resolverWarnings.push(
-          `INI line ${ref.line}: '${ref.fileToken}' uses LIB: lookup and was not auto-loaded`,
-        );
-        continue;
-      }
-
-      const ext = io.path.extname(ref.fileToken).toLowerCase();
-      if (ext !== ".hal") {
-        halSources.push({
-          kind: ref.kind,
-          iniLine: ref.line,
-          iniValue: ref.rawValue,
-          requestedPath: ref.fileToken,
-          status: "skipped-non-hal",
-        });
-        resolverWarnings.push(
-          `INI line ${ref.line}: '${ref.fileToken}' is not a .hal file (tcl/haltcl import is not implemented yet)`,
-        );
-        continue;
-      }
-
-      const resolvedPathCandidate = pickSelectedMatchForRef(
-        io,
-        ref.fileToken,
-        iniDir,
-        selectedByAbs,
-        selectedByBase,
-      );
-      let resolvedPath: string | undefined;
-      if (
-        resolvedPathCandidate &&
-        (await io.fs.exists(resolvedPathCandidate))
-      ) {
-        resolvedPath = resolvedPathCandidate;
-      }
-
-      if (!resolvedPath) {
-        halSources.push({
-          kind: ref.kind,
-          iniLine: ref.line,
-          iniValue: ref.rawValue,
-          requestedPath: ref.fileToken,
-          status: "missing",
-        });
-        resolverWarnings.push(
-          `INI line ${ref.line}: no selected HAL file matched '${ref.fileToken}'`,
-        );
-        continue;
-      }
-
-      halSources.push({
-        kind: ref.kind,
-        iniLine: ref.line,
-        iniValue: ref.rawValue,
-        requestedPath: ref.fileToken,
-        resolvedPath,
-        status: "loaded",
-      });
-    }
-
-    for (const selectedPath of normalized) {
-      if (!isHalPath(selectedPath)) {
-        resolverWarnings.push(
-          `Selected file is not a .hal file and was ignored: ${selectedPath}`,
-        );
-        continue;
-      }
-      if (!(await io.fs.exists(selectedPath))) {
-        resolverWarnings.push(
-          `Selected HAL file does not exist: ${selectedPath}`,
-        );
-        continue;
-      }
-      if (loadedHalPaths.has(selectedPath)) continue;
-      loadedHalPaths.add(selectedPath);
-      let halText = await io.fs.readTextFile(selectedPath);
-      if (resolveIniByPath.get(selectedPath)) {
-        const resolved = resolveIniSubstitutionsInHalText(
-          halText,
-          ini,
-          selectedPath,
-        );
-        halText = resolved.text;
-        resolverWarnings.push(...resolved.warnings);
-      }
-      const parsedSingleDraft = parseHalImportDraft(halText, selectedPath);
-      const parsedSingleInstances = new Set<string>();
-      for (const group of parsedSingleDraft.componentGroups) {
-        for (const instance of group.instances) {
-          if (instance.instanceName.trim()) {
-            parsedSingleInstances.add(instance.instanceName.trim());
-          }
-        }
-      }
-      parsedInstanceNamesByPath.set(selectedPath, parsedSingleInstances);
-      halChunks.push(
-        `# noHAL import source: ${selectedPath}\n${halText.trimEnd()}\n`,
-      );
-    }
+    const { selectedByAbs, selectedByBase } = buildSelectedHalIndexes(
+      io,
+      normalized,
+    );
+    const {
+      halSources,
+      resolverWarnings,
+      halChunks,
+      parsedInstanceNamesByPath,
+    } = await loadReferencedHalSources({
+      io,
+      ini,
+      iniDir,
+      iniPath,
+      refs,
+      normalized,
+      resolveIniByPath,
+      selectedByAbs,
+      selectedByBase,
+    });
 
     const halImportDraft = parseHalImportDraft(halChunks.join("\n"), iniPath);
-    const postguiResolvedPaths = new Set(
-      halSources
-        .filter(
-          (source) =>
-            source.status === "loaded" &&
-            source.kind === "POSTGUI_HALFILE" &&
-            source.resolvedPath,
-        )
-        .map((source) => source.resolvedPath as string),
-    );
-    const mainResolvedPaths = new Set(
-      halSources
-        .filter(
-          (source) =>
-            source.status === "loaded" &&
-            source.kind === "HALFILE" &&
-            source.resolvedPath,
-        )
-        .map((source) => source.resolvedPath as string),
-    );
-    const postguiInstances = new Set<string>();
-    const mainInstances = new Set<string>();
-    for (const sourcePath of postguiResolvedPaths) {
-      for (const instanceName of parsedInstanceNamesByPath.get(sourcePath) ??
-        []) {
-        postguiInstances.add(instanceName);
-      }
-    }
-    for (const sourcePath of mainResolvedPaths) {
-      for (const instanceName of parsedInstanceNamesByPath.get(sourcePath) ??
-        []) {
-        mainInstances.add(instanceName);
-      }
-    }
-    const postguiOnlyInstances = [...postguiInstances]
-      .filter((instanceName) => !mainInstances.has(instanceName))
-      .sort((a, b) => a.localeCompare(b));
+    const postguiOnlyInstances = computePostguiOnlyInstances({
+      halSources,
+      parsedInstanceNamesByPath,
+    });
     if (postguiOnlyInstances.length > 0) {
       halImportDraft.postguiOnlyInstances = postguiOnlyInstances;
     }

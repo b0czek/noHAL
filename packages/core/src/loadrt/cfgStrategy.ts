@@ -1,3 +1,4 @@
+import { pullObject } from "remeda";
 import { isCanonicalIndexedInstanceNames } from "./namesOrCountStrategy";
 import type {
   LoadrtContext,
@@ -118,14 +119,13 @@ function importCfg(context: LoadrtImportContext): LoadrtImportResult {
   const instancePaths = effectiveCfgValues.map(
     (_, index) => `${context.componentName}.${index}`,
   );
-  const instanceConfigByPath: Record<string, Record<string, string>> = {};
-  for (const [index, value] of effectiveCfgValues.entries()) {
-    const path = instancePaths[index];
-    if (!path) continue;
-    instanceConfigByPath[path] = {
-      [DEFAULT_CFG_INSTANCE_CONFIG_KEY]: `${value}`,
-    };
-  }
+  const instanceConfigByPath = pullObject(
+    instancePaths,
+    (instancePath) => instancePath,
+    (_instancePath, index) => ({
+      [DEFAULT_CFG_INSTANCE_CONFIG_KEY]: `${effectiveCfgValues[index] ?? 1}`,
+    }),
+  );
 
   return {
     instancePaths,

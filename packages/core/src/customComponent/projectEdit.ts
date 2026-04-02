@@ -103,6 +103,16 @@ function updateLoadCommand(
   });
 }
 
+function updateMaxInstances(
+  project: NoHALProject,
+  componentId: string,
+  maxInstances: number | undefined,
+): ComponentDefinition | null {
+  return updateProjectCustomComponent(project, componentId, (component) => {
+    customComponentDefinitionEdits.maxInstances.update(component, maxInstances);
+  });
+}
+
 function addPin(
   project: NoHALProject,
   componentId: string,
@@ -311,6 +321,9 @@ export const customComponentEdits = {
   },
   loadCommand: {
     update: updateLoadCommand,
+  },
+  maxInstances: {
+    update: updateMaxInstances,
   },
   pin: {
     add: addPin,

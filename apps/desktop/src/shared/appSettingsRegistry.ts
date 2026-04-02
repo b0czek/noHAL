@@ -1,6 +1,7 @@
 export type AppLocale = "en";
 
 export interface AppSettings {
+  canvasGridResolution: number;
   interfaceScale: number;
   locale: AppLocale;
 }
@@ -31,33 +32,84 @@ type AppSettingsRegistry = {
   [K in AppSettingKey]: AppSettingDefinition<K>;
 };
 
-const interfaceScaleOptions = [0.9, 1, 1.1, 1.25] as const;
+const interfaceScale = {
+  defaultValue: 1,
+  options: [
+    { value: 0.9, label: "90%" },
+    { value: 1, label: "100%" },
+    { value: 1.1, label: "110%" },
+    { value: 1.25, label: "125%" },
+  ],
+} as const;
+const interfaceScaleOptions = interfaceScale.options.map(({ value }) => value);
+const canvasGrid = {
+  defaultValue: 0,
+  options: [
+    { value: 0, label: "Off" },
+    { value: 8, label: "8 px" },
+    { value: 12, label: "12 px" },
+    { value: 16, label: "16 px" },
+    { value: 24, label: "24 px" },
+    { value: 32, label: "32 px" },
+    { value: 48, label: "48 px" },
+  ],
+} as const;
+const canvasGridOptions = canvasGrid.options.map(({ value }) => value);
 const localeOptions = ["en"] as const;
 
 export const APP_SETTINGS_REGISTRY = {
+  canvasGridResolution: {
+    key: "canvasGridResolution",
+    category: "interface",
+    control: "select",
+    labelKey: "generalSettings.canvasGridLabel",
+    helpKey: "generalSettings.canvasGridHelp",
+    defaultValue: canvasGrid.defaultValue,
+    options: canvasGrid.options.map(({ value, label }) => ({
+      value,
+      label,
+    })),
+    sanitize: (value) => {
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        return canvasGrid.defaultValue;
+      }
+      return canvasGridOptions.includes(
+        value as (typeof canvasGridOptions)[number],
+      )
+        ? value
+        : canvasGrid.defaultValue;
+    },
+    serialize: (value) => String(value),
+    deserialize: (value) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : canvasGrid.defaultValue;
+    },
+  },
   interfaceScale: {
     key: "interfaceScale",
     category: "interface",
     control: "select",
     labelKey: "generalSettings.interfaceScaleLabel",
     helpKey: "generalSettings.interfaceScaleHelp",
-    defaultValue: 1,
-    options: interfaceScaleOptions.map((value) => ({
+    defaultValue: interfaceScale.defaultValue,
+    options: interfaceScale.options.map(({ value, label }) => ({
       value,
-      label: `${Math.round(value * 100)}%`,
+      label,
     })),
     sanitize: (value) => {
-      if (typeof value !== "number" || !Number.isFinite(value)) return 1;
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        return interfaceScale.defaultValue;
+      }
       return interfaceScaleOptions.includes(
         value as (typeof interfaceScaleOptions)[number],
       )
         ? value
-        : 1;
+        : interfaceScale.defaultValue;
     },
     serialize: (value) => String(value),
     deserialize: (value) => {
       const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : 1;
+      return Number.isFinite(parsed) ? parsed : interfaceScale.defaultValue;
     },
   },
   locale: {

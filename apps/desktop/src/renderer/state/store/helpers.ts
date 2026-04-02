@@ -1,27 +1,45 @@
 import {
   addfQueueEntryNodeId,
   normalizeAddfQueueEntries,
-} from "@nohal/core/src/addfQueue";
+} from "@nohal/core/addfQueue";
+import {
+  componentPrefersCanonicalInstanceNames,
+  componentUsesLockedCanonicalInstanceNames,
+  ensureInstanceName,
+  nextComponentInstanceName,
+} from "@nohal/core/componentNaming";
 import {
   createEmptyComponentStore,
   isStoreEntryCompatibleWithLinuxCncVersion,
   listStoreEntriesForLinuxCncVersion,
-} from "@nohal/core/src/componentStore";
-import { reconcileComponentNodesForDefinition } from "@nohal/core/src/customComponent";
-import { endpointKey } from "@nohal/core/src/graph";
-import { slugify } from "@nohal/core/src/id";
+} from "@nohal/core/componentStore";
+import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
+import { endpointKey } from "@nohal/core/graph";
+import {
+  defaultCommentPositionForIndex,
+  defaultLabelPositionForIndex,
+  defaultNodePositionForIndex,
+  defaultPortPositionForIndex,
+  normalizeRotationDegrees,
+} from "@nohal/core/sheet";
 import type {
-  ComponentDefinition,
   ComponentStore,
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
   SheetNodeInstance,
   XY,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { unwrap } from "solid-js/store";
 
 export { createEmptyComponentStore };
+export {
+  ensureInstanceName,
+  nextComponentInstanceName,
+  componentPrefersCanonicalInstanceNames,
+  componentUsesLockedCanonicalInstanceNames,
+};
+export { normalizeRotationDegrees };
 
 export function cloneProject(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
@@ -33,12 +51,6 @@ export function cloneComponentStore(store: ComponentStore): ComponentStore {
 
 export function snapshotProjectForIpc(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
-}
-
-export function normalizeRotationDegrees(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  const normalized = value % 360;
-  return Object.is(normalized, -0) ? 0 : normalized;
 }
 
 export function applyComponentStoreToProject(
@@ -111,42 +123,24 @@ export function nextName(base: string, used: Set<string>): string {
   return `${base}${i}`;
 }
 
-export function defaultNodePosition(sheet: SheetDefinition): {
-  x: number;
-  y: number;
-} {
-  const index = sheet.nodes.length;
-  return {
-    x: 120 + (index % 4) * 280,
-    y: 100 + Math.floor(index / 4) * 180,
-  };
+export function defaultNodePosition(sheet: SheetDefinition): XY {
+  return defaultNodePositionForIndex(sheet.nodes.length);
 }
 
-export function defaultLabelPosition(sheet: SheetDefinition): {
-  x: number;
-  y: number;
-} {
-  const index = sheet.labels.length;
-  return { x: 160 + (index % 5) * 160, y: 520 + Math.floor(index / 5) * 70 };
+export function defaultLabelPosition(sheet: SheetDefinition): XY {
+  return defaultLabelPositionForIndex(sheet.labels.length);
 }
 
-export function defaultCommentPosition(sheet: SheetDefinition): {
-  x: number;
-  y: number;
-} {
-  const index = sheet.comments.length;
-  return { x: 180 + (index % 4) * 220, y: 620 + Math.floor(index / 4) * 90 };
+export function defaultCommentPosition(sheet: SheetDefinition): XY {
+  return defaultCommentPositionForIndex(sheet.comments.length);
 }
 
 export function defaultPortPosition(
   sheet: SheetDefinition,
   side: "left" | "right" | "top" | "bottom",
-): { x: number; y: number } {
+): XY {
   const count = sheet.ports.filter((p) => p.side === side).length;
-  if (side === "left") return { x: 20, y: 120 + count * 50 };
-  if (side === "right") return { x: 1380, y: 120 + count * 50 };
-  if (side === "top") return { x: 220 + count * 120, y: 20 };
-  return { x: 220 + count * 120, y: 740 };
+  return defaultPortPositionForIndex(count, side);
 }
 
 export function forcedPortSideForDirection(
@@ -162,46 +156,6 @@ export function findNode(
   nodeId: string,
 ): SheetNodeInstance | undefined {
   return sheet.nodes.find((n) => n.id === nodeId);
-}
-
-export function ensureInstanceName(
-  sheet: SheetDefinition,
-  preferred: string,
-): string {
-  const used = new Set(sheet.nodes.map((n) => n.instanceName));
-  return nextName(slugify(preferred).replace(/-/g, "_"), used);
-}
-
-export function componentUsesLockedCanonicalInstanceNames(
-  component: ComponentDefinition | undefined,
-): boolean {
-  if (!component) return false;
-  const naming = component.runtime?.instanceNaming;
-  return (
-    naming?.strategy === "canonical_indexed" && naming.lockToCanonical === true
-  );
-}
-
-export function nextComponentInstanceName(
-  sheet: SheetDefinition,
-  component: ComponentDefinition,
-): string | undefined {
-  if (!componentUsesLockedCanonicalInstanceNames(component)) {
-    return ensureInstanceName(sheet, component.halComponentName);
-  }
-
-  const used = new Set(sheet.nodes.map((n) => n.instanceName));
-  const base = component.halComponentName;
-  const maxConfigured = component.runtime?.instanceNaming?.maxInstances;
-  const maxInstances =
-    Number.isFinite(maxConfigured) && (maxConfigured ?? 0) > 0
-      ? Math.max(1, Math.trunc(maxConfigured ?? 1))
-      : 10_000;
-  for (let index = 0; index < maxInstances; index += 1) {
-    const candidate = `${base}.${index}`;
-    if (!used.has(candidate)) return candidate;
-  }
-  return undefined;
 }
 
 export function sheetContainsSheet(
@@ -221,17 +175,6 @@ export function sheetContainsSheet(
       return true;
   }
   return false;
-}
-
-export function isSheetPlacedInProject(
-  project: NoHALProject,
-  sheetId: string,
-): boolean {
-  return Object.values(project.sheets).some((sheet) =>
-    sheet.nodes.some(
-      (node) => node.kind === "sheet" && node.sheetId === sheetId,
-    ),
-  );
 }
 
 export function pruneSheetNodeReferences(
@@ -322,39 +265,6 @@ export function removeSheetSelectionItems(
   if (selection.portIds.size > 0) {
     sheet.ports = sheet.ports.filter((port) => !selection.portIds.has(port.id));
     pruneSheetPortReferences(sheet, selection.portIds);
-  }
-}
-
-export function collectSheetSubtreeIds(
-  project: NoHALProject,
-  rootSheetId: string,
-): Set<string> {
-  const deleted = new Set<string>();
-  const queue = [rootSheetId];
-  while (queue.length > 0) {
-    const sheetId = queue.shift();
-    if (!sheetId || deleted.has(sheetId) || !project.sheets[sheetId]) continue;
-    deleted.add(sheetId);
-    for (const sheet of Object.values(project.sheets)) {
-      if (sheet.parentSheetId === sheetId) queue.push(sheet.id);
-    }
-  }
-  return deleted;
-}
-
-export function removeSheetNodeReferencesForDeletedSheets(
-  project: NoHALProject,
-  deletedSheetIds: ReadonlySet<string>,
-): void {
-  for (const sheet of Object.values(project.sheets)) {
-    const removedNodeIds = new Set<string>();
-    sheet.nodes = sheet.nodes.filter((node) => {
-      if (node.kind !== "sheet") return true;
-      if (!deletedSheetIds.has(node.sheetId)) return true;
-      removedNodeIds.add(node.id);
-      return false;
-    });
-    pruneSheetNodeReferences(sheet, removedNodeIds);
   }
 }
 

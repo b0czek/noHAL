@@ -3,6 +3,7 @@ import type {
   ComponentDefinition,
   ComponentPinDefinition,
   ProjectMotmodConfig,
+  XY,
 } from "../../../types";
 
 const AXIS_LETTERS = ["x", "y", "z", "a", "b", "c", "u", "v", "w"] as const;
@@ -313,6 +314,6 @@ export function createIniSystemComponentDefinition(
   };
 }
 
-export function defaultPositionForIni(): { x: number; y: number } {
+export function defaultPositionForIni(): XY {
   return { x: 120, y: 940 };
 }

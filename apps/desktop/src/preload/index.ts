@@ -1,12 +1,12 @@
+import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
 import type {
   ComponentStore,
   ComponentStoreEntry,
   ImportedComponentDefinition,
-  LinuxCncVersion,
   MachineConfigImportDraft,
   MachineConfigImportSetupDraft,
   NoHALProject,
-} from "@nohal/core/src/types";
+} from "@nohal/core/types";
 import { contextBridge, ipcRenderer } from "electron";
 import type { AppSettings } from "../shared/appSettings";
 import type { NoHALApi } from "./api";

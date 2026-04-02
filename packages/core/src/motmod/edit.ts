@@ -1,18 +1,10 @@
 import type { NoHALProject, ProjectMotmodConfig } from "../types";
+import { DEFAULT_MOTMOD_CONFIG } from "./config";
 import {
   type MotmodReconcilePlan,
   planMotmodReconcile,
   reconcileMotmodManagedNodes,
 } from "./reconcile";
-
-const DEFAULT_MOTMOD_CONFIG: ProjectMotmodConfig = {
-  numJoints: 3,
-  numDio: 4,
-  numAio: 4,
-  numSpindles: 1,
-  numMiscError: 0,
-  trajPeriodNs: 0,
-};
 
 function ensureProjectMotmod(project: NoHALProject): ProjectMotmodConfig {
   const motmod = project.motmod ?? { ...DEFAULT_MOTMOD_CONFIG };
