@@ -3,6 +3,7 @@ import type {
   ComponentDefinition,
   ComponentPinDefinition,
   ProjectMotmodConfig,
+  XY,
 } from "../../../types";
 import { axisPinsForVersion, requiredAxisInstances } from "./axis";
 import { jointPinsForVersion } from "./joint";
@@ -132,7 +133,7 @@ export function requiredMotmodInstancesByFamily(
 export function defaultPositionForMotmodFamily(
   family: MotmodManagedFamily,
   index: number,
-): { x: number; y: number } {
+): XY {
   const baseX = motmodLayout.baseXByFamily[family];
   const row = index % motmodLayout.rowsPerColumn;
   const col = Math.floor(index / motmodLayout.rowsPerColumn);

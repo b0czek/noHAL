@@ -19,6 +19,7 @@ import {
   bindDraggableRenderable,
   componentNodeTint,
   getNodePinSetpValue,
+  isPrimaryScenePointerButton,
   type RenderNodesArgs,
   type RenderSceneContext,
 } from "./shared";
@@ -386,6 +387,8 @@ export function renderNodes(
       },
     });
     nodeGroup.on("click tap", (evt) => {
+      if (!isPrimaryScenePointerButton(evt.evt)) return;
+      evt.cancelBubble = true;
       callbacks.onSelect(
         { kind: "node", id: sheetNode.id },
         {
@@ -413,6 +416,7 @@ export function renderNodes(
       }
     });
     nodeGroup.on("dblclick dbltap", (evt) => {
+      if (!isPrimaryScenePointerButton(evt.evt)) return;
       evt.cancelBubble = true;
       callbacks.onSelect({ kind: "node", id: sheetNode.id });
       callbacks.onOpenNode(sheetNode.id);

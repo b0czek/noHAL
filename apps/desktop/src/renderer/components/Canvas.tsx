@@ -1,4 +1,5 @@
 import { getSheet } from "@nohal/core/graph";
+import type { XY } from "@nohal/core/types";
 import {
   createEffect,
   createMemo,
@@ -8,16 +9,17 @@ import {
 } from "solid-js";
 import { createKonvaSheetScene, type SheetScene } from "../canvas";
 import { useI18n } from "../i18n";
+import { useAppSettings } from "../state/AppSettingsProvider";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 import { useCanvasContextMenu } from "./useCanvasContextMenu";
 
-const GRID_MINOR_SPACING = 24;
 const GRID_MAJOR_SPACING_MULTIPLIER = 5;
 
 export default function Canvas() {
   const { t } = useI18n();
-  const { state, actions } = useEditorStore();
+  const { state, setState, actions } = useEditorStore();
+  const { settings } = useAppSettings();
   const editorUi = useEditorUi();
   let hostEl!: HTMLDivElement;
   let scene: SheetScene | null = null;
@@ -25,6 +27,9 @@ export default function Canvas() {
   const [camera, setCamera] = createSignal({ x: 0, y: 0, scale: 1 });
   const sheet = createMemo(() => getSheet(state.project, state.activeSheetId));
   const placementMode = createMemo(() => editorUi.placementMode());
+  const gridResolution = createMemo(() =>
+    settings.canvasGridResolution > 0 ? settings.canvasGridResolution : null,
+  );
 
   const wrapOffset = (value: number, spacing: number) => {
     if (spacing <= 0) return 0;
@@ -32,8 +37,10 @@ export default function Canvas() {
   };
 
   const gridStyle = createMemo(() => {
+    const resolution = gridResolution();
+    if (!resolution) return "";
     const { x, y, scale } = camera();
-    const minorSpace = GRID_MINOR_SPACING * scale;
+    const minorSpace = resolution * scale;
     const majorSpace = minorSpace * GRID_MAJOR_SPACING_MULTIPLIER;
     return [
       `--grid-space:${minorSpace}px`,
@@ -65,7 +72,7 @@ export default function Canvas() {
   };
 
   const handleBackgroundClick = (
-    point: { x: number; y: number },
+    point: XY,
     _options?: { mode?: "add" | "toggle" },
   ) => {
     if (placementMode()) {
@@ -100,6 +107,11 @@ export default function Canvas() {
       onMoveSelectionGroup: actions.moveSelectionGroup,
       onMoveConnectionWaypoints: actions.updateDirectConnectionWaypoints,
       onCameraChange: setCamera,
+      onCursorPosChange: (point) => {
+        const current = state.canvasCursorPos;
+        if (current?.x === point?.x && current?.y === point?.y) return;
+        setState("canvasCursorPos", point);
+      },
       onContextMenuRequest: canvasContextMenu.handleSceneContextMenuRequest,
     });
     resizeObserver = new ResizeObserver((entries) => {
@@ -111,6 +123,7 @@ export default function Canvas() {
     scene.render({
       project: state.project,
       sheet: sheet(),
+      gridResolution: gridResolution(),
       selection: state.selection,
       pendingEndpoint: state.pendingEndpoint,
       pendingWirePoints: state.pendingWirePoints,
@@ -121,6 +134,7 @@ export default function Canvas() {
   createEffect(() => {
     state.project;
     sheet();
+    gridResolution();
     state.selection;
     state.pendingEndpoint;
     state.pendingWirePoints;
@@ -128,6 +142,7 @@ export default function Canvas() {
     scene?.render({
       project: state.project,
       sheet: sheet(),
+      gridResolution: gridResolution(),
       selection: state.selection,
       pendingEndpoint: state.pendingEndpoint,
       pendingWirePoints: state.pendingWirePoints,
@@ -144,6 +159,7 @@ export default function Canvas() {
   });
 
   onCleanup(() => {
+    setState("canvasCursorPos", null);
     resizeObserver?.disconnect();
     resizeObserver = null;
     scene?.destroy();
@@ -152,7 +168,10 @@ export default function Canvas() {
 
   return (
     <div class="canvas-shell absolute inset-0" role="presentation">
-      <div class="canvas-grid" style={gridStyle()}>
+      <div
+        class={`canvas-grid ${gridResolution() ? "" : "canvas-grid-hidden"}`}
+        style={gridStyle()}
+      >
         <div
           ref={(el) => {
             hostEl = el;

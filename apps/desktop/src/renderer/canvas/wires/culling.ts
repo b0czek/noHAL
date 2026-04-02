@@ -1,5 +1,5 @@
+import type { XY } from "@nohal/core/types";
 import type Konva from "konva";
-import type { Pt } from "../layout";
 import type { CullBounds } from "./types";
 
 const STROKE_RADIUS_MULTIPLIER = 0.5;
@@ -51,7 +51,7 @@ export function getLabelAnchorCullPadding(args: {
   });
 }
 
-export function boundsFromPoints(points: Pt[], pad = 0): CullBounds {
+export function boundsFromPoints(points: XY[], pad = 0): CullBounds {
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;

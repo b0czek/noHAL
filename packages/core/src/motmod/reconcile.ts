@@ -22,6 +22,7 @@ import type {
   NoHALProject,
   ProjectMotmodConfig,
   SheetDefinition,
+  XY,
 } from "../types";
 import { normalizeProjectMotmodConfigValue } from "./config";
 
@@ -144,8 +145,8 @@ function isManagedAsFamily(
 
 function chooseFreePosition(
   sheet: NoHALProject["sheets"][string],
-  preferred: { x: number; y: number },
-): { x: number; y: number } {
+  preferred: XY,
+): XY {
   const used = new Set(
     sheet.nodes.map(
       (node) => `${Math.round(node.position.x)}:${Math.round(node.position.y)}`,

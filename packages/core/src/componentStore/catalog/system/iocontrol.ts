@@ -1,4 +1,4 @@
-import type { ComponentDefinition } from "../../../types";
+import type { ComponentDefinition, XY } from "../../../types";
 
 export const IOCONTROL_SYSTEM_COMPONENT_ID = "system:iocontrol:iocontrol";
 export const IOCONTROL_SYSTEM_MANAGER = "iocontrol" as const;
@@ -112,6 +112,6 @@ export function createIocontrolSystemComponentDefinition(): ComponentDefinition 
   };
 }
 
-export function defaultPositionForIocontrol(): { x: number; y: number } {
+export function defaultPositionForIocontrol(): XY {
   return { x: 420, y: 940 };
 }

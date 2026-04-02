@@ -9,6 +9,7 @@ import type {
   ComponentNode,
   SheetDefinition,
   SheetNode,
+  XY,
 } from "@nohal/core/types";
 import { HiOutlineDocumentDuplicate } from "solid-icons/hi";
 import { RiDocumentClipboardLine } from "solid-icons/ri";
@@ -19,7 +20,9 @@ import type {
   SceneContextMenuTarget,
   SheetScene,
 } from "../canvas";
+import { snapPointToGrid } from "../canvas/grid";
 import { useI18n } from "../i18n";
+import { useAppSettings } from "../state/AppSettingsProvider";
 import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 import type { Selection } from "../state/store";
@@ -45,9 +48,12 @@ const CONTEXT_MENU_VIEWPORT_PADDING = 8;
 export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
   const { t } = useI18n();
   const { state, actions } = useEditorStore();
+  const { settings } = useAppSettings();
   const editorUi = useEditorUi();
   const contextMenu = useContextMenu();
   const currentSheet = () => getSheet(state.project, state.activeSheetId);
+  const gridResolution = () =>
+    settings.canvasGridResolution > 0 ? settings.canvasGridResolution : null;
 
   const componentChoices = createMemo(() =>
     Object.values(state.project.library.components)
@@ -72,84 +78,88 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
           .map((sheet) => sheet.id),
       ),
   );
-  const backgroundMenuItems = (point: {
-    x: number;
-    y: number;
-  }): ContextMenuActionItem[] => [
-    {
-      label: t("canvasContext.paste"),
-      icon: <RiDocumentClipboardLine size={16} aria-hidden="true" />,
-      onSelect: () => {
-        actions.pasteClipboard(point);
+  const backgroundMenuItems = (point: XY): ContextMenuActionItem[] => {
+    const resolution = gridResolution();
+    const placementPoint = resolution
+      ? snapPointToGrid(point, resolution)
+      : point;
+
+    return [
+      {
+        label: t("canvasContext.paste"),
+        icon: <RiDocumentClipboardLine size={16} aria-hidden="true" />,
+        onSelect: () => {
+          actions.pasteClipboard(point);
+        },
       },
-    },
-    {
-      label: t("topbar.addComponent"),
-      onSelect: () => undefined,
-      childrenClass: "w-[22rem] overflow-hidden p-3",
-      renderChildren: ({ close }) => (
-        <CanvasComponentMenu
-          components={componentChoices()}
-          onAddComponent={(componentId) =>
-            actions.addComponentNode(componentId, point)
-          }
-          onClose={close}
-          listClass="max-h-[16rem] overflow-y-auto"
-        />
+      {
+        label: t("topbar.addComponent"),
+        onSelect: () => undefined,
+        childrenClass: "w-[22rem] overflow-hidden p-3",
+        renderChildren: ({ close }) => (
+          <CanvasComponentMenu
+            components={componentChoices()}
+            onAddComponent={(componentId) =>
+              actions.addComponentNode(componentId, placementPoint)
+            }
+            onClose={close}
+            listClass="max-h-[16rem] overflow-y-auto"
+          />
+        ),
+      },
+      {
+        label: t("topbar.addSubsheet"),
+        onSelect: () => undefined,
+        childrenClass: "w-[22rem] overflow-hidden p-3",
+        renderChildren: ({ close }) => (
+          <CanvasSheetMenu
+            sheets={placeableSheetChoices()}
+            disabledSheetIds={disabledSheetIds()}
+            onSelectSheet={(sheetId) => actions.addSheetReference(sheetId, point)}
+            onCreateSheet={() => actions.addSheetDefinition(placementPoint)}
+            onClose={close}
+            listClass="max-h-[16rem] overflow-y-auto"
+          />
       ),
-    },
-    {
-      label: t("topbar.addSubsheet"),
-      onSelect: () => undefined,
-      childrenClass: "w-[22rem] overflow-hidden p-3",
-      renderChildren: ({ close }) => (
-        <CanvasSheetMenu
-          sheets={placeableSheetChoices()}
-          disabledSheetIds={disabledSheetIds()}
-          onSelectSheet={(sheetId) => actions.addSheetReference(sheetId, point)}
-          onCreateSheet={() => actions.addSheetDefinition(point)}
-          onClose={close}
-          listClass="max-h-[16rem] overflow-y-auto"
-        />
-      ),
-    },
-    {
-      label: t("topbar.addPort"),
-      onSelect: () => undefined,
-      children: [
-        {
-          label: t("topbar.inPortBit"),
-          onSelect: () => actions.addSheetPort("in", "bit", point),
-        },
-        {
-          label: t("topbar.outPortBit"),
-          onSelect: () => actions.addSheetPort("out", "bit", point),
-        },
-        {
-          label: t("topbar.ioPortFloat"),
-          onSelect: () => actions.addSheetPort("io", "float", point),
-        },
-      ],
-    },
-    {
-      label: t("topbar.addText"),
-      onSelect: () => actions.addComment(point),
-    },
-    {
-      label: t("topbar.addLabel"),
-      onSelect: () => undefined,
-      children: [
-        {
-          label: t("topbar.localLabel"),
-          onSelect: () => actions.addLabel("local", point),
-        },
-        {
-          label: t("topbar.globalLabel"),
-          onSelect: () => actions.addLabel("global", point),
-        },
-      ],
-    },
-  ];
+      },
+      {
+        label: t("topbar.addPort"),
+        onSelect: () => undefined,
+        children: [
+          {
+            label: t("topbar.inPortBit"),
+            onSelect: () => actions.addSheetPort("in", "bit", placementPoint),
+          },
+          {
+            label: t("topbar.outPortBit"),
+            onSelect: () => actions.addSheetPort("out", "bit", placementPoint),
+          },
+          {
+            label: t("topbar.ioPortFloat"),
+            onSelect: () => actions.addSheetPort("io", "float", placementPoint),
+          },
+        ],
+      },
+      {
+        label: t("topbar.addText"),
+        onSelect: () => actions.addComment(placementPoint),
+      },
+      {
+        label: t("topbar.addLabel"),
+        onSelect: () => undefined,
+        children: [
+          {
+            label: t("topbar.localLabel"),
+            onSelect: () => actions.addLabel("local", placementPoint),
+          },
+          {
+            label: t("topbar.globalLabel"),
+            onSelect: () => actions.addLabel("global", placementPoint),
+          },
+        ],
+      },
+    ];
+  };
 
   const menuPosition = (
     clientX: number,

@@ -4,14 +4,15 @@ import type {
   SheetDefinition,
   SheetEndpointRef,
   SheetNodeInstance,
+  XY,
 } from "@nohal/core/types";
 import Konva from "konva";
 import { surface } from "../constants/surfaces";
-import type { NodeLayout, Pt } from "../layout";
+import type { NodeLayout } from "../layout";
 import { typeFill } from "../theme";
 import type { SceneCallbacks } from "../types";
 
-export type ClampPosFn = (pos: Pt) => Pt;
+export type ClampPosFn = (pos: XY) => XY;
 
 export type DragSelectionTarget = {
   kind: "node" | "label" | "comment" | "sheet-port";
@@ -19,9 +20,9 @@ export type DragSelectionTarget = {
 };
 
 export interface RenderDragSelectionOps {
-  onSelectionDragStart: (target: DragSelectionTarget, pos: Pt) => boolean;
-  onSelectionDragMove: (target: DragSelectionTarget, pos: Pt) => boolean;
-  onSelectionDragEnd: (target: DragSelectionTarget, pos: Pt) => boolean;
+  onSelectionDragStart: (target: DragSelectionTarget, pos: XY) => boolean;
+  onSelectionDragMove: (target: DragSelectionTarget, pos: XY) => boolean;
+  onSelectionDragEnd: (target: DragSelectionTarget, pos: XY) => boolean;
 }
 
 export interface RenderSceneContext {
@@ -29,6 +30,15 @@ export interface RenderSceneContext {
   clampPos: ClampPosFn;
   redrawWires: () => void;
   dragSelection: RenderDragSelectionOps;
+}
+
+interface AddPinDotArgs extends XY {
+  callbacks: Pick<SceneCallbacks, "onEndpointClick">;
+  parent: Konva.Container;
+  type: string;
+  pending: boolean;
+  hasSetp?: boolean;
+  endpoint: SheetEndpointRef;
 }
 
 export interface RenderPortsArgs {
@@ -39,7 +49,7 @@ export interface RenderPortsArgs {
   sheet: SheetDefinition;
   pendingKey: string | null;
   selectedPortIds: ReadonlySet<string>;
-  livePortPositions: Map<string, Pt>;
+  livePortPositions: Map<string, XY>;
   portGroups: Map<string, Konva.Group>;
 }
 
@@ -57,7 +67,7 @@ export interface RenderNodesArgs {
   pendingKey: string | null;
   selectedNodeIds: ReadonlySet<string>;
   nodeLayouts: Map<string, NodeLayout>;
-  liveNodePositions: Map<string, Pt>;
+  liveNodePositions: Map<string, XY>;
   nodeGroups: Map<string, Konva.Group>;
 }
 
@@ -68,7 +78,7 @@ export interface RenderLabelsArgs {
   >;
   sheet: SheetDefinition;
   selectedLabelIds: ReadonlySet<string>;
-  liveLabelPositions: Map<string, Pt>;
+  liveLabelPositions: Map<string, XY>;
   labelGroups: Map<string, Konva.Group>;
 }
 
@@ -79,18 +89,24 @@ export interface RenderCommentsArgs {
   >;
   sheet: SheetDefinition;
   selectedCommentIds: ReadonlySet<string>;
-  liveCommentPositions: Map<string, Pt>;
+  liveCommentPositions: Map<string, XY>;
   commentGroups: Map<string, Konva.Group>;
+}
+
+export function isPrimaryScenePointerButton(
+  evt: MouseEvent | TouchEvent,
+): boolean {
+  return !(evt instanceof MouseEvent) || evt.button === 0;
 }
 
 export function bindDraggableRenderable(args: {
   group: Konva.Group;
   target: DragSelectionTarget;
   clampPos: ClampPosFn;
-  setLivePosition: (pos: Pt) => void;
+  setLivePosition: (pos: XY) => void;
   dragSelection: RenderDragSelectionOps;
   redrawWires?: () => void;
-  persistMove: (pos: Pt) => void;
+  persistMove: (pos: XY) => void;
 }): void {
   const {
     group,
@@ -102,7 +118,7 @@ export function bindDraggableRenderable(args: {
     persistMove,
   } = args;
 
-  const syncPosition = (): Pt => {
+  const syncPosition = (): XY => {
     const pos = clampPos(group.position());
     group.position(pos);
     return pos;
@@ -134,16 +150,7 @@ export function bindDraggableRenderable(args: {
   });
 }
 
-export function addPinDot(args: {
-  callbacks: Pick<SceneCallbacks, "onEndpointClick">;
-  parent: Konva.Container;
-  x: number;
-  y: number;
-  type: string;
-  pending: boolean;
-  hasSetp?: boolean;
-  endpoint: SheetEndpointRef;
-}): void {
+export function addPinDot(args: AddPinDotArgs): void {
   if (args.pending) {
     args.parent.add(
       new Konva.Circle({
@@ -181,6 +188,7 @@ export function addPinDot(args: {
   });
 
   bead.on("click tap", (evt) => {
+    if (!isPrimaryScenePointerButton(evt.evt)) return;
     evt.cancelBubble = true;
     args.callbacks.onEndpointClick(args.endpoint);
   });

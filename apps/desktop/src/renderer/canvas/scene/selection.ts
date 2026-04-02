@@ -1,4 +1,4 @@
-import type { SheetEndpointRef } from "@nohal/core/types";
+import type { Rect, SheetEndpointRef, Size, XY } from "@nohal/core/types";
 import type { MultiSelection } from "../../state/store/selectionTypes";
 import {
   estimateCommentSize,
@@ -6,17 +6,16 @@ import {
   measureLabelBox,
 } from "../measurements";
 import type { DragSelectionTarget } from "../renderables";
+import type { ClampPosFn } from "../renderables/shared";
 import type { SceneRenderState, SceneSelection } from "../types";
 import { rectContainsRect, rotatedRectBounds } from "./geometry";
-import type { GroupDragSession, Rect, SelectionSets } from "./types";
+import type { GroupDragSession, SelectionSets } from "./types";
 
-function populateStartPositions<
-  T extends { id: string; position: { x: number; y: number } },
->(
+function populateStartPositions<T extends { id: string; position: XY }>(
   ids: readonly string[],
   entries: readonly T[],
-  livePositions: Map<string, { x: number; y: number }>,
-  output: Map<string, { x: number; y: number }>,
+  livePositions: Map<string, XY>,
+  output: Map<string, XY>,
 ): void {
   for (const id of ids) {
     const entry = entries.find((item) => item.id === id);
@@ -28,8 +27,8 @@ function populateStartPositions<
 function collectSelectionWaypointStartPositions(
   state: SceneRenderState,
   selection: MultiSelection,
-): Map<string, { x: number; y: number }[]> {
-  const output = new Map<string, { x: number; y: number }[]>();
+): Map<string, XY[]> {
+  const output = new Map<string, XY[]>();
 
   for (const connection of state.sheet.directConnections) {
     const waypoints = connection.waypoints;
@@ -65,8 +64,8 @@ function buildSingleRectSelection(args: {
 function collectNodeIdsInRect(args: {
   rect: Rect;
   state: SceneRenderState;
-  nodeLayouts: Map<string, { width: number; height: number }>;
-  liveNodePositions: Map<string, { x: number; y: number }>;
+  nodeLayouts: Map<string, Size>;
+  liveNodePositions: Map<string, XY>;
 }): string[] {
   const { rect, state, nodeLayouts, liveNodePositions } = args;
   const nodeIds: string[] = [];
@@ -90,7 +89,7 @@ function collectNodeIdsInRect(args: {
 function collectLabelIdsInRect(args: {
   rect: Rect;
   state: SceneRenderState;
-  liveLabelPositions: Map<string, { x: number; y: number }>;
+  liveLabelPositions: Map<string, XY>;
 }): string[] {
   const { rect, state, liveLabelPositions } = args;
   const labelIds: string[] = [];
@@ -117,7 +116,7 @@ function collectLabelIdsInRect(args: {
 function collectCommentIdsInRect(args: {
   rect: Rect;
   state: SceneRenderState;
-  liveCommentPositions: Map<string, { x: number; y: number }>;
+  liveCommentPositions: Map<string, XY>;
 }): string[] {
   const { rect, state, liveCommentPositions } = args;
   const commentIds: string[] = [];
@@ -144,7 +143,7 @@ function collectCommentIdsInRect(args: {
 function collectPortIdsInRect(args: {
   rect: Rect;
   state: SceneRenderState;
-  livePortPositions: Map<string, { x: number; y: number }>;
+  livePortPositions: Map<string, XY>;
 }): string[] {
   const { rect, state, livePortPositions } = args;
   const portIds: string[] = [];
@@ -207,12 +206,12 @@ export function selectionContainsTarget(
 
 export function buildGroupDragSession(args: {
   target: DragSelectionTarget;
-  anchorPos: { x: number; y: number };
+  anchorPos: XY;
   state: SceneRenderState | null;
-  liveNodePositions: Map<string, { x: number; y: number }>;
-  liveLabelPositions: Map<string, { x: number; y: number }>;
-  liveCommentPositions: Map<string, { x: number; y: number }>;
-  livePortPositions: Map<string, { x: number; y: number }>;
+  liveNodePositions: Map<string, XY>;
+  liveLabelPositions: Map<string, XY>;
+  liveCommentPositions: Map<string, XY>;
+  livePortPositions: Map<string, XY>;
 }): GroupDragSession | null {
   const {
     target,
@@ -234,10 +233,10 @@ export function buildGroupDragSession(args: {
     selection.portIds.length;
   if (total <= 1) return null;
 
-  const nodeStartPositions = new Map<string, { x: number; y: number }>();
-  const labelStartPositions = new Map<string, { x: number; y: number }>();
-  const commentStartPositions = new Map<string, { x: number; y: number }>();
-  const portStartPositions = new Map<string, { x: number; y: number }>();
+  const nodeStartPositions = new Map<string, XY>();
+  const labelStartPositions = new Map<string, XY>();
+  const commentStartPositions = new Map<string, XY>();
+  const portStartPositions = new Map<string, XY>();
   populateStartPositions(
     selection.nodeIds,
     state.sheet.nodes,
@@ -292,13 +291,13 @@ export function constrainGroupDragDelta(args: {
   session: GroupDragSession;
   dx: number;
   dy: number;
-  clampPos: (pos: { x: number; y: number }) => { x: number; y: number };
-}): { x: number; y: number } {
+  clampPos: ClampPosFn;
+}): XY {
   const { session, dx, dy, clampPos } = args;
   let nextDx = dx;
   let nextDy = dy;
 
-  const applyConstraint = (start: { x: number; y: number }) => {
+  const applyConstraint = (start: XY) => {
     const clamped = clampPos({ x: start.x + dx, y: start.y + dy });
     const allowedDx = clamped.x - start.x;
     const allowedDy = clamped.y - start.y;
@@ -325,7 +324,7 @@ export function constrainGroupDragDelta(args: {
 
 export function collectGroupDragUpdates(args: {
   session: GroupDragSession;
-  clampPos: (pos: { x: number; y: number }) => { x: number; y: number };
+  clampPos: ClampPosFn;
 }): {
   nodePositions: Array<{ id: string; x: number; y: number }>;
   labelPositions: Array<{ id: string; x: number; y: number }>;
@@ -334,7 +333,7 @@ export function collectGroupDragUpdates(args: {
 } {
   const { session, clampPos } = args;
   const collectEntries = (
-    entries: IterableIterator<[string, { x: number; y: number }]>,
+    entries: IterableIterator<[string, XY]>,
   ): Array<{ id: string; x: number; y: number }> => {
     const result: Array<{ id: string; x: number; y: number }> = [];
     for (const [id, start] of entries) {
@@ -367,11 +366,11 @@ function endpointMovesWithSelection(
 export function selectItemsInWorldRect(args: {
   rect: Rect;
   state: SceneRenderState;
-  nodeLayouts: Map<string, { width: number; height: number }>;
-  liveNodePositions: Map<string, { x: number; y: number }>;
-  liveLabelPositions: Map<string, { x: number; y: number }>;
-  liveCommentPositions: Map<string, { x: number; y: number }>;
-  livePortPositions: Map<string, { x: number; y: number }>;
+  nodeLayouts: Map<string, Size>;
+  liveNodePositions: Map<string, XY>;
+  liveLabelPositions: Map<string, XY>;
+  liveCommentPositions: Map<string, XY>;
+  livePortPositions: Map<string, XY>;
 }): SceneSelection {
   const {
     rect,

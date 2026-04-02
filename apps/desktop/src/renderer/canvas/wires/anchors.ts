@@ -1,5 +1,5 @@
 import type { SplitConnectionLabelPositions } from "@nohal/core/sheet";
-import type { Pt } from "../layout";
+import type { XY } from "@nohal/core/types";
 import { measureLabelBoxForLabel } from "../measurements";
 import { DEGREES_TO_RADIANS } from "../scene/geometry";
 import type { SceneRuntime } from "../scene/types";
@@ -53,8 +53,8 @@ export function getLabelAnchorPoint(
   runtime: SceneRuntime,
   lookup: SheetLookup,
   labelId: string,
-  toward: Pt,
-): Pt | null {
+  toward: XY,
+): XY | null {
   const live = runtime.graph.liveLabelPositions.get(labelId);
   const label = lookup.labelsById.get(labelId);
   if (!label) return null;

@@ -3,6 +3,7 @@ import type {
   ComponentPinDefinition,
   HalImportPlacementHeuristic,
   SheetDefinition,
+  XY,
 } from "../../types";
 import { buildGroup, buildLabel, buildLayout, buildNode } from "./constants";
 import {
@@ -534,7 +535,7 @@ export function buildImportedSheetLayoutPlan(options: {
   );
 
   const resolveSideLabelPosition = (options: {
-    pos: { x: number; y: number };
+    pos: XY;
     layout: ImportNodeLayoutMetrics;
     placement: ImportLabelPlacementInfo | undefined;
     slot: number;

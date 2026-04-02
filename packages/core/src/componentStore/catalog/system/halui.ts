@@ -2,6 +2,7 @@ import type { LinuxCncVersion } from "../../../linuxcncVersion";
 import type {
   ComponentDefinition,
   ComponentPinDefinition,
+  XY,
 } from "../../../types";
 
 export const HALUI_SYSTEM_COMPONENT_ID = "system:halui:halui";
@@ -364,6 +365,6 @@ export function createHaluiSystemComponentDefinition(
   };
 }
 
-export function defaultPositionForHalui(): { x: number; y: number } {
+export function defaultPositionForHalui(): XY {
   return { x: 720, y: 940 };
 }

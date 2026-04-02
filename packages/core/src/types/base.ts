@@ -16,3 +16,17 @@ export interface XY {
   x: number;
   y: number;
 }
+
+export interface Size {
+  width: number;
+  height: number;
+}
+
+export interface Bounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+export type Rect = XY & Size;

@@ -4,27 +4,26 @@ import type {
   SheetDefinition,
   SheetEndpointRef,
   SheetNodeInstance,
+  Size,
+  XY,
 } from "@nohal/core/types";
 import { node as nodeConst } from "./constants/nodes";
 import { pin as pinConst } from "./constants/pins";
 import { surface } from "./constants/surfaces";
 
-export type Pt = { x: number; y: number };
 export type BandPinLabelMode = "horizontal" | "vertical";
 
-export interface NodeLayout {
-  width: number;
-  height: number;
+export interface NodeLayout extends Size {
   topBandHeight: number;
   topLabelMode: BandPinLabelMode;
   bottomBandHeight: number;
   bottomLabelMode: BandPinLabelMode;
-  pinPositionsLocal: Record<string, Pt>;
+  pinPositionsLocal: Record<string, XY>;
 }
 
 export interface SheetSceneLayout {
   nodeLayouts: Map<string, NodeLayout>;
-  endpointPoints: Map<string, Pt>;
+  endpointPoints: Map<string, XY>;
 }
 
 const layoutHeuristics = {
@@ -234,7 +233,7 @@ export function computeNodeLayout(
     sideHeight +
     bottomHeight +
     nodeConst.body.bottomPadding;
-  const pinPositionsLocal: Record<string, Pt> = {};
+  const pinPositionsLocal: Record<string, XY> = {};
 
   top.forEach((pin, idx) => {
     const step = width / (top.length + 1);
@@ -289,7 +288,7 @@ export function endpointPointOf(
   sheet: SheetDefinition,
   layouts: Map<string, NodeLayout>,
   endpoint: SheetEndpointRef,
-): Pt | null {
+): XY | null {
   if (endpoint.kind === "sheet-port") {
     const port = sheet.ports.find((p) => p.id === endpoint.portId);
     return port ? { x: port.position.x, y: port.position.y } : null;
@@ -309,7 +308,7 @@ export function buildSheetSceneLayout(
   const nodeLayouts = new Map(
     sheet.nodes.map((n) => [n.id, computeNodeLayout(project, sheet, n)]),
   );
-  const endpointPoints = new Map<string, Pt>();
+  const endpointPoints = new Map<string, XY>();
 
   for (const port of sheet.ports) {
     endpointPoints.set(endpointKey({ kind: "sheet-port", portId: port.id }), {
@@ -324,10 +323,7 @@ export function buildSheetSceneLayout(
     for (const [pinKey, pt] of Object.entries(layout.pinPositionsLocal)) {
       endpointPoints.set(
         endpointKey({ kind: "node-pin", nodeId: node.id, pinKey }),
-        {
-          x: node.position.x + pt.x,
-          y: node.position.y + pt.y,
-        },
+        { x: node.position.x + pt.x, y: node.position.y + pt.y },
       );
     }
   }

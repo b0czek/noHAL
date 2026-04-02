@@ -1,12 +1,12 @@
-import type { Pt } from "../layout";
+import type { Rect, XY } from "@nohal/core/types";
 import { clampRuntimePos } from "./bounds";
 import { screenToWorld } from "./camera";
 import { normalizedRect } from "./geometry";
-import type { Rect, SceneRuntime } from "./types";
+import type { SceneRuntime } from "./types";
 
 export function startMarqueeSelection(args: {
   runtime: SceneRuntime;
-  screenPos: Pt;
+  screenPos: XY;
   additive: boolean;
   updateMarqueeRect: () => void;
 }): void {

@@ -1,6 +1,7 @@
+import type { Bounds, Rect, XY } from "@nohal/core/types";
 import type Konva from "konva";
 import { scene } from "../constants/scene";
-import type { NodeLayout, Pt } from "../layout";
+import type { NodeLayout } from "../layout";
 import {
   estimateCommentSize,
   estimatePortBox,
@@ -13,13 +14,7 @@ import {
   rectIntersects,
   worldBoundsFromLocalRect,
 } from "./geometry";
-import type {
-  CullGroupMap,
-  CullModel,
-  Rect,
-  SceneBounds,
-  SceneGraphState,
-} from "./types";
+import type { CullGroupMap, CullModel, SceneGraphState } from "./types";
 
 const SCENE_BOUNDS_MARGIN = 160;
 
@@ -27,7 +22,7 @@ export function focusCenterFromCullModel(
   id: string,
   groups: CullGroupMap,
   models: Map<string, CullModel>,
-): Pt | null {
+): XY | null {
   const group = groups.get(id);
   const model = models.get(id);
   if (!group || !model) return null;
@@ -152,9 +147,9 @@ export function rebuildCullModels(state: SceneRenderState): {
 export function computeSceneBounds(args: {
   state: SceneRenderState;
   nodeLayouts: Map<string, NodeLayout>;
-}): SceneBounds {
+}): Bounds {
   const { state, nodeLayouts } = args;
-  const bounds: SceneBounds = {
+  const bounds: Bounds = {
     minX: 0,
     minY: 0,
     maxX: scene.width,

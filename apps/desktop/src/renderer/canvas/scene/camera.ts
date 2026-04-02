@@ -1,9 +1,9 @@
-import type { Pt } from "../layout";
+import type { Bounds, XY } from "@nohal/core/types";
 import { clampRuntimePos, sceneWorldExtents } from "./bounds";
-import type { CameraState, SceneBounds, SceneRuntime } from "./types";
+import type { CameraState, SceneRuntime } from "./types";
 
 const CAMERA_OVERSCROLL_PX = 220;
-const CAMERA_MIN_SCALE = 0.35;
+const CAMERA_MIN_SCALE = 0.1;
 const CAMERA_MAX_SCALE = 2.8;
 const CAMERA_SCALE_EPSILON = 1e-6;
 
@@ -11,7 +11,7 @@ export function clientToWorld(
   runtime: SceneRuntime,
   clientX: number,
   clientY: number,
-): Pt {
+): XY {
   const rect = runtime.view.container.getBoundingClientRect();
   return clampRuntimePos(
     runtime,
@@ -22,7 +22,7 @@ export function clientToWorld(
   );
 }
 
-export function screenToWorld(camera: CameraState, pos: Pt): Pt {
+export function screenToWorld(camera: CameraState, pos: XY): XY {
   return {
     x: (pos.x - camera.x) / camera.scale,
     y: (pos.y - camera.y) / camera.scale,
@@ -32,7 +32,7 @@ export function screenToWorld(camera: CameraState, pos: Pt): Pt {
 export function centerCamera(args: {
   stageWidth: number;
   stageHeight: number;
-  sceneBounds: SceneBounds;
+  sceneBounds: Bounds;
 }): CameraState {
   const { stageWidth, stageHeight, sceneBounds } = args;
   return {
@@ -50,7 +50,7 @@ export function centerCamera(args: {
 
 export function centerCameraOnWorldPoint(args: {
   camera: CameraState;
-  center: Pt;
+  center: XY;
   stageWidth: number;
   stageHeight: number;
 }): void {
@@ -85,7 +85,7 @@ export function panCamera(camera: CameraState, dx: number, dy: number): void {
 export function zoomCameraByFactor(args: {
   camera: CameraState;
   zoomFactor: number;
-  pointer: Pt | null;
+  pointer: XY | null;
   stageWidth: number;
   stageHeight: number;
 }): boolean {
@@ -150,7 +150,7 @@ function clampCamera(
   args: {
     stageWidth: number;
     stageHeight: number;
-    sceneBounds: SceneBounds;
+    sceneBounds: Bounds;
   },
 ): void {
   const { stageWidth, stageHeight, sceneBounds } = args;

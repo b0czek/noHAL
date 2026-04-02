@@ -7,6 +7,9 @@ export function createSceneRuntime(
   container: HTMLDivElement,
   callbacks: SceneCallbacks,
 ): SceneRuntime {
+  // Keep middle mouse reserved for canvas panning instead of starting Konva drags.
+  Konva.dragButtons = [0];
+
   const stage = new Konva.Stage({
     container,
     width: Math.max(
@@ -107,6 +110,7 @@ export function createSceneRuntime(
         marqueeCurrentScreenPos: null,
         marqueeAdditive: false,
         groupDragSession: null,
+        gridSnapOverridePressed: false,
         spacePressed: false,
       },
     },

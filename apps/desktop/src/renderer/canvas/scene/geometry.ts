@@ -1,12 +1,12 @@
-import type { Pt } from "../layout";
-import type { CullModel, Rect, SceneBounds } from "./types";
+import type { Bounds, Rect, Size, XY } from "@nohal/core/types";
+import type { CullModel } from "./types";
 
 const HALF_TURN_DEGREES = 180;
 
 export const DEGREES_TO_RADIANS = Math.PI / HALF_TURN_DEGREES;
 export const ROTATION_EPSILON = 1e-6;
 
-export function normalizedRect(a: Pt, b: Pt): Rect {
+export function normalizedRect(a: XY, b: XY): Rect {
   const x1 = Math.min(a.x, b.x);
   const y1 = Math.min(a.y, b.y);
   const x2 = Math.max(a.x, b.x);
@@ -33,15 +33,15 @@ export function rectContainsRect(outer: Rect, inner: Rect): boolean {
 }
 
 export function expandBoundsWithRotatedRect(
-  bounds: SceneBounds,
+  bounds: Bounds,
   rect: Rect,
   rotationDeg: number,
-  pivot: Pt,
+  pivot: XY,
 ): void {
   const rad = rotationDeg * DEGREES_TO_RADIANS;
   const c = Math.cos(rad);
   const s = Math.sin(rad);
-  const corners: Pt[] = [
+  const corners: XY[] = [
     { x: rect.x, y: rect.y },
     { x: rect.x + rect.width, y: rect.y },
     { x: rect.x + rect.width, y: rect.y + rect.height },
@@ -62,9 +62,9 @@ export function expandBoundsWithRotatedRect(
 export function rotatedRectBounds(
   rect: Rect,
   rotationDeg: number,
-  pivot: Pt,
+  pivot: XY,
 ): Rect {
-  const bounds: SceneBounds = {
+  const bounds: Bounds = {
     minX: Number.POSITIVE_INFINITY,
     minY: Number.POSITIVE_INFINITY,
     maxX: Number.NEGATIVE_INFINITY,
@@ -79,7 +79,7 @@ export function rotatedRectBounds(
   };
 }
 
-export function worldBoundsFromLocalRect(pos: Pt, model: CullModel): Rect {
+export function worldBoundsFromLocalRect(pos: XY, model: CullModel): Rect {
   const worldRect = {
     x: pos.x + model.localRect.x,
     y: pos.y + model.localRect.y,
@@ -90,12 +90,12 @@ export function worldBoundsFromLocalRect(pos: Pt, model: CullModel): Rect {
   return rotatedRectBounds(worldRect, model.rotationDeg, pos);
 }
 
-export function viewportWorldRect(args: {
-  width: number;
-  height: number;
+interface ViewportWorldRectArgs extends Size {
   margin: number;
-  screenToWorld: (pos: Pt) => Pt;
-}): Rect {
+  screenToWorld: (pos: XY) => XY;
+}
+
+export function viewportWorldRect(args: ViewportWorldRectArgs): Rect {
   const { width, height, margin, screenToWorld } = args;
   return normalizedRect(
     screenToWorld({ x: -margin, y: -margin }),
