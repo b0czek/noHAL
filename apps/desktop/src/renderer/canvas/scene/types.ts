@@ -1,4 +1,4 @@
-import type { Rect, XY } from "@nohal/core/types";
+import type { Bounds, Rect, XY } from "@nohal/core/types";
 import type Konva from "konva";
 import type { NodeLayout } from "../layout";
 import type { DragSelectionTarget } from "../renderables";
@@ -7,13 +7,6 @@ import type { SceneCallbacks, SceneRenderState } from "../types";
 export type CullModel = {
   localRect: Rect;
   rotationDeg: number;
-};
-
-export type SceneBounds = {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
 };
 
 export interface CameraState extends XY {
@@ -97,7 +90,7 @@ export type SceneState = {
   selectedConnectionId: string | null;
   selectedWaypointIndex: number | null;
   wireRedrawFrameId: number | null;
-  sceneBounds: SceneBounds;
+  sceneBounds: Bounds;
   interactionCleanup: (() => void) | null;
   interaction: SceneInteractionState;
 };

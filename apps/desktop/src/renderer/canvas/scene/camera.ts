@@ -1,6 +1,6 @@
-import type { XY } from "@nohal/core/types";
+import type { Bounds, XY } from "@nohal/core/types";
 import { clampRuntimePos, sceneWorldExtents } from "./bounds";
-import type { CameraState, SceneBounds, SceneRuntime } from "./types";
+import type { CameraState, SceneRuntime } from "./types";
 
 const CAMERA_OVERSCROLL_PX = 220;
 const CAMERA_MIN_SCALE = 0.1;
@@ -32,7 +32,7 @@ export function screenToWorld(camera: CameraState, pos: XY): XY {
 export function centerCamera(args: {
   stageWidth: number;
   stageHeight: number;
-  sceneBounds: SceneBounds;
+  sceneBounds: Bounds;
 }): CameraState {
   const { stageWidth, stageHeight, sceneBounds } = args;
   return {
@@ -150,7 +150,7 @@ function clampCamera(
   args: {
     stageWidth: number;
     stageHeight: number;
-    sceneBounds: SceneBounds;
+    sceneBounds: Bounds;
   },
 ): void {
   const { stageWidth, stageHeight, sceneBounds } = args;

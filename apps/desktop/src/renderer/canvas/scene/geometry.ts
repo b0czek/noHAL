@@ -1,5 +1,5 @@
-import type { Rect, Size, XY } from "@nohal/core/types";
-import type { CullModel, SceneBounds } from "./types";
+import type { Bounds, Rect, Size, XY } from "@nohal/core/types";
+import type { CullModel } from "./types";
 
 const HALF_TURN_DEGREES = 180;
 
@@ -33,7 +33,7 @@ export function rectContainsRect(outer: Rect, inner: Rect): boolean {
 }
 
 export function expandBoundsWithRotatedRect(
-  bounds: SceneBounds,
+  bounds: Bounds,
   rect: Rect,
   rotationDeg: number,
   pivot: XY,
@@ -64,7 +64,7 @@ export function rotatedRectBounds(
   rotationDeg: number,
   pivot: XY,
 ): Rect {
-  const bounds: SceneBounds = {
+  const bounds: Bounds = {
     minX: Number.POSITIVE_INFINITY,
     minY: Number.POSITIVE_INFINITY,
     maxX: Number.NEGATIVE_INFINITY,

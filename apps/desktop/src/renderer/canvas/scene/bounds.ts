@@ -1,14 +1,9 @@
-import type { XY } from "@nohal/core/types";
-import type { SceneBounds, SceneRuntime } from "./types";
+import type { Bounds, XY } from "@nohal/core/types";
+import type { SceneRuntime } from "./types";
 
 export const SCENE_POSITION_PADDING = 2400;
 
-export function sceneWorldExtents(sceneBounds: SceneBounds): {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-} {
+export function sceneWorldExtents(sceneBounds: Bounds): Bounds {
   return {
     minX: -SCENE_POSITION_PADDING,
     minY: -SCENE_POSITION_PADDING,
@@ -17,7 +12,7 @@ export function sceneWorldExtents(sceneBounds: SceneBounds): {
   };
 }
 
-export function clampScenePos(pos: XY, sceneBounds: SceneBounds): XY {
+export function clampScenePos(pos: XY, sceneBounds: Bounds): XY {
   const { minX, minY, maxX, maxY } = sceneWorldExtents(sceneBounds);
   return {
     x: Math.max(minX, Math.min(maxX, pos.x)),
