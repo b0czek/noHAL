@@ -32,6 +32,15 @@ export interface RenderSceneContext {
   dragSelection: RenderDragSelectionOps;
 }
 
+interface AddPinDotArgs extends XY {
+  callbacks: Pick<SceneCallbacks, "onEndpointClick">;
+  parent: Konva.Container;
+  type: string;
+  pending: boolean;
+  hasSetp?: boolean;
+  endpoint: SheetEndpointRef;
+}
+
 export interface RenderPortsArgs {
   callbacks: Pick<
     SceneCallbacks,
@@ -141,16 +150,7 @@ export function bindDraggableRenderable(args: {
   });
 }
 
-export function addPinDot(args: {
-  callbacks: Pick<SceneCallbacks, "onEndpointClick">;
-  parent: Konva.Container;
-  x: number;
-  y: number;
-  type: string;
-  pending: boolean;
-  hasSetp?: boolean;
-  endpoint: SheetEndpointRef;
-}): void {
+export function addPinDot(args: AddPinDotArgs): void {
   if (args.pending) {
     args.parent.add(
       new Konva.Circle({

@@ -1,5 +1,5 @@
-import type { XY } from "@nohal/core/types";
-import type { CullModel, Rect, SceneBounds } from "./types";
+import type { Rect, XY } from "@nohal/core/types";
+import type { CullModel, SceneBounds } from "./types";
 
 const HALF_TURN_DEGREES = 180;
 

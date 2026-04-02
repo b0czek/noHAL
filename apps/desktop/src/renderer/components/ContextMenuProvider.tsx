@@ -1,3 +1,4 @@
+import type { XY } from "@nohal/core/types";
 import {
   type Accessor,
   createContext,
@@ -33,15 +34,13 @@ export interface ContextMenuActionItem {
   renderChildren?: (api: { close: () => void }) => JSX.Element;
 }
 
-type ContextMenuBase = {
-  x: number;
-  y: number;
+interface ContextMenuBase extends XY {
   ariaLabel: string;
   title?: string;
   width?: number;
   maxHeight?: number;
   onClose?: () => void;
-};
+}
 
 export type ContextMenuActionsSpec = ContextMenuBase & {
   kind: "actions";

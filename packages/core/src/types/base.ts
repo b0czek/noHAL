@@ -16,3 +16,8 @@ export interface XY {
   x: number;
   y: number;
 }
+
+export interface Rect extends XY {
+  width: number;
+  height: number;
+}

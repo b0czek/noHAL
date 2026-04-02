@@ -1,4 +1,4 @@
-import type { XY } from "@nohal/core/types";
+import type { Rect, XY } from "@nohal/core/types";
 import type Konva from "konva";
 import { scene } from "../constants/scene";
 import type { NodeLayout } from "../layout";
@@ -17,7 +17,6 @@ import {
 import type {
   CullGroupMap,
   CullModel,
-  Rect,
   SceneBounds,
   SceneGraphState,
 } from "./types";

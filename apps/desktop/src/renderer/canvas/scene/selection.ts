@@ -1,4 +1,4 @@
-import type { SheetEndpointRef, XY } from "@nohal/core/types";
+import type { Rect, SheetEndpointRef, XY } from "@nohal/core/types";
 import type { MultiSelection } from "../../state/store/selectionTypes";
 import {
   estimateCommentSize,
@@ -9,7 +9,7 @@ import type { DragSelectionTarget } from "../renderables";
 import type { ClampPosFn } from "../renderables/shared";
 import type { SceneRenderState, SceneSelection } from "../types";
 import { rectContainsRect, rotatedRectBounds } from "./geometry";
-import type { GroupDragSession, Rect, SelectionSets } from "./types";
+import type { GroupDragSession, SelectionSets } from "./types";
 
 function populateStartPositions<T extends { id: string; position: XY }>(
   ids: readonly string[],

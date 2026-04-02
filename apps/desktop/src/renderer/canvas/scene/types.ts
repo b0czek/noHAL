@@ -1,15 +1,8 @@
-import type { XY } from "@nohal/core/types";
+import type { Rect, XY } from "@nohal/core/types";
 import type Konva from "konva";
 import type { NodeLayout } from "../layout";
 import type { DragSelectionTarget } from "../renderables";
 import type { SceneCallbacks, SceneRenderState } from "../types";
-
-export type Rect = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
 
 export type CullModel = {
   localRect: Rect;
@@ -23,11 +16,9 @@ export type SceneBounds = {
   maxY: number;
 };
 
-export type CameraState = {
-  x: number;
-  y: number;
+export interface CameraState extends XY {
   scale: number;
-};
+}
 
 export type FocusTarget = {
   kind: "node" | "label" | "comment" | "sheet-port";

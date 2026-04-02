@@ -1,5 +1,5 @@
 import { endpointKey } from "@nohal/core/graph";
-import type { ProjectWireLayerPosition, XY } from "@nohal/core/types";
+import type { ProjectWireLayerPosition, Rect, XY } from "@nohal/core/types";
 import { scene } from "../constants/scene";
 import { snapPointToGrid } from "../grid";
 import { buildSheetSceneLayout } from "../layout";
@@ -50,7 +50,7 @@ import {
 import { buildPlacementPreview } from "./placementPreview";
 import { createSceneRuntime } from "./runtime";
 import { buildSelectionSets, selectItemsInWorldRect } from "./selection";
-import type { FocusTarget, Rect } from "./types";
+import type { FocusTarget } from "./types";
 
 const MARQUEE_SELECT_THRESHOLD_PX = 4;
 const CULL_SCREEN_MARGIN_PX = 180;
