@@ -321,7 +321,6 @@ export function createEditorStore(
   const nodeActions = createNodeActions(actionCtx);
   const sheetActions = createSheetActions(actionCtx);
   const selectionActions = createSelectionActions(actionCtx, {
-    deleteSheetDefinition: sheetActions.deleteSheetDefinition,
     removeDirectConnection: wireActions.removeDirectConnection,
     removeLabelAnchor: wireActions.removeLabelAnchor,
   });

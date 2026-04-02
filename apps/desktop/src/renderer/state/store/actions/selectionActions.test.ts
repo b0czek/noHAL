@@ -1,4 +1,4 @@
-import { createEmptyProject } from "@nohal/core/project";
+import { createEmptyProject, createSheet } from "@nohal/core/project";
 import { describe, expect, it } from "vitest";
 import type { NoHALApi } from "../../../../preload/api";
 import { createEditorStore } from "../../store";
@@ -431,6 +431,74 @@ describe("selection actions", () => {
     expect(store.state.selection).toBe(null);
     expect(store.state.status).toBe(
       "store.status.removedSelectionSkippedSystemManaged",
+    );
+  });
+
+  it("deletes a selected sheet reference without deleting its definition", () => {
+    const { project } = createProjectFixture();
+    const rootSheet = project.sheets[project.rootSheetId];
+    const childSheet = createSheet("Shared Child");
+    project.sheets[childSheet.id] = childSheet;
+    rootSheet.nodes.push({
+      id: "node_child_a",
+      kind: "sheet",
+      sheetId: childSheet.id,
+      instanceName: "shared_child_a",
+      position: { x: 180, y: 80 },
+    });
+    rootSheet.nodes.push({
+      id: "node_child_b",
+      kind: "sheet",
+      sheetId: childSheet.id,
+      instanceName: "shared_child_b",
+      position: { x: 320, y: 80 },
+    });
+
+    const store = createEditorStore(project, (key) => key);
+    store.actions.select({ kind: "node", id: "node_child_a" });
+    store.actions.removeSelection();
+
+    const nextRootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    expect(nextRootSheet.nodes.some((node) => node.id === "node_child_a")).toBe(
+      false,
+    );
+    expect(nextRootSheet.nodes.some((node) => node.id === "node_child_b")).toBe(
+      true,
+    );
+    expect(store.state.project.sheets[childSheet.id]).toBeDefined();
+  });
+
+  it("copy-pastes sheet references without cloning the definition", () => {
+    const { project } = createProjectFixture();
+    const clipboard = installClipboardMock();
+    const rootSheet = project.sheets[project.rootSheetId];
+    const childSheet = createSheet("Shared Child");
+    project.sheets[childSheet.id] = childSheet;
+    rootSheet.nodes.push({
+      id: "node_child_a",
+      kind: "sheet",
+      sheetId: childSheet.id,
+      instanceName: "shared_child_a",
+      position: { x: 180, y: 80 },
+    });
+
+    const store = createEditorStore(project, (key) => key);
+    store.actions.select({ kind: "node", id: "node_child_a" });
+
+    expect(store.actions.copySelection()).toBe(true);
+    expect(clipboard.read()).toContain("__NOHAL_SELECTION_V1__");
+    expect(store.actions.pasteClipboard()).toBe(true);
+
+    const nextRootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    const childRefs = nextRootSheet.nodes.filter(
+      (node) => node.kind === "sheet" && node.sheetId === childSheet.id,
+    );
+
+    expect(childRefs).toHaveLength(2);
+    expect(Object.keys(store.state.project.sheets)).toHaveLength(
+      Object.keys(project.sheets).length,
     );
   });
 });

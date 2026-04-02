@@ -50,7 +50,6 @@ function createDefaultTopSheet(): SheetDefinition {
   return {
     id: createId("sheet"),
     name: "Top",
-    parentSheetId: null,
     nodes: [],
     ports: [],
     labels: [],
@@ -287,6 +286,9 @@ function normalizeParsedSheet(sheet: SheetDefinition): void {
   if (!Array.isArray((sheet as Partial<SheetDefinition>).comments)) {
     sheet.comments = [];
   }
+  if (sheet.role !== "system") {
+    delete sheet.role;
+  }
   for (const node of sheet.nodes) {
     if (node.kind !== "component") continue;
     normalizeParsedComponentNode(node);
@@ -338,14 +340,10 @@ export function stringifyNoHALProject(project: NoHALProject): string {
   return `${JSON.stringify(project, null, 2)}\n`;
 }
 
-export function createSheet(
-  name: string,
-  parentSheetId: string | null,
-): SheetDefinition {
+export function createSheet(name: string): SheetDefinition {
   return {
     id: createId("sheet"),
     name,
-    parentSheetId,
     nodes: [],
     ports: [],
     labels: [],

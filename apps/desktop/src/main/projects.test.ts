@@ -48,7 +48,7 @@ afterEach(async () => {
 
 function createProjectWithTwoSheets(): NoHALProject {
   const project = createEmptyProject("Spec Test Project");
-  const child = createSheet("Child", project.rootSheetId);
+  const child = createSheet("Child");
   const rootSheet = project.sheets[project.rootSheetId];
   const and2ComponentId = "comp:test-and2";
   return {

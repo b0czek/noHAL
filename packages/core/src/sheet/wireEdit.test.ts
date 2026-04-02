@@ -6,7 +6,6 @@ function createSheet(): SheetDefinition {
   return {
     id: "sheet-1",
     name: "Root",
-    parentSheetId: null,
     nodes: [],
     ports: [],
     labels: [],

@@ -16,6 +16,8 @@ export interface SheetPort {
   rotation?: number;
 }
 
+export type SheetRole = "system";
+
 export interface ComponentNode {
   id: string;
   kind: "component";
@@ -119,7 +121,7 @@ export type SheetAddfQueueStoredEntry = string | SheetAddfQueueEntry;
 export interface SheetDefinition {
   id: string;
   name: string;
-  parentSheetId: string | null;
+  role?: SheetRole;
   nodes: SheetNodeInstance[];
   ports: SheetPort[];
   labels: SheetLabel[];

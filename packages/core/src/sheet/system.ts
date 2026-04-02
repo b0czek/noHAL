@@ -29,11 +29,11 @@ const KNOWN_SYSTEM_HAL_COMPONENT_NAMES = new Set([
   "iocontrol",
 ]);
 
-function createSystemSheet(parentSheetId: string): SheetDefinition {
+function createSystemSheet(): SheetDefinition {
   return {
     id: createId("sheet"),
     name: SYSTEM_SHEET_NAME,
-    parentSheetId,
+    role: "system",
     nodes: [],
     ports: [],
     labels: [],
@@ -81,21 +81,10 @@ export function isProtectedSystemNode(
 }
 
 export function findSystemSheet(project: NoHALProject): SheetDefinition | null {
-  const rootSheet = project.sheets[project.rootSheetId];
-  if (!rootSheet) return null;
-
-  for (const node of rootSheet.nodes) {
-    if (node.kind !== "sheet") continue;
-    const childSheet = project.sheets[node.sheetId];
-    if (childSheet?.name === SYSTEM_SHEET_NAME) return childSheet;
-  }
-
-  for (const sheet of Object.values(project.sheets)) {
-    if (sheet.parentSheetId !== rootSheet.id) continue;
-    if (sheet.name === SYSTEM_SHEET_NAME) return sheet;
-  }
-
-  return null;
+  return (
+    Object.values(project.sheets).find((sheet) => sheet.role === "system") ??
+    null
+  );
 }
 
 export function isProtectedSystemSheet(
@@ -128,10 +117,8 @@ export function ensureSystemSheet(
 
   let systemSheet = findSystemSheet(project);
   if (!systemSheet) {
-    systemSheet = createSystemSheet(rootSheet.id);
+    systemSheet = createSystemSheet();
     project.sheets[systemSheet.id] = systemSheet;
-  } else if (systemSheet.parentSheetId !== rootSheet.id) {
-    systemSheet.parentSheetId = rootSheet.id;
   }
 
   if (!systemSheet.hal) systemSheet.hal = {};
