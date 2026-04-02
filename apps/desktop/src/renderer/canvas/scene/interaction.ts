@@ -357,6 +357,14 @@ export function bindSceneInteractions(
     if (runtime.state.lastState?.pendingEndpoint) redrawWires();
   });
 
+  stage.on(
+    `dragstart${EVENT_NS} dragmove${EVENT_NS} dragend${EVENT_NS}`,
+    () => {
+      syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
+      syncPlacementPreview();
+    },
+  );
+
   stage.on(`mouseleave${EVENT_NS}`, () => {
     runtime.state.interaction.isPanning = false;
     runtime.state.interaction.panLastScreenPos = null;
