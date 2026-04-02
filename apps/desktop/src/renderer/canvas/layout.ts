@@ -4,6 +4,7 @@ import type {
   SheetDefinition,
   SheetEndpointRef,
   SheetNodeInstance,
+  Size,
   XY,
 } from "@nohal/core/types";
 import { node as nodeConst } from "./constants/nodes";
@@ -12,9 +13,7 @@ import { surface } from "./constants/surfaces";
 
 export type BandPinLabelMode = "horizontal" | "vertical";
 
-export interface NodeLayout {
-  width: number;
-  height: number;
+export interface NodeLayout extends Size {
   topBandHeight: number;
   topLabelMode: BandPinLabelMode;
   bottomBandHeight: number;

@@ -17,7 +17,9 @@ export interface XY {
   y: number;
 }
 
-export interface Rect extends XY {
+export interface Size {
   width: number;
   height: number;
 }
+
+export type Rect = XY & Size;

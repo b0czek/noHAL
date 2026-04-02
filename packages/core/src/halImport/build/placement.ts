@@ -1,7 +1,11 @@
-import type { HalImportPlacementHeuristic, XY } from "../../types";
+import type { HalImportPlacementHeuristic, Size, XY } from "../../types";
 import { buildGroup, buildLayout } from "./constants";
 import type { ImportNodeLayoutMetrics } from "./geometry";
 import type { ImportPreparedNet } from "./layoutTypes";
+
+interface PlannedNodeGrid extends Size {
+  localPosByNodeId: Map<string, XY>;
+}
 
 function buildPlacementGraph(nodeIds: string[]) {
   const adjacency = new Map<string, Map<string, number>>();
@@ -261,11 +265,7 @@ export function buildPlacementNodeGroups(options: {
 export function planNodeGrid(
   orderedNodeIds: string[],
   importNodeLayoutById: Map<string, ImportNodeLayoutMetrics>,
-): {
-  localPosByNodeId: Map<string, XY>;
-  width: number;
-  height: number;
-} {
+): PlannedNodeGrid {
   const computedColumns = Math.max(
     1,
     Math.min(

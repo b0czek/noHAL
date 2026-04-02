@@ -1,4 +1,4 @@
-import type { Rect, SheetEndpointRef, XY } from "@nohal/core/types";
+import type { Rect, SheetEndpointRef, Size, XY } from "@nohal/core/types";
 import type { MultiSelection } from "../../state/store/selectionTypes";
 import {
   estimateCommentSize,
@@ -64,7 +64,7 @@ function buildSingleRectSelection(args: {
 function collectNodeIdsInRect(args: {
   rect: Rect;
   state: SceneRenderState;
-  nodeLayouts: Map<string, { width: number; height: number }>;
+  nodeLayouts: Map<string, Size>;
   liveNodePositions: Map<string, XY>;
 }): string[] {
   const { rect, state, nodeLayouts, liveNodePositions } = args;
@@ -366,7 +366,7 @@ function endpointMovesWithSelection(
 export function selectItemsInWorldRect(args: {
   rect: Rect;
   state: SceneRenderState;
-  nodeLayouts: Map<string, { width: number; height: number }>;
+  nodeLayouts: Map<string, Size>;
   liveNodePositions: Map<string, XY>;
   liveLabelPositions: Map<string, XY>;
   liveCommentPositions: Map<string, XY>;

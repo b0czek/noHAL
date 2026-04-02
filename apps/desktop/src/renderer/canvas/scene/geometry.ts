@@ -1,4 +1,4 @@
-import type { Rect, XY } from "@nohal/core/types";
+import type { Rect, Size, XY } from "@nohal/core/types";
 import type { CullModel, SceneBounds } from "./types";
 
 const HALF_TURN_DEGREES = 180;
@@ -90,12 +90,12 @@ export function worldBoundsFromLocalRect(pos: XY, model: CullModel): Rect {
   return rotatedRectBounds(worldRect, model.rotationDeg, pos);
 }
 
-export function viewportWorldRect(args: {
-  width: number;
-  height: number;
+interface ViewportWorldRectArgs extends Size {
   margin: number;
   screenToWorld: (pos: XY) => XY;
-}): Rect {
+}
+
+export function viewportWorldRect(args: ViewportWorldRectArgs): Rect {
   const { width, height, margin, screenToWorld } = args;
   return normalizedRect(
     screenToWorld({ x: -margin, y: -margin }),

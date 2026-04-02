@@ -1,4 +1,4 @@
-import type { Rect, SheetDefinition, XY } from "@nohal/core/types";
+import type { Rect, SheetDefinition, Size, XY } from "@nohal/core/types";
 import Konva from "konva";
 import { comment as commentConst } from "./constants/comments";
 import { label } from "./constants/labels";
@@ -36,13 +36,7 @@ export function estimatePortLabelWidth(name: string): number {
   );
 }
 
-export function measureLabelBox(
-  scope: string,
-  name: string,
-): {
-  width: number;
-  height: number;
-} {
+export function measureLabelBox(scope: string, name: string): Size {
   const cacheKey = `${scope}\u0000${name}`;
   let cached = labelWidthMeasureCache.get(cacheKey);
   if (!cached) {
@@ -70,14 +64,11 @@ export function measureLabelBox(
 
 export function measureLabelBoxForLabel(
   label: SheetDefinition["labels"][number],
-): { width: number; height: number } {
+): Size {
   return measureLabelBox(label.scope, label.name);
 }
 
-export function estimateCommentSize(text: string): {
-  width: number;
-  height: number;
-} {
+export function estimateCommentSize(text: string): Size {
   const lines = text.replace(/\r/g, "").split("\n");
   const maxLineLength = Math.max(1, ...lines.map((line) => line.length));
   const lineCount = Math.max(1, lines.length);
