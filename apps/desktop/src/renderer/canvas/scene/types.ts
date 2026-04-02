@@ -1,5 +1,6 @@
+import type { XY } from "@nohal/core/types";
 import type Konva from "konva";
-import type { NodeLayout, Pt } from "../layout";
+import type { NodeLayout } from "../layout";
 import type { DragSelectionTarget } from "../renderables";
 import type { SceneCallbacks, SceneRenderState } from "../types";
 
@@ -35,12 +36,12 @@ export type FocusTarget = {
 
 export type GroupDragSession = {
   anchor: DragSelectionTarget;
-  nodeStartPositions: Map<string, Pt>;
-  labelStartPositions: Map<string, Pt>;
-  commentStartPositions: Map<string, Pt>;
-  portStartPositions: Map<string, Pt>;
-  connectionWaypointStartPositions: Map<string, Pt[]>;
-  anchorStartPos: Pt;
+  nodeStartPositions: Map<string, XY>;
+  labelStartPositions: Map<string, XY>;
+  commentStartPositions: Map<string, XY>;
+  portStartPositions: Map<string, XY>;
+  connectionWaypointStartPositions: Map<string, XY[]>;
+  anchorStartPos: XY;
   appliedDx: number;
   appliedDy: number;
 };
@@ -70,12 +71,12 @@ export type SceneView = {
 
 export type SceneInteractionState = {
   isPanning: boolean;
-  panLastScreenPos: Pt | null;
-  backgroundTapStartScreenPos: Pt | null;
+  panLastScreenPos: XY | null;
+  backgroundTapStartScreenPos: XY | null;
   backgroundTapAdditive: boolean;
   isMarqueeSelecting: boolean;
-  marqueeStartScreenPos: Pt | null;
-  marqueeCurrentScreenPos: Pt | null;
+  marqueeStartScreenPos: XY | null;
+  marqueeCurrentScreenPos: XY | null;
   marqueeAdditive: boolean;
   groupDragSession: GroupDragSession | null;
   gridSnapOverridePressed: boolean;
@@ -84,11 +85,11 @@ export type SceneInteractionState = {
 
 export type SceneGraphState = {
   nodeLayouts: Map<string, NodeLayout>;
-  liveNodePositions: Map<string, Pt>;
-  liveLabelPositions: Map<string, Pt>;
-  liveCommentPositions: Map<string, Pt>;
-  livePortPositions: Map<string, Pt>;
-  liveConnectionWaypoints: Map<string, Pt[]>;
+  liveNodePositions: Map<string, XY>;
+  liveLabelPositions: Map<string, XY>;
+  liveCommentPositions: Map<string, XY>;
+  livePortPositions: Map<string, XY>;
+  liveConnectionWaypoints: Map<string, XY[]>;
   nodeGroups: Map<string, Konva.Group>;
   labelGroups: Map<string, Konva.Group>;
   commentGroups: Map<string, Konva.Group>;
@@ -100,7 +101,7 @@ export type SceneGraphState = {
 
 export type SceneState = {
   lastState: SceneRenderState | null;
-  cursorPos: Pt | null;
+  cursorPos: XY | null;
   camera: CameraState;
   selectedConnectionId: string | null;
   selectedWaypointIndex: number | null;

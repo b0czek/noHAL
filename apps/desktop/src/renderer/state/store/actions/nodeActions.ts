@@ -239,10 +239,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       }
     },
 
-    addComponentNode(
-      componentId: string,
-      position?: { x: number; y: number },
-    ): void {
+    addComponentNode(componentId: string, position?: XY): void {
       const comp = deps.state.project.library.components[componentId];
       if (!comp) return;
       if (!isComponentPlaceable(comp)) {

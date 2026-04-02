@@ -1,5 +1,5 @@
 import type { SplitConnectionLabelPositions } from "@nohal/core/sheet";
-import type { Pt } from "../layout";
+import type { XY } from "@nohal/core/types";
 
 export type EndpointSide = "left" | "right" | "top" | "bottom";
 
@@ -16,23 +16,20 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-export function rotateVec(x: number, y: number, radians: number): Pt {
+export function rotateVec(x: number, y: number, radians: number): XY {
   const c = Math.cos(radians);
   const s = Math.sin(radians);
-  return {
-    x: x * c - y * s,
-    y: x * s + y * c,
-  };
+  return { x: x * c - y * s, y: x * s + y * c };
 }
 
-export function normalForSide(side: EndpointSide): Pt {
+export function normalForSide(side: EndpointSide): XY {
   if (side === "left") return { x: -1, y: 0 };
   if (side === "right") return { x: 1, y: 0 };
   if (side === "top") return { x: 0, y: -1 };
   return { x: 0, y: 1 };
 }
 
-export function distSqPointToSegment(p: Pt, a: Pt, b: Pt): number {
+export function distSqPointToSegment(p: XY, a: XY, b: XY): number {
   const abx = b.x - a.x;
   const aby = b.y - a.y;
   const apx = p.x - a.x;
@@ -47,7 +44,7 @@ export function distSqPointToSegment(p: Pt, a: Pt, b: Pt): number {
   return dx * dx + dy * dy;
 }
 
-export function findNearestSegmentIndex(routePoints: Pt[], point: Pt): number {
+export function findNearestSegmentIndex(routePoints: XY[], point: XY): number {
   let bestIndex = 0;
   let bestDist = Number.POSITIVE_INFINITY;
   for (let i = 0; i < routePoints.length - 1; i += 1) {
@@ -60,17 +57,17 @@ export function findNearestSegmentIndex(routePoints: Pt[], point: Pt): number {
   return bestIndex;
 }
 
-export function normalizeVector(x: number, y: number): Pt | null {
+export function normalizeVector(x: number, y: number): XY | null {
   const length = Math.hypot(x, y);
   if (length <= VECTOR_EPSILON) return null;
   return { x: x / length, y: y / length };
 }
 
 function getLabelPositionNearEndpoint(args: {
-  endpoint: Pt;
-  normal: Pt | null;
-  wireDirection: Pt | null;
-}): Pt {
+  endpoint: XY;
+  normal: XY | null;
+  wireDirection: XY | null;
+}): XY {
   const { endpoint, normal, wireDirection } = args;
   const outward = normal ?? wireDirection ?? { x: 1, y: 0 };
   const tangent =
@@ -101,11 +98,11 @@ function getLabelPositionNearEndpoint(args: {
 }
 
 export function computeSplitLabelPositions(args: {
-  startEndpointPoint: Pt;
-  endEndpointPoint: Pt;
-  startEndpointNormal: Pt | null;
-  endEndpointNormal: Pt | null;
-  displayRoutePoints: Pt[];
+  startEndpointPoint: XY;
+  endEndpointPoint: XY;
+  startEndpointNormal: XY | null;
+  endEndpointNormal: XY | null;
+  displayRoutePoints: XY[];
 }): SplitConnectionLabelPositions {
   const {
     startEndpointPoint,

@@ -1,10 +1,9 @@
-import type { SheetDefinition } from "@nohal/core/types";
+import type { SheetDefinition, XY } from "@nohal/core/types";
 import Konva from "konva";
 import { comment as commentConst } from "./constants/comments";
 import { label } from "./constants/labels";
 import { port as portConst } from "./constants/ports";
 import { typography } from "./constants/typography";
-import type { Pt } from "./layout";
 
 const labelWidthMeasureCache = new Map<
   string,
@@ -98,7 +97,7 @@ export function estimateCommentSize(text: string): {
 
 export function estimatePortBox(
   port: SheetDefinition["ports"][number],
-  position?: Pt,
+  position?: XY,
 ): {
   x: number;
   y: number;

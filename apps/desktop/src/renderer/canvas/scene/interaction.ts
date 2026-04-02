@@ -1,6 +1,6 @@
+import type { XY } from "@nohal/core/types";
 import type Konva from "konva";
 import { snapPointToGrid } from "../grid";
-import type { Pt } from "../layout";
 import type { SceneRenderState } from "../types";
 import { clampRuntimePos } from "./bounds";
 import {
@@ -20,9 +20,9 @@ type SceneInteractionOps = {
   syncPlacementPreview: () => void;
   applyCamera: () => void;
   redrawWires: () => void;
-  zoomByFactor: (zoomFactor: number, pointer?: Pt) => void;
+  zoomByFactor: (zoomFactor: number, pointer?: XY) => void;
   deleteSelectedWaypoint: () => boolean;
-  startMarqueeSelection: (screenPos: Pt, additive: boolean) => void;
+  startMarqueeSelection: (screenPos: XY, additive: boolean) => void;
   cancelMarqueeSelection: () => void;
   finishMarqueeSelection: () => void;
   updateMarqueeRect: () => void;
@@ -56,7 +56,7 @@ function syncGridSnapOverrideFromPointerEvent(
     evt.ctrlKey || evt.metaKey;
 }
 
-function maybeSnapWorldPos(runtime: SceneRuntime, pos: Pt): Pt {
+function maybeSnapWorldPos(runtime: SceneRuntime, pos: XY): XY {
   const clamped = clampRuntimePos(runtime, pos);
   const state = runtime.state.lastState;
   if (
@@ -72,22 +72,17 @@ function maybeSnapWorldPos(runtime: SceneRuntime, pos: Pt): Pt {
   );
 }
 
-function syncCursorPos(runtime: SceneRuntime, pos: Pt | null): void {
+function syncCursorPos(runtime: SceneRuntime, pos: XY | null): void {
   runtime.state.cursorPos = pos;
   runtime.callbacks.onCursorPosChange?.(
-    pos
-      ? {
-          x: Math.round(pos.x),
-          y: Math.round(pos.y),
-        }
-      : null,
+    pos ? { x: Math.round(pos.x), y: Math.round(pos.y) } : null,
   );
 }
 
 function syncCursorPosFromScreenPos(
   runtime: SceneRuntime,
-  screenPos: Pt | null,
-  toWorld: (pos: Pt) => Pt,
+  screenPos: XY | null,
+  toWorld: (pos: XY) => XY,
 ): void {
   syncCursorPos(runtime, screenPos ? toWorld(screenPos) : null);
 }
@@ -96,7 +91,7 @@ function handlePendingEndpointBackgroundClick(args: {
   runtime: SceneRuntime;
   stage: Konva.Stage;
   evt: Konva.KonvaEventObject<MouseEvent | TouchEvent>;
-  toWorld: (pos: Pt) => Pt;
+  toWorld: (pos: XY) => XY;
 }): boolean {
   const { runtime, stage, evt, toWorld } = args;
   const pos = stage.getPointerPosition();
@@ -243,7 +238,7 @@ export function bindSceneInteractions(
     updateMarqueeRect,
   } = ops;
   const { stage, container, placementHitRect } = runtime.view;
-  const toWorld = (pos: Pt): Pt =>
+  const toWorld = (pos: XY): XY =>
     maybeSnapWorldPos(runtime, screenToWorld(runtime.state.camera, pos));
 
   const onKeyDown = (evt: KeyboardEvent) => {
@@ -508,8 +503,8 @@ function shouldTrackBackgroundTap(
 }
 
 function movementExceededThreshold(
-  start: Pt,
-  current: Pt,
+  start: XY,
+  current: XY,
   thresholdPx: number,
 ) {
   return (

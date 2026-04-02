@@ -1,7 +1,6 @@
-import type { ProjectWireStyle, SheetEndpointRef } from "@nohal/core/types";
+import type { ProjectWireStyle, SheetEndpointRef, XY } from "@nohal/core/types";
 import Konva from "konva";
 import { wire } from "../constants/wires";
-import type { Pt } from "../layout";
 import type { SceneRuntime } from "../scene/types";
 import { boundsFromPoints, getPathCullPadding, setCullBounds } from "./culling";
 import { getEndpointNormal } from "./endpoints";
@@ -11,15 +10,15 @@ const POINT_EPSILON = 0.01;
 
 export function buildDisplayWirePoints(args: {
   lookup: SheetLookup;
-  rawPoints: Pt[];
+  rawPoints: XY[];
   startEndpoint: SheetEndpointRef;
   endEndpoint?: SheetEndpointRef | null;
-}): Pt[] {
+}): XY[] {
   const { lookup, rawPoints, startEndpoint, endEndpoint } = args;
   if (rawPoints.length < 2) return rawPoints;
 
-  const out: Pt[] = [];
-  const pushDistinct = (p: Pt) => {
+  const out: XY[] = [];
+  const pushDistinct = (p: XY) => {
     const prev = out[out.length - 1];
     if (
       !prev ||
@@ -61,7 +60,7 @@ export function buildDisplayWirePoints(args: {
   return out;
 }
 
-function makeBezierWire(a: Pt, b: Pt, attrs: WireAttrs): Konva.Line {
+function makeBezierWire(a: XY, b: XY, attrs: WireAttrs): Konva.Line {
   const dx = Math.abs(b.x - a.x) * wire.path.bezierPull;
   const c1x = a.x + (b.x >= a.x ? dx : -dx);
   const c2x = b.x - (b.x >= a.x ? dx : -dx);
@@ -78,11 +77,11 @@ function makeBezierWire(a: Pt, b: Pt, attrs: WireAttrs): Konva.Line {
   });
 }
 
-function buildRightAngleWirePoints(points: Pt[]): Pt[] {
+function buildRightAngleWirePoints(points: XY[]): XY[] {
   if (points.length < 2) return [...points];
 
-  const out: Pt[] = [];
-  const pushDistinct = (p: Pt) => {
+  const out: XY[] = [];
+  const pushDistinct = (p: XY) => {
     const prev = out[out.length - 1];
     if (
       !prev ||
@@ -135,15 +134,15 @@ function buildRightAngleWirePoints(points: Pt[]): Pt[] {
   return out;
 }
 
-function buildWireShapePoints(points: Pt[], style: ProjectWireStyle): Pt[] {
+function buildWireShapePoints(points: XY[], style: ProjectWireStyle): XY[] {
   if (style === "right-angle") return buildRightAngleWirePoints(points);
   return points;
 }
 
 function drawWire(
   runtime: SceneRuntime,
-  a: Pt,
-  b: Pt,
+  a: XY,
+  b: XY,
   attrs: WireAttrs,
 ): Konva.Line {
   const line = makeBezierWire(a, b, attrs);
@@ -160,7 +159,7 @@ function drawWire(
 
 export function updateWirePathShape(
   line: Konva.Line,
-  points: Pt[],
+  points: XY[],
   style: ProjectWireStyle,
 ): void {
   if (points.length < 2) return;
@@ -199,7 +198,7 @@ export function updateWirePathShape(
 
 export function drawWirePath(
   runtime: SceneRuntime,
-  points: Pt[],
+  points: XY[],
   style: ProjectWireStyle,
   attrs: WireAttrs,
 ): Konva.Line | null {

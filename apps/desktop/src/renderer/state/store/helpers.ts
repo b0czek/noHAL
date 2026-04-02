@@ -123,31 +123,22 @@ export function nextName(base: string, used: Set<string>): string {
   return `${base}${i}`;
 }
 
-export function defaultNodePosition(sheet: SheetDefinition): {
-  x: number;
-  y: number;
-} {
+export function defaultNodePosition(sheet: SheetDefinition): XY {
   return defaultNodePositionForIndex(sheet.nodes.length);
 }
 
-export function defaultLabelPosition(sheet: SheetDefinition): {
-  x: number;
-  y: number;
-} {
+export function defaultLabelPosition(sheet: SheetDefinition): XY {
   return defaultLabelPositionForIndex(sheet.labels.length);
 }
 
-export function defaultCommentPosition(sheet: SheetDefinition): {
-  x: number;
-  y: number;
-} {
+export function defaultCommentPosition(sheet: SheetDefinition): XY {
   return defaultCommentPositionForIndex(sheet.comments.length);
 }
 
 export function defaultPortPosition(
   sheet: SheetDefinition,
   side: "left" | "right" | "top" | "bottom",
-): { x: number; y: number } {
+): XY {
   const count = sheet.ports.filter((p) => p.side === side).length;
   return defaultPortPositionForIndex(count, side);
 }

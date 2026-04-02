@@ -1,8 +1,8 @@
 import { endpointKey } from "@nohal/core/graph";
-import type { ProjectWireLayerPosition } from "@nohal/core/types";
+import type { ProjectWireLayerPosition, XY } from "@nohal/core/types";
 import { scene } from "../constants/scene";
 import { snapPointToGrid } from "../grid";
-import { buildSheetSceneLayout, type Pt } from "../layout";
+import { buildSheetSceneLayout } from "../layout";
 import {
   type DragSelectionTarget,
   type RenderSceneContext,
@@ -58,7 +58,7 @@ const CULL_SCREEN_MARGIN_PX = 180;
 export interface SheetScene {
   destroy(): void;
   resize(width: number, height: number): void;
-  clientToWorld(clientX: number, clientY: number): Pt;
+  clientToWorld(clientX: number, clientY: number): XY;
   focusTarget(target: FocusTarget): boolean;
   getSplitLabelPositionsForConnection(
     connectionId: string,
@@ -91,7 +91,7 @@ export function createKonvaSheetScene(
 
   const onSelectionDragStart = (
     target: DragSelectionTarget,
-    pos: Pt,
+    pos: XY,
   ): boolean => {
     runtime.state.interaction.groupDragSession = startDragSelection(
       runtime,
@@ -101,14 +101,14 @@ export function createKonvaSheetScene(
     return runtime.state.interaction.groupDragSession !== null;
   };
 
-  const onSelectionDragMove = (target: DragSelectionTarget, pos: Pt): boolean =>
+  const onSelectionDragMove = (target: DragSelectionTarget, pos: XY): boolean =>
     moveDragSelection(runtime, target, snapPos(pos), {
       redrawWires: () => redrawWires(),
     });
 
   const onSelectionDragEnd = (
     target: DragSelectionTarget,
-    pos: Pt,
+    pos: XY,
   ): boolean => {
     const handled = endDragSelection(runtime, target, snapPos(pos), {
       redrawWires: () => redrawWires(),
@@ -147,12 +147,12 @@ export function createKonvaSheetScene(
       }
     },
 
-    clientToWorld(clientX: number, clientY: number): Pt {
+    clientToWorld(clientX: number, clientY: number): XY {
       return clientToWorld(runtime, clientX, clientY);
     },
 
     focusTarget(target: FocusTarget): boolean {
-      let center: Pt | null = null;
+      let center: XY | null = null;
 
       if (target.kind === "node") {
         const node = runtime.graph.nodeGroups.get(target.id);
@@ -279,11 +279,11 @@ export function createKonvaSheetScene(
     },
   };
 
-  function clampPos(pos: Pt): Pt {
+  function clampPos(pos: XY): XY {
     return clampScenePos(pos, runtime.state.sceneBounds);
   }
 
-  function snapPos(pos: Pt): Pt {
+  function snapPos(pos: XY): XY {
     const clamped = clampPos(pos);
     const state = runtime.state.lastState;
     if (
@@ -296,7 +296,7 @@ export function createKonvaSheetScene(
     return clampPos(snapPointToGrid(clamped, state.gridResolution));
   }
 
-  function zoomByFactor(zoomFactor: number, pointer?: Pt): void {
+  function zoomByFactor(zoomFactor: number, pointer?: XY): void {
     const changed = zoomCameraByFactor({
       camera: runtime.state.camera,
       zoomFactor,
@@ -390,7 +390,7 @@ export function createKonvaSheetScene(
     runtime.graph.portCullModels = models.portCullModels;
   }
 
-  function startMarqueeSelection(screenPos: Pt, additive: boolean): void {
+  function startMarqueeSelection(screenPos: XY, additive: boolean): void {
     startSceneMarqueeSelection({
       runtime,
       screenPos,

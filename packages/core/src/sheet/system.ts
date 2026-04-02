@@ -6,6 +6,7 @@ import type {
   NoHALProject,
   SheetDefinition,
   SheetNode,
+  XY,
 } from "../types";
 import { defaultNodePositionForIndex } from "./layout";
 import { moveSelectionIntoSubsheet } from "./subsheetMove";
@@ -117,7 +118,7 @@ export function findSystemSheetNode(project: NoHALProject): SheetNode | null {
 
 export function ensureSystemSheet(
   project: NoHALProject,
-  preferredPosition?: { x: number; y: number },
+  preferredPosition?: XY,
 ): {
   rootSheet: SheetDefinition;
   systemSheet: SheetDefinition;

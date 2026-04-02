@@ -3,6 +3,7 @@ import type {
   ProjectWireStyle,
   SheetDefinition,
   SheetEndpointRef,
+  XY,
 } from "@nohal/core/types";
 import Konva from "konva";
 import type {
@@ -10,7 +11,6 @@ import type {
   Selection,
 } from "../../state/store/selectionTypes";
 import { wire } from "../constants/wires";
-import type { Pt } from "../layout";
 import { isPrimaryScenePointerButton } from "../renderables/shared";
 import { clampRuntimePos } from "../scene/bounds";
 import type { SceneRuntime } from "../scene/types";
@@ -93,14 +93,14 @@ function syncSelectedConnectionState(runtime: SceneRuntime): void {
   }
 }
 
-function buildRoutePoints(a: Pt, waypoints: readonly Pt[], b: Pt): Pt[] {
+function buildRoutePoints(a: XY, waypoints: readonly XY[], b: XY): XY[] {
   return [a, ...waypoints.map((p) => ({ x: p.x, y: p.y })), b];
 }
 
 function updateRoutePreview(args: {
   runtime: SceneRuntime;
   handle: Konva.Circle;
-  routePoints: Pt[];
+  routePoints: XY[];
   waypointIndex: number;
   wireLine: Konva.Line;
   lookup: SheetLookup;
@@ -142,7 +142,7 @@ function openConnectionContextMenu(
 function bindWireLineEvents(args: {
   runtime: SceneRuntime;
   connection: DirectConnection;
-  routePoints: Pt[];
+  routePoints: XY[];
   wireLine: Konva.Line;
 }): void {
   const { runtime, connection, routePoints, wireLine } = args;
@@ -185,8 +185,8 @@ function bindWireLineEvents(args: {
 function renderConnectionWaypoints(args: {
   runtime: SceneRuntime;
   connection: DirectConnection;
-  routePoints: Pt[];
-  waypoints: readonly Pt[];
+  routePoints: XY[];
+  waypoints: readonly XY[];
   wireLine: Konva.Line;
   lookup: SheetLookup;
   wireStyle: ProjectWireStyle;
@@ -342,7 +342,7 @@ function drawPendingWire(args: {
   runtime: SceneRuntime;
   lookup: SheetLookup;
   pendingEndpoint: SheetEndpointRef;
-  pendingWirePoints: Pt[];
+  pendingWirePoints: XY[];
   wireStyle: ProjectWireStyle;
 }): void {
   const { runtime, lookup, pendingEndpoint, pendingWirePoints, wireStyle } =

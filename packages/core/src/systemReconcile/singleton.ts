@@ -5,6 +5,7 @@ import type {
   ComponentDefinition,
   ComponentNode,
   NoHALProject,
+  XY,
 } from "../types";
 import {
   buildSystemOverrideDefinition,
@@ -19,7 +20,7 @@ export interface ReconcileSystemSingletonOptions {
   expectedDefinition: ComponentDefinition;
   customOverrideManager: string;
   customOverrideFamily: string;
-  defaultPosition: { x: number; y: number };
+  defaultPosition: XY;
   isLikeNode: (project: NoHALProject, node: ComponentNode) => boolean;
   pruneUnusedImportedComponents?: (project: NoHALProject) => void;
   syncInstanceConfig?: boolean;
@@ -29,8 +30,8 @@ export interface ReconcileSystemSingletonOptions {
 
 function chooseFreePosition(
   sheet: NoHALProject["sheets"][string],
-  preferred: { x: number; y: number },
-): { x: number; y: number } {
+  preferred: XY,
+): XY {
   const used = new Set(
     sheet.nodes.map(
       (node) => `${Math.round(node.position.x)}:${Math.round(node.position.y)}`,

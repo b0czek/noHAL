@@ -1,4 +1,4 @@
-import type { Pt } from "../layout";
+import type { XY } from "@nohal/core/types";
 import type { SceneRuntime } from "../scene/types";
 import { findNearestSegmentIndex } from "./geometry";
 
@@ -38,8 +38,8 @@ export function deleteSelectedWaypoint(runtime: SceneRuntime): boolean {
 export function insertWaypointOnConnection(
   runtime: SceneRuntime,
   connectionId: string,
-  routePoints: Pt[],
-  point: Pt,
+  routePoints: XY[],
+  point: XY,
 ): void {
   const state = runtime.state.lastState;
   if (!state) return;

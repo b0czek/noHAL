@@ -4,14 +4,15 @@ import type {
   SheetDefinition,
   SheetEndpointRef,
   SheetNodeInstance,
+  XY,
 } from "@nohal/core/types";
 import Konva from "konva";
 import { surface } from "../constants/surfaces";
-import type { NodeLayout, Pt } from "../layout";
+import type { NodeLayout } from "../layout";
 import { typeFill } from "../theme";
 import type { SceneCallbacks } from "../types";
 
-export type ClampPosFn = (pos: Pt) => Pt;
+export type ClampPosFn = (pos: XY) => XY;
 
 export type DragSelectionTarget = {
   kind: "node" | "label" | "comment" | "sheet-port";
@@ -19,9 +20,9 @@ export type DragSelectionTarget = {
 };
 
 export interface RenderDragSelectionOps {
-  onSelectionDragStart: (target: DragSelectionTarget, pos: Pt) => boolean;
-  onSelectionDragMove: (target: DragSelectionTarget, pos: Pt) => boolean;
-  onSelectionDragEnd: (target: DragSelectionTarget, pos: Pt) => boolean;
+  onSelectionDragStart: (target: DragSelectionTarget, pos: XY) => boolean;
+  onSelectionDragMove: (target: DragSelectionTarget, pos: XY) => boolean;
+  onSelectionDragEnd: (target: DragSelectionTarget, pos: XY) => boolean;
 }
 
 export interface RenderSceneContext {
@@ -39,7 +40,7 @@ export interface RenderPortsArgs {
   sheet: SheetDefinition;
   pendingKey: string | null;
   selectedPortIds: ReadonlySet<string>;
-  livePortPositions: Map<string, Pt>;
+  livePortPositions: Map<string, XY>;
   portGroups: Map<string, Konva.Group>;
 }
 
@@ -57,7 +58,7 @@ export interface RenderNodesArgs {
   pendingKey: string | null;
   selectedNodeIds: ReadonlySet<string>;
   nodeLayouts: Map<string, NodeLayout>;
-  liveNodePositions: Map<string, Pt>;
+  liveNodePositions: Map<string, XY>;
   nodeGroups: Map<string, Konva.Group>;
 }
 
@@ -68,7 +69,7 @@ export interface RenderLabelsArgs {
   >;
   sheet: SheetDefinition;
   selectedLabelIds: ReadonlySet<string>;
-  liveLabelPositions: Map<string, Pt>;
+  liveLabelPositions: Map<string, XY>;
   labelGroups: Map<string, Konva.Group>;
 }
 
@@ -79,7 +80,7 @@ export interface RenderCommentsArgs {
   >;
   sheet: SheetDefinition;
   selectedCommentIds: ReadonlySet<string>;
-  liveCommentPositions: Map<string, Pt>;
+  liveCommentPositions: Map<string, XY>;
   commentGroups: Map<string, Konva.Group>;
 }
 
@@ -93,10 +94,10 @@ export function bindDraggableRenderable(args: {
   group: Konva.Group;
   target: DragSelectionTarget;
   clampPos: ClampPosFn;
-  setLivePosition: (pos: Pt) => void;
+  setLivePosition: (pos: XY) => void;
   dragSelection: RenderDragSelectionOps;
   redrawWires?: () => void;
-  persistMove: (pos: Pt) => void;
+  persistMove: (pos: XY) => void;
 }): void {
   const {
     group,
@@ -108,7 +109,7 @@ export function bindDraggableRenderable(args: {
     persistMove,
   } = args;
 
-  const syncPosition = (): Pt => {
+  const syncPosition = (): XY => {
     const pos = clampPos(group.position());
     group.position(pos);
     return pos;

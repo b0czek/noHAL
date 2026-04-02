@@ -1,4 +1,5 @@
 import { getSheet } from "@nohal/core/graph";
+import type { XY } from "@nohal/core/types";
 import {
   createEffect,
   createMemo,
@@ -71,7 +72,7 @@ export default function Canvas() {
   };
 
   const handleBackgroundClick = (
-    point: { x: number; y: number },
+    point: XY,
     _options?: { mode?: "add" | "toggle" },
   ) => {
     if (placementMode()) {

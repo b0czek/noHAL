@@ -1,6 +1,7 @@
+import type { XY } from "@nohal/core/types";
 import type Konva from "konva";
 import { scene } from "../constants/scene";
-import type { NodeLayout, Pt } from "../layout";
+import type { NodeLayout } from "../layout";
 import {
   estimateCommentSize,
   estimatePortBox,
@@ -27,7 +28,7 @@ export function focusCenterFromCullModel(
   id: string,
   groups: CullGroupMap,
   models: Map<string, CullModel>,
-): Pt | null {
+): XY | null {
   const group = groups.get(id);
   const model = models.get(id);
   if (!group || !model) return null;

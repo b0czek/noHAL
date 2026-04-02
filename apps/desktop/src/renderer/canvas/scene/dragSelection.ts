@@ -1,4 +1,4 @@
-import type { Pt } from "../layout";
+import type { XY } from "@nohal/core/types";
 import type { DragSelectionTarget } from "../renderables";
 import { clampRuntimePos } from "./bounds";
 import {
@@ -15,7 +15,7 @@ type DragSelectionOps = {
 export function startDragSelection(
   runtime: SceneRuntime,
   target: DragSelectionTarget,
-  pos: Pt,
+  pos: XY,
 ): GroupDragSession | null {
   return buildGroupDragSession({
     target,
@@ -31,7 +31,7 @@ export function startDragSelection(
 export function moveDragSelection(
   runtime: SceneRuntime,
   target: DragSelectionTarget,
-  pos: Pt,
+  pos: XY,
   ops: DragSelectionOps,
 ): boolean {
   const session = runtime.state.interaction.groupDragSession;
@@ -39,7 +39,7 @@ export function moveDragSelection(
   if (session.anchor.kind !== target.kind || session.anchor.id !== target.id) {
     return false;
   }
-  const clampPos = (nextPos: Pt) => clampRuntimePos(runtime, nextPos);
+  const clampPos = (nextPos: XY) => clampRuntimePos(runtime, nextPos);
 
   const constrained = constrainGroupDragDelta({
     session,
@@ -57,7 +57,7 @@ export function moveDragSelection(
 export function endDragSelection(
   runtime: SceneRuntime,
   target: DragSelectionTarget,
-  pos: Pt,
+  pos: XY,
   ops: DragSelectionOps,
 ): boolean {
   const session = runtime.state.interaction.groupDragSession;
@@ -65,7 +65,7 @@ export function endDragSelection(
   if (session.anchor.kind !== target.kind || session.anchor.id !== target.id) {
     return false;
   }
-  const clampPos = (nextPos: Pt) => clampRuntimePos(runtime, nextPos);
+  const clampPos = (nextPos: XY) => clampRuntimePos(runtime, nextPos);
 
   moveDragSelection(runtime, target, pos, ops);
 
@@ -105,7 +105,7 @@ function applyGroupDragSessionPositions(
   session: GroupDragSession,
 ): void {
   const moveAll = (
-    entries: IterableIterator<[string, Pt]>,
+    entries: IterableIterator<[string, XY]>,
     kind: DragSelectionTarget["kind"],
   ) => {
     for (const [id, start] of entries) {
@@ -142,7 +142,7 @@ function applyGroupDragSessionPositions(
 function setRenderedGroupPosition(
   runtime: SceneRuntime,
   target: DragSelectionTarget,
-  pos: Pt,
+  pos: XY,
 ): void {
   let group = null;
   switch (target.kind) {
@@ -165,7 +165,7 @@ function setRenderedGroupPosition(
 function setLiveGroupPosition(
   runtime: SceneRuntime,
   target: DragSelectionTarget,
-  pos: Pt,
+  pos: XY,
 ): void {
   if (target.kind === "node") {
     runtime.graph.liveNodePositions.set(target.id, pos);

@@ -8,6 +8,7 @@ import type {
   ComponentNode,
   SheetDefinition,
   SheetNode,
+  XY,
 } from "@nohal/core/types";
 import { HiOutlineDocumentDuplicate } from "solid-icons/hi";
 import { RiDocumentClipboardLine } from "solid-icons/ri";
@@ -59,10 +60,7 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
       )
       .sort((a, b) => a.halComponentName.localeCompare(b.halComponentName)),
   );
-  const backgroundMenuItems = (point: {
-    x: number;
-    y: number;
-  }): ContextMenuActionItem[] => {
+  const backgroundMenuItems = (point: XY): ContextMenuActionItem[] => {
     const resolution = gridResolution();
     const placementPoint = resolution
       ? snapPointToGrid(point, resolution)

@@ -1,3 +1,4 @@
+import type { XY } from "../types";
 import type {
   MesaHostCatalogEntry,
   MesaSchemaProfile,
@@ -66,7 +67,7 @@ export interface MesaDerivedNode {
   instanceName: string;
   displayName: string;
   schemaProfile: MesaSchemaProfile;
-  preferredPosition: { x: number; y: number };
+  preferredPosition: XY;
   summary: string;
 }
 
@@ -77,7 +78,7 @@ export interface MesaPseudoComponentSpec {
   instanceSuffix: string;
   displayNameSuffix: string;
   schemaProfile: MesaSchemaProfile;
-  preferredOffset: { x: number; y: number };
+  preferredOffset: XY;
   summary?: string;
 }
 
@@ -230,7 +231,7 @@ function createMesaPseudoComponentNode(
   host: ProjectMesaHostConfig,
   hostDisplayName: string,
   hostInstanceName: string,
-  groupOrigin: { x: number; y: number },
+  groupOrigin: XY,
   spec: MesaPseudoComponentSpec,
 ): MesaDerivedNode {
   return {
@@ -459,7 +460,7 @@ export function deriveMesaTopology(
     ctx: MesaHostDerivationContext,
     hostPinsProfile: MesaSchemaProfile,
     pseudoComponents: MesaPseudoComponentSpec[],
-    groupOrigin: { x: number; y: number },
+    groupOrigin: XY,
   ) => {
     nodes.push({
       key: ctx.host.id,
