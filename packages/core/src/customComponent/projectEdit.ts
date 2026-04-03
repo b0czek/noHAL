@@ -1,6 +1,7 @@
 import { createId } from "../id";
 import type {
   ComponentDefinition,
+  ComponentFunctionDefinition,
   ComponentParamDefinition,
   ComponentPinDefinition,
   NoHALProject,
@@ -217,6 +218,66 @@ function addParam(
   return { component, param };
 }
 
+function addFunction(
+  project: NoHALProject,
+  componentId: string,
+): { component: ComponentDefinition; fn: ComponentFunctionDefinition } | null {
+  const component = findManualComponent(project, componentId);
+  if (!component) return null;
+  const fn = customComponentDefinitionEdits.function.add(component);
+  if (!fn) return null;
+  return { component, fn };
+}
+
+function removeFunction(
+  project: NoHALProject,
+  componentId: string,
+  functionKey: string,
+): { component: ComponentDefinition; functionName: string } | null {
+  const component = findManualComponent(project, componentId);
+  if (!component) return null;
+  const fn = customComponentDefinitionEdits.function.remove(
+    component,
+    functionKey,
+  );
+  if (!fn) return null;
+  return { component, functionName: fn.declaredName };
+}
+
+function updateFunctionName(
+  project: NoHALProject,
+  componentId: string,
+  functionKey: string,
+  functionName: string,
+): { component: ComponentDefinition; functionName: string } | null {
+  const component = findManualComponent(project, componentId);
+  if (!component) return null;
+  const fn = customComponentDefinitionEdits.function.name.update(
+    component,
+    functionKey,
+    functionName,
+  );
+  if (!fn) return null;
+  return { component, functionName: fn.declaredName };
+}
+
+function updateFunctionFloatMode(
+  project: NoHALProject,
+  componentId: string,
+  functionKey: string,
+  floatMode: ComponentFunctionDefinition["floatMode"],
+): { component: ComponentDefinition; functionName: string } | null {
+  const component = findManualComponent(project, componentId);
+  if (!component) return null;
+  const fn = customComponentDefinitionEdits.function.floatMode.update(
+    component,
+    functionKey,
+    floatMode,
+  );
+  if (!fn) return null;
+  return { component, functionName: fn.declaredName };
+}
+
 function removeParam(
   project: NoHALProject,
   componentId: string,
@@ -352,6 +413,16 @@ export const customComponentEdits = {
     },
     defaultValue: {
       update: updateParamDefaultValue,
+    },
+  },
+  function: {
+    add: addFunction,
+    remove: removeFunction,
+    name: {
+      update: updateFunctionName,
+    },
+    floatMode: {
+      update: updateFunctionFloatMode,
     },
   },
 } as const;

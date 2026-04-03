@@ -1,6 +1,7 @@
 import { safeKey } from "../id";
 import type {
   ComponentDefinition,
+  ComponentFunctionDefinition,
   ComponentParamDefinition,
   ComponentPinDefinition,
   NoHALProject,
@@ -70,6 +71,26 @@ export function createCustomComponentParam(
     name,
     direction: "rw",
     type: "float",
+  };
+}
+
+export function createCustomComponentFunction(
+  component: ComponentDefinition,
+): ComponentFunctionDefinition {
+  const existingNames = (component.functions ?? []).map(
+    (fn) => fn.declaredName,
+  );
+  const declaredName = nextUniqueIdentifier("function", existingNames);
+  const halSuffix = declaredName;
+  return {
+    key: nextUniqueMemberKey(
+      declaredName,
+      (component.functions ?? []).map((fn) => fn.key),
+      "function",
+    ),
+    declaredName,
+    halSuffix,
+    floatMode: "fp",
   };
 }
 

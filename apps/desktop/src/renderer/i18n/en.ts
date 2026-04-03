@@ -283,6 +283,9 @@ export const en = {
   "customComponents.paramDirectionRead": "r",
   "customComponents.paramDirectionReadWrite": "rw",
   "customComponents.paramDefaultValue": "Default Value",
+  "customComponents.functionsTitle": "Realtime Functions (addf)",
+  "customComponents.addFunction": "Add Function",
+  "customComponents.noFunctions": "No realtime functions defined.",
   "customComponents.optionalValue": "(optional)",
 
   "sheetSettings.ariaLabel": "Sheet Settings",
@@ -577,6 +580,12 @@ export const en = {
     "Removed parameter {paramName} from custom component {componentName}",
   "store.status.updatedCustomComponentParam":
     "Updated parameter {paramName} on custom component {componentName}",
+  "store.status.addedCustomComponentFunction":
+    "Added realtime function to custom component {componentName}",
+  "store.status.removedCustomComponentFunction":
+    "Removed function {functionName} from custom component {componentName}",
+  "store.status.updatedCustomComponentFunction":
+    "Updated function {functionName} on custom component {componentName}",
   "store.status.addedSheetThreadOutput": "Added sheet thread output",
   "store.status.updatedSheetThreadOutputName":
     "Updated sheet thread output name",

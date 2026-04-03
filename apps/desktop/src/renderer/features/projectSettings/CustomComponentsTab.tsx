@@ -247,6 +247,29 @@ export default function CustomComponentsTab() {
                   value,
                 )
               }
+              onAddFunction={() =>
+                actions.addCustomComponentFunction(component().id)
+              }
+              onRemoveFunction={(functionKey) =>
+                actions.removeCustomComponentFunction(
+                  component().id,
+                  functionKey,
+                )
+              }
+              onFunctionNameChange={(functionKey, value) =>
+                actions.updateCustomComponentFunctionName(
+                  component().id,
+                  functionKey,
+                  value,
+                )
+              }
+              onFunctionFloatModeChange={(functionKey, value) =>
+                actions.updateCustomComponentFunctionFloatMode(
+                  component().id,
+                  functionKey,
+                  value,
+                )
+              }
             />
           )}
         </Show>

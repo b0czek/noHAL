@@ -98,4 +98,73 @@ describe("custom component edits", () => {
     expect(addedParam.name).toBe("param_2");
     expect(addedParam.key).toBe("param_2");
   });
+
+  it("edits realtime functions on custom components", () => {
+    const project = createEmptyProject("Custom Component Functions");
+    const componentId = "manual:test";
+
+    project.library.components[componentId] = {
+      id: componentId,
+      name: "test",
+      halComponentName: "test",
+      source: "manual",
+      runtime: { kind: "rt" },
+      pins: [],
+      params: [],
+    };
+
+    const added = customComponentEdits.function.add(project, componentId);
+    expect(added?.fn.declaredName).toBe("function");
+    expect(added?.fn.halSuffix).toBe("function");
+    expect(added?.fn.floatMode).toBe("fp");
+
+    const updatedName = customComponentEdits.function.name.update(
+      project,
+      componentId,
+      added?.fn.key ?? "",
+      "servo",
+    );
+    expect(updatedName?.functionName).toBe("servo");
+    expect(project.library.components[componentId]?.functions).toMatchObject([
+      {
+        declaredName: "servo",
+        halSuffix: "servo",
+        floatMode: "fp",
+      },
+    ]);
+
+    const updatedFloatMode = customComponentEdits.function.floatMode.update(
+      project,
+      componentId,
+      project.library.components[componentId]?.functions?.[0]?.key ?? "",
+      "nofp",
+    );
+    expect(updatedFloatMode?.functionName).toBe("servo");
+    expect(
+      project.library.components[componentId]?.functions?.[0]?.floatMode,
+    ).toBe("nofp");
+
+    const removed = customComponentEdits.function.remove(
+      project,
+      componentId,
+      project.library.components[componentId]?.functions?.[0]?.key ?? "",
+    );
+    expect(removed?.functionName).toBe("servo");
+    expect(project.library.components[componentId]?.functions).toBeUndefined();
+  });
+
+  it("does not add custom realtime functions unless the runtime is rt", () => {
+    const component: ComponentDefinition = {
+      id: "manual:test",
+      name: "test",
+      halComponentName: "test",
+      source: "manual",
+      runtime: { kind: "userspace" },
+      pins: [],
+      params: [],
+    };
+
+    expect(customComponentDefinitionEdits.function.add(component)).toBeNull();
+    expect(component.functions).toBeUndefined();
+  });
 });

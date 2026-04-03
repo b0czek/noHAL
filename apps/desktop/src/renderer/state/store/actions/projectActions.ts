@@ -727,6 +727,107 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       });
     },
 
+    addCustomComponentFunction(componentId: string): void {
+      let componentName = "";
+      let added = false;
+      deps.withProject((project) => {
+        const result = customComponentEdits.function.add(project, componentId);
+        if (!result) return;
+        componentName = result.component.halComponentName;
+        added = true;
+      });
+      if (!added) {
+        deps.setStatusT("store.status.selectedComponentNotCustom");
+        return;
+      }
+      deps.setStatusT("store.status.addedCustomComponentFunction", {
+        componentName,
+      });
+    },
+
+    removeCustomComponentFunction(
+      componentId: string,
+      functionKey: string,
+    ): void {
+      const component = deps.state.project.library.components[componentId];
+      if (!component || component.source === "comp") {
+        deps.setStatusT("store.status.selectedComponentNotCustom");
+        return;
+      }
+      if (
+        !component.functions?.some((candidate) => candidate.key === functionKey)
+      )
+        return;
+      const finalResult = deps.withProject((project) =>
+        customComponentEdits.function.remove(project, componentId, functionKey),
+      );
+      if (finalResult === null) return;
+      deps.setStatusT("store.status.removedCustomComponentFunction", {
+        componentName: finalResult.component.halComponentName,
+        functionName: finalResult.functionName,
+      });
+    },
+
+    updateCustomComponentFunctionName(
+      componentId: string,
+      functionKey: string,
+      functionName: string,
+    ): void {
+      const component = deps.state.project.library.components[componentId];
+      if (!component || component.source === "comp") {
+        deps.setStatusT("store.status.selectedComponentNotCustom");
+        return;
+      }
+      const fn = component.functions?.find(
+        (candidate) => candidate.key === functionKey,
+      );
+      if (!fn) return;
+      const normalized = functionName.trim();
+      if (!normalized || normalized === fn.declaredName) return;
+      const finalResult = deps.withProject((project) =>
+        customComponentEdits.function.name.update(
+          project,
+          componentId,
+          functionKey,
+          normalized,
+        ),
+      );
+      if (finalResult === null) return;
+      deps.setStatusT("store.status.updatedCustomComponentFunction", {
+        componentName: finalResult.component.halComponentName,
+        functionName: finalResult.functionName,
+      });
+    },
+
+    updateCustomComponentFunctionFloatMode(
+      componentId: string,
+      functionKey: string,
+      floatMode: "fp" | "nofp" | "unknown",
+    ): void {
+      const component = deps.state.project.library.components[componentId];
+      if (!component || component.source === "comp") {
+        deps.setStatusT("store.status.selectedComponentNotCustom");
+        return;
+      }
+      const fn = component.functions?.find(
+        (candidate) => candidate.key === functionKey,
+      );
+      if (!fn || fn.floatMode === floatMode) return;
+      const finalResult = deps.withProject((project) =>
+        customComponentEdits.function.floatMode.update(
+          project,
+          componentId,
+          functionKey,
+          floatMode,
+        ),
+      );
+      if (finalResult === null) return;
+      deps.setStatusT("store.status.updatedCustomComponentFunction", {
+        componentName: finalResult.component.halComponentName,
+        functionName: finalResult.functionName,
+      });
+    },
+
     addHalThread(): void {
       deps.withProject((project) => {
         addHalThread(project);

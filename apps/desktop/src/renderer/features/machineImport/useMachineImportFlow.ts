@@ -555,6 +555,45 @@ export function useMachineImportFlow({
       );
     });
 
+  const addGeneratedLocalComponentFunction = (groupId: string) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      customComponentDefinitionEdits.function.add(component);
+    });
+
+  const removeGeneratedLocalComponentFunction = (
+    groupId: string,
+    functionKey: string,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      customComponentDefinitionEdits.function.remove(component, functionKey);
+    });
+
+  const updateGeneratedLocalComponentFunctionName = (
+    groupId: string,
+    functionKey: string,
+    value: string,
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      customComponentDefinitionEdits.function.name.update(
+        component,
+        functionKey,
+        value,
+      );
+    });
+
+  const updateGeneratedLocalComponentFunctionFloatMode = (
+    groupId: string,
+    functionKey: string,
+    value: "fp" | "nofp" | "unknown",
+  ) =>
+    updateGeneratedLocalComponent(groupId, (component) => {
+      customComponentDefinitionEdits.function.floatMode.update(
+        component,
+        functionKey,
+        value,
+      );
+    });
+
   const bindGeneratedLocalComponentEditor = (
     groupId: string,
   ): Omit<CustomComponentEditorProps, "component"> => ({
@@ -585,6 +624,17 @@ export function useMachineImportFlow({
       updateGeneratedLocalComponentParamDirection(groupId, paramKey, value),
     onParamDefaultValueChange: (paramKey, value) =>
       updateGeneratedLocalComponentParamDefaultValue(groupId, paramKey, value),
+    onAddFunction: () => addGeneratedLocalComponentFunction(groupId),
+    onRemoveFunction: (functionKey) =>
+      removeGeneratedLocalComponentFunction(groupId, functionKey),
+    onFunctionNameChange: (functionKey, value) =>
+      updateGeneratedLocalComponentFunctionName(groupId, functionKey, value),
+    onFunctionFloatModeChange: (functionKey, value) =>
+      updateGeneratedLocalComponentFunctionFloatMode(
+        groupId,
+        functionKey,
+        value,
+      ),
   });
 
   return {
@@ -626,6 +676,10 @@ export function useMachineImportFlow({
     updateGeneratedLocalComponentParamType,
     updateGeneratedLocalComponentParamDirection,
     updateGeneratedLocalComponentParamDefaultValue,
+    addGeneratedLocalComponentFunction,
+    removeGeneratedLocalComponentFunction,
+    updateGeneratedLocalComponentFunctionName,
+    updateGeneratedLocalComponentFunctionFloatMode,
     bindGeneratedLocalComponentEditor,
   };
 }
