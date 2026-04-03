@@ -1,0 +1,41 @@
+direction: right
+
+title: "Component anatomy"
+
+instance_name: {
+  label: "Instance name\nused in exported paths"
+  style.fill: "#fef3c7"
+  style.stroke: "#1b1b1b"
+}
+
+component: {
+  label: "debounce_panel\ncomponent: debounce"
+  style.fill: "#ffffff"
+  style.stroke: "#1b1b1b"
+
+  inputs: {
+    label: "Pins in\nch_0.in\nch_1.in"
+    style.fill: "#dbeafe"
+    style.stroke: "#1b1b1b"
+  }
+
+  params: {
+    label: "Params\ndelay = 5"
+    style.fill: "#fde68a"
+    style.stroke: "#1b1b1b"
+  }
+
+  config: {
+    label: "Instance config\nchannels = 2"
+    style.fill: "#e9d5ff"
+    style.stroke: "#1b1b1b"
+  }
+
+  outputs: {
+    label: "Pins out\nch_0.out\nch_1.out"
+    style.fill: "#d1fae5"
+    style.stroke: "#1b1b1b"
+  }
+}
+
+instance_name -> component: "names"

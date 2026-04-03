@@ -1,0 +1,37 @@
+direction: down
+
+row: {
+  label: "One Signal, Different Editor Objects"
+  style.fill: "#ffffff"
+  style.stroke: "#1b1b1b"
+  style.shadow: true
+
+  src: {
+    label: "src"
+    style.fill: "#dbeafe"
+    style.stroke: "#1b1b1b"
+  }
+
+  label_ref: {
+    label: "label"
+    style.fill: "#fde68a"
+    style.stroke: "#1b1b1b"
+  }
+
+  sink: {
+    label: "sink"
+    style.fill: "#fecaca"
+    style.stroke: "#1b1b1b"
+  }
+}
+
+summary: {
+  label: "direct wire = connectivity\nlabel = named reference\nanchor = endpoint attached to label"
+  style.fill: "#ffffff"
+  style.stroke: "#1b1b1b"
+}
+
+row.src -> row.label_ref: "anchor"
+row.label_ref -> row.sink: "anchor"
+row.src -> row.sink: "direct wire"
+row.label_ref -> summary

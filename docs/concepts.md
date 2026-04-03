@@ -1,94 +1,25 @@
-# Core Concepts
+# Concepts
 
-This page defines the NoHAL terms that matter when you edit or export a project.
+This section is the theory layer of the manual.
 
-## Project
+It explains how NoHAL maps HAL concepts into editor objects, sheet structure, scheduling, and exported files.
 
-A project is the full NoHAL workspace.
+Read these pages before starting to build anything in NoHAL. More advanced concepts will be added later.
 
-It contains:
+## In This Section
 
-- the root sheet
-- other sheets referenced by subsheets
-- the component library visible to the project
-- project-wide HAL threads
-- machine-level settings such as INI and hardware-related configuration
+- [Component](/concepts/component): what a component instance is, how NoHAL names it, what can be configured per instance, and what changes at export.
+- [Sheet](/concepts/sheet): root sheet, system sheet, sheet definitions, sheet instances, and why a sheet can behave like a higher-level component.
+- [Wiring](/concepts/wiring): wires, HAL nets, ports, labels, anchors, and how signal names are derived during export.
+- [Threading](/concepts/threading): sheet thread outputs, root-thread binding, subsheet thread mapping, and how NoHAL expands `addf`.
+- [Component Store](/concepts/component-store): built-in LinuxCNC catalogs, imported `.comp` sources, and project-local custom components.
 
-## Sheet
+## Mental Model
 
-A sheet is a graph container.
+NoHAL has five layers:
 
-Use sheets when one canvas is no longer enough to keep the design readable. A project always has exactly one root sheet. Other sheets become part of the graph when you place them as subsheets.
-
-## Subsheet
-
-A subsheet is a node on a parent sheet that points to another sheet.
-
-Use it to:
-
-- group a subsystem behind a clearer boundary
-- reduce clutter on the parent canvas
-- route connectivity through defined ports instead of direct long-distance wiring
-
-## Component
-
-A component node represents a HAL component instance. It can expose:
-
-- pins
-- parameters
-- realtime functions
-- per-instance configuration
-- export-stage choices such as main HAL or postgui HAL
-
-## Ports and Labels
-
-Ports define the public interface of a sheet.
-
-- `in` means data enters the sheet
-- `out` means data leaves the sheet
-- `io` means the boundary is bidirectional
-
-Labels are a wiring convenience.
-
-- local labels connect only inside the current sheet
-- global labels connect across the project
-
-Use ports for sheet boundaries. Use labels to simplify wiring, not to hide the design.
-
-## Project HAL Threads
-
-Project HAL threads are the real machine threads that appear in exported HAL.
-
-You manage them in `Project Settings` under `HAL Threads`.
-
-Typical examples include:
-
-- `servo-thread`
-- `base-thread`
-
-## Sheet Thread Outputs
-
-Sheet thread outputs are local scheduling lanes inside a sheet.
-
-They are not automatically real HAL threads. They become real scheduling targets only after they are mapped upward and, on the root sheet, bound to project HAL threads.
-
-This split is important:
-
-- local outputs keep sheet scheduling manageable
-- project HAL threads define the final machine-level export targets
-
-## addf Queue
-
-The `addf Queue` describes execution ordering inside a sheet.
-
-You use it to:
-
-- place component functions in the intended order
-- choose the local output lane they run on
-- define how subsheet scheduling expands during export
-
-## Build
-
-`Build` is the action that generates output from the current project state.
-
-Treat the build result as generated code that still deserves inspection, especially after imports, structural edits, or thread changes.
+1. Components are the executable leaves. They become HAL instances, pins, params, and functions.
+2. Sheets are graph containers. They become structure, boundaries, and scheduling scopes.
+3. Wiring connects endpoints. It becomes HAL nets and `setp` lines.
+4. Threading decides when realtime functions run. It becomes exported `addf`.
+5. The Component Store decides what kinds of components are available to place in the project.

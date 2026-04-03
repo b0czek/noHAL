@@ -21,31 +21,18 @@ export default defineConfig({
         items: [
           { text: "Overview", link: "/" },
           { text: "Installation", link: "/installation" },
-          { text: "Getting Started", link: "/getting-started" },
-          { text: "Quickstart", link: "/quickstart" },
-          { text: "Core Concepts", link: "/concepts" },
         ],
       },
       {
-        text: "Workflows",
+        text: "Concepts",
         items: [
-          { text: "Import Existing HAL", link: "/importing-existing-hal" },
-          { text: "Build a Project", link: "/building-a-project" },
-          { text: "Edit Networks", link: "/editing-networks" },
-          { text: "Export", link: "/export" },
+          { text: "Concepts Overview", link: "/concepts" },
+          { text: "Component", link: "/concepts/component" },
+          { text: "Sheet", link: "/concepts/sheet" },
+          { text: "Wiring", link: "/concepts/wiring" },
+          { text: "Threading", link: "/concepts/threading" },
+          { text: "Component Store", link: "/concepts/component-store" },
         ],
-      },
-      {
-        text: "Advanced",
-        items: [
-          { text: "Sheets", link: "/sheets" },
-          { text: "Threads and addf", link: "/threads-and-addf" },
-          { text: "Component Store", link: "/component-store" },
-        ],
-      },
-      {
-        text: "Help",
-        items: [{ text: "Export", link: "/export" }],
       },
     ],
     search: {

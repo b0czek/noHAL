@@ -1,0 +1,29 @@
+direction: down
+
+root: {
+  label: "Root Sheet"
+  style.fill: "#ffffff"
+  style.stroke: "#1b1b1b"
+  style.shadow: true
+
+  system_sheet: {
+    label: "system\nSystem sheet instance\ncontains motion, halui, iocontrol"
+    style.fill: "#dbeafe"
+    style.stroke: "#1b1b1b"
+  }
+
+  child_sheet: {
+    label: "mesa_io\nOrdinary child-sheet instance\nports + local scheduling"
+    style.fill: "#fde68a"
+    style.stroke: "#1b1b1b"
+  }
+}
+
+note: {
+  label: "A sheet definition behaves like a higher-level component\nwhen it has a clear boundary."
+  style.fill: "#dcfce7"
+  style.stroke: "#1b1b1b"
+}
+
+root.system_sheet -> root.child_sheet: "same parent layer"
+root.child_sheet -> note

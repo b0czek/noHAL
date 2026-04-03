@@ -1,0 +1,56 @@
+direction: down
+
+classes: {
+  card: {
+    style: {
+      stroke: "#1b1b1b"
+      fill: "#fffaf1"
+      shadow: true
+    }
+  }
+}
+
+concepts: {
+  label: "NoHAL Concepts"
+  style: {
+    stroke: "#1b1b1b"
+    fill: "#f7f3ea"
+    shadow: true
+  }
+
+  component: {
+    class: card
+    label: "Component\npins, params, functions,\ninstance config"
+    style.fill: "#dbeafe"
+  }
+
+  sheet: {
+    class: card
+    label: "Sheet\nboundary, ports, naming,\ninstance vs definition"
+    style.fill: "#fde68a"
+  }
+
+  wiring: {
+    class: card
+    label: "Wiring\nwires, labels, anchors,\nnets and names"
+    style.fill: "#fecaca"
+  }
+
+  threading: {
+    class: card
+    label: "Threading\nsheet lanes, HAL threads, addf"
+    style.fill: "#d1fae5"
+  }
+
+  store: {
+    class: card
+    label: "Component Store\nbuilt-in catalogs,\nimports, custom"
+    style.fill: "#e9d5ff"
+  }
+
+  component -> sheet
+  sheet -> wiring
+  sheet -> threading
+  wiring -> store
+  store -> component
+}
