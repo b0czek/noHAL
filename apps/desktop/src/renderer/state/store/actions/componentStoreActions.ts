@@ -9,9 +9,9 @@ interface ImportError {
 }
 
 interface ComponentSourceMutationResult {
-  entries: ReadonlyArray<unknown>;
-  removedComponentIds: ReadonlyArray<string>;
-  errors: ReadonlyArray<ImportError>;
+  entries: readonly unknown[];
+  removedComponentIds: readonly string[];
+  errors: readonly ImportError[];
 }
 
 function reportComponentSourceMutation(

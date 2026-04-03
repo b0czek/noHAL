@@ -18,7 +18,7 @@ interface SettingsDialogShellProps {
   title: string;
   description?: string;
   value: string;
-  tabs: ReadonlyArray<SettingsDialogTab>;
+  tabs: readonly SettingsDialogTab[];
   onChange: (value: string) => void;
   onClose: () => void;
   dialogClass?: string;

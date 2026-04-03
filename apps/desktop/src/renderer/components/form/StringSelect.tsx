@@ -14,7 +14,7 @@ export interface StringSelectOption {
 
 interface StringSelectProps {
   value?: string;
-  options: ReadonlyArray<StringSelectOption>;
+  options: readonly StringSelectOption[];
   placeholder?: string;
   disabled?: boolean;
   class?: string;

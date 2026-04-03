@@ -9,7 +9,7 @@ import type {
 
 export function nextUniqueIdentifier(
   base: string,
-  existing: ReadonlyArray<string>,
+  existing: readonly string[],
   separator = "_",
 ): string {
   const normalized = base.trim() || "item";
@@ -21,7 +21,7 @@ export function nextUniqueIdentifier(
 
 export function nextUniqueMemberKey(
   preferredName: string,
-  existingKeys: ReadonlyArray<string>,
+  existingKeys: readonly string[],
   fallback: string,
 ): string {
   const baseKey = safeKey(preferredName) || fallback;

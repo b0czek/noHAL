@@ -8,10 +8,7 @@ import type {
 } from "../types";
 import { createEmptyMachineConfig } from "./project";
 
-function nextUniqueIniLabel(
-  base: string,
-  existing: ReadonlyArray<string>,
-): string {
+function nextUniqueIniLabel(base: string, existing: readonly string[]): string {
   if (!existing.includes(base)) return base;
   let index = 1;
   while (existing.includes(`${base}_${index}`)) index += 1;

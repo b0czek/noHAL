@@ -301,7 +301,7 @@ function collectSortedRtGroups(
   preparedByComponentName: Map<string, PreparedComponentRuntimeGroup>,
   rules: ComponentRules,
   loadOrderIndex: Map<string, number>,
-): Array<[string, PreparedComponentRuntimeGroup]> {
+): [string, PreparedComponentRuntimeGroup][] {
   const rtGroups = new Map<string, PreparedComponentRuntimeGroup>();
   for (const item of rtInstances) {
     const prepared = preparedByComponentName.get(item.componentName);
@@ -417,7 +417,7 @@ function buildThreadsLoadrtLines(
 }
 
 function appendRtComponentLoadrtLines(args: {
-  sortedRtGroups: Array<[string, PreparedComponentRuntimeGroup]>;
+  sortedRtGroups: [string, PreparedComponentRuntimeGroup][];
   rules: ComponentRules;
   ctx: ExportContext;
   loadrtLines: string[];

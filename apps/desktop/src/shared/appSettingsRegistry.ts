@@ -22,7 +22,7 @@ export interface AppSettingDefinition<K extends AppSettingKey> {
   labelKey: string;
   helpKey: string;
   defaultValue: AppSettings[K];
-  options: ReadonlyArray<AppSettingOption<AppSettingPrimitive>>;
+  options: readonly AppSettingOption<AppSettingPrimitive>[];
   sanitize: (value: unknown) => AppSettings[K];
   serialize: (value: unknown) => string;
   deserialize: (value: string) => AppSettings[K];
