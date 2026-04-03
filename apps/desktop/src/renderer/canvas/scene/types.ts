@@ -4,21 +4,21 @@ import type { NodeLayout } from "../layout";
 import type { DragSelectionTarget } from "../renderables";
 import type { SceneCallbacks, SceneRenderState } from "../types";
 
-export type CullModel = {
+export interface CullModel {
   localRect: Rect;
   rotationDeg: number;
-};
+}
 
 export interface CameraState extends XY {
   scale: number;
 }
 
-export type FocusTarget = {
+export interface FocusTarget {
   kind: "node" | "label" | "comment" | "sheet-port";
   id: string;
-};
+}
 
-export type GroupDragSession = {
+export interface GroupDragSession {
   anchor: DragSelectionTarget;
   nodeStartPositions: Map<string, XY>;
   labelStartPositions: Map<string, XY>;
@@ -28,19 +28,19 @@ export type GroupDragSession = {
   anchorStartPos: XY;
   appliedDx: number;
   appliedDy: number;
-};
+}
 
-export type SelectionSets = {
+export interface SelectionSets {
   selectedNodeIds: Set<string>;
   selectedLabelIds: Set<string>;
   selectedCommentIds: Set<string>;
   selectedPortIds: Set<string>;
   selectedConnectionId: string | null;
-};
+}
 
 export type CullGroupMap = Map<string, Konva.Group>;
 
-export type SceneView = {
+export interface SceneView {
   container: HTMLDivElement;
   stage: Konva.Stage;
   wireLayer: Konva.Layer;
@@ -51,9 +51,9 @@ export type SceneView = {
   wireWorld: Konva.Group;
   mainWorld: Konva.Group;
   marqueeRect: Konva.Rect;
-};
+}
 
-export type SceneInteractionState = {
+export interface SceneInteractionState {
   isPanning: boolean;
   panLastScreenPos: XY | null;
   backgroundTapStartScreenPos: XY | null;
@@ -65,9 +65,9 @@ export type SceneInteractionState = {
   groupDragSession: GroupDragSession | null;
   gridSnapOverridePressed: boolean;
   spacePressed: boolean;
-};
+}
 
-export type SceneGraphState = {
+export interface SceneGraphState {
   nodeLayouts: Map<string, NodeLayout>;
   liveNodePositions: Map<string, XY>;
   liveLabelPositions: Map<string, XY>;
@@ -81,9 +81,9 @@ export type SceneGraphState = {
   labelCullModels: Map<string, CullModel>;
   commentCullModels: Map<string, CullModel>;
   portCullModels: Map<string, CullModel>;
-};
+}
 
-export type SceneState = {
+export interface SceneState {
   lastState: SceneRenderState | null;
   cursorPos: XY | null;
   camera: CameraState;
@@ -93,11 +93,11 @@ export type SceneState = {
   sceneBounds: Bounds;
   interactionCleanup: (() => void) | null;
   interaction: SceneInteractionState;
-};
+}
 
-export type SceneRuntime = {
+export interface SceneRuntime {
   callbacks: SceneCallbacks;
   view: SceneView;
   graph: SceneGraphState;
   state: SceneState;
-};
+}

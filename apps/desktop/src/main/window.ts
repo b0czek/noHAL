@@ -10,11 +10,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const windowDirtyState = new WeakMap<BrowserWindow, boolean>();
 type UnsavedChangesChoice = "save" | "discard" | "cancel";
 
-type PendingSaveBeforeCloseRequest = {
+interface PendingSaveBeforeCloseRequest {
   senderWebContentsId: number;
   resolve: (didSave: boolean) => void;
   timeout: ReturnType<typeof setTimeout>;
-};
+}
 
 const pendingSaveBeforeCloseRequests = new Map<
   number,

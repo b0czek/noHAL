@@ -10,25 +10,29 @@ import type {
 import type { Selection } from "../state/store/selectionTypes";
 
 export type SceneSelection = Selection;
-export type SceneSelectOptions = {
+export interface SceneSelectOptions {
   mode?: "add" | "toggle";
-};
+}
 
-export type SceneComponentPlacement = {
+export interface SceneComponentPlacement {
   kind: "component";
   componentId: string;
-};
-export type SceneSubsheetPlacement = { kind: "subsheet" };
-export type SceneCommentPlacement = { kind: "comment" };
-export type SceneLabelPlacement = {
+}
+export interface SceneSubsheetPlacement {
+  kind: "subsheet";
+}
+export interface SceneCommentPlacement {
+  kind: "comment";
+}
+export interface SceneLabelPlacement {
   kind: "label";
   scope: LabelScope;
-};
-export type SceneSheetPortPlacement = {
+}
+export interface SceneSheetPortPlacement {
   kind: "sheet-port";
   direction: PinDirection;
   type: HalValueType;
-};
+}
 
 export type ScenePlacement =
   | SceneComponentPlacement
@@ -37,30 +41,36 @@ export type ScenePlacement =
   | SceneLabelPlacement
   | SceneSheetPortPlacement;
 
-export type SceneContextMenuNodeTarget = {
+export interface SceneContextMenuNodeTarget {
   kind: "node";
   id: string;
   nodeKind: "component" | "sheet";
-};
-export type SceneLabelContextMenuTarget = { kind: "label"; id: string };
-export type SceneLabelAnchorContextMenuTarget = {
+}
+export interface SceneLabelContextMenuTarget {
+  kind: "label";
+  id: string;
+}
+export interface SceneLabelAnchorContextMenuTarget {
   kind: "label-anchor";
   anchorId: string;
-};
-export type SceneCommentContextMenuTarget = { kind: "comment"; id: string };
-export type SceneSheetPortContextMenuTarget = {
+}
+export interface SceneCommentContextMenuTarget {
+  kind: "comment";
+  id: string;
+}
+export interface SceneSheetPortContextMenuTarget {
   kind: "sheet-port";
   id: string;
-};
-export type SceneWireConnectionContextMenuTarget = {
+}
+export interface SceneWireConnectionContextMenuTarget {
   kind: "wire-connection";
   connectionId: string;
-};
-export type SceneWireWaypointContextMenuTarget = {
+}
+export interface SceneWireWaypointContextMenuTarget {
   kind: "wire-waypoint";
   connectionId: string;
   waypointIndex: number;
-};
+}
 export type SceneWireContextMenuTarget =
   | SceneWireConnectionContextMenuTarget
   | SceneWireWaypointContextMenuTarget;

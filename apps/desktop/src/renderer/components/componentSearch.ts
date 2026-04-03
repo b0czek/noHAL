@@ -1,12 +1,12 @@
 import { getNodeTitle } from "@nohal/core/graph";
 import type { NoHALProject } from "@nohal/core/types";
 
-export type CanvasSearchTarget = {
+export interface CanvasSearchTarget {
   kind: "node" | "label" | "comment" | "sheet-port";
   id: string;
-};
+}
 
-export type CanvasSearchResult = {
+export interface CanvasSearchResult {
   key: string;
   kind: "component" | "subsheet" | "label" | "comment" | "port";
   target: CanvasSearchTarget;
@@ -14,7 +14,7 @@ export type CanvasSearchResult = {
   sheetName: string;
   title: string;
   searchText: string;
-};
+}
 
 const COMMENT_TITLE_MAX_LENGTH = 72;
 const COMMENT_TITLE_PREVIEW_LENGTH = 69;

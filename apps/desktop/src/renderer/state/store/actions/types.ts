@@ -22,10 +22,10 @@ export type SetEditorState = <K extends keyof EditorState>(
   value: EditorState[K],
 ) => void;
 
-export type WithProjectOptions = {
+export interface WithProjectOptions {
   recordHistory?: boolean;
   markDirty?: boolean;
-};
+}
 
 export type EditorSelection = Selection;
 

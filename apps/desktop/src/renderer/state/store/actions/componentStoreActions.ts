@@ -3,13 +3,16 @@ import type { TranslationKey } from "../../../i18n";
 import { getComponentSourceDisplayPath, toErrorMessage } from "../helpers";
 import type { EditorStoreActionContext } from "./types";
 
-type ImportError = { filePath: string; error: string };
+interface ImportError {
+  filePath: string;
+  error: string;
+}
 
-type ComponentSourceMutationResult = {
+interface ComponentSourceMutationResult {
   entries: ReadonlyArray<unknown>;
   removedComponentIds: ReadonlyArray<string>;
   errors: ReadonlyArray<ImportError>;
-};
+}
 
 function reportComponentSourceMutation(
   deps: EditorStoreActionContext,

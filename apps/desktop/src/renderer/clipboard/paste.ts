@@ -28,21 +28,21 @@ const PASTE_OFFSET_PX = 40;
 
 type CloneValue = <T>(value: T) => T;
 
-type PasteMaps = {
+interface PasteMaps {
   nodeIdMap: Map<string, string>;
   labelIdMap: Map<string, string>;
   portIdMap: Map<string, string>;
-};
+}
 
-type PasteTranslation = {
+interface PasteTranslation {
   translatePoint: (point: XY) => XY;
-};
+}
 
-export type SelectionClipboardPasteResult = {
+export interface SelectionClipboardPasteResult {
   project: NoHALProject;
   selection: EditorSelection;
   count: number;
-};
+}
 
 export function pasteSelectionClipboardSnapshot(args: {
   project: NoHALProject;

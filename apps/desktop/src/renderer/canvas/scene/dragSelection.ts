@@ -8,9 +8,9 @@ import {
 } from "./selection";
 import type { GroupDragSession, SceneRuntime } from "./types";
 
-type DragSelectionOps = {
+interface DragSelectionOps {
   redrawWires: () => void;
-};
+}
 
 export function startDragSelection(
   runtime: SceneRuntime,

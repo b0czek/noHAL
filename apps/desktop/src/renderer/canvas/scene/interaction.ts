@@ -16,7 +16,7 @@ const BACKGROUND_TAP_THRESHOLD_PX = 4;
 const KEYBOARD_ZOOM_FACTOR = 1.08;
 const WHEEL_LINE_DELTA_PX = 16;
 
-type SceneInteractionOps = {
+interface SceneInteractionOps {
   syncPlacementPreview: () => void;
   applyCamera: () => void;
   redrawWires: () => void;
@@ -26,7 +26,7 @@ type SceneInteractionOps = {
   cancelMarqueeSelection: () => void;
   finishMarqueeSelection: () => void;
   updateMarqueeRect: () => void;
-};
+}
 
 function resetBackgroundTapState(runtime: SceneRuntime): void {
   runtime.state.interaction.backgroundTapStartScreenPos = null;

@@ -22,12 +22,12 @@ import type { TranslationKey } from "../../../i18n";
 import { toErrorMessage } from "../helpers";
 import type { EditorStoreActionContext } from "./types";
 
-type ProjectTransition = {
+interface ProjectTransition {
   project: NoHALProject;
   projectPath: string | null;
   status: string;
   warnings?: string[];
-};
+}
 
 function openedProjectPathStatus(
   deps: EditorStoreActionContext,

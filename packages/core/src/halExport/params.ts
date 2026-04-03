@@ -13,12 +13,12 @@ export interface ParamLines {
   postguiSetpLines: string[];
 }
 
-type ResolvedValueTarget = {
+interface ResolvedValueTarget {
   instanceName: string;
   instancePath: string;
   targetLines: string[];
   warnings: string[];
-};
+}
 
 function emitResolvedValueLines(
   entries: Record<string, string>,

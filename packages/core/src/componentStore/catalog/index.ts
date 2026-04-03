@@ -9,9 +9,9 @@ export interface LinuxCncVersionCatalogData {
   components: ImportedComponentDefinition[];
 }
 
-type LinuxCncCatalogStoresModule = {
+interface LinuxCncCatalogStoresModule {
   LINUXCNC_VERSION_CATALOG: Record<LinuxCncVersion, LinuxCncVersionCatalogData>;
-};
+}
 
 let catalogModulePromise: Promise<LinuxCncCatalogStoresModule> | null = null;
 

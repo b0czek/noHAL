@@ -1,7 +1,7 @@
 import type { ComponentPinDefinition } from "../../types";
 import { buildLabel, buildNode, buildText } from "./constants";
 
-export type ImportNodeLayoutMetrics = {
+export interface ImportNodeLayoutMetrics {
   bodyWidth: number;
   bodyHeight: number;
   leftLaneWidth: number;
@@ -18,7 +18,7 @@ export type ImportNodeLayoutMetrics = {
   bottomPinCount: number;
   cellWidth: number;
   cellHeight: number;
-};
+}
 
 const estimateMonoTextWidth = (text: string, fontSize: number) =>
   Math.ceil(

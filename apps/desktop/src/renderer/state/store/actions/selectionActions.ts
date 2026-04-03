@@ -18,10 +18,10 @@ import {
 import type { MultiSelection } from "../selectionTypes";
 import type { EditorSelection, EditorStoreActionContext } from "./types";
 
-type SelectionActionLinks = {
+interface SelectionActionLinks {
   removeDirectConnection: (connectionId: string) => void;
   removeLabelAnchor: (anchorId: string) => void;
-};
+}
 
 export function createSelectionActions(
   deps: EditorStoreActionContext,

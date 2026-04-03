@@ -37,11 +37,11 @@ interface UseCanvasContextMenuArgs {
   getScene: () => SheetScene | null;
 }
 
-type SelectionActionItems = {
+interface SelectionActionItems {
   copyItem: ContextMenuActionItem;
   moveItem: ContextMenuActionItem;
   deleteItem: ContextMenuActionItem;
-};
+}
 
 const CONTEXT_MENU_VIEWPORT_PADDING = 8;
 

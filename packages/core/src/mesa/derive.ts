@@ -109,19 +109,19 @@ type ResolvedSmartSerialAssignment = ProjectMesaSmartSerialAssignment & {
   cardKind: ProjectMesaSmartSerialCardKind;
 };
 
-type NormalizedMesaHostAssignments = {
+interface NormalizedMesaHostAssignments {
   connectorAssignments: ResolvedDb25CardAssignment[];
   rawGpioAssignments: ProjectMesaDb25CardAssignment[];
   smartSerialAssignments: ResolvedSmartSerialAssignment[];
   connectorAssignmentsByKey: Map<string, ResolvedDb25CardAssignment>;
-};
+}
 
-type MesaHostDerivationContext = {
+interface MesaHostDerivationContext {
   host: ProjectMesaHostConfig;
   catalogHost: MesaHostCatalogEntry;
   instanceName: string;
   groupX: number;
-};
+}
 
 function sanitizeComponentToken(input: string): string {
   return input.replace(/[^a-zA-Z0-9_]+/g, "_");
