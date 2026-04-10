@@ -4,6 +4,7 @@ import type {
   ComponentFunctionDefinition,
   ComponentParamDefinition,
   ComponentPinDefinition,
+  ImportedComponentDefinition,
   NoHALProject,
 } from "../types";
 
@@ -91,6 +92,40 @@ export function createCustomComponentFunction(
     declaredName,
     halSuffix,
     floatMode: "fp",
+  };
+}
+
+export function createCustomComponentDefinition(options: {
+  componentId: string;
+  existingHalComponentNames: readonly string[];
+  baseHalComponentName?: string;
+}): ComponentDefinition {
+  const halComponentName = nextUniqueIdentifier(
+    options.baseHalComponentName ?? "custom_component",
+    options.existingHalComponentNames,
+  );
+
+  return {
+    id: options.componentId,
+    name: halComponentName,
+    halComponentName,
+    source: "manual",
+    runtime: { kind: "unknown" },
+    pins: [],
+    params: [],
+  };
+}
+
+export function toImportedCustomComponentDefinition(
+  component: ComponentDefinition,
+): ImportedComponentDefinition {
+  return {
+    ...component,
+    source: "manual",
+    parseMeta: {
+      parser: "nohal-manual-v1",
+      warnings: [],
+    },
   };
 }
 

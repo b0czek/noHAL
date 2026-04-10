@@ -3,6 +3,8 @@ import { parseCompComponentDefinition } from "@nohal/core/compParser";
 import { normalizeLinuxCncVersion } from "@nohal/core/linuxcncVersion";
 import { createEmptyProject, reconcileProject } from "@nohal/core/project";
 import type {
+  ComponentDefinition,
+  ImportedComponentDefinition,
   MachineConfigHalFileSelection,
   NoHALProject,
 } from "@nohal/core/types";
@@ -192,6 +194,30 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("nohal:load-component-store", async () =>
     componentStore.readComponentStoreFile(),
+  );
+
+  ipcMain.handle(
+    "nohal:add-manual-component-to-store",
+    async (_evt, halComponentName?: string) =>
+      componentStore.addManualComponentToStore(halComponentName),
+  );
+
+  ipcMain.handle(
+    "nohal:update-manual-component-in-store",
+    async (_evt, componentId: string, component: ImportedComponentDefinition) =>
+      componentStore.updateManualComponentInStore(componentId, component),
+  );
+
+  ipcMain.handle(
+    "nohal:remove-manual-component-from-store",
+    async (_evt, componentId: string) =>
+      componentStore.removeManualComponentFromStore(componentId),
+  );
+
+  ipcMain.handle(
+    "nohal:promote-project-custom-component-to-store",
+    async (_evt, component: ComponentDefinition) =>
+      componentStore.promoteProjectCustomComponentToStore(component),
   );
 
   ipcMain.handle("nohal:import-comp-file", async () => {

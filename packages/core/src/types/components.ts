@@ -125,7 +125,7 @@ export interface ComponentDefinition {
 
 export interface ImportedComponentDefinition extends ComponentDefinition {
   parseMeta: {
-    parser: "nohal-comp-v1";
+    parser: "nohal-comp-v1" | "nohal-manual-v1";
     warnings: string[];
     rawHeader?: string;
   };

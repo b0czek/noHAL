@@ -1,5 +1,6 @@
 import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
 import type {
+  ComponentDefinition,
   ComponentStore,
   ComponentStoreEntry,
   ImportedComponentDefinition,
@@ -100,6 +101,27 @@ const api: NoHALApi = {
     }>,
   loadComponentStore: () =>
     ipcRenderer.invoke("nohal:load-component-store") as Promise<ComponentStore>,
+  addManualComponentToStore: (halComponentName?: string) =>
+    ipcRenderer.invoke(
+      "nohal:add-manual-component-to-store",
+      halComponentName,
+    ) as Promise<ComponentStoreEntry>,
+  updateManualComponentInStore: (componentId, component) =>
+    ipcRenderer.invoke(
+      "nohal:update-manual-component-in-store",
+      componentId,
+      component,
+    ) as Promise<ComponentStoreEntry>,
+  removeManualComponentFromStore: (componentId) =>
+    ipcRenderer.invoke(
+      "nohal:remove-manual-component-from-store",
+      componentId,
+    ) as Promise<{ sourceId: string; componentId: string }>,
+  promoteProjectCustomComponentToStore: (component: ComponentDefinition) =>
+    ipcRenderer.invoke(
+      "nohal:promote-project-custom-component-to-store",
+      component,
+    ) as Promise<ComponentStoreEntry>,
   importCompFileToStore: () =>
     ipcRenderer.invoke(
       "nohal:import-comp-file-to-store",

@@ -3,6 +3,7 @@ import {
   type StoreSourceRefreshResult,
 } from "@nohal/core/componentStore";
 import type {
+  ComponentDefinition,
   ComponentStore,
   ComponentStoreEntry,
   ImportedComponentDefinition,
@@ -20,6 +21,40 @@ function componentStoreFilePath(): string {
 export const componentStore = {
   readComponentStoreFile(): Promise<ComponentStore> {
     return coreComponentStore.readComponentStoreFile(componentStoreFilePath());
+  },
+  addManualComponentToStore(
+    halComponentName?: string,
+  ): Promise<ComponentStoreEntry> {
+    return coreComponentStore.addManualComponentToStore(
+      componentStoreFilePath(),
+      halComponentName,
+    );
+  },
+  updateManualComponentInStore(
+    componentId: string,
+    component: ImportedComponentDefinition,
+  ): Promise<ComponentStoreEntry> {
+    return coreComponentStore.updateManualComponentInStore(
+      componentStoreFilePath(),
+      componentId,
+      component,
+    );
+  },
+  removeManualComponentFromStore(
+    componentId: string,
+  ): Promise<{ sourceId: string; componentId: string }> {
+    return coreComponentStore.removeManualComponentFromStore(
+      componentStoreFilePath(),
+      componentId,
+    );
+  },
+  promoteProjectCustomComponentToStore(
+    component: ComponentDefinition,
+  ): Promise<ComponentStoreEntry> {
+    return coreComponentStore.promoteProjectCustomComponentToStore(
+      componentStoreFilePath(),
+      component,
+    );
   },
   saveParsedCompFileToStore(filePath: string): Promise<ComponentStoreEntry> {
     return coreComponentStore.saveParsedCompFileToStore(

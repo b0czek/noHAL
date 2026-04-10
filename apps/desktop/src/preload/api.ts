@@ -1,6 +1,7 @@
 import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
 import type { ProjectReadResult } from "@nohal/core/project";
 import type {
+  ComponentDefinition,
   ComponentStore,
   ComponentStoreEntry,
   ImportedComponentDefinition,
@@ -49,6 +50,19 @@ export interface NoHALApi {
     errors: Array<{ filePath: string; error: string }>;
   }>;
   loadComponentStore(): Promise<ComponentStore>;
+  addManualComponentToStore(
+    halComponentName?: string,
+  ): Promise<ComponentStoreEntry>;
+  updateManualComponentInStore(
+    componentId: string,
+    component: ImportedComponentDefinition,
+  ): Promise<ComponentStoreEntry>;
+  removeManualComponentFromStore(
+    componentId: string,
+  ): Promise<{ sourceId: string; componentId: string }>;
+  promoteProjectCustomComponentToStore(
+    component: ComponentDefinition,
+  ): Promise<ComponentStoreEntry>;
   importCompFileToStore(): Promise<ComponentStoreEntry | null>;
   addCompDirSourceToStore(): Promise<{
     sourceId: string;

@@ -9,30 +9,24 @@ import type {
 import { customComponentDefinitionEdits } from "./definitionEdit";
 import { reconcileComponentNodesForDefinition } from "./reconcile";
 import {
+  createCustomComponentDefinition,
   findManualComponent,
-  nextUniqueIdentifier,
   projectUsesComponentDefinition,
 } from "./shared";
 
-function add(project: NoHALProject): ComponentDefinition {
-  const existingNames = Object.values(project.library.components)
-    .map((component) => component.halComponentName)
-    .filter((name) => name.trim().length > 0);
-  const componentId = `manual:${createId("component")}`;
-  const halComponentName = nextUniqueIdentifier(
-    "custom_component",
-    existingNames,
+function add(
+  project: NoHALProject,
+  options?: { halComponentName?: string },
+): ComponentDefinition {
+  const existingNames = Object.values(project.library.components).map(
+    (component) => component.halComponentName,
   );
-  const component: ComponentDefinition = {
-    id: componentId,
-    name: halComponentName,
-    halComponentName,
-    source: "manual",
-    runtime: { kind: "unknown" },
-    pins: [],
-    params: [],
-  };
-  project.library.components[componentId] = component;
+  const component = createCustomComponentDefinition({
+    componentId: `manual:${createId("component")}`,
+    existingHalComponentNames: existingNames,
+    baseHalComponentName: options?.halComponentName,
+  });
+  project.library.components[component.id] = component;
   return component;
 }
 

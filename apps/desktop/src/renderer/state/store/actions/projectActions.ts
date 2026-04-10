@@ -1,4 +1,8 @@
-import { customComponentEdits } from "@nohal/core/customComponent";
+import {
+  customComponentEdits,
+  findHalComponentNameConflict,
+  nextHalComponentName,
+} from "@nohal/core/customComponent";
 import {
   addHalThread,
   removeHalThread,
@@ -18,8 +22,13 @@ import type {
   ProjectWireLayerPosition,
   ProjectWireStyle,
 } from "@nohal/core/types";
+import { unwrap } from "solid-js/store";
 import type { TranslationKey } from "../../../i18n";
-import { toErrorMessage } from "../helpers";
+import {
+  applyComponentStoreEntryToProject,
+  repointComponentDefinitionId,
+  toErrorMessage,
+} from "../helpers";
 import type { EditorStoreActionContext } from "./types";
 
 interface ProjectTransition {
@@ -90,6 +99,23 @@ async function runProjectTransition(
 }
 
 export function createProjectActions(deps: EditorStoreActionContext) {
+  const ensureHalComponentNameAvailable = (
+    halComponentName: string,
+    excludeComponentIds?: readonly string[],
+  ): boolean => {
+    const conflict = findHalComponentNameConflict({
+      halComponentName,
+      project: deps.state.project,
+      componentStore: deps.state.componentStore,
+      excludeComponentIds,
+    });
+    if (!conflict) return true;
+    deps.setStatusT("store.status.duplicateHalComponentName", {
+      componentName: halComponentName,
+    });
+    return false;
+  };
+
   return {
     clearExportWarnings(): void {
       deps.setState("exportWarnings", []);
@@ -318,8 +344,14 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     addCustomComponent(): string {
       let createdId = "";
       let componentName = "";
+      const halComponentName = nextHalComponentName({
+        project: deps.state.project,
+        componentStore: deps.state.componentStore,
+      });
       deps.withProject((project) => {
-        const component = customComponentEdits.add(project);
+        const component = customComponentEdits.add(project, {
+          halComponentName,
+        });
         createdId = component.id;
         componentName = component.halComponentName;
       });
@@ -362,6 +394,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       }
       const normalized = halComponentName.trim();
       if (!normalized || normalized === component.halComponentName) return;
+      if (!ensureHalComponentNameAvailable(normalized, [componentId])) return;
       deps.withProject((project) => {
         customComponentEdits.halComponentName.update(
           project,
@@ -826,6 +859,62 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         componentName: finalResult.component.halComponentName,
         functionName: finalResult.functionName,
       });
+    },
+
+    async promoteCustomComponentToStore(
+      componentId: string,
+    ): Promise<string | null> {
+      const component = deps.state.project.library.components[componentId];
+      if (
+        !component ||
+        component.source === "comp" ||
+        deps.state.componentStore.components[componentId]
+      ) {
+        deps.setStatusT("store.status.selectedComponentNotCustom");
+        return null;
+      }
+
+      if (
+        !ensureHalComponentNameAvailable(component.halComponentName, [
+          componentId,
+        ])
+      ) {
+        return null;
+      }
+
+      try {
+        const entry = await window.nohal.promoteProjectCustomComponentToStore(
+          structuredClone(unwrap(component)),
+        );
+        let repointed = 0;
+
+        deps.clearHistory();
+        deps.withComponentStore((componentStore) => {
+          componentStore.components[entry.componentId] = entry;
+        });
+        deps.withProject(
+          (project) => {
+            repointed = repointComponentDefinitionId(
+              project,
+              componentId,
+              entry.componentId,
+            );
+            applyComponentStoreEntryToProject(project, entry);
+            delete project.library.components[componentId];
+          },
+          { recordHistory: false, markDirty: true },
+        );
+        deps.setStatusT("store.status.promotedCustomComponentToStore", {
+          componentName: entry.parsed.halComponentName,
+          count: repointed,
+        });
+        return entry.componentId;
+      } catch (error) {
+        deps.setStatusT("store.status.storeComponentMutationFailed", {
+          error: toErrorMessage(error),
+        });
+        return null;
+      }
     },
 
     addHalThread(): void {

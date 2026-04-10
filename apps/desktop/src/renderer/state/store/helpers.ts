@@ -12,6 +12,7 @@ import {
   createEmptyComponentStore,
   isStoreEntryCompatibleWithLinuxCncVersion,
   listStoreEntriesForLinuxCncVersion,
+  STORE_MANUAL_COMPONENT_ID_PREFIX,
 } from "@nohal/core/componentStore";
 import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
 import { endpointKey } from "@nohal/core/graph";
@@ -24,6 +25,7 @@ import {
 } from "@nohal/core/sheet";
 import type {
   ComponentStore,
+  ComponentStoreEntry,
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
@@ -70,6 +72,18 @@ export function applyComponentStoreToProject(
   }
 }
 
+export function applyComponentStoreEntryToProject(
+  project: NoHALProject,
+  entry: ComponentStoreEntry,
+): void {
+  project.library.components[entry.componentId] = entry.parsed;
+  reconcileComponentNodesForDefinition(
+    project,
+    entry.componentId,
+    entry.parsed,
+  );
+}
+
 function projectUsesComponentDefinition(
   project: NoHALProject,
   componentId: string,
@@ -88,8 +102,12 @@ export function pruneMissingStoredComponentsFromProject(
   for (const [componentId, component] of Object.entries(
     project.library.components,
   )) {
-    if (component.source !== "comp") continue;
     const entry = componentStore.components[componentId];
+    const isStoreBackedComponent =
+      !!entry ||
+      component.source === "comp" ||
+      componentId.startsWith(STORE_MANUAL_COMPONENT_ID_PREFIX);
+    if (!isStoreBackedComponent) continue;
     if (
       entry &&
       isStoreEntryCompatibleWithLinuxCncVersion(
@@ -105,15 +123,34 @@ export function pruneMissingStoredComponentsFromProject(
   }
 }
 
-export function getComponentSourceDisplayPath(
+export function getComponentSourceDisplayLabel(
   componentStore: ComponentStore,
   sourceId: string,
 ): string {
   const source = componentStore.sources[sourceId];
   if (!source) return sourceId;
+  if (source.kind === "manual") return "Custom Components";
   if (source.kind === "comp-dir") return source.dirPath;
   if (source.kind === "comp-file") return source.filePath;
   return `LinuxCNC ${source.linuxcncVersion} built-ins (${source.refName})`;
+}
+
+export function repointComponentDefinitionId(
+  project: NoHALProject,
+  fromComponentId: string,
+  toComponentId: string,
+): number {
+  let repointedCount = 0;
+  for (const sheet of Object.values(project.sheets)) {
+    for (const node of sheet.nodes) {
+      if (node.kind !== "component" || node.componentId !== fromComponentId) {
+        continue;
+      }
+      node.componentId = toComponentId;
+      repointedCount += 1;
+    }
+  }
+  return repointedCount;
 }
 
 export function nextName(base: string, used: Set<string>): string {

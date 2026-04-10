@@ -171,7 +171,7 @@ export const en = {
   "projectSettings.tabMotmod": "motmod",
   "projectSettings.tabMesa": "Mesa",
   "projectSettings.tabThreads": "HAL Threads",
-  "projectSettings.tabCustomComponents": "Custom Components",
+  "projectSettings.tabCustomComponents": "Project Custom Components",
   "projectSettings.tabShutdown": "Shutdown",
   "projectSettings.tabIniEditor": "INI Editor",
   "projectSettings.generalTitle": "General",
@@ -244,9 +244,9 @@ export const en = {
     "Pending: +{add} add, -{remove} remove, {ensure} ensure components, {update} rename/update nodes",
   "projectSettings.mesa.syncNow": "Sync now",
   "projectSettings.mesa.noCard": "(none)",
-  "customComponents.title": "Custom Components",
+  "customComponents.title": "Project Custom Components",
   "customComponents.help":
-    "Components that are not backed by a `.comp` file. You can define the command used to load them.",
+    "Project-scoped components that are not backed by a `.comp` file. You can define the command used to load them.",
   "customComponents.addComponent": "Add Component",
   "customComponents.catalogTitle": "Custom Components",
   "customComponents.editorTitle": "Component Editor",
@@ -255,6 +255,9 @@ export const en = {
   "customComponents.empty":
     "No custom components yet. Import a HAL config or add a component that is not in the component library.",
   "customComponents.removeComponent": "Remove Component",
+  "customComponents.promoteToStore": "Promote to Store",
+  "customComponents.confirmPromoteToStore":
+    "Promote {name} to the Component Store?\n\nThis moves the component out of the current project, creates a store custom component, repoints existing placed instances to the store version, and removes the project-local version.",
   "customComponents.cannotRemoveInUse":
     "Component is used by {count} placed instance(s). Remove instances first.",
   "customComponents.componentName": "HAL Component Name",
@@ -444,7 +447,11 @@ export const en = {
   "componentStore.title": "Component Store",
   "componentStore.summary": "{components} components • {sources} sources",
   "componentStore.sources": "Component Sources",
+  "componentStore.addSource": "Add Source",
+  "componentStore.addCustomSource": "Custom Components",
   "componentStore.addDirSource": "Add Dir Source",
+  "componentStore.addComponent": "Add Component",
+  "componentStore.viewStore": "View Store",
   "componentStore.importCompFile": "Import .comp",
   "componentStore.sourceComponentsCount": "{count} components",
   "componentStore.lastScan": "last scan {time}",
@@ -457,9 +464,15 @@ export const en = {
   "componentStore.filterPlaceholder": "Filter components...",
   "componentStore.componentStats": "{pins} pins • {params} params",
   "componentStore.componentWarnings": "{count} warnings",
+  "componentStore.customSource": "Global Custom Components",
+  "componentStore.customSourceBadge": "global",
+  "componentStore.customSourceDescription":
+    "Global custom component definitions shared across projects",
   "componentStore.dirSource": "dir source",
   "componentStore.fileImport": "file import",
   "componentStore.builtinSource": "built-in library",
+  "componentStore.editComponent": "Edit",
+  "componentStore.noCustomComponents": "No global custom components yet.",
   "componentStore.noStoredComponents": "No components yet.",
   "componentStore.noMatchingComponents": "No matching components.",
 
@@ -557,6 +570,8 @@ export const en = {
   "store.status.updatedIniValue": "Updated INI value",
   "store.status.selectedComponentNotCustom":
     "Selected component is not a custom component",
+  "store.status.selectedComponentNotStoredCustom":
+    "Selected component is not a custom component from the component store",
   "store.status.addedCustomComponent": "Added custom component {componentName}",
   "store.status.removedCustomComponent":
     "Removed custom component {componentName}",
@@ -586,6 +601,8 @@ export const en = {
     "Removed function {functionName} from custom component {componentName}",
   "store.status.updatedCustomComponentFunction":
     "Updated function {functionName} on custom component {componentName}",
+  "store.status.duplicateHalComponentName":
+    "HAL component name already exists: {componentName}",
   "store.status.addedSheetThreadOutput": "Added sheet thread output",
   "store.status.updatedSheetThreadOutputName":
     "Updated sheet thread output name",
@@ -630,6 +647,7 @@ export const en = {
     "No imported machine configuration is loaded",
   "store.status.importedCompToStore":
     "Imported .comp to store: {componentName}",
+  "store.status.storeCustomSourceReady": "Custom Components source is ready",
   "store.status.addedDirSource":
     "Added dir source {path}: {components} components, {removed} removed ({errors} errors)",
   "store.status.refreshedSource":
@@ -638,6 +656,10 @@ export const en = {
   "store.status.deletedSource":
     "Deleted source {path} ({removed} components removed)",
   "store.status.deleteSourceFailed": "Delete source failed: {error}",
+  "store.status.promotedCustomComponentToStore":
+    "Promoted custom component {componentName} to the component store ({count} node(s) repointed)",
+  "store.status.storeComponentMutationFailed":
+    "Component store update failed: {error}",
   "store.status.selectedComponentNotStoredComp":
     "Selected component is not from the component library",
   "store.status.refreshedComponent": "Refreshed component: {componentName}",
