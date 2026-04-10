@@ -8,7 +8,7 @@ import type {
   HalValueType,
 } from "@nohal/core/types";
 import { HiOutlinePlus, HiOutlineTrash } from "solid-icons/hi";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, type JSXElement, Show } from "solid-js";
 import StringSelect from "../../components/form/StringSelect";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -18,6 +18,7 @@ import FloatModeToggle from "./FloatModeToggle";
 
 export interface CustomComponentEditorProps {
   component: ComponentDefinition;
+  headerActions?: JSXElement;
   onHalComponentNameChange: (value: string) => void;
   onRuntimeKindChange: (value: "rt" | "userspace" | "unknown") => void;
   onLoadCommandChange: (value: string) => void;
@@ -96,19 +97,24 @@ export default function CustomComponentEditor(
               {props.component.halComponentName}
             </div>
           </div>
-          <Show when={props.onRemoveComponent}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={props.removeDisabled}
-              aria-label={t("customComponents.removeComponent")}
-              title={props.removeTitle ?? t("customComponents.removeComponent")}
-              onClick={() => props.onRemoveComponent?.()}
-            >
-              <HiOutlineTrash size={16} aria-hidden="true" />
-            </Button>
-          </Show>
+          <div class="flex items-center gap-2">
+            {props.headerActions}
+            <Show when={props.onRemoveComponent}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={props.removeDisabled}
+                aria-label={t("customComponents.removeComponent")}
+                title={
+                  props.removeTitle ?? t("customComponents.removeComponent")
+                }
+                onClick={() => props.onRemoveComponent?.()}
+              >
+                <HiOutlineTrash size={16} aria-hidden="true" />
+              </Button>
+            </Show>
+          </div>
         </div>
 
         <div class="grid gap-2">
