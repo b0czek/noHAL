@@ -8,7 +8,7 @@ import type {
   HalValueType,
 } from "@nohal/core/types";
 import { HiOutlinePlus, HiOutlineTrash } from "solid-icons/hi";
-import { createMemo, For, type JSXElement, Show } from "solid-js";
+import { createMemo, Index, type JSXElement, Show } from "solid-js";
 import StringSelect from "../../components/form/StringSelect";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -217,7 +217,7 @@ export default function CustomComponentEditor(
             <span />
           </div>
           <div class="grid gap-3">
-            <For each={props.component.pins}>
+            <Index each={props.component.pins}>
               {(pin) => (
                 <div class="grid gap-3 rounded-xl bg-black/20 p-3 lg:grid-cols-[minmax(0,1fr)_140px_140px_auto] lg:items-center">
                   <div class="grid gap-2">
@@ -227,9 +227,12 @@ export default function CustomComponentEditor(
                     <Input
                       type="text"
                       class="mono"
-                      value={pin.name}
+                      value={pin().name}
                       onChange={(evt) =>
-                        props.onPinNameChange(pin.key, evt.currentTarget.value)
+                        props.onPinNameChange(
+                          pin().key,
+                          evt.currentTarget.value,
+                        )
                       }
                     />
                   </div>
@@ -238,11 +241,11 @@ export default function CustomComponentEditor(
                       {t("common.direction")}
                     </span>
                     <StringSelect
-                      value={pin.direction}
+                      value={pin().direction}
                       options={pinDirectionOptions}
                       onChange={(value) =>
                         props.onPinDirectionChange(
-                          pin.key,
+                          pin().key,
                           value as "in" | "out" | "io",
                         )
                       }
@@ -253,10 +256,10 @@ export default function CustomComponentEditor(
                       {t("common.type")}
                     </span>
                     <StringSelect
-                      value={pin.type}
+                      value={pin().type}
                       options={halValueTypeOptions}
                       onChange={(value) =>
-                        props.onPinTypeChange(pin.key, value as HalValueType)
+                        props.onPinTypeChange(pin().key, value as HalValueType)
                       }
                     />
                   </div>
@@ -267,14 +270,14 @@ export default function CustomComponentEditor(
                       size="icon"
                       title={t("common.remove")}
                       aria-label={t("common.remove")}
-                      onClick={() => props.onRemovePin(pin.key)}
+                      onClick={() => props.onRemovePin(pin().key)}
                     >
                       <HiOutlineTrash size={16} aria-hidden="true" />
                     </Button>
                   </div>
                 </div>
               )}
-            </For>
+            </Index>
           </div>
         </Show>
       </div>
@@ -311,7 +314,7 @@ export default function CustomComponentEditor(
             <span />
           </div>
           <div class="grid gap-3">
-            <For each={props.component.params}>
+            <Index each={props.component.params}>
               {(param) => (
                 <div class="grid gap-3 rounded-xl bg-black/20 p-3 xl:grid-cols-[minmax(0,1fr)_140px_180px_minmax(0,1fr)_auto] xl:items-end">
                   <div class="grid gap-2">
@@ -321,10 +324,10 @@ export default function CustomComponentEditor(
                     <Input
                       type="text"
                       class="mono"
-                      value={param.name}
+                      value={param().name}
                       onChange={(evt) =>
                         props.onParamNameChange(
-                          param.key,
+                          param().key,
                           evt.currentTarget.value,
                         )
                       }
@@ -335,11 +338,11 @@ export default function CustomComponentEditor(
                       {t("common.type")}
                     </span>
                     <StringSelect
-                      value={param.type}
+                      value={param().type}
                       options={halValueTypeOptions}
                       onChange={(value) =>
                         props.onParamTypeChange(
-                          param.key,
+                          param().key,
                           value as HalValueType,
                         )
                       }
@@ -350,11 +353,11 @@ export default function CustomComponentEditor(
                       {t("customComponents.paramDirection")}
                     </span>
                     <StringSelect
-                      value={param.direction}
+                      value={param().direction}
                       options={paramDirectionOptions}
                       onChange={(value) =>
                         props.onParamDirectionChange(
-                          param.key,
+                          param().key,
                           value as "r" | "rw",
                         )
                       }
@@ -367,11 +370,11 @@ export default function CustomComponentEditor(
                     <Input
                       type="text"
                       class="mono"
-                      value={param.defaultValue ?? ""}
+                      value={param().defaultValue ?? ""}
                       placeholder={t("customComponents.optionalValue")}
                       onChange={(evt) =>
                         props.onParamDefaultValueChange(
-                          param.key,
+                          param().key,
                           evt.currentTarget.value,
                         )
                       }
@@ -384,14 +387,14 @@ export default function CustomComponentEditor(
                       size="icon"
                       title={t("common.remove")}
                       aria-label={t("common.remove")}
-                      onClick={() => props.onRemoveParam(param.key)}
+                      onClick={() => props.onRemoveParam(param().key)}
                     >
                       <HiOutlineTrash size={16} aria-hidden="true" />
                     </Button>
                   </div>
                 </div>
               )}
-            </For>
+            </Index>
           </div>
         </Show>
       </div>
@@ -427,7 +430,7 @@ export default function CustomComponentEditor(
               <span />
             </div>
             <div class="grid gap-3">
-              <For each={props.component.functions ?? []}>
+              <Index each={props.component.functions ?? []}>
                 {(fn) => (
                   <div class="grid gap-3 rounded-xl bg-black/20 p-3 lg:grid-cols-[minmax(0,1fr)_140px_auto] lg:items-end">
                     <div class="grid gap-2">
@@ -437,10 +440,10 @@ export default function CustomComponentEditor(
                       <Input
                         type="text"
                         class="mono"
-                        value={fn.declaredName}
+                        value={fn().declaredName}
                         onChange={(evt) =>
                           props.onFunctionNameChange(
-                            fn.key,
+                            fn().key,
                             evt.currentTarget.value,
                           )
                         }
@@ -451,9 +454,9 @@ export default function CustomComponentEditor(
                         {t("threadsDialog.floatMode")}
                       </span>
                       <FloatModeToggle
-                        value={fn.floatMode}
+                        value={fn().floatMode}
                         onChange={(value) =>
-                          props.onFunctionFloatModeChange(fn.key, value)
+                          props.onFunctionFloatModeChange(fn().key, value)
                         }
                       />
                     </div>
@@ -464,14 +467,14 @@ export default function CustomComponentEditor(
                         size="icon"
                         title={t("common.remove")}
                         aria-label={t("common.remove")}
-                        onClick={() => props.onRemoveFunction(fn.key)}
+                        onClick={() => props.onRemoveFunction(fn().key)}
                       >
                         <HiOutlineTrash size={16} aria-hidden="true" />
                       </Button>
                     </div>
                   </div>
                 )}
-              </For>
+              </Index>
             </div>
           </Show>
         </div>
