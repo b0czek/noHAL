@@ -162,6 +162,31 @@ export default function CustomComponentsTab() {
           {(component) => (
             <CustomComponentEditor
               component={component()}
+              headerActions={
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    void (async () => {
+                      if (
+                        !window.confirm(
+                          t("customComponents.confirmPromoteToStore", {
+                            name: component().halComponentName,
+                          }),
+                        )
+                      ) {
+                        return;
+                      }
+                      await actions.promoteCustomComponentToStore(
+                        component().id,
+                      );
+                    })();
+                  }}
+                >
+                  {t("customComponents.promoteToStore")}
+                </Button>
+              }
               onRemoveComponent={() =>
                 actions.removeCustomComponent(component().id)
               }
