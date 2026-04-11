@@ -7,6 +7,7 @@ export * from "./componentSystem";
 export * from "./componentVisibility";
 export * from "./compParser";
 export * from "./customComponent";
+export * from "./customComponentStore";
 export * from "./graph";
 export * from "./halImport";
 export * from "./halNames";

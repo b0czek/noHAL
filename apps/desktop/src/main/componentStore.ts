@@ -2,59 +2,139 @@ import {
   createComponentStoreApi,
   type StoreSourceRefreshResult,
 } from "@nohal/core/componentStore";
+import {
+  CUSTOM_COMPONENT_STORE_SOURCE_ID,
+  type CustomComponentStore,
+  type CustomComponentStoreEntry,
+  createCustomComponentStoreApi,
+} from "@nohal/core/customComponentStore";
 import type {
   ComponentDefinition,
   ComponentStore,
   ComponentStoreEntry,
+  ComponentStoreManualSource,
   ImportedComponentDefinition,
 } from "@nohal/core/types";
 import { app, dialog } from "electron";
 import { nodeIo } from "./coreNodeIo";
 
 const COMPONENT_STORE_FILENAME = "component-store.json";
+const CUSTOM_COMPONENT_STORE_FILENAME = "custom-component-store.json";
 const coreComponentStore = createComponentStoreApi(nodeIo);
+const coreCustomComponentStore = createCustomComponentStoreApi(nodeIo);
 
 function componentStoreFilePath(): string {
   return nodeIo.path.join(app.getPath("userData"), COMPONENT_STORE_FILENAME);
 }
 
+function customComponentStoreFilePath(): string {
+  return nodeIo.path.join(
+    app.getPath("userData"),
+    CUSTOM_COMPONENT_STORE_FILENAME,
+  );
+}
+
+function toManualSource(
+  customStore: CustomComponentStore,
+): ComponentStoreManualSource {
+  return {
+    id: CUSTOM_COMPONENT_STORE_SOURCE_ID,
+    kind: "manual",
+    createdAt: customStore.createdAt,
+    updatedAt: customStore.updatedAt,
+  };
+}
+
+function toManualEntry(entry: CustomComponentStoreEntry): ComponentStoreEntry {
+  return {
+    componentId: entry.componentId,
+    sourceRef: {
+      kind: "manual",
+      sourceId: CUSTOM_COMPONENT_STORE_SOURCE_ID,
+    },
+    parsed: entry.parsed,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+  };
+}
+
+function mergeStores(
+  componentStore: ComponentStore,
+  customStore: CustomComponentStore,
+): ComponentStore {
+  const manualSource = toManualSource(customStore);
+  return {
+    ...componentStore,
+    sources: {
+      ...componentStore.sources,
+      [manualSource.id]: manualSource,
+    },
+    components: {
+      ...componentStore.components,
+      ...Object.fromEntries(
+        Object.values(customStore.components).map((entry) => [
+          entry.componentId,
+          toManualEntry(entry),
+        ]),
+      ),
+    },
+  };
+}
+
 export const componentStore = {
-  readComponentStoreFile(): Promise<ComponentStore> {
-    return coreComponentStore.readComponentStoreFile(componentStoreFilePath());
+  async readComponentStoreFile(): Promise<ComponentStore> {
+    const [store, customStore] = await Promise.all([
+      coreComponentStore.readComponentStoreFile(componentStoreFilePath()),
+      coreCustomComponentStore.readCustomComponentStoreFile(
+        customComponentStoreFilePath(),
+      ),
+    ]);
+    return mergeStores(store, customStore);
   },
   addManualComponentToStore(
     halComponentName?: string,
   ): Promise<ComponentStoreEntry> {
-    return coreComponentStore.addManualComponentToStore(
-      componentStoreFilePath(),
-      halComponentName,
-    );
+    return coreCustomComponentStore
+      .addCustomComponentToStore(
+        customComponentStoreFilePath(),
+        halComponentName,
+      )
+      .then(toManualEntry);
   },
   updateManualComponentInStore(
     componentId: string,
     component: ImportedComponentDefinition,
   ): Promise<ComponentStoreEntry> {
-    return coreComponentStore.updateManualComponentInStore(
-      componentStoreFilePath(),
-      componentId,
-      component,
-    );
+    return coreCustomComponentStore
+      .updateCustomComponentInStore(
+        customComponentStoreFilePath(),
+        componentId,
+        component,
+      )
+      .then(toManualEntry);
   },
   removeManualComponentFromStore(
     componentId: string,
   ): Promise<{ sourceId: string; componentId: string }> {
-    return coreComponentStore.removeManualComponentFromStore(
-      componentStoreFilePath(),
-      componentId,
-    );
+    return coreCustomComponentStore
+      .removeCustomComponentFromStore(
+        customComponentStoreFilePath(),
+        componentId,
+      )
+      .then((result) => ({
+        sourceId: CUSTOM_COMPONENT_STORE_SOURCE_ID,
+        componentId: result.componentId,
+      }));
   },
   promoteProjectCustomComponentToStore(
     component: ComponentDefinition,
   ): Promise<ComponentStoreEntry> {
-    return coreComponentStore.promoteProjectCustomComponentToStore(
-      componentStoreFilePath(),
-      component,
-    );
+    return coreCustomComponentStore
+      .promoteProjectCustomComponentToStore(
+        customComponentStoreFilePath(),
+        component,
+      )
+      .then(toManualEntry);
   },
   saveParsedCompFileToStore(filePath: string): Promise<ComponentStoreEntry> {
     return coreComponentStore.saveParsedCompFileToStore(

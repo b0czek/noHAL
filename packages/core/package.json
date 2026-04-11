@@ -12,6 +12,7 @@
     "./componentInstance": "./src/componentInstance.ts",
     "./componentNaming": "./src/componentNaming.ts",
     "./componentStore": "./src/componentStore/index.ts",
+    "./customComponentStore": "./src/customComponentStore/index.ts",
     "./componentSystem": "./src/componentSystem.ts",
     "./componentVisibility": "./src/componentVisibility.ts",
     "./customComponent": "./src/customComponent/index.ts",

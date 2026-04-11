@@ -1,4 +1,5 @@
 import { createEmptyComponentStore } from "@nohal/core/componentStore";
+import { CUSTOM_COMPONENT_STORE_SOURCE_ID } from "@nohal/core/customComponentStore";
 import { createEmptyProject } from "@nohal/core/project";
 import type {
   ComponentStoreEntry,
@@ -10,7 +11,7 @@ import type { NoHALApi } from "../../../../preload/api";
 import { createEditorStore } from "../../store";
 
 const MANUAL_SOURCE: ComponentStoreManualSource = {
-  id: "manual:custom-components",
+  id: CUSTOM_COMPONENT_STORE_SOURCE_ID,
   kind: "manual",
   createdAt: "2026-04-10T00:00:00.000Z",
   updatedAt: "2026-04-10T00:00:00.000Z",
@@ -41,7 +42,7 @@ function installNoHALMock(overrides: Partial<NoHALApi>) {
 describe("component store actions", () => {
   it("reconciles project nodes immediately after a manual store edit", async () => {
     const project = createEmptyProject("Store Edit Sync");
-    const componentId = "store-manual:test";
+    const componentId = "store-custom:test";
     const initialComponent: ImportedComponentDefinition = {
       id: componentId,
       name: "store_component",
@@ -102,7 +103,7 @@ describe("component store actions", () => {
   it("promotes a project custom component and repoints existing nodes", async () => {
     const project = createEmptyProject("Store Promote");
     const oldComponentId = "manual:project-custom";
-    const newComponentId = "store-manual:promoted";
+    const newComponentId = "store-custom:promoted";
     const projectComponent = {
       id: oldComponentId,
       name: "project_custom",

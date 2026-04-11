@@ -3,6 +3,7 @@ import {
   findHalComponentNameConflict,
   nextHalComponentName,
 } from "@nohal/core/customComponent";
+import { CUSTOM_COMPONENT_STORE_SOURCE_ID } from "@nohal/core/customComponentStore";
 import {
   addHalThread,
   removeHalThread,
@@ -890,6 +891,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
 
         deps.clearHistory();
         deps.withComponentStore((componentStore) => {
+          componentStore.sources[CUSTOM_COMPONENT_STORE_SOURCE_ID] ??= {
+            id: CUSTOM_COMPONENT_STORE_SOURCE_ID,
+            kind: "manual",
+            createdAt: entry.createdAt,
+            updatedAt: entry.updatedAt,
+          };
           componentStore.components[entry.componentId] = entry;
         });
         deps.withProject(

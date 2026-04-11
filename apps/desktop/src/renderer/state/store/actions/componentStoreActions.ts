@@ -84,6 +84,16 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
   const syncStoreEntryLocally = (entry: ComponentStoreEntry): void => {
     deps.clearHistory();
     deps.withComponentStore((componentStore) => {
+      if (entry.sourceRef.kind === "manual") {
+        componentStore.sources[entry.sourceRef.sourceId] = {
+          id: entry.sourceRef.sourceId,
+          kind: "manual",
+          createdAt:
+            componentStore.sources[entry.sourceRef.sourceId]?.createdAt ??
+            entry.createdAt,
+          updatedAt: entry.updatedAt,
+        };
+      }
       componentStore.components[entry.componentId] = entry;
     });
     deps.withProject(
