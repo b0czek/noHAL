@@ -468,6 +468,15 @@ export const en = {
   "componentStore.customSourceBadge": "global",
   "componentStore.customSourceDescription":
     "Global custom component definitions shared across projects",
+  "componentStore.customStoreLocationLabel": "Custom Store File",
+  "componentStore.customStoreLocationHelp":
+    "Choose where global custom components are stored.",
+  "componentStore.customStoreCurrentPath": "Current file",
+  "componentStore.customStoreUsingDefault":
+    "Using the default app data location.",
+  "componentStore.customStoreDefaultPath": "Default location: {path}",
+  "componentStore.chooseCustomStorePath": "Choose File",
+  "componentStore.resetCustomStorePath": "Use Default",
   "componentStore.dirSource": "dir source",
   "componentStore.fileImport": "file import",
   "componentStore.builtinSource": "built-in library",

@@ -63,6 +63,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle("nohal:get-app-settings", async () => appSettings.read());
 
+  ipcMain.handle("nohal:get-custom-component-store-path-info", async () =>
+    componentStore.getCustomComponentStorePathInfo(),
+  );
+
   ipcMain.handle("nohal:update-app-settings", async (evt, patch) => {
     const { previous, current } = await appSettings.update(patch);
     const win = BrowserWindow.fromWebContents(evt.sender);
@@ -232,6 +236,19 @@ export function registerIpcHandlers(): void {
     const parsed = parseCompComponentDefinition(content, filePath);
     return parsed;
   });
+
+  ipcMain.handle(
+    "nohal:pick-custom-component-store-file",
+    async (_evt, defaultPath?: string | null) => {
+      const res = await dialog.showSaveDialog({
+        title: "Choose Custom Component Store File",
+        defaultPath: defaultPath ?? undefined,
+        filters: [{ name: "JSON File", extensions: ["json"] }],
+      });
+      if (res.canceled || !res.filePath) return null;
+      return res.filePath;
+    },
+  );
 
   ipcMain.handle("nohal:import-comp-file-to-store", async () => {
     const res = await dialog.showOpenDialog({

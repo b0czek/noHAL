@@ -1,3 +1,4 @@
+import { writeFileAtomic } from "../io/writeFileAtomic";
 import {
   NOHAL_CUSTOM_COMPONENT_STORE_FORMAT,
   NOHAL_CUSTOM_COMPONENT_STORE_VERSION,
@@ -61,7 +62,8 @@ export const writeCustomComponentStoreFileToDisk =
     await io.fs.makeDir(io.path.dirname(normalizedStoreFilePath), {
       recursive: true,
     });
-    await io.fs.writeTextFile(
+    await writeFileAtomic(
+      io,
       normalizedStoreFilePath,
       `${JSON.stringify(store, null, 2)}\n`,
     );

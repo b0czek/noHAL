@@ -168,7 +168,13 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
 
   return {
     async loadComponentStore(): Promise<void> {
-      await deps.reloadComponentStoreState();
+      try {
+        await deps.reloadComponentStoreState();
+      } catch (error) {
+        deps.setStatusT("store.status.refreshFailed", {
+          error: toErrorMessage(error),
+        });
+      }
     },
 
     async importCompFile(): Promise<void> {
