@@ -61,6 +61,10 @@ function makeConnectedProject(signalName?: string) {
   return project;
 }
 
+function expectContainsNetLine(text: string | undefined, line: string) {
+  expect(text ?? "").toContain(line);
+}
+
 describe("exportProjectToHal connection signal names", () => {
   it("uses a direct connection signalName for exported net naming", () => {
     const project = makeConnectedProject(" machine_enable ");
@@ -285,9 +289,13 @@ describe("exportProjectToHal connection signal names", () => {
   it("emits nets for postgui-marked component instances into postgui output", () => {
     const project = makeConnectedProject("ui_sig");
     const sheet = project.sheets[project.rootSheetId];
+    const source = sheet.nodes.find((node) => node.id === "node_a");
     const sink = sheet.nodes.find((node) => node.id === "node_b");
+    if (!source || source.kind !== "component")
+      throw new Error("expected component node");
     if (!sink || sink.kind !== "component")
       throw new Error("expected component node");
+    source.exportStage = "postgui";
     sink.exportStage = "postgui";
 
     const { text, postguiText } = exportProjectToHal(project);
@@ -297,6 +305,38 @@ describe("exportProjectToHal connection signal names", () => {
     expect(text).not.toContain("net ui_sig src.out sink.in0");
     expect(postguiText).toBeDefined();
     expect(postguiText).toContain("net ui_sig src.out sink.in0");
+  });
+
+  it("splits mixed-stage nets across main and postgui outputs with the same net name", () => {
+    const project = makeConnectedProject("ui_sig");
+    const sheet = project.sheets[project.rootSheetId];
+    const sink = sheet.nodes.find((node) => node.id === "node_b");
+    if (!sink || sink.kind !== "component")
+      throw new Error("expected component node");
+    sink.exportStage = "postgui";
+
+    const { text, postguiText } = exportProjectToHal(project);
+
+    expectContainsNetLine(text, "net ui_sig src.out");
+    expect(text).not.toContain("net ui_sig src.out sink.in0");
+    expectContainsNetLine(postguiText, "net ui_sig sink.in0");
+    expect(postguiText).not.toContain("net ui_sig src.out sink.in0");
+  });
+
+  it("keeps the same net name when a postgui output drives a main-stage consumer", () => {
+    const project = makeConnectedProject("ui_sig");
+    const sheet = project.sheets[project.rootSheetId];
+    const source = sheet.nodes.find((node) => node.id === "node_a");
+    if (!source || source.kind !== "component")
+      throw new Error("expected component node");
+    source.exportStage = "postgui";
+
+    const { text, postguiText } = exportProjectToHal(project);
+
+    expectContainsNetLine(text, "net ui_sig sink.in0");
+    expect(text).not.toContain("net ui_sig src.out sink.in0");
+    expectContainsNetLine(postguiText, "net ui_sig src.out");
+    expect(postguiText).not.toContain("net ui_sig src.out sink.in0");
   });
 
   it("emits a separate shutdown HAL output when configured", () => {
