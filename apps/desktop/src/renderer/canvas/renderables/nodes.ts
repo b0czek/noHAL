@@ -28,6 +28,29 @@ function minimumHorizontalBandHeight(): number {
   return node.bottom.height - pinConst.band.inset + surface.pin.radius;
 }
 
+function measureKonvaText(
+  text: string,
+  fontSize: number,
+): {
+  width: number;
+  height: number;
+} {
+  const measure = new Konva.Text({
+    text,
+    fontFamily: typography.family.mono,
+    fontSize,
+  });
+
+  try {
+    return {
+      width: Math.ceil(measure.width()),
+      height: Math.ceil(measure.height()),
+    };
+  } finally {
+    measure.destroy();
+  }
+}
+
 export function renderNodes(
   ctx: RenderSceneContext,
   args: RenderNodesArgs,
@@ -71,13 +94,10 @@ export function renderNodes(
         pinKey: pin.key,
       };
       const pending = pendingKey === endpointKey(endpoint);
-      const measure = new Konva.Text({
-        text: pin.name,
-        fontFamily: typography.family.mono,
-        fontSize: pinConst.label.fontSize,
-      });
-      const textW = Math.ceil(measure.width());
-      const textH = Math.ceil(measure.height());
+      const { width: textW, height: textH } = measureKonvaText(
+        pin.name,
+        pinConst.label.fontSize,
+      );
       const dotY = p.y;
 
       if (layout.topLabelMode === "vertical") {
@@ -196,13 +216,10 @@ export function renderNodes(
         });
       }
 
-      const measure = new Konva.Text({
-        text: pin.name,
-        fontFamily: typography.family.mono,
-        fontSize: node.title.fontSize,
-      });
       const bubbleH = node.side.rowHeight - pinConst.bubble.heightReduction;
-      const bubbleW = Math.ceil(measure.width()) + pinConst.bubble.widthPadding;
+      const bubbleW =
+        measureKonvaText(pin.name, node.title.fontSize).width +
+        pinConst.bubble.widthPadding;
       const bubbleX =
         side === "left"
           ? p.x + pinConst.bubble.offsetX
@@ -280,13 +297,10 @@ export function renderNodes(
         pinKey: pin.key,
       };
       const pending = pendingKey === endpointKey(endpoint);
-      const measure = new Konva.Text({
-        text: pin.name,
-        fontFamily: typography.family.mono,
-        fontSize: pinConst.label.fontSize,
-      });
-      const textW = Math.ceil(measure.width());
-      const textH = Math.ceil(measure.height());
+      const { width: textW, height: textH } = measureKonvaText(
+        pin.name,
+        pinConst.label.fontSize,
+      );
       const dotY = p.y;
 
       if (layout.bottomLabelMode === "vertical") {
