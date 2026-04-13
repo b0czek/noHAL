@@ -59,4 +59,4 @@ const AlertDescription: Component<ComponentProps<"div">> = (props) => {
   );
 };
 
-export { Alert, AlertTitle, AlertDescription };
+export { Alert, AlertDescription, AlertTitle };

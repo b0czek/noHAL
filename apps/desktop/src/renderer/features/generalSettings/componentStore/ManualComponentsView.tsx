@@ -3,6 +3,7 @@ import { HiOutlineArrowLeft } from "solid-icons/hi";
 import { For, Show } from "solid-js";
 import { Button } from "../../../components/ui/button";
 import { useI18n } from "../../../i18n";
+import CustomStoreLocationSection from "./CustomStoreLocationSection";
 
 interface ManualComponentsViewProps {
   entries: readonly ComponentStoreEntry[];
@@ -15,7 +16,7 @@ export default function ManualComponentsView(props: ManualComponentsViewProps) {
   const { t } = useI18n();
 
   return (
-    <div class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-2xl bg-black/20 p-4">
+    <div class="grid h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-4 overflow-hidden rounded-2xl bg-black/20 p-4">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0">
           <div class="flex items-start gap-3">
@@ -47,6 +48,8 @@ export default function ManualComponentsView(props: ManualComponentsViewProps) {
           {t("componentStore.addComponent")}
         </Button>
       </div>
+
+      <CustomStoreLocationSection />
 
       <section class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3 rounded-2xl p-4">
         <div class="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">

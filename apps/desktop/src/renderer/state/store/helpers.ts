@@ -12,9 +12,9 @@ import {
   createEmptyComponentStore,
   isStoreEntryCompatibleWithLinuxCncVersion,
   listStoreEntriesForLinuxCncVersion,
-  STORE_MANUAL_COMPONENT_ID_PREFIX,
 } from "@nohal/core/componentStore";
 import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
+import { STORE_CUSTOM_COMPONENT_ID_PREFIX } from "@nohal/core/customComponentStore";
 import { endpointKey } from "@nohal/core/graph";
 import {
   defaultCommentPositionForIndex,
@@ -34,14 +34,14 @@ import type {
 } from "@nohal/core/types";
 import { unwrap } from "solid-js/store";
 
-export { createEmptyComponentStore };
 export {
-  ensureInstanceName,
-  nextComponentInstanceName,
   componentPrefersCanonicalInstanceNames,
   componentUsesLockedCanonicalInstanceNames,
+  createEmptyComponentStore,
+  ensureInstanceName,
+  nextComponentInstanceName,
+  normalizeRotationDegrees,
 };
-export { normalizeRotationDegrees };
 
 export function cloneProject(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
@@ -106,7 +106,7 @@ export function pruneMissingStoredComponentsFromProject(
     const isStoreBackedComponent =
       !!entry ||
       component.source === "comp" ||
-      componentId.startsWith(STORE_MANUAL_COMPONENT_ID_PREFIX);
+      componentId.startsWith(STORE_CUSTOM_COMPONENT_ID_PREFIX);
     if (!isStoreBackedComponent) continue;
     if (
       entry &&

@@ -11,6 +11,7 @@ import type {
   Selection,
 } from "../../state/store/selectionTypes";
 import { wire } from "../constants/wires";
+import { setCullBounds } from "../cullBounds";
 import { isPrimaryScenePointerButton } from "../renderables/shared";
 import { clampRuntimePos } from "../scene/bounds";
 import type { SceneRuntime } from "../scene/types";
@@ -20,7 +21,6 @@ import {
   boundsFromPoints,
   getLabelAnchorCullPadding,
   getWaypointCullPadding,
-  setCullBounds,
 } from "./culling";
 import {
   getCursorPos,

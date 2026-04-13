@@ -6,17 +6,16 @@ import {
   MESA_SMART_SERIAL_CARDS,
 } from "./sserial";
 
-export {
-  MESA_DB25_CARDS,
-  MESA_DB25_CARD_KINDS,
-  MESA_HOSTS,
-  MESA_HOST_KINDS,
-  MESA_SMART_SERIAL_CARDS,
-  MESA_SMART_SERIAL_CARD_KINDS,
-};
-
 export * from "./compat";
 export type * from "./types";
+export {
+  MESA_DB25_CARD_KINDS,
+  MESA_DB25_CARDS,
+  MESA_HOST_KINDS,
+  MESA_HOSTS,
+  MESA_SMART_SERIAL_CARD_KINDS,
+  MESA_SMART_SERIAL_CARDS,
+};
 
 const MESA_HOSTS_BY_KIND = indexBy(MESA_HOSTS, (entry) => entry.kind);
 

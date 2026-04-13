@@ -8,7 +8,6 @@ import {
   applyLinuxCncBuiltinSources,
   toPersistedComponentStore,
 } from "./sourceHandlers/linuxcncBuiltin";
-import { ensureManualComponentSource } from "./sourceHandlers/manual";
 
 function assertComponentStoreShape(
   input: unknown,
@@ -48,7 +47,6 @@ export const readComponentStoreFileFromDisk =
       const parsed = JSON.parse(content) as unknown;
       assertComponentStoreShape(parsed);
       await applyLinuxCncBuiltinSources(parsed);
-      ensureManualComponentSource(parsed, new Date().toISOString());
       return parsed;
     } catch (error) {
       if (isErrnoCode(error, "ENOENT")) {

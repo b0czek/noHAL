@@ -23,6 +23,11 @@ export interface NoHALApi {
   onRequestSaveBeforeClose(listener: () => Promise<boolean>): () => void;
   getAppSettings(): Promise<AppSettings>;
   updateAppSettings(patch: AppSettingsPatch): Promise<AppSettings>;
+  getCustomComponentStorePathInfo(): Promise<{
+    path: string;
+    defaultPath: string;
+    isDefault: boolean;
+  }>;
   newProject(
     linuxcncVersion?: LinuxCncVersion,
   ): Promise<{ project: NoHALProject } | null>;
@@ -44,6 +49,9 @@ export interface NoHALApi {
     halFiles: MachineConfigHalFileSelection[],
   ): Promise<MachineConfigImportDraft>;
   importCompFile(): Promise<ImportedComponentDefinition | null>;
+  pickCustomComponentStoreFile(
+    defaultPath?: string | null,
+  ): Promise<string | null>;
   pickDirectory(defaultPath?: string | null): Promise<string | null>;
   scanCompDir(dirPath: string): Promise<{
     imported: ImportedComponentDefinition[];

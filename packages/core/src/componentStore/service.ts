@@ -1,10 +1,6 @@
 import { parseCompComponentDefinition } from "../compParser";
-import { findHalComponentNameConflict } from "../customComponent";
 import type {
-  ComponentDefinition,
-  ComponentStore,
   ComponentStoreEntry,
-  ComponentStoreManualSource,
   CoreIo,
   ImportedComponentDefinition,
 } from "../types";
@@ -18,45 +14,7 @@ import {
   upsertComponentDirSource,
 } from "./sourceHandlers/compDir";
 import { upsertComponentFileSource } from "./sourceHandlers/compFile";
-import {
-  createStoredManualComponentDefinition,
-  createStoreManualComponentId,
-  ensureManualComponentSource,
-  normalizeStoredManualComponentDefinition,
-} from "./sourceHandlers/manual";
 import { upsertStoredComponentEntry } from "./sourceHandlers/shared";
-
-function assertStoreHalComponentNameAvailable(
-  halComponentName: string,
-  componentStore: ComponentStore,
-  excludeComponentIds?: readonly string[],
-): void {
-  const conflict = findHalComponentNameConflict({
-    halComponentName,
-    componentStore,
-    excludeComponentIds,
-  });
-  if (!conflict) return;
-  throw new Error(`HAL component name already exists: ${halComponentName}`);
-}
-
-function updateManualSourceTimestamp(
-  store: ComponentStore,
-  sourceId: string,
-  nowIso: string,
-): ComponentStoreManualSource {
-  const source = store.sources[sourceId];
-  if (!source || source.kind !== "manual") {
-    throw new Error(`Manual component source not found: ${sourceId}`);
-  }
-  const updated: ComponentStoreManualSource = {
-    ...source,
-    updatedAt: nowIso,
-    lastError: undefined,
-  };
-  store.sources[sourceId] = updated;
-  return updated;
-}
 
 async function rescanComponentDirSourceInStore(
   io: CoreIo,
@@ -141,127 +99,6 @@ async function rescanComponentDirSourceInStore(
 export const readComponentStoreFile =
   (io: CoreIo) => async (storeFilePath: string) => {
     return readComponentStoreFileFromDisk(io)(storeFilePath);
-  };
-
-export const addManualComponentToStore =
-  (io: CoreIo) =>
-  async (
-    storeFilePath: string,
-    halComponentName?: string,
-  ): Promise<ComponentStoreEntry> => {
-    const readStore = readComponentStoreFileFromDisk(io);
-    const writeStore = writeComponentStoreFileToDisk(io);
-    const normalizedStoreFilePath = io.path.resolve(storeFilePath);
-    const store = await readStore(normalizedStoreFilePath);
-    const nowIso = new Date().toISOString();
-    const source = ensureManualComponentSource(store, nowIso);
-    const parsed = createStoredManualComponentDefinition({
-      componentId: createStoreManualComponentId(),
-      existingHalComponentNames: Object.values(store.components).map(
-        (entry) => entry.parsed.halComponentName,
-      ),
-      halComponentName,
-    });
-    assertStoreHalComponentNameAvailable(parsed.halComponentName, store, [
-      parsed.id,
-    ]);
-    const entry = upsertStoredComponentEntry(
-      store,
-      parsed,
-      { kind: "manual", sourceId: source.id },
-      nowIso,
-      parsed.id,
-    );
-    updateManualSourceTimestamp(store, source.id, nowIso);
-    await writeStore(normalizedStoreFilePath, store);
-    return entry;
-  };
-
-export const updateManualComponentInStore =
-  (io: CoreIo) =>
-  async (
-    storeFilePath: string,
-    componentId: string,
-    component: ComponentDefinition | ImportedComponentDefinition,
-  ): Promise<ComponentStoreEntry> => {
-    const readStore = readComponentStoreFileFromDisk(io);
-    const writeStore = writeComponentStoreFileToDisk(io);
-    const normalizedStoreFilePath = io.path.resolve(storeFilePath);
-    const store = await readStore(normalizedStoreFilePath);
-    const existing = store.components[componentId];
-    if (!existing || existing.sourceRef.kind !== "manual") {
-      throw new Error(`Manual component store entry not found: ${componentId}`);
-    }
-
-    const nowIso = new Date().toISOString();
-    const normalized = normalizeStoredManualComponentDefinition(
-      component,
-      componentId,
-    );
-    assertStoreHalComponentNameAvailable(normalized.halComponentName, store, [
-      componentId,
-    ]);
-    const entry = upsertStoredComponentEntry(
-      store,
-      normalized,
-      existing.sourceRef,
-      nowIso,
-      componentId,
-    );
-    updateManualSourceTimestamp(store, existing.sourceRef.sourceId, nowIso);
-    await writeStore(normalizedStoreFilePath, store);
-    return entry;
-  };
-
-export const removeManualComponentFromStore =
-  (io: CoreIo) =>
-  async (
-    storeFilePath: string,
-    componentId: string,
-  ): Promise<{ sourceId: string; componentId: string }> => {
-    const readStore = readComponentStoreFileFromDisk(io);
-    const writeStore = writeComponentStoreFileToDisk(io);
-    const normalizedStoreFilePath = io.path.resolve(storeFilePath);
-    const store = await readStore(normalizedStoreFilePath);
-    const existing = store.components[componentId];
-    if (!existing || existing.sourceRef.kind !== "manual") {
-      throw new Error(`Manual component store entry not found: ${componentId}`);
-    }
-
-    const nowIso = new Date().toISOString();
-    delete store.components[componentId];
-    updateManualSourceTimestamp(store, existing.sourceRef.sourceId, nowIso);
-    await writeStore(normalizedStoreFilePath, store);
-    return { sourceId: existing.sourceRef.sourceId, componentId };
-  };
-
-export const promoteProjectCustomComponentToStore =
-  (io: CoreIo) =>
-  async (
-    storeFilePath: string,
-    component: ComponentDefinition,
-  ): Promise<ComponentStoreEntry> => {
-    const readStore = readComponentStoreFileFromDisk(io);
-    const writeStore = writeComponentStoreFileToDisk(io);
-    const normalizedStoreFilePath = io.path.resolve(storeFilePath);
-    const store = await readStore(normalizedStoreFilePath);
-    const nowIso = new Date().toISOString();
-    const source = ensureManualComponentSource(store, nowIso);
-    const promoted = normalizeStoredManualComponentDefinition(
-      component,
-      createStoreManualComponentId(),
-    );
-    assertStoreHalComponentNameAvailable(promoted.halComponentName, store);
-    const entry = upsertStoredComponentEntry(
-      store,
-      promoted,
-      { kind: "manual", sourceId: source.id },
-      nowIso,
-      promoted.id,
-    );
-    updateManualSourceTimestamp(store, source.id, nowIso);
-    await writeStore(normalizedStoreFilePath, store);
-    return entry;
   };
 
 export const saveParsedCompFileToStore =
@@ -389,11 +226,6 @@ export const refreshComponentSourceInStore =
     const source = store.sources[sourceId];
     if (!source) throw new Error(`Component source not found: ${sourceId}`);
 
-    if (source.kind === "manual") {
-      throw new Error(
-        "Manual custom components update directly and cannot be refreshed.",
-      );
-    }
     if (source.kind === "comp-dir") {
       return rescanComponentDirSourceInStore(
         io,
@@ -405,6 +237,9 @@ export const refreshComponentSourceInStore =
       throw new Error(
         "Embedded LinuxCNC version stores are read-only. Regenerate them using pnpm generate:linuxcnc-stores.",
       );
+    }
+    if (source.kind !== "comp-file") {
+      throw new Error(`Unsupported component source for refresh: ${sourceId}`);
     }
 
     const nowIso = new Date().toISOString();
@@ -474,11 +309,6 @@ export const deleteComponentSourceFromStore =
         "Embedded LinuxCNC version stores cannot be deleted from the component store.",
       );
     }
-    if (source.kind === "manual") {
-      throw new Error(
-        "The Custom Components source is a required singleton and cannot be deleted.",
-      );
-    }
 
     delete store.sources[sourceId];
     const removedComponentIds: string[] = [];
@@ -526,11 +356,6 @@ export const scanCompDirectory =
 export function createComponentStoreService(io: CoreIo): ComponentStoreApi {
   return {
     readComponentStoreFile: readComponentStoreFile(io),
-    addManualComponentToStore: addManualComponentToStore(io),
-    updateManualComponentInStore: updateManualComponentInStore(io),
-    removeManualComponentFromStore: removeManualComponentFromStore(io),
-    promoteProjectCustomComponentToStore:
-      promoteProjectCustomComponentToStore(io),
     saveParsedCompFileToStore: saveParsedCompFileToStore(io),
     refreshStoredCompEntry: refreshStoredCompEntry(io),
     addComponentDirSourceToStore: addComponentDirSourceToStore(io),

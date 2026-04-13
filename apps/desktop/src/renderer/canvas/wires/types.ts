@@ -1,6 +1,5 @@
 import type {
   NoHALProject,
-  Rect,
   SheetDefinition,
   SheetEndpointRef,
 } from "@nohal/core/types";
@@ -12,8 +11,6 @@ export interface WireAttrs {
   listening?: boolean;
   hitStrokeWidth?: number | "auto";
 }
-
-export type CullBounds = Rect;
 
 export type EndpointSide = "left" | "right" | "top" | "bottom";
 
