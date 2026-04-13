@@ -1,8 +1,9 @@
 import type { ProjectWireStyle, SheetEndpointRef, XY } from "@nohal/core/types";
 import Konva from "konva";
 import { wire } from "../constants/wires";
+import { setCullBounds } from "../cullBounds";
 import type { SceneRuntime } from "../scene/types";
-import { boundsFromPoints, getPathCullPadding, setCullBounds } from "./culling";
+import { boundsFromPoints, getPathCullPadding } from "./culling";
 import { getEndpointNormal } from "./endpoints";
 import type { SheetLookup, WireAttrs } from "./types";
 

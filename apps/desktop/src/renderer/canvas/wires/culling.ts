@@ -1,6 +1,5 @@
 import type { XY } from "@nohal/core/types";
-import type Konva from "konva";
-import type { CullBounds } from "./types";
+import type { CullBounds } from "../cullBounds";
 
 const STROKE_RADIUS_MULTIPLIER = 0.5;
 const wireCullExtraPadding = {
@@ -71,8 +70,4 @@ export function boundsFromPoints(points: XY[], pad = 0): CullBounds {
     width: maxX - minX + pad * 2,
     height: maxY - minY + pad * 2,
   };
-}
-
-export function setCullBounds(node: Konva.Node, bounds: CullBounds): void {
-  node.setAttr("cullBounds", bounds);
 }
