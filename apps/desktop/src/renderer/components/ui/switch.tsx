@@ -83,8 +83,8 @@ const SwitchLabel = <T extends ValidComponent = "label">(
 export {
   Switch,
   SwitchControl,
-  SwitchThumb,
-  SwitchLabel,
   SwitchDescription,
   SwitchErrorMessage,
+  SwitchLabel,
+  SwitchThumb,
 };

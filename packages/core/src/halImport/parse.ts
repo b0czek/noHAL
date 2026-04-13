@@ -556,7 +556,7 @@ function processSetpLine(args: {
   }
   const value = args.tokens.slice(2).join(" ").trim();
   const split = splitHalPath(rawPath, args.knownInstances);
-  if (!split || !split.fieldName) {
+  if (!split?.fieldName) {
     args.warnings.push(
       `Line ${args.line.line}: could not parse setp path '${rawPath}'`,
     );
@@ -604,7 +604,7 @@ function collectNetEndpoints(args: {
     }
     if (!looksLikeHalPinPath(token)) continue;
     const split = splitHalPath(token, args.knownInstances);
-    if (!split || !split.fieldName) {
+    if (!split?.fieldName) {
       args.warnings.push(
         `Line ${args.line.line}: could not parse net pin '${token}'`,
       );

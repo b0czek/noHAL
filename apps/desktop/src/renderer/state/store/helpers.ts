@@ -34,14 +34,14 @@ import type {
 } from "@nohal/core/types";
 import { unwrap } from "solid-js/store";
 
-export { createEmptyComponentStore };
 export {
-  ensureInstanceName,
-  nextComponentInstanceName,
   componentPrefersCanonicalInstanceNames,
   componentUsesLockedCanonicalInstanceNames,
+  createEmptyComponentStore,
+  ensureInstanceName,
+  nextComponentInstanceName,
+  normalizeRotationDegrees,
 };
-export { normalizeRotationDegrees };
 
 export function cloneProject(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));

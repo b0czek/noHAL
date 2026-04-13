@@ -287,8 +287,7 @@ export function createKonvaSheetScene(
     const clamped = clampPos(pos);
     const state = runtime.state.lastState;
     if (
-      !state ||
-      !state.gridResolution ||
+      !state?.gridResolution ||
       runtime.state.interaction.gridSnapOverridePressed
     ) {
       return clamped;
