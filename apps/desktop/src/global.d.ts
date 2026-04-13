@@ -7,6 +7,8 @@ declare module "*.svg" {
   export default src;
 }
 
+declare module "*.css" {}
+
 declare global {
   interface Window {
     nohal: NoHALApi;
