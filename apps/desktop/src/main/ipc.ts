@@ -240,13 +240,14 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     "nohal:pick-custom-component-store-file",
     async (_evt, defaultPath?: string | null) => {
-      const res = await dialog.showSaveDialog({
+      const res = await dialog.showOpenDialog({
         title: "Choose Custom Component Store File",
         defaultPath: defaultPath ?? undefined,
+        properties: ["openFile"],
         filters: [{ name: "JSON File", extensions: ["json"] }],
       });
-      if (res.canceled || !res.filePath) return null;
-      return res.filePath;
+      if (res.canceled || res.filePaths.length === 0) return null;
+      return res.filePaths[0];
     },
   );
 
