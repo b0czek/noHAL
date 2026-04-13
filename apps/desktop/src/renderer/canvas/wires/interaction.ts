@@ -13,8 +13,7 @@ export function deleteSelectedWaypoint(runtime: SceneRuntime): boolean {
     (c) => c.id === selectedConnectionId,
   );
   if (
-    !conn ||
-    !conn.waypoints ||
+    !conn?.waypoints ||
     selectedWaypointIndex < 0 ||
     selectedWaypointIndex >= conn.waypoints.length
   ) {

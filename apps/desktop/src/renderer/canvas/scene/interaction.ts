@@ -60,8 +60,7 @@ function maybeSnapWorldPos(runtime: SceneRuntime, pos: XY): XY {
   const clamped = clampRuntimePos(runtime, pos);
   const state = runtime.state.lastState;
   if (
-    !state ||
-    !state.gridResolution ||
+    !state?.gridResolution ||
     runtime.state.interaction.gridSnapOverridePressed
   ) {
     return clamped;
