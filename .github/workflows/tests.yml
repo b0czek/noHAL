@@ -32,11 +32,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - name: Debug repo state
-          run: |
-            git rev-parse HEAD
-            pnpm --version
-            sha256sum pnpm-lock.yaml
-            sed -n '1,8p' pnpm-lock.yaml
+        run: |
+          git rev-parse HEAD
+          pnpm --version
+          sha256sum pnpm-lock.yaml
+          sed -n '1,8p' pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
