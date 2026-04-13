@@ -12,9 +12,9 @@ import {
   createEmptyComponentStore,
   isStoreEntryCompatibleWithLinuxCncVersion,
   listStoreEntriesForLinuxCncVersion,
-  STORE_MANUAL_COMPONENT_ID_PREFIX,
 } from "@nohal/core/componentStore";
 import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
+import { STORE_CUSTOM_COMPONENT_ID_PREFIX } from "@nohal/core/customComponentStore";
 import { endpointKey } from "@nohal/core/graph";
 import {
   defaultCommentPositionForIndex,
@@ -106,7 +106,7 @@ export function pruneMissingStoredComponentsFromProject(
     const isStoreBackedComponent =
       !!entry ||
       component.source === "comp" ||
-      componentId.startsWith(STORE_MANUAL_COMPONENT_ID_PREFIX);
+      componentId.startsWith(STORE_CUSTOM_COMPONENT_ID_PREFIX);
     if (!isStoreBackedComponent) continue;
     if (
       entry &&

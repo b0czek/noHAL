@@ -2,12 +2,13 @@ export type AppLocale = "en";
 
 export interface AppSettings {
   canvasGridResolution: number;
+  customComponentStoreFilePath: string | null;
   interfaceScale: number;
   locale: AppLocale;
 }
 
 export type AppSettingKey = keyof AppSettings;
-export type AppSettingCategory = "interface";
+export type AppSettingCategory = "component-store" | "interface";
 export type AppSettingPrimitive = string | number | boolean;
 
 export interface AppSettingOption<T extends AppSettingPrimitive> {
@@ -18,11 +19,11 @@ export interface AppSettingOption<T extends AppSettingPrimitive> {
 export interface AppSettingDefinition<K extends AppSettingKey> {
   key: K;
   category: AppSettingCategory;
-  control: "select";
+  control: "path" | "select";
   labelKey: string;
   helpKey: string;
   defaultValue: AppSettings[K];
-  options: readonly AppSettingOption<AppSettingPrimitive>[];
+  options?: readonly AppSettingOption<AppSettingPrimitive>[];
   sanitize: (value: unknown) => AppSettings[K];
   serialize: (value: unknown) => string;
   deserialize: (value: string) => AppSettings[K];
@@ -83,6 +84,24 @@ export const APP_SETTINGS_REGISTRY = {
     deserialize: (value) => {
       const parsed = Number(value);
       return Number.isFinite(parsed) ? parsed : canvasGrid.defaultValue;
+    },
+  },
+  customComponentStoreFilePath: {
+    key: "customComponentStoreFilePath",
+    category: "component-store",
+    control: "path",
+    labelKey: "componentStore.customStoreLocationLabel",
+    helpKey: "componentStore.customStoreLocationHelp",
+    defaultValue: null,
+    sanitize: (value) => {
+      if (typeof value !== "string") return null;
+      const normalized = value.trim();
+      return normalized.length > 0 ? normalized : null;
+    },
+    serialize: (value) => (typeof value === "string" ? value : ""),
+    deserialize: (value) => {
+      const normalized = value.trim();
+      return normalized.length > 0 ? normalized : null;
     },
   },
   interfaceScale: {

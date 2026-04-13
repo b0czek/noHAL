@@ -1,6 +1,7 @@
 import type { Bounds, Rect, XY } from "@nohal/core/types";
 import type Konva from "konva";
 import { scene } from "../constants/scene";
+import { getCullBounds } from "../cullBounds";
 import type { NodeLayout } from "../layout";
 import {
   estimateCommentSize,
@@ -91,7 +92,7 @@ export function updateWireCullVisibility(
   view: Rect,
 ): void {
   for (const child of wireWorld.getChildren()) {
-    const bounds = child.getAttr("cullBounds") as Rect | undefined;
+    const bounds = getCullBounds(child);
     if (!bounds) {
       child.visible(true);
       continue;

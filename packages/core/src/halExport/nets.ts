@@ -89,11 +89,23 @@ export function collectNetLines(ctx: ExportContext): NetLines {
       );
       continue;
     }
-    const netLine = formatNetLine(netName, unique(pinPaths));
-    if (sortedLeafs.some((r) => r.exportStage === "postgui")) {
-      postguiNetLines.push(netLine);
-    } else {
-      mainNetLines.push(netLine);
+    const mainPinPaths = unique(
+      sortedLeafs
+        .filter((record) => record.exportStage !== "postgui")
+        .map((record) => record.halPinPath)
+        .filter((path): path is string => Boolean(path)),
+    );
+    const postguiPinPaths = unique(
+      sortedLeafs
+        .filter((record) => record.exportStage === "postgui")
+        .map((record) => record.halPinPath)
+        .filter((path): path is string => Boolean(path)),
+    );
+    if (mainPinPaths.length > 0) {
+      mainNetLines.push(formatNetLine(netName, mainPinPaths));
+    }
+    if (postguiPinPaths.length > 0) {
+      postguiNetLines.push(formatNetLine(netName, postguiPinPaths));
     }
   }
 

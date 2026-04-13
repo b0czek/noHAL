@@ -31,6 +31,14 @@ const api: NoHALApi = {
       "nohal:update-app-settings",
       patch,
     ) as Promise<AppSettings>,
+  getCustomComponentStorePathInfo: () =>
+    ipcRenderer.invoke(
+      "nohal:get-custom-component-store-path-info",
+    ) as Promise<{
+      path: string;
+      defaultPath: string;
+      isDefault: boolean;
+    }>,
   onRequestSaveBeforeClose: (listener) => {
     const handler = async (_event: unknown, requestId: number) => {
       let didSave = false;
@@ -90,6 +98,11 @@ const api: NoHALApi = {
     ipcRenderer.invoke(
       "nohal:import-comp-file",
     ) as Promise<ImportedComponentDefinition | null>,
+  pickCustomComponentStoreFile: (defaultPath) =>
+    ipcRenderer.invoke(
+      "nohal:pick-custom-component-store-file",
+      defaultPath,
+    ) as Promise<string | null>,
   pickDirectory: (defaultPath) =>
     ipcRenderer.invoke("nohal:pick-directory", defaultPath) as Promise<
       string | null

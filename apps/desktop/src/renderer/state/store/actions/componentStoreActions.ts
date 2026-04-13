@@ -84,6 +84,16 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
   const syncStoreEntryLocally = (entry: ComponentStoreEntry): void => {
     deps.clearHistory();
     deps.withComponentStore((componentStore) => {
+      if (entry.sourceRef.kind === "manual") {
+        componentStore.sources[entry.sourceRef.sourceId] = {
+          id: entry.sourceRef.sourceId,
+          kind: "manual",
+          createdAt:
+            componentStore.sources[entry.sourceRef.sourceId]?.createdAt ??
+            entry.createdAt,
+          updatedAt: entry.updatedAt,
+        };
+      }
       componentStore.components[entry.componentId] = entry;
     });
     deps.withProject(
@@ -158,7 +168,13 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
 
   return {
     async loadComponentStore(): Promise<void> {
-      await deps.reloadComponentStoreState();
+      try {
+        await deps.reloadComponentStoreState();
+      } catch (error) {
+        deps.setStatusT("store.status.refreshFailed", {
+          error: toErrorMessage(error),
+        });
+      }
     },
 
     async importCompFile(): Promise<void> {
