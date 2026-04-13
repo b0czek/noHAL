@@ -81,6 +81,45 @@ describe("node actions", () => {
     );
   });
 
+  it("stores per-instance pin order overrides and clears them at default order", () => {
+    const { project } = createProjectFixture();
+    const store = createEditorStore(project, (key) => key);
+
+    store.actions.updateNodePinOrder("node_component", [
+      "unused",
+      "in0",
+      "out",
+    ]);
+
+    let rootSheet = store.state.project.sheets[store.state.project.rootSheetId];
+    let node = rootSheet.nodes.find((entry) => entry.id === "node_component");
+
+    expect(node).toEqual(
+      expect.objectContaining({
+        kind: "component",
+        pinOrder: ["unused", "in0", "out"],
+      }),
+    );
+
+    store.actions.updateNodePinOrder("node_component", [
+      "in0",
+      "out",
+      "unused",
+    ]);
+
+    rootSheet = store.state.project.sheets[store.state.project.rootSheetId];
+    node = rootSheet.nodes.find((entry) => entry.id === "node_component");
+
+    expect(node).toEqual(
+      expect.objectContaining({
+        kind: "component",
+      }),
+    );
+    expect(
+      node?.kind === "component" ? node.pinOrder : undefined,
+    ).toBeUndefined();
+  });
+
   it("moves connection waypoints when a dragged selection owns both endpoints", () => {
     const { project } = createProjectFixture();
     const store = createEditorStore(project, (key) => key);

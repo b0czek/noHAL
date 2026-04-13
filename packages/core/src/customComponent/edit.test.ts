@@ -30,6 +30,7 @@ describe("custom component edits", () => {
       pinInitialValues: {
         pin: "1",
       },
+      pinOrder: ["pin"],
     };
     root.nodes.push(node);
 
@@ -48,6 +49,7 @@ describe("custom component edits", () => {
     expect(updatedNode?.kind).toBe("component");
     if (updatedNode?.kind === "component") {
       expect(updatedNode.pinInitialValues).toBeUndefined();
+      expect(updatedNode.pinOrder).toBeUndefined();
     }
 
     const added = customComponentEdits.pin.add(project, componentId);

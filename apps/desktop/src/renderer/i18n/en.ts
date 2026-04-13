@@ -130,6 +130,9 @@ export const en = {
   "componentDialog.noParameters": "No parameters.",
   "componentDialog.instanceConfig": "Instance Configuration",
   "componentDialog.noInstanceConfig": "No per-instance configuration fields.",
+  "componentDialog.dragToReorder": "Drag to reorder",
+  "componentDialog.pinSettingsDescription":
+    "Adjust per-instance pin order, visibility, and initial values.",
   "componentDialog.pinInitialValues": "Pin Initial Values (setp)",
   "componentDialog.pinVisibility": "Visible on canvas",
   "componentDialog.pinVisibilityConnectedHint":

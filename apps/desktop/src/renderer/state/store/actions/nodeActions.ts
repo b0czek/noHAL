@@ -1,3 +1,4 @@
+import { normalizeComponentPinOrder } from "@nohal/core";
 import { resolveComponentPinsForInstance } from "@nohal/core/componentInstance";
 import {
   fixedExportStageForComponent,
@@ -204,6 +205,21 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       node.hiddenPinKeys = [...new Set(nextHiddenPinKeys)];
     } else {
       delete node.hiddenPinKeys;
+    }
+  };
+
+  const pruneNodePinOrder = (
+    node: ComponentNode,
+    validPinKeys: readonly string[],
+  ): void => {
+    const nextPinOrder = normalizeComponentPinOrder(
+      node.pinOrder,
+      validPinKeys,
+    );
+    if (nextPinOrder) {
+      node.pinOrder = nextPinOrder;
+    } else {
+      delete node.pinOrder;
     }
   };
 
@@ -530,6 +546,10 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         const validPinKeys = new Set(resolvedPins.map((pin) => pin.key));
         pruneNodePinInitialValues(node, validPinKeys);
         pruneHiddenPinKeys(node, validPinKeys);
+        pruneNodePinOrder(
+          node,
+          resolvedPins.map((pin) => pin.key),
+        );
       });
     },
 
@@ -589,6 +609,51 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       ) {
         deps.clearPendingConnectionUi();
       }
+    },
+
+    updateNodePinOrder(nodeId: string, pinOrder: readonly string[]): void {
+      const activeSheetId = deps.state.activeSheetId;
+      const currentSheet = getSheet(deps.state.project, activeSheetId);
+      const currentNode = currentSheet.nodes.find((node) => node.id === nodeId);
+      if (!currentNode || currentNode.kind !== "component") return;
+      const component =
+        deps.state.project.library.components[currentNode.componentId];
+      if (!component) return;
+
+      const validPinKeys = resolveComponentPinsForInstance(
+        component,
+        currentNode.instanceConfigValues,
+      ).map((pin) => pin.key);
+      const normalizedPinOrder = normalizeComponentPinOrder(
+        pinOrder,
+        validPinKeys,
+      );
+      const currentPinOrder = normalizeComponentPinOrder(
+        currentNode.pinOrder,
+        validPinKeys,
+      );
+      if (
+        normalizedPinOrder &&
+        currentPinOrder &&
+        normalizedPinOrder.length === currentPinOrder.length &&
+        normalizedPinOrder?.every(
+          (key, index) => key === currentPinOrder[index],
+        )
+      ) {
+        return;
+      }
+      if (!normalizedPinOrder && !currentPinOrder) return;
+
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const node = sheet.nodes.find((candidate) => candidate.id === nodeId);
+        if (!node || node.kind !== "component") return;
+        if (normalizedPinOrder) {
+          node.pinOrder = normalizedPinOrder;
+        } else {
+          delete node.pinOrder;
+        }
+      });
     },
 
     updateNodeExportStage(nodeId: string, stage: "main" | "postgui"): void {

@@ -278,6 +278,24 @@ function normalizeParsedComponentNode(node: ComponentNode): void {
     delete node.hiddenPinKeys;
   }
 
+  if (Array.isArray(node.pinOrder)) {
+    const pinOrder = pipe(
+      node.pinOrder,
+      filter(
+        (key): key is string =>
+          typeof key === "string" && key.trim().length > 0,
+      ),
+      unique(),
+    );
+    if (pinOrder.length > 0) {
+      node.pinOrder = pinOrder;
+    } else {
+      delete node.pinOrder;
+    }
+  } else {
+    delete node.pinOrder;
+  }
+
   if (node.exportStage === "main" || node.exportStage === "postgui") return;
   delete node.exportStage;
 }

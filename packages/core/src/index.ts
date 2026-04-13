@@ -21,6 +21,7 @@ export * from "./machineConfig";
 export * from "./machineConfigImport";
 export * from "./mesa";
 export * from "./motmod";
+export * from "./pinOrder";
 export * from "./project";
 export * from "./sheet";
 export * from "./types";

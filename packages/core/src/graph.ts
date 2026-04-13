@@ -1,4 +1,5 @@
 import { resolveComponentPinsForInstance } from "./componentInstance";
+import { applyComponentPinOrder } from "./pinOrder";
 import type {
   ComponentNode,
   NoHALProject,
@@ -179,7 +180,7 @@ export function getComponentNodePins(
   const component = project.library.components[node.componentId];
   if (!component)
     throw new Error(`Component definition missing: ${node.componentId}`);
-  return resolveComponentPinsForInstance(
+  const pins = resolveComponentPinsForInstance(
     component,
     node.instanceConfigValues,
   ).map((pin) => ({
@@ -190,6 +191,7 @@ export function getComponentNodePins(
     side: pinDirectionToSide(pin.direction),
     doc: pin.doc,
   }));
+  return applyComponentPinOrder(pins, node.pinOrder);
 }
 
 export function getSheetNodePins(

@@ -2,6 +2,7 @@ import { createId } from "../id";
 import type {
   ComponentDefinition,
   ComponentFunctionDefinition,
+  ComponentNode,
   ComponentParamDefinition,
   ComponentPinDefinition,
   NoHALProject,
@@ -119,6 +120,27 @@ function addPin(
   return { component, pin };
 }
 
+function removePinStateFromNode(node: ComponentNode, pinKey: string): void {
+  if (node.pinInitialValues) {
+    delete node.pinInitialValues[pinKey];
+    if (Object.keys(node.pinInitialValues).length === 0) {
+      delete node.pinInitialValues;
+    }
+  }
+  if (node.hiddenPinKeys) {
+    node.hiddenPinKeys = node.hiddenPinKeys.filter((key) => key !== pinKey);
+    if (node.hiddenPinKeys.length === 0) {
+      delete node.hiddenPinKeys;
+    }
+  }
+  if (node.pinOrder) {
+    node.pinOrder = node.pinOrder.filter((key) => key !== pinKey);
+    if (node.pinOrder.length === 0) {
+      delete node.pinOrder;
+    }
+  }
+}
+
 function removePin(
   project: NoHALProject,
   componentId: string,
@@ -132,18 +154,7 @@ function removePin(
     for (const node of sheet.nodes) {
       if (node.kind !== "component" || node.componentId !== componentId)
         continue;
-      if (node.pinInitialValues) {
-        delete node.pinInitialValues[pinKey];
-        if (Object.keys(node.pinInitialValues).length === 0) {
-          delete node.pinInitialValues;
-        }
-      }
-      if (node.hiddenPinKeys) {
-        node.hiddenPinKeys = node.hiddenPinKeys.filter((key) => key !== pinKey);
-        if (node.hiddenPinKeys.length === 0) {
-          delete node.hiddenPinKeys;
-        }
-      }
+      removePinStateFromNode(node, pinKey);
     }
   }
   reconcileComponentNodesForDefinition(project, componentId, component);

@@ -29,6 +29,7 @@
     "./machineConfigImport": "./src/machineConfigImport.ts",
     "./mesa": "./src/mesa/index.ts",
     "./motmod": "./src/motmod/index.ts",
+    "./pinOrder": "./src/pinOrder.ts",
     "./project": "./src/project/index.ts",
     "./sheet": "./src/sheet/index.ts",
     "./types": "./src/types/index.ts",
