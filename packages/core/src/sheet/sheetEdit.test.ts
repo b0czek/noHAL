@@ -150,6 +150,62 @@ describe("sheet model edit helpers", () => {
     expect(root.labelAnchors).toHaveLength(0);
   });
 
+  it("deletes a sheet port and prunes parent-sheet usages", () => {
+    const project = createEmptyProject("Delete Sheet Port");
+    const root = project.sheets[project.rootSheetId];
+    const child = createSheet("Child");
+    child.ports.push({
+      id: "port_child_in",
+      name: "child_in",
+      direction: "in",
+      type: "bit",
+      side: "right",
+      position: { x: 0, y: 0 },
+    });
+    project.sheets[child.id] = child;
+
+    root.nodes.push({
+      id: "node_child",
+      kind: "sheet",
+      sheetId: child.id,
+      instanceName: "child",
+      position: { x: 20, y: 30 },
+    });
+    root.ports.push({
+      id: "port_root_in",
+      name: "root_in",
+      direction: "in",
+      type: "bit",
+      side: "right",
+      position: { x: 0, y: 0 },
+    });
+    root.directConnections.push({
+      id: "conn_child_port",
+      a: { kind: "sheet-port", portId: "port_root_in" },
+      b: { kind: "node-pin", nodeId: "node_child", pinKey: "port_child_in" },
+    });
+    root.labelAnchors.push({
+      id: "anchor_child_port",
+      labelId: "label-1",
+      endpoint: {
+        kind: "node-pin",
+        nodeId: "node_child",
+        pinKey: "port_child_in",
+      },
+    });
+
+    expect(
+      sheetModelEdits.port.remove(project, child.id, "port_child_in"),
+    ).toEqual({
+      ok: true,
+      removedPortId: "port_child_in",
+      removedReferenceInstanceCount: 1,
+    });
+    expect(child.ports).toHaveLength(0);
+    expect(root.directConnections).toHaveLength(0);
+    expect(root.labelAnchors).toHaveLength(0);
+  });
+
   it("detaches a sheet reference into an independent definition snapshot", () => {
     const project = createEmptyProject("Detach Sheet Reference");
     const root = project.sheets[project.rootSheetId];

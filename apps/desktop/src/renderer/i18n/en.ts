@@ -535,6 +535,10 @@ export const en = {
   "inspector.nothingSelected": "Nothing selected.",
   "inspector.multipleSelected": "Multiple items selected.",
   "inspector.deleteSelection": "Delete Selection",
+  "inspector.confirmDeleteSheetPortUsersSingle":
+    "This port is still used by {count} parent sheet instance(s). Remove those connections and continue?",
+  "inspector.confirmDeleteSheetPortUsersMulti":
+    "{ports} selected ports are still used by {count} parent sheet instance(s). Remove those connections and continue?",
   "inspector.directConnections": "Direct Connections",
   "inspector.warnings": "Warnings",
   "inspector.openComponentSettings": "Open Component Settings",

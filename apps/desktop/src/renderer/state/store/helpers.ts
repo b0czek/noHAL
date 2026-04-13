@@ -22,6 +22,7 @@ import {
   defaultNodePositionForIndex,
   defaultPortPositionForIndex,
   normalizeRotationDegrees,
+  sheetModelEdits,
 } from "@nohal/core/sheet";
 import type {
   ComponentStore,
@@ -244,29 +245,9 @@ export function pruneSheetNodeReferences(
   if (Object.keys(sheet.hal).length === 0) delete sheet.hal;
 }
 
-export function pruneSheetPortReferences(
-  sheet: SheetDefinition,
-  removedPortIds: ReadonlySet<string>,
-): void {
-  if (removedPortIds.size === 0) return;
-
-  sheet.directConnections = sheet.directConnections.filter(
-    (c) =>
-      !(c.a.kind === "sheet-port" && removedPortIds.has(c.a.portId)) &&
-      !(c.b.kind === "sheet-port" && removedPortIds.has(c.b.portId)),
-  );
-
-  sheet.labelAnchors = sheet.labelAnchors.filter(
-    (a) =>
-      !(
-        a.endpoint.kind === "sheet-port" &&
-        removedPortIds.has(a.endpoint.portId)
-      ),
-  );
-}
-
-export function removeSheetSelectionItems(
-  sheet: SheetDefinition,
+export function removeProjectSelectionItems(
+  project: NoHALProject,
+  sheetId: string,
   selection: {
     nodeIds: ReadonlySet<string>;
     labelIds: ReadonlySet<string>;
@@ -274,6 +255,9 @@ export function removeSheetSelectionItems(
     portIds: ReadonlySet<string>;
   },
 ): void {
+  const sheet = project.sheets[sheetId];
+  if (!sheet) return;
+
   if (selection.nodeIds.size > 0) {
     const removedNodeIds = new Set<string>();
     sheet.nodes = sheet.nodes.filter((node) => {
@@ -300,8 +284,9 @@ export function removeSheetSelectionItems(
   }
 
   if (selection.portIds.size > 0) {
-    sheet.ports = sheet.ports.filter((port) => !selection.portIds.has(port.id));
-    pruneSheetPortReferences(sheet, selection.portIds);
+    for (const portId of selection.portIds) {
+      sheetModelEdits.port.remove(project, sheetId, portId);
+    }
   }
 }
 

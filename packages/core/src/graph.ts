@@ -45,6 +45,24 @@ export interface ReferencedSheetLocation extends SheetReferenceLocation {
   sheetName: string;
 }
 
+export interface ConnectedSheetPortReferenceLocation
+  extends SheetReferenceLocation {
+  directConnectionCount: number;
+  labelAnchorCount: number;
+}
+
+function matchesNodePinEndpoint(
+  endpoint: SheetEndpointRef,
+  nodeId: string,
+  pinKey: string,
+): boolean {
+  return (
+    endpoint.kind === "node-pin" &&
+    endpoint.nodeId === nodeId &&
+    endpoint.pinKey === pinKey
+  );
+}
+
 export function getSheetReferenceLocations(
   project: NoHALProject,
   sheetId: string,
@@ -61,6 +79,46 @@ export function getSheetReferenceLocations(
       });
     }
   }
+  return references.sort((left, right) => {
+    const parentNameCompare = left.parentSheetName.localeCompare(
+      right.parentSheetName,
+    );
+    if (parentNameCompare !== 0) return parentNameCompare;
+    return left.instanceName.localeCompare(right.instanceName);
+  });
+}
+
+export function getConnectedSheetPortReferenceLocations(
+  project: NoHALProject,
+  sheetId: string,
+  portId: string,
+): ConnectedSheetPortReferenceLocation[] {
+  const references: ConnectedSheetPortReferenceLocation[] = [];
+  for (const parentSheet of Object.values(project.sheets)) {
+    for (const node of parentSheet.nodes) {
+      if (node.kind !== "sheet" || node.sheetId !== sheetId) continue;
+
+      const directConnectionCount = parentSheet.directConnections.filter(
+        (connection) =>
+          matchesNodePinEndpoint(connection.a, node.id, portId) ||
+          matchesNodePinEndpoint(connection.b, node.id, portId),
+      ).length;
+      const labelAnchorCount = parentSheet.labelAnchors.filter((anchor) =>
+        matchesNodePinEndpoint(anchor.endpoint, node.id, portId),
+      ).length;
+
+      if (directConnectionCount + labelAnchorCount === 0) continue;
+      references.push({
+        parentSheetId: parentSheet.id,
+        parentSheetName: parentSheet.name,
+        nodeId: node.id,
+        instanceName: node.instanceName,
+        directConnectionCount,
+        labelAnchorCount,
+      });
+    }
+  }
+
   return references.sort((left, right) => {
     const parentNameCompare = left.parentSheetName.localeCompare(
       right.parentSheetName,

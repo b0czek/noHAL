@@ -1,5 +1,6 @@
 import { addfQueueEntryNodeId, normalizeAddfQueueEntries } from "../addfQueue";
 import { ensureInstanceName } from "../componentNaming";
+import { getConnectedSheetPortReferenceLocations, getSheet } from "../graph";
 import { createId } from "../id";
 import { createSheet } from "../project";
 import type {
@@ -54,6 +55,62 @@ function pruneSheetNodeReferences(
   );
   if (sheet.hal.addfQueue.length === 0) delete sheet.hal.addfQueue;
   if (Object.keys(sheet.hal).length === 0) delete sheet.hal;
+}
+
+function pruneSheetNodePinReferences(
+  sheet: SheetDefinition,
+  nodeId: string,
+  pinKey: string,
+): void {
+  sheet.directConnections = sheet.directConnections.filter(
+    (connection) =>
+      !(
+        connection.a.kind === "node-pin" &&
+        connection.a.nodeId === nodeId &&
+        connection.a.pinKey === pinKey
+      ) &&
+      !(
+        connection.b.kind === "node-pin" &&
+        connection.b.nodeId === nodeId &&
+        connection.b.pinKey === pinKey
+      ),
+  );
+
+  sheet.labelAnchors = sheet.labelAnchors.filter(
+    (anchor) =>
+      !(
+        anchor.endpoint.kind === "node-pin" &&
+        anchor.endpoint.nodeId === nodeId &&
+        anchor.endpoint.pinKey === pinKey
+      ),
+  );
+}
+
+function pruneSheetPortReferences(
+  sheet: SheetDefinition,
+  removedPortIds: ReadonlySet<string>,
+): void {
+  if (removedPortIds.size === 0) return;
+
+  sheet.directConnections = sheet.directConnections.filter(
+    (connection) =>
+      !(
+        connection.a.kind === "sheet-port" &&
+        removedPortIds.has(connection.a.portId)
+      ) &&
+      !(
+        connection.b.kind === "sheet-port" &&
+        removedPortIds.has(connection.b.portId)
+      ),
+  );
+
+  sheet.labelAnchors = sheet.labelAnchors.filter(
+    (anchor) =>
+      !(
+        anchor.endpoint.kind === "sheet-port" &&
+        removedPortIds.has(anchor.endpoint.portId)
+      ),
+  );
 }
 
 function cleanupEmptyHal(sheet: SheetDefinition): void {
@@ -203,6 +260,46 @@ function setSheetAddfQueue(
     cleanupEmptyHal(sheet);
   }
   return normalized;
+}
+
+export type RemoveSheetPortResult =
+  | {
+      ok: true;
+      removedPortId: string;
+      removedReferenceInstanceCount: number;
+    }
+  | { ok: false; reason: "not-found" };
+
+function removeSheetPort(
+  project: NoHALProject,
+  sheetId: string,
+  portId: string,
+): RemoveSheetPortResult {
+  const sheet = project.sheets[sheetId];
+  if (!sheet) return { ok: false, reason: "not-found" };
+  if (!sheet.ports.some((port) => port.id === portId)) {
+    return { ok: false, reason: "not-found" };
+  }
+
+  const referenceLocations = getConnectedSheetPortReferenceLocations(
+    project,
+    sheetId,
+    portId,
+  );
+
+  sheet.ports = sheet.ports.filter((port) => port.id !== portId);
+  pruneSheetPortReferences(sheet, new Set([portId]));
+
+  for (const reference of referenceLocations) {
+    const parentSheet = getSheet(project, reference.parentSheetId);
+    pruneSheetNodePinReferences(parentSheet, reference.nodeId, portId);
+  }
+
+  return {
+    ok: true,
+    removedPortId: portId,
+    removedReferenceInstanceCount: referenceLocations.length,
+  };
 }
 
 export interface AddSheetDefinitionResult {
@@ -537,6 +634,9 @@ function deleteSheetDefinition(
 }
 
 export const sheetModelEdits = {
+  port: {
+    remove: removeSheetPort,
+  },
   threadOutput: {
     add: addSheetThreadOutput,
     remove: removeSheetThreadOutput,

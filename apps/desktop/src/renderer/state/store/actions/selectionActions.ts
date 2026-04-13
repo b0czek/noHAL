@@ -1,4 +1,7 @@
-import { getSheet } from "@nohal/core/graph";
+import {
+  getConnectedSheetPortReferenceLocations,
+  getSheet,
+} from "@nohal/core/graph";
 import {
   isProtectedSystemNode,
   isProtectedSystemSheet,
@@ -7,7 +10,7 @@ import type { XY } from "@nohal/core/types";
 import { createSelectionClipboard } from "../../../clipboard/selection";
 import {
   cloneProject,
-  removeSheetSelectionItems,
+  removeProjectSelectionItems,
   syncProjectUi,
 } from "../helpers";
 import {
@@ -28,6 +31,42 @@ export function createSelectionActions(
   links: SelectionActionLinks,
 ) {
   const clipboard = createSelectionClipboard(deps);
+
+  const confirmSheetPortDependencyRemoval = (selectionIds: {
+    portIds: ReadonlySet<string>;
+  }): boolean => {
+    if (selectionIds.portIds.size === 0) return true;
+    if (typeof window === "undefined" || typeof window.confirm !== "function") {
+      return true;
+    }
+
+    const connectedInstanceKeys = new Set<string>();
+    for (const portId of selectionIds.portIds) {
+      for (const reference of getConnectedSheetPortReferenceLocations(
+        deps.state.project,
+        deps.state.activeSheetId,
+        portId,
+      )) {
+        connectedInstanceKeys.add(
+          `${reference.parentSheetId}:${reference.nodeId}`,
+        );
+      }
+    }
+
+    const connectedInstanceCount = connectedInstanceKeys.size;
+    if (connectedInstanceCount === 0) return true;
+
+    const translationKey =
+      selectionIds.portIds.size === 1
+        ? "inspector.confirmDeleteSheetPortUsersSingle"
+        : "inspector.confirmDeleteSheetPortUsersMulti";
+    return window.confirm(
+      deps.t(translationKey, {
+        count: connectedInstanceCount,
+        ports: selectionIds.portIds.size,
+      }),
+    );
+  };
 
   const removeMultiSelection = (sel: MultiSelection): void => {
     const currentSheet = getSheet(deps.state.project, deps.state.activeSheetId);
@@ -58,13 +97,10 @@ export function createSelectionActions(
     for (const nodeId of protectedNodeIds) selectedNodeIds.delete(nodeId);
 
     const next = cloneProject(deps.state.project);
-    const sheet = next.sheets[deps.state.activeSheetId];
-    if (sheet) {
-      removeSheetSelectionItems(sheet, {
-        ...selectionIds,
-        nodeIds: selectedNodeIds,
-      });
-    }
+    removeProjectSelectionItems(next, deps.state.activeSheetId, {
+      ...selectionIds,
+      nodeIds: selectedNodeIds,
+    });
 
     syncProjectUi(next, deps.state.activeSheetId);
     deps.pushUndoSnapshot();
@@ -83,13 +119,59 @@ export function createSelectionActions(
   const removeSimpleSelection = (sel: NonNullable<EditorSelection>): void => {
     const activeSheetId = deps.state.activeSheetId;
     deps.withProject((project) => {
-      const sheet = getSheet(project, activeSheetId);
       const selectionIds = selectionIdBuckets(sel);
       if (!selectionIds) return;
-      removeSheetSelectionItems(sheet, selectionIds);
+      removeProjectSelectionItems(project, activeSheetId, selectionIds);
     });
     deps.clearSelectionAndPendingUi();
     deps.setStatusT("store.status.removedSelection");
+  };
+
+  const rejectProtectedNodeDeletion = (
+    sel: NonNullable<EditorSelection>,
+  ): boolean => {
+    if (sel.kind !== "node") return false;
+
+    const currentSheet = getSheet(deps.state.project, deps.state.activeSheetId);
+    const node = currentSheet.nodes.find((entry) => entry.id === sel.id);
+    if (node && isProtectedSystemNode(deps.state.project, node)) {
+      deps.setStatusT("store.status.cannotDeleteSystemManagedComponent");
+      return true;
+    }
+    if (
+      node?.kind === "sheet" &&
+      isProtectedSystemSheet(deps.state.project, node.sheetId)
+    ) {
+      deps.setStatusT("store.status.cannotDeleteSystemSheet");
+      return true;
+    }
+    return false;
+  };
+
+  const removeSpecialSelection = (
+    sel: NonNullable<EditorSelection>,
+  ): boolean => {
+    if (sel.kind === "wire-connection") {
+      links.removeDirectConnection(sel.id);
+      deps.clearPendingConnectionUi();
+      return true;
+    }
+
+    if (sel.kind === "label-anchor") {
+      links.removeLabelAnchor(sel.id);
+      deps.clearPendingConnectionUi();
+      return true;
+    }
+
+    return false;
+  };
+
+  const confirmSelectionRemoval = (
+    sel: NonNullable<EditorSelection>,
+  ): boolean => {
+    const selectionIds = selectionIdBuckets(sel);
+    if (!selectionIds) return false;
+    return confirmSheetPortDependencyRemoval(selectionIds);
   };
 
   return {
@@ -132,36 +214,10 @@ export function createSelectionActions(
     removeSelection(): void {
       const sel = deps.state.selection;
       if (!sel) return;
-
-      if (sel.kind === "node") {
-        const currentSheet = getSheet(
-          deps.state.project,
-          deps.state.activeSheetId,
-        );
-        const node = currentSheet.nodes.find((n) => n.id === sel.id);
-        if (node && isProtectedSystemNode(deps.state.project, node)) {
-          deps.setStatusT("store.status.cannotDeleteSystemManagedComponent");
-          return;
-        }
-        if (node?.kind === "sheet") {
-          if (isProtectedSystemSheet(deps.state.project, node.sheetId)) {
-            deps.setStatusT("store.status.cannotDeleteSystemSheet");
-            return;
-          }
-        }
-      }
-
-      if (sel.kind === "wire-connection") {
-        links.removeDirectConnection(sel.id);
-        deps.clearPendingConnectionUi();
+      if (rejectProtectedNodeDeletion(sel) || removeSpecialSelection(sel)) {
         return;
       }
-
-      if (sel.kind === "label-anchor") {
-        links.removeLabelAnchor(sel.id);
-        deps.clearPendingConnectionUi();
-        return;
-      }
+      if (!confirmSelectionRemoval(sel)) return;
 
       if (sel.kind === "multi") {
         removeMultiSelection(sel);
