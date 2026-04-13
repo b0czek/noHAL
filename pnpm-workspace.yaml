@@ -2,7 +2,8 @@ packages:
   - apps/*
   - packages/*
 
-onlyBuiltDependencies:
-  - electron
-  - esbuild
-  - rete
+allowBuilds:
+  electron: true
+  electron-winstaller: false
+  esbuild: true
+  rete: true
