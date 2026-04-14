@@ -439,6 +439,10 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
         items: [
           selectionItems.copyItem,
           selectionItems.moveItem,
+          {
+            label: t("canvasContext.convertLabelToPort"),
+            onSelect: () => actions.convertLabelToSheetPort(target.id),
+          },
           selectionItems.deleteItem,
         ],
       };

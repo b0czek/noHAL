@@ -16,6 +16,7 @@ function createProjectFixture() {
     pins: [
       { key: "in0", name: "in0", direction: "in", type: "bit" },
       { key: "out", name: "out", direction: "out", type: "bit" },
+      { key: "value_out", name: "value-out", direction: "out", type: "float" },
       { key: "unused", name: "unused", direction: "out", type: "bit" },
     ],
     params: [],
@@ -97,13 +98,14 @@ describe("node actions", () => {
     expect(node).toEqual(
       expect.objectContaining({
         kind: "component",
-        pinOrder: ["unused", "in0", "out"],
+        pinOrder: ["unused", "in0", "out", "value_out"],
       }),
     );
 
     store.actions.updateNodePinOrder("node_component", [
       "in0",
       "out",
+      "value_out",
       "unused",
     ]);
 
@@ -141,5 +143,107 @@ describe("node actions", () => {
     );
 
     expect(connection?.waypoints).toEqual([{ x: 190, y: 160 }]);
+  });
+
+  it("converts a singly-anchored label into a sheet port with inferred direction and type", () => {
+    const { project } = createProjectFixture();
+    const rootSheet = project.sheets[project.rootSheetId];
+    rootSheet.labels.push({
+      id: "label_value_out",
+      name: "servo.out",
+      scope: "local",
+      position: { x: 180, y: 180 },
+      rotation: 0,
+    });
+    rootSheet.labelAnchors.push({
+      id: "anchor_value_out",
+      labelId: "label_value_out",
+      endpoint: {
+        kind: "node-pin",
+        nodeId: "node_component",
+        pinKey: "value_out",
+      },
+    });
+
+    const store = createEditorStore(project, (key) => key);
+    store.actions.convertLabelToSheetPort("label_value_out");
+
+    const nextRootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    expect(nextRootSheet.labels).toEqual([]);
+    expect(nextRootSheet.labelAnchors).toEqual([]);
+
+    const createdPort = nextRootSheet.ports.find(
+      (entry) => entry.id !== "port_in",
+    );
+    expect(createdPort).toEqual(
+      expect.objectContaining({
+        name: "servo.out",
+        direction: "out",
+        type: "float",
+        position: { x: 180, y: 180 },
+      }),
+    );
+    expect(nextRootSheet.directConnections).toContainEqual(
+      expect.objectContaining({
+        a: {
+          kind: "node-pin",
+          nodeId: "node_component",
+          pinKey: "value_out",
+        },
+        b: {
+          kind: "sheet-port",
+          portId: createdPort?.id,
+        },
+      }),
+    );
+    expect(store.state.selection).toEqual({
+      kind: "sheet-port",
+      id: createdPort?.id,
+    });
+  });
+
+  it("refuses to convert labels that are not attached to exactly one component pin", () => {
+    const { project } = createProjectFixture();
+    const rootSheet = project.sheets[project.rootSheetId];
+    rootSheet.labels.push({
+      id: "label_shared",
+      name: "shared",
+      scope: "local",
+      position: { x: 160, y: 140 },
+      rotation: 0,
+    });
+    rootSheet.labelAnchors.push(
+      {
+        id: "anchor_shared_a",
+        labelId: "label_shared",
+        endpoint: {
+          kind: "node-pin",
+          nodeId: "node_component",
+          pinKey: "out",
+        },
+      },
+      {
+        id: "anchor_shared_b",
+        labelId: "label_shared",
+        endpoint: {
+          kind: "node-pin",
+          nodeId: "node_sink",
+          pinKey: "in0",
+        },
+      },
+    );
+
+    const store = createEditorStore(project, (key) => key);
+    store.actions.convertLabelToSheetPort("label_shared");
+
+    const nextRootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    expect(nextRootSheet.labels).toHaveLength(1);
+    expect(nextRootSheet.labelAnchors).toHaveLength(2);
+    expect(nextRootSheet.ports).toHaveLength(1);
+    expect(store.state.status).toBe(
+      "store.status.cannotConvertLabelToSheetPort",
+    );
   });
 });

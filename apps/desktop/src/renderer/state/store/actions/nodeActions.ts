@@ -10,6 +10,7 @@ import {
   getSheet,
   getSheetReferenceLocations,
   isNodePinConnected,
+  resolveEndpointInSheet,
 } from "@nohal/core/graph";
 import { isValidHalName } from "@nohal/core/halNames";
 import { createId } from "@nohal/core/id";
@@ -697,6 +698,74 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         if (patch.rotation !== undefined) {
           label.rotation = normalizeRotationDegrees(patch.rotation);
         }
+      });
+    },
+
+    convertLabelToSheetPort(labelId: string): void {
+      const activeSheetId = deps.state.activeSheetId;
+      const currentSheet = getSheet(deps.state.project, activeSheetId);
+      const label = currentSheet.labels.find((entry) => entry.id === labelId);
+      if (!label) return;
+
+      const anchors = currentSheet.labelAnchors.filter(
+        (entry) => entry.labelId === labelId,
+      );
+      if (anchors.length !== 1) {
+        deps.setStatusT("store.status.cannotConvertLabelToSheetPort");
+        return;
+      }
+
+      const [anchor] = anchors;
+      if (anchor.endpoint.kind !== "node-pin") {
+        deps.setStatusT("store.status.cannotConvertLabelToSheetPort");
+        return;
+      }
+
+      const endpoint = anchor.endpoint;
+      const resolved = resolveEndpointInSheet(
+        deps.state.project,
+        activeSheetId,
+        endpoint,
+      );
+      const usedPortNames = new Set(
+        currentSheet.ports.map((entry) => entry.name),
+      );
+      const portName = nextName(label.name, usedPortNames);
+
+      let createdPortId: string | null = null;
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const currentLabel = sheet.labels.find((entry) => entry.id === labelId);
+        if (!currentLabel) return;
+
+        const port = createSheetPortDraft(
+          portName,
+          resolved.direction,
+          resolved.type,
+        );
+        port.name = portName;
+        port.position = { ...currentLabel.position };
+        createdPortId = port.id;
+        sheet.ports.push(port);
+        sheet.directConnections.push({
+          id: createId("conn"),
+          a: {
+            kind: "node-pin",
+            nodeId: endpoint.nodeId,
+            pinKey: endpoint.pinKey,
+          },
+          b: { kind: "sheet-port", portId: port.id },
+        });
+        sheet.labelAnchors = sheet.labelAnchors.filter(
+          (entry) => entry.labelId !== labelId,
+        );
+        sheet.labels = sheet.labels.filter((entry) => entry.id !== labelId);
+      });
+
+      if (!createdPortId) return;
+      deps.setState("selection", { kind: "sheet-port", id: createdPortId });
+      deps.setStatusT("store.status.convertedLabelToSheetPort", {
+        name: portName,
       });
     },
 

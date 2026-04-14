@@ -76,6 +76,7 @@ export const en = {
   "canvasContext.detachSheetReference": "Detach Reference",
   "canvasContext.putEverythingIntoSubsheet": "Into Subsheet",
   "canvasContext.splitConnectionIntoLabels": "Split Into Labels",
+  "canvasContext.convertLabelToPort": "Convert To Port",
   "canvasContext.removeConnection": "Remove Connection",
   "canvasContext.removeLabelAnchor": "Remove Label Anchor",
   "canvasContext.deleteWaypoint": "Delete Waypoint",
@@ -736,6 +737,10 @@ export const en = {
   "store.status.removedConnection": "Removed connection",
   "store.status.splitConnectionIntoLabels":
     "Split connection into labels ({name})",
+  "store.status.convertedLabelToSheetPort":
+    "Converted label to sheet port ({name})",
+  "store.status.cannotConvertLabelToSheetPort":
+    "Label must be attached to exactly one component pin to convert it to a port",
   "store.status.updatedWireRoute": "Updated wire route",
   "store.status.removedLabelAnchor": "Removed label anchor",
   "store.warning.importError": "Import error {filePath}: {error}",
