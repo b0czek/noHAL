@@ -136,12 +136,21 @@ export default function ComponentSearchDialog(
     options?: { close?: boolean },
   ) => {
     if (!result) return;
-    if (state.activeSheetId !== result.sheetId) {
-      actions.setActiveSheet(result.sheetId);
+    const applySelection = () => {
+      if (state.activeSheetId !== result.sheetId) {
+        actions.setActiveSheet(result.sheetId);
+      }
+      actions.select(result.target);
+      editorUi.requestCanvasFocus(result.sheetId, result.target);
+    };
+
+    if (!options?.close) {
+      applySelection();
+      return;
     }
-    actions.select(result.target);
-    editorUi.requestCanvasFocus(result.sheetId, result.target);
-    if (options?.close) props.onClose();
+
+    props.onClose();
+    queueMicrotask(applySelection);
   };
 
   const jumpToResult = (step: number) => {
