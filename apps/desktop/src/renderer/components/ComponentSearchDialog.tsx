@@ -5,7 +5,14 @@ import {
   HiOutlineDocumentText,
   HiOutlineTag,
 } from "solid-icons/hi";
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  Show,
+  untrack,
+} from "solid-js";
 import { Portal } from "solid-js/web";
 import type { OverlayDialogProps } from "../app/types";
 import { useI18n } from "../i18n";
@@ -92,9 +99,12 @@ export default function ComponentSearchDialog(
   });
 
   createEffect(() => {
-    props.scope;
-    setQuery("");
-    setActiveIndex(props.scope === "sheet" ? -1 : 0);
+    const scope = props.scope;
+    const previousQuery = untrack(() =>
+      editorUi.getComponentSearchQuery(scope),
+    );
+    setQuery(previousQuery);
+    setActiveIndex(scope === "sheet" ? -1 : 0);
     queueMicrotask(() => {
       queryInputEl?.focus();
       queryInputEl?.select();
@@ -292,7 +302,9 @@ export default function ComponentSearchDialog(
           scope: scopeLabel,
         })}
         onInput={(evt) => {
-          setQuery(evt.currentTarget.value);
+          const nextQuery = evt.currentTarget.value;
+          setQuery(nextQuery);
+          editorUi.setComponentSearchQuery(props.scope, nextQuery);
           setActiveIndex(props.scope === "project" ? 0 : -1);
         }}
         onKeyDown={handleQueryKeyDown}

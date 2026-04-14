@@ -72,6 +72,12 @@ function createEditorUiState() {
   const [overlay, setOverlay] = createSignal<EditorOverlay | null>(null);
   const [placementMode, setPlacementMode] =
     createSignal<CanvasPlacement | null>(null);
+  const [componentSearchQueries, setComponentSearchQueries] = createSignal<
+    Record<ComponentSearchScope, string>
+  >({
+    sheet: "",
+    project: "",
+  });
   const [canvasFocusRequest, setCanvasFocusRequest] =
     createSignal<CanvasFocusRequest | null>(null);
   let nextCanvasFocusRequestId = 1;
@@ -223,6 +229,13 @@ function createEditorUiState() {
     ) => openOverlay({ kind: "sheet-settings", sheetId, referenceTarget }),
     openComponentSearch: (scope: ComponentSearchScope) =>
       openOverlay({ kind: "component-search", scope }),
+    getComponentSearchQuery: (scope: ComponentSearchScope) =>
+      componentSearchQueries()[scope],
+    setComponentSearchQuery: (scope: ComponentSearchScope, query: string) =>
+      setComponentSearchQueries((current) => {
+        if (current[scope] === query) return current;
+        return { ...current, [scope]: query };
+      }),
     beginPlacementMode,
     togglePlacementMode,
     cancelPlacementMode: () => setPlacementMode(null),
