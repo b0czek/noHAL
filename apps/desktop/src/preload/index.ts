@@ -10,35 +10,47 @@ import type {
 } from "@nohal/core/types";
 import { contextBridge, ipcRenderer } from "electron";
 import type { AppSettings } from "../shared/appSettings";
+import { IPC_CHANNELS } from "../shared/ipcChannels";
 import type { NoHALApi } from "./api";
+
+const ipc = IPC_CHANNELS.rendererToMain;
+const events = IPC_CHANNELS.mainToRenderer;
+type RendererToMainChannel = (typeof ipc)[keyof typeof ipc];
+
+function send(channel: RendererToMainChannel, ...args: unknown[]): void {
+  ipcRenderer.send(channel, ...args);
+}
+
+function sendSync<T>(channel: RendererToMainChannel, ...args: unknown[]): T {
+  return ipcRenderer.sendSync(channel, ...args) as T;
+}
+
+function invoke<T>(
+  channel: RendererToMainChannel,
+  ...args: unknown[]
+): Promise<T> {
+  return ipcRenderer.invoke(channel, ...args) as Promise<T>;
+}
 
 const api: NoHALApi = {
   setWindowDirtyState: (isDirty) => {
-    ipcRenderer.send("nohal:set-window-dirty-state", isDirty);
+    send(ipc.setWindowDirtyState, isDirty);
   },
-  readClipboardText: () => ipcRenderer.sendSync("nohal:read-clipboard-text"),
+  readClipboardText: () => sendSync<string>(ipc.readClipboardText),
   writeClipboardText: (text) => {
-    ipcRenderer.sendSync("nohal:write-clipboard-text", text);
+    sendSync(ipc.writeClipboardText, text);
   },
   promptUnsavedChanges: () =>
-    ipcRenderer.invoke("nohal:prompt-unsaved-changes") as Promise<
-      "save" | "discard" | "cancel"
-    >,
-  getAppSettings: () =>
-    ipcRenderer.invoke("nohal:get-app-settings") as Promise<AppSettings>,
+    invoke<"save" | "discard" | "cancel">(ipc.promptUnsavedChanges),
+  getAppSettings: () => invoke<AppSettings>(ipc.getAppSettings),
   updateAppSettings: (patch) =>
-    ipcRenderer.invoke(
-      "nohal:update-app-settings",
-      patch,
-    ) as Promise<AppSettings>,
+    invoke<AppSettings>(ipc.updateAppSettings, patch),
   getCustomComponentStorePathInfo: () =>
-    ipcRenderer.invoke(
-      "nohal:get-custom-component-store-path-info",
-    ) as Promise<{
+    invoke<{
       path: string;
       defaultPath: string;
       isDefault: boolean;
-    }>,
+    }>(ipc.getCustomComponentStorePathInfo),
   onRequestSaveBeforeClose: (listener) => {
     const handler = async (_event: unknown, requestId: number) => {
       let didSave = false;
@@ -47,130 +59,107 @@ const api: NoHALApi = {
       } catch {
         didSave = false;
       }
-      ipcRenderer.send("nohal:reply-save-before-close", requestId, didSave);
+      send(ipc.replySaveBeforeClose, requestId, didSave);
     };
-    ipcRenderer.on("nohal:request-save-before-close", handler);
+    ipcRenderer.on(events.requestSaveBeforeClose, handler);
     return () => {
-      ipcRenderer.off("nohal:request-save-before-close", handler);
+      ipcRenderer.off(events.requestSaveBeforeClose, handler);
     };
   },
   newProject: (linuxcncVersion?: LinuxCncVersion) =>
-    ipcRenderer.invoke("nohal:new-project", linuxcncVersion) as Promise<{
+    invoke<{
       project: NoHALProject;
-    } | null>,
+    } | null>(ipc.newProject, linuxcncVersion),
   getRecentProjects: () =>
-    ipcRenderer.invoke("nohal:get-recent-projects") as Promise<
-      Array<{ projectPath: string; name?: string; lastOpenedAt: string }>
-    >,
+    invoke<Array<{ projectPath: string; name?: string; lastOpenedAt: string }>>(
+      ipc.getRecentProjects,
+    ),
   openProject: () =>
-    ipcRenderer.invoke("nohal:open-project") as Promise<{
+    invoke<{
       project: NoHALProject;
       projectPath: string;
-    } | null>,
+    } | null>(ipc.openProject),
   openProjectAt: (projectPath) =>
-    ipcRenderer.invoke("nohal:open-project-at", projectPath) as Promise<{
+    invoke<{
       project: NoHALProject;
       projectPath: string;
-    }>,
+    }>(ipc.openProjectAt, projectPath),
   saveProject: (project, projectPath) =>
-    ipcRenderer.invoke("nohal:save-project", project, projectPath) as Promise<{
+    invoke<{
       projectPath: string;
-    } | null>,
+    } | null>(ipc.saveProject, project, projectPath),
   buildProject: (project, projectPath) =>
-    ipcRenderer.invoke("nohal:build-project", project, projectPath) as Promise<{
+    invoke<{
       buildDir: string;
       files: string[];
       warnings: string[];
-    }>,
+    }>(ipc.buildProject, project, projectPath),
   pickMachineIniFile: () =>
-    ipcRenderer.invoke(
-      "nohal:pick-machine-ini-file",
-    ) as Promise<MachineConfigImportSetupDraft | null>,
-  pickMachineHalFile: () =>
-    ipcRenderer.invoke("nohal:pick-machine-hal-file") as Promise<string | null>,
+    invoke<MachineConfigImportSetupDraft | null>(ipc.pickMachineIniFile),
+  pickMachineHalFile: () => invoke<string | null>(ipc.pickMachineHalFile),
   buildMachineConfigurationImport: (iniPath, halFilePaths) =>
-    ipcRenderer.invoke(
-      "nohal:build-machine-configuration-import",
+    invoke<MachineConfigImportDraft>(
+      ipc.buildMachineConfigurationImport,
       iniPath,
       halFilePaths,
-    ) as Promise<MachineConfigImportDraft>,
+    ),
   importCompFile: () =>
-    ipcRenderer.invoke(
-      "nohal:import-comp-file",
-    ) as Promise<ImportedComponentDefinition | null>,
+    invoke<ImportedComponentDefinition | null>(ipc.importCompFile),
   pickCustomComponentStoreFile: (defaultPath) =>
-    ipcRenderer.invoke(
-      "nohal:pick-custom-component-store-file",
-      defaultPath,
-    ) as Promise<string | null>,
+    invoke<string | null>(ipc.pickCustomComponentStoreFile, defaultPath),
   pickDirectory: (defaultPath) =>
-    ipcRenderer.invoke("nohal:pick-directory", defaultPath) as Promise<
-      string | null
-    >,
+    invoke<string | null>(ipc.pickDirectory, defaultPath),
   scanCompDir: (dirPath) =>
-    ipcRenderer.invoke("nohal:scan-comp-dir", dirPath) as Promise<{
+    invoke<{
       imported: ImportedComponentDefinition[];
       errors: Array<{ filePath: string; error: string }>;
-    }>,
-  loadComponentStore: () =>
-    ipcRenderer.invoke("nohal:load-component-store") as Promise<ComponentStore>,
+    }>(ipc.scanCompDir, dirPath),
+  loadComponentStore: () => invoke<ComponentStore>(ipc.loadComponentStore),
   addManualComponentToStore: (halComponentName?: string) =>
-    ipcRenderer.invoke(
-      "nohal:add-manual-component-to-store",
+    invoke<ComponentStoreEntry>(
+      ipc.addManualComponentToStore,
       halComponentName,
-    ) as Promise<ComponentStoreEntry>,
+    ),
   updateManualComponentInStore: (componentId, component) =>
-    ipcRenderer.invoke(
-      "nohal:update-manual-component-in-store",
+    invoke<ComponentStoreEntry>(
+      ipc.updateManualComponentInStore,
       componentId,
       component,
-    ) as Promise<ComponentStoreEntry>,
+    ),
   removeManualComponentFromStore: (componentId) =>
-    ipcRenderer.invoke(
-      "nohal:remove-manual-component-from-store",
+    invoke<{ sourceId: string; componentId: string }>(
+      ipc.removeManualComponentFromStore,
       componentId,
-    ) as Promise<{ sourceId: string; componentId: string }>,
+    ),
   promoteProjectCustomComponentToStore: (component: ComponentDefinition) =>
-    ipcRenderer.invoke(
-      "nohal:promote-project-custom-component-to-store",
+    invoke<ComponentStoreEntry>(
+      ipc.promoteProjectCustomComponentToStore,
       component,
-    ) as Promise<ComponentStoreEntry>,
+    ),
   importCompFileToStore: () =>
-    ipcRenderer.invoke(
-      "nohal:import-comp-file-to-store",
-    ) as Promise<ComponentStoreEntry | null>,
+    invoke<ComponentStoreEntry | null>(ipc.importCompFileToStore),
   addCompDirSourceToStore: () =>
-    ipcRenderer.invoke("nohal:add-comp-dir-source-to-store") as Promise<{
+    invoke<{
       sourceId: string;
       entries: ComponentStoreEntry[];
       removedComponentIds: string[];
       errors: Array<{ filePath: string; error: string }>;
-    } | null>,
+    } | null>(ipc.addCompDirSourceToStore),
   refreshComponentSourceInStore: (sourceId) =>
-    ipcRenderer.invoke(
-      "nohal:refresh-component-source-in-store",
-      sourceId,
-    ) as Promise<{
+    invoke<{
       sourceId: string;
       entries: ComponentStoreEntry[];
       removedComponentIds: string[];
       errors: Array<{ filePath: string; error: string }>;
-    }>,
+    }>(ipc.refreshComponentSourceInStore, sourceId),
   deleteComponentSourceFromStore: (sourceId) =>
-    ipcRenderer.invoke(
-      "nohal:delete-component-source-from-store",
-      sourceId,
-    ) as Promise<{
+    invoke<{
       sourceId: string;
       removedComponentIds: string[];
-    }>,
+    }>(ipc.deleteComponentSourceFromStore, sourceId),
   refreshComponentInStore: (componentId) =>
-    ipcRenderer.invoke(
-      "nohal:refresh-component-in-store",
-      componentId,
-    ) as Promise<ComponentStoreEntry>,
-  readTextFile: (filePath) =>
-    ipcRenderer.invoke("nohal:read-text-file", filePath) as Promise<string>,
+    invoke<ComponentStoreEntry>(ipc.refreshComponentInStore, componentId),
+  readTextFile: (filePath) => invoke<string>(ipc.readTextFile, filePath),
 };
 
 contextBridge.exposeInMainWorld("nohal", api);

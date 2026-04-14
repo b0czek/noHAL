@@ -9,6 +9,7 @@ import type {
   NoHALProject,
 } from "@nohal/core/types";
 import { BrowserWindow, clipboard, dialog, ipcMain } from "electron";
+import { IPC_CHANNELS } from "../shared/ipcChannels";
 import { appSettings } from "./appSettings";
 import { applyChangedAppSettings } from "./appSettingsEffects";
 import { componentStore } from "./componentStore";
@@ -29,23 +30,25 @@ import {
 } from "./window";
 
 export function registerIpcHandlers(): void {
-  ipcMain.on("nohal:set-window-dirty-state", (evt, isDirty: boolean) => {
+  const ipc = IPC_CHANNELS.rendererToMain;
+
+  ipcMain.on(ipc.setWindowDirtyState, (evt, isDirty: boolean) => {
     const win = BrowserWindow.fromWebContents(evt.sender);
     if (!win) return;
     setWindowDirtyState(win, Boolean(isDirty));
   });
 
-  ipcMain.on("nohal:read-clipboard-text", (evt) => {
+  ipcMain.on(ipc.readClipboardText, (evt) => {
     evt.returnValue = clipboard.readText();
   });
 
-  ipcMain.on("nohal:write-clipboard-text", (evt, text: string) => {
+  ipcMain.on(ipc.writeClipboardText, (evt, text: string) => {
     clipboard.writeText(text);
     evt.returnValue = null;
   });
 
   ipcMain.on(
-    "nohal:reply-save-before-close",
+    ipc.replySaveBeforeClose,
     (evt, requestId: number, didSave: boolean) => {
       resolveRendererSaveBeforeCloseRequest(
         evt.sender.id,
@@ -55,37 +58,33 @@ export function registerIpcHandlers(): void {
     },
   );
 
-  ipcMain.handle("nohal:prompt-unsaved-changes", async (evt) => {
+  ipcMain.handle(ipc.promptUnsavedChanges, async (evt) => {
     const win = BrowserWindow.fromWebContents(evt.sender);
     if (!win) return "cancel" as const;
     return promptUnsavedChangesChoice(win);
   });
 
-  ipcMain.handle("nohal:get-app-settings", async () => appSettings.read());
+  ipcMain.handle(ipc.getAppSettings, async () => appSettings.read());
 
-  ipcMain.handle("nohal:get-custom-component-store-path-info", async () =>
+  ipcMain.handle(ipc.getCustomComponentStorePathInfo, async () =>
     componentStore.getCustomComponentStorePathInfo(),
   );
 
-  ipcMain.handle("nohal:update-app-settings", async (evt, patch) => {
+  ipcMain.handle(ipc.updateAppSettings, async (evt, patch) => {
     const { previous, current } = await appSettings.update(patch);
     const win = BrowserWindow.fromWebContents(evt.sender);
     await applyChangedAppSettings({ win }, current, previous);
     return current;
   });
 
-  ipcMain.handle(
-    "nohal:new-project",
-    async (_evt, linuxcncVersion?: string) => {
-      const project = createEmptyProject("NoHAL Project");
-      project.target.linuxcncVersion =
-        normalizeLinuxCncVersion(linuxcncVersion);
-      reconcileProject(project);
-      return { project };
-    },
-  );
+  ipcMain.handle(ipc.newProject, async (_evt, linuxcncVersion?: string) => {
+    const project = createEmptyProject("NoHAL Project");
+    project.target.linuxcncVersion = normalizeLinuxCncVersion(linuxcncVersion);
+    reconcileProject(project);
+    return { project };
+  });
 
-  ipcMain.handle("nohal:get-recent-projects", async () => listRecentProjects());
+  ipcMain.handle(ipc.getRecentProjects, async () => listRecentProjects());
 
   const maybeWarnAboutNewerProject = async (
     win: BrowserWindow | null,
@@ -106,7 +105,7 @@ export function registerIpcHandlers(): void {
     });
   };
 
-  ipcMain.handle("nohal:open-project", async (evt) => {
+  ipcMain.handle(ipc.openProject, async (evt) => {
     const res = await dialog.showOpenDialog({
       title: "Open NoHAL Project",
       properties: ["openDirectory"],
@@ -123,7 +122,7 @@ export function registerIpcHandlers(): void {
     return result;
   });
 
-  ipcMain.handle("nohal:open-project-at", async (evt, projectPath: string) => {
+  ipcMain.handle(ipc.openProjectAt, async (evt, projectPath: string) => {
     const result = await projectDirectory.readProjectPath(projectPath);
     const win = BrowserWindow.fromWebContents(evt.sender);
     await maybeWarnAboutNewerProject(win, result.savedWith);
@@ -136,7 +135,7 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle(
-    "nohal:save-project",
+    ipc.saveProject,
     async (_evt, project: NoHALProject, projectPath?: string | null) => {
       let target = projectPath ?? null;
       if (!target) {
@@ -163,12 +162,12 @@ export function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
-    "nohal:build-project",
+    ipc.buildProject,
     async (_evt, project: NoHALProject, projectPath: string) =>
       projectBuild.buildProjectIntoDirectory(project, projectPath),
   );
 
-  ipcMain.handle("nohal:pick-machine-ini-file", async () => {
+  ipcMain.handle(ipc.pickMachineIniFile, async () => {
     const res = await dialog.showOpenDialog({
       title: "Select LinuxCNC INI File",
       properties: ["openFile"],
@@ -180,7 +179,7 @@ export function registerIpcHandlers(): void {
     );
   });
 
-  ipcMain.handle("nohal:pick-machine-hal-file", async () => {
+  ipcMain.handle(ipc.pickMachineHalFile, async () => {
     const res = await dialog.showOpenDialog({
       title: "Select HAL File",
       properties: ["openFile"],
@@ -191,40 +190,40 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle(
-    "nohal:build-machine-configuration-import",
+    ipc.buildMachineConfigurationImport,
     async (_evt, iniPath: string, halFiles: MachineConfigHalFileSelection[]) =>
       machineConfigImport.buildMachineConfigImportDraft(iniPath, halFiles),
   );
 
-  ipcMain.handle("nohal:load-component-store", async () =>
+  ipcMain.handle(ipc.loadComponentStore, async () =>
     componentStore.readComponentStoreFile(),
   );
 
   ipcMain.handle(
-    "nohal:add-manual-component-to-store",
+    ipc.addManualComponentToStore,
     async (_evt, halComponentName?: string) =>
       componentStore.addManualComponentToStore(halComponentName),
   );
 
   ipcMain.handle(
-    "nohal:update-manual-component-in-store",
+    ipc.updateManualComponentInStore,
     async (_evt, componentId: string, component: ImportedComponentDefinition) =>
       componentStore.updateManualComponentInStore(componentId, component),
   );
 
   ipcMain.handle(
-    "nohal:remove-manual-component-from-store",
+    ipc.removeManualComponentFromStore,
     async (_evt, componentId: string) =>
       componentStore.removeManualComponentFromStore(componentId),
   );
 
   ipcMain.handle(
-    "nohal:promote-project-custom-component-to-store",
+    ipc.promoteProjectCustomComponentToStore,
     async (_evt, component: ComponentDefinition) =>
       componentStore.promoteProjectCustomComponentToStore(component),
   );
 
-  ipcMain.handle("nohal:import-comp-file", async () => {
+  ipcMain.handle(ipc.importCompFile, async () => {
     const res = await dialog.showOpenDialog({
       title: "Import LinuxCNC .comp",
       properties: ["openFile"],
@@ -238,7 +237,7 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle(
-    "nohal:pick-custom-component-store-file",
+    ipc.pickCustomComponentStoreFile,
     async (_evt, defaultPath?: string | null) => {
       const res = await dialog.showOpenDialog({
         title: "Choose Custom Component Store File",
@@ -251,7 +250,7 @@ export function registerIpcHandlers(): void {
     },
   );
 
-  ipcMain.handle("nohal:import-comp-file-to-store", async () => {
+  ipcMain.handle(ipc.importCompFileToStore, async () => {
     const res = await dialog.showOpenDialog({
       title: "Import LinuxCNC .comp",
       properties: ["openFile"],
@@ -262,7 +261,7 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle(
-    "nohal:pick-directory",
+    ipc.pickDirectory,
     async (_evt, defaultPath?: string | null) => {
       const res = await dialog.showOpenDialog({
         title: "Select Directory",
@@ -274,33 +273,33 @@ export function registerIpcHandlers(): void {
     },
   );
 
-  ipcMain.handle("nohal:scan-comp-dir", async (_evt, dirPath: string) =>
+  ipcMain.handle(ipc.scanCompDir, async (_evt, dirPath: string) =>
     componentStore.scanCompDirectory(dirPath),
   );
 
-  ipcMain.handle("nohal:add-comp-dir-source-to-store", async () =>
+  ipcMain.handle(ipc.addCompDirSourceToStore, async () =>
     componentStore.addComponentDirSourceToStore(),
   );
 
   ipcMain.handle(
-    "nohal:refresh-component-source-in-store",
+    ipc.refreshComponentSourceInStore,
     async (_evt, sourceId: string) =>
       componentStore.refreshComponentSourceInStore(sourceId),
   );
 
   ipcMain.handle(
-    "nohal:delete-component-source-from-store",
+    ipc.deleteComponentSourceFromStore,
     async (_evt, sourceId: string) =>
       componentStore.deleteComponentSourceFromStore(sourceId),
   );
 
   ipcMain.handle(
-    "nohal:refresh-component-in-store",
+    ipc.refreshComponentInStore,
     async (_evt, componentId: string) =>
       componentStore.refreshStoredCompEntry(componentId),
   );
 
-  ipcMain.handle("nohal:read-text-file", async (_evt, filePath: string) =>
+  ipcMain.handle(ipc.readTextFile, async (_evt, filePath: string) =>
     readFile(filePath, "utf8"),
   );
 }

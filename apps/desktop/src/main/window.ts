@@ -3,6 +3,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { BrowserWindow, dialog } from "electron";
+import { IPC_CHANNELS } from "../shared/ipcChannels";
 import { appSettings } from "./appSettings";
 import { applyChangedAppSettings } from "./appSettingsEffects";
 
@@ -73,7 +74,10 @@ async function requestRendererSaveBeforeClose(
     });
   });
 
-  win.webContents.send("nohal:request-save-before-close", requestId);
+  win.webContents.send(
+    IPC_CHANNELS.mainToRenderer.requestSaveBeforeClose,
+    requestId,
+  );
   return resultPromise;
 }
 
