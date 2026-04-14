@@ -6,6 +6,7 @@ import {
   createSignal,
   onCleanup,
   onMount,
+  untrack,
 } from "solid-js";
 import { createKonvaSheetScene, type SheetScene } from "../canvas";
 import { useI18n } from "../i18n";
@@ -29,6 +30,9 @@ export default function Canvas() {
   const placementMode = createMemo(() => editorUi.placementMode());
   const gridResolution = createMemo(() =>
     settings.canvasGridResolution > 0 ? settings.canvasGridResolution : null,
+  );
+  const sheetCamera = createMemo(
+    () => state.sheetCameras[state.activeSheetId] ?? null,
   );
 
   const wrapOffset = (value: number, spacing: number) => {
@@ -56,6 +60,18 @@ export default function Canvas() {
     getHostEl: () => hostEl,
     getScene: () => scene,
   });
+  const renderScene = () => {
+    scene?.render({
+      project: state.project,
+      sheet: sheet(),
+      camera: untrack(() => sheetCamera()),
+      gridResolution: gridResolution(),
+      selection: state.selection,
+      pendingEndpoint: state.pendingEndpoint,
+      pendingWirePoints: state.pendingWirePoints,
+      placement: placementMode(),
+    });
+  };
   const handleSelect = (
     selection: typeof state.selection,
     options?: { mode?: "add" | "toggle" },
@@ -106,7 +122,10 @@ export default function Canvas() {
       onMoveSheetPort: actions.moveSheetPort,
       onMoveSelectionGroup: actions.moveSelectionGroup,
       onMoveConnectionWaypoints: actions.updateDirectConnectionWaypoints,
-      onCameraChange: setCamera,
+      onCameraChange: (nextCamera) => {
+        setCamera(nextCamera);
+        actions.setSheetCamera(state.activeSheetId, nextCamera);
+      },
       onCursorPosChange: (point) => {
         const current = state.canvasCursorPos;
         if (current?.x === point?.x && current?.y === point?.y) return;
@@ -120,15 +139,7 @@ export default function Canvas() {
       scene?.resize(entry.contentRect.width, entry.contentRect.height);
     });
     resizeObserver.observe(hostEl);
-    scene.render({
-      project: state.project,
-      sheet: sheet(),
-      gridResolution: gridResolution(),
-      selection: state.selection,
-      pendingEndpoint: state.pendingEndpoint,
-      pendingWirePoints: state.pendingWirePoints,
-      placement: placementMode(),
-    });
+    renderScene();
   });
 
   createEffect(() => {
@@ -139,15 +150,7 @@ export default function Canvas() {
     state.pendingEndpoint;
     state.pendingWirePoints;
     placementMode();
-    scene?.render({
-      project: state.project,
-      sheet: sheet(),
-      gridResolution: gridResolution(),
-      selection: state.selection,
-      pendingEndpoint: state.pendingEndpoint,
-      pendingWirePoints: state.pendingWirePoints,
-      placement: placementMode(),
-    });
+    renderScene();
   });
 
   createEffect(() => {

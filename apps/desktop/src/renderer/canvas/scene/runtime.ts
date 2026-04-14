@@ -88,6 +88,7 @@ export function createSceneRuntime(
     },
     state: {
       lastState: null,
+      renderedSheetId: null,
       cursorPos: null,
       camera: { x: 0, y: 0, scale: 1 },
       selectedConnectionId: null,

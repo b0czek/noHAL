@@ -10,6 +10,11 @@ import type {
 import type { Selection } from "../state/store/selectionTypes";
 
 export type SceneSelection = Selection;
+
+export interface CameraState extends XY {
+  scale: number;
+}
+
 export interface SceneSelectOptions {
   mode?: "add" | "toggle";
 }
@@ -106,7 +111,7 @@ export interface SceneCallbacks {
   }) => void;
   onMoveConnectionWaypoints: (connectionId: string, waypoints: XY[]) => void;
   onBackgroundClick?: (point: XY, options?: SceneSelectOptions) => void;
-  onCameraChange?: (camera: { x: number; y: number; scale: number }) => void;
+  onCameraChange?: (camera: CameraState) => void;
   onCursorPosChange?: (point: XY | null) => void;
   onContextMenuRequest?: (request: SceneContextMenuRequest) => void;
 }
@@ -114,6 +119,7 @@ export interface SceneCallbacks {
 export interface SceneRenderState {
   project: NoHALProject;
   sheet: SheetDefinition;
+  camera: CameraState | null;
   gridResolution: number | null;
   selection: SceneSelection;
   pendingEndpoint: SheetEndpointRef | null;

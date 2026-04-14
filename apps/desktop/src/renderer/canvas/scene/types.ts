@@ -2,15 +2,11 @@ import type { Bounds, Rect, XY } from "@nohal/core/types";
 import type Konva from "konva";
 import type { NodeLayout } from "../layout";
 import type { DragSelectionTarget } from "../renderables";
-import type { SceneCallbacks, SceneRenderState } from "../types";
+import type { CameraState, SceneCallbacks, SceneRenderState } from "../types";
 
 export interface CullModel {
   localRect: Rect;
   rotationDeg: number;
-}
-
-export interface CameraState extends XY {
-  scale: number;
 }
 
 export interface FocusTarget {
@@ -85,6 +81,7 @@ export interface SceneGraphState {
 
 export interface SceneState {
   lastState: SceneRenderState | null;
+  renderedSheetId: string | null;
   cursorPos: XY | null;
   camera: CameraState;
   selectedConnectionId: string | null;
