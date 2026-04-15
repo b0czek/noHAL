@@ -1,4 +1,4 @@
-import { resolveComponentPinsForInstance } from "./componentInstance";
+import { resolveComponentPinsForInstance } from "./component/instance";
 import { applyComponentPinOrder } from "./pinOrder";
 import type {
   ComponentNode,

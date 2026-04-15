@@ -1,4 +1,4 @@
-import { fixedInstanceNameForComponent } from "../componentSystem";
+import { fixedInstanceNameForComponent } from "../component/system";
 import { createId } from "../id";
 import { ensureSystemSheet } from "../sheet";
 import type {

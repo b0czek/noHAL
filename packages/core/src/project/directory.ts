@@ -1,6 +1,6 @@
 import { pickBy } from "remeda";
 import corePackageJson from "../../package.json";
-import { isSystemComponent } from "../componentSystem";
+import { isSystemComponent } from "../component/system";
 import { slugify } from "../id";
 import { writeFileAtomic } from "../io/writeFileAtomic";
 import type {

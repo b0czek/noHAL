@@ -1,3 +1,4 @@
+import { isManagedBySystemManager } from "../component/system";
 import {
   createIniSystemComponentDefinition,
   defaultPositionForIni,
@@ -6,7 +7,6 @@ import {
   INI_SYSTEM_MANAGER,
   iniManagedInstanceConfigValues,
 } from "../componentStore/catalog/system/ini";
-import { isManagedBySystemManager } from "../componentSystem";
 import { reconcileSystemSingleton } from "../systemReconcile/singleton";
 import type { ComponentNode, NoHALProject } from "../types";
 

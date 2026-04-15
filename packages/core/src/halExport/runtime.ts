@@ -6,7 +6,7 @@ import {
   makeAddfQueueNodeEntry,
   makeAddfQueueSubsheetOutputEntry,
 } from "../addfQueue";
-import { resolveAddfFunctionTarget } from "../componentFunctions";
+import { resolveAddfFunctionTarget } from "../component/functions";
 import { interpolateCustomLoadCommand } from "../customComponent/loadCommand";
 import { getSheet } from "../graph";
 import { isValidHalName } from "../halNames";

@@ -1,4 +1,4 @@
-import { isSystemComponent } from "../componentSystem";
+import { isSystemComponent } from "../component/system";
 import { getSheet } from "../graph";
 import { createId, slugify } from "../id";
 import type {

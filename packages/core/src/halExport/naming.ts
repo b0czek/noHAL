@@ -1,5 +1,5 @@
 import { sortBy, uniqueBy } from "remeda";
-import { resolveComponentInstancePath } from "../componentNaming";
+import { resolveComponentInstancePath } from "../component/naming";
 import type { ComponentDefinition } from "../types";
 import type { EndpointRecord, Hint } from "./context";
 

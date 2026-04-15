@@ -1,5 +1,5 @@
 import { pickBy, pullObject, unique } from "remeda";
-import { resolveComponentPinsForInstance } from "../componentInstance";
+import { resolveComponentPinsForInstance } from "../component/instance";
 import { normalizeComponentPinOrder } from "../pinOrder";
 import type { ComponentDefinition, NoHALProject } from "../types";
 

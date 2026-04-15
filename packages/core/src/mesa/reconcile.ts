@@ -1,8 +1,8 @@
+import { isManagedBySystemManager } from "../component/system";
 import {
   createMesaSystemComponentDefinition,
   MESA_SYSTEM_MANAGER,
 } from "../componentStore/catalog/system/mesa";
-import { isManagedBySystemManager } from "../componentSystem";
 import { createId } from "../id";
 import { ensureSystemSheet, findSystemSheet } from "../sheet";
 import { sameComponentDefinition } from "../systemReconcile/shared";

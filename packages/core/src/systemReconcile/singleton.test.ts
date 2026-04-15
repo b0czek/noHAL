@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveComponentPinsForInstance } from "../componentInstance";
+import { resolveComponentPinsForInstance } from "../component/instance";
 import { getNodePins } from "../graph";
 import { exportProjectToHal } from "../halExport";
 import { createId } from "../id";

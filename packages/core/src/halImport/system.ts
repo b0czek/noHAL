@@ -1,5 +1,5 @@
 import { filter, map, pipe, sortBy } from "remeda";
-import { resolveComponentPinsForInstance } from "../componentInstance";
+import { resolveComponentPinsForInstance } from "../component/instance";
 import { createHaluiSystemComponentDefinition } from "../componentStore/catalog/system/halui";
 import {
   createIniSystemComponentDefinition,

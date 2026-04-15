@@ -1,5 +1,5 @@
 import { addfQueueEntryNodeId, normalizeAddfQueueEntries } from "../addfQueue";
-import { ensureInstanceName } from "../componentNaming";
+import { ensureInstanceName } from "../component/naming";
 import { getConnectedSheetPortReferenceLocations, getSheet } from "../graph";
 import { createId } from "../id";
 import { createSheet } from "../project";

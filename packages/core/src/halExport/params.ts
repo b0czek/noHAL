@@ -1,5 +1,5 @@
-import { resolveComponentPinsForInstance } from "../componentInstance";
-import { resolveNodeExportStage } from "../componentSystem";
+import { resolveComponentPinsForInstance } from "../component/instance";
+import { resolveNodeExportStage } from "../component/system";
 import { getSheet } from "../graph";
 import { isValidHalName } from "../halNames";
 import type { ComponentNode, NoHALProject } from "../types";

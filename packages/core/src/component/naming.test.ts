@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { createEmptyProject } from "../project";
+import type { ComponentDefinition, SheetDefinition } from "../types";
 import {
   hasComponentExportPathConflict,
   nextComponentInstanceName,
   resolveComponentExportNamespace,
-} from "./componentNaming";
-import { createEmptyProject } from "./project";
-import type { ComponentDefinition, SheetDefinition } from "./types";
+} from "./naming";
 
 function createSheet(id: string, name: string): SheetDefinition {
   return {

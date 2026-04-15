@@ -1,10 +1,10 @@
-import { slugify } from "./id";
+import { slugify } from "../id";
 import type {
   ComponentDefinition,
   ComponentExportNamespace,
   NoHALProject,
   SheetDefinition,
-} from "./types";
+} from "../types";
 
 const DEFAULT_CANONICAL_INSTANCE_LIMIT = 10_000;
 const DEFAULT_FREE_INSTANCE_LIMIT = 10_000;

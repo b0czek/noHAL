@@ -1,5 +1,5 @@
 import { filter, fromEntries, map, pipe, sortBy } from "remeda";
-import { resolveComponentPinsForInstance } from "../componentInstance";
+import { resolveComponentPinsForInstance } from "../component/instance";
 import type { ComponentDefinition } from "../types";
 
 export function samePinSchema(

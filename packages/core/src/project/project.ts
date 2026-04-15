@@ -1,5 +1,5 @@
 import { filter, pipe, unique } from "remeda";
-import { fixedExportStageForComponent } from "../componentSystem";
+import { fixedExportStageForComponent } from "../component/system";
 import { reconcileHaluiManagedNodes } from "../halui";
 import { createId, slugify } from "../id";
 import { reconcileIniManagedNodes } from "../ini";
