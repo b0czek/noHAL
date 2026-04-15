@@ -45,9 +45,12 @@ export interface ComponentSystemMetadata {
   subfamily?: string;
 }
 
+export type ComponentExportNamespace = "sheet_scoped" | "global";
+
 export interface ComponentConstraintPolicy {
   fixedInstanceName?: string;
   fixedExportStage?: "main" | "postgui";
+  exportNamespace?: ComponentExportNamespace;
 }
 
 export type ComponentLoadrtStrategyId =

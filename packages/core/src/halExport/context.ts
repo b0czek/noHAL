@@ -67,6 +67,7 @@ export interface ExportContext {
   warnings: string[];
   fatalErrors: string[];
   globalLabelMembers: Map<string, string[]>;
+  exportedInstancePaths: Set<string>;
   componentInstances: Array<{
     componentName: string;
     componentId: string;
@@ -87,6 +88,7 @@ export function createExportContext(): ExportContext {
     warnings: [],
     fatalErrors: [],
     globalLabelMembers: new Map(),
+    exportedInstancePaths: new Set(),
     componentInstances: [],
     endpointSeq: 0,
   };

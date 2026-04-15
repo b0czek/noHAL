@@ -87,6 +87,9 @@ function makeDebounceBase(
         max_group_size: 50,
       },
     },
+    constraints: {
+      exportNamespace: "global",
+    },
     parseMeta: {
       parser: "nohal-comp-v1",
       warnings: [

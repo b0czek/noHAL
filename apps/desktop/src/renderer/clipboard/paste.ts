@@ -163,7 +163,7 @@ function pasteNodes(args: {
     if (node.kind === "component") {
       const component = next.library.components[node.componentId];
       if (!component || isProtectedSystemNode(next, node)) continue;
-      const instanceName = nextComponentInstanceName(sheet, component);
+      const instanceName = nextComponentInstanceName(next, sheet, component);
       if (!instanceName) continue;
       const pastedNode = cloneValue(node);
       pastedNode.id = createId("node");

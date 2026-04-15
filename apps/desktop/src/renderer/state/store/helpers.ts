@@ -6,6 +6,7 @@ import {
   componentPrefersCanonicalInstanceNames,
   componentUsesLockedCanonicalInstanceNames,
   ensureInstanceName,
+  hasComponentExportPathConflict,
   nextComponentInstanceName,
 } from "@nohal/core/componentNaming";
 import {
@@ -40,6 +41,7 @@ export {
   componentUsesLockedCanonicalInstanceNames,
   createEmptyComponentStore,
   ensureInstanceName,
+  hasComponentExportPathConflict,
   nextComponentInstanceName,
   normalizeRotationDegrees,
 };

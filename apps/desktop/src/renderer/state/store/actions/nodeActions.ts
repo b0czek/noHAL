@@ -32,6 +32,7 @@ import {
   defaultNodePosition,
   defaultPortPosition,
   forcedPortSideForDirection,
+  hasComponentExportPathConflict,
   nextComponentInstanceName,
   nextName,
   normalizeRotationDegrees,
@@ -81,8 +82,22 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         );
         return;
       }
-    }
-    if (
+      if (
+        hasComponentExportPathConflict({
+          project: deps.state.project,
+          sheetId,
+          component,
+          instanceName: trimmed,
+          excludeNodeId: nodeId,
+        })
+      ) {
+        deps.setState(
+          "status",
+          `Instance name collides in exported HAL namespace: ${trimmed}`,
+        );
+        return;
+      }
+    } else if (
       currentSheet.nodes.some(
         (n) => n.id !== nodeId && n.instanceName === trimmed,
       )
@@ -270,11 +285,15 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       }
       const activeSheetId = deps.state.activeSheetId;
       const currentSheet = getSheet(deps.state.project, activeSheetId);
-      const instanceName = nextComponentInstanceName(currentSheet, comp);
+      const instanceName = nextComponentInstanceName(
+        deps.state.project,
+        currentSheet,
+        comp,
+      );
       if (!instanceName) {
         deps.setState(
           "status",
-          `No available canonical instance names left for component '${comp.halComponentName}'`,
+          `No available export-safe instance names left for component '${comp.halComponentName}'`,
         );
         return;
       }

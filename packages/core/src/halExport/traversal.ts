@@ -55,15 +55,24 @@ function createLocalEndpointIdMap(
       node.kind === "component" ? node.exportStage : undefined,
     );
     const pins = getNodePins(project, node);
+    const instancePath =
+      node.kind === "component"
+        ? resolveExportedInstancePath(pathParts, node.instanceName, component)
+        : undefined;
+    if (instancePath) {
+      if (ctx.exportedInstancePaths.has(instancePath)) {
+        pushFatal(
+          ctx,
+          `Duplicate exported instance path '${instancePath}' detected; component instances must be unique across the project export namespace`,
+        );
+      } else {
+        ctx.exportedInstancePaths.add(instancePath);
+      }
+    }
     for (const pin of pins) {
       const localKey = `node:${node.id}:${pin.key}`;
       const id = endpointId(ctx, "ep");
       if (node.kind === "component") {
-        const instancePath = resolveExportedInstancePath(
-          pathParts,
-          node.instanceName,
-          component,
-        );
         registerEndpoint(ctx, {
           id,
           kind: "component-pin",
