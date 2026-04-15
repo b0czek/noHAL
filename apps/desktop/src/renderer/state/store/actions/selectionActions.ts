@@ -5,14 +5,11 @@ import {
 import {
   isProtectedSystemNode,
   isProtectedSystemSheet,
+  sheetModelEdits,
 } from "@nohal/core/sheet";
 import type { XY } from "@nohal/core/types";
 import { createSelectionClipboard } from "../../../clipboard/selection";
-import {
-  cloneProject,
-  removeProjectSelectionItems,
-  syncProjectUi,
-} from "../helpers";
+import { cloneProject, syncProjectUi } from "../helpers";
 import {
   extendSelection as mergeSelection,
   selectionIdBuckets,
@@ -97,7 +94,7 @@ export function createSelectionActions(
     for (const nodeId of protectedNodeIds) selectedNodeIds.delete(nodeId);
 
     const next = cloneProject(deps.state.project);
-    removeProjectSelectionItems(next, deps.state.activeSheetId, {
+    sheetModelEdits.items.remove(next, deps.state.activeSheetId, {
       ...selectionIds,
       nodeIds: selectedNodeIds,
     });
@@ -121,7 +118,7 @@ export function createSelectionActions(
     deps.withProject((project) => {
       const selectionIds = selectionIdBuckets(sel);
       if (!selectionIds) return;
-      removeProjectSelectionItems(project, activeSheetId, selectionIds);
+      sheetModelEdits.items.remove(project, activeSheetId, selectionIds);
     });
     deps.clearSelectionAndPendingUi();
     deps.setStatusT("store.status.removedSelection");

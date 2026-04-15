@@ -9,7 +9,7 @@ import type {
   XY,
 } from "../types";
 import { defaultNodePositionForIndex } from "./layout";
-import { moveSelectionIntoSubsheet } from "./subsheetMove";
+import { moveItemsIntoSubsheet } from "./subsheetMove";
 import {
   createDefaultSheetThreadOutputs,
   firstSheetThreadOutputId,
@@ -202,7 +202,7 @@ export function moveRootSystemComponentsToSystemSheet(
       })
       .map((label) => label.id),
   );
-  moveSelectionIntoSubsheet(project, {
+  moveItemsIntoSubsheet(project, {
     parentSheetId: rootSheet.id,
     childSheetId: systemSheet.id,
     subsheetNode: systemSheetNode,

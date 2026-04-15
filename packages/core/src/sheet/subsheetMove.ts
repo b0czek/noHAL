@@ -91,7 +91,7 @@ function isMovedNodeEndpoint(
   return endpoint.kind === "node-pin" && movedNodeIds.has(endpoint.nodeId);
 }
 
-export interface MoveSelectionIntoSubsheetOptions {
+export interface MoveItemsIntoSubsheetOptions {
   parentSheetId: string;
   childSheetId: string;
   subsheetNode: SheetNode;
@@ -99,16 +99,16 @@ export interface MoveSelectionIntoSubsheetOptions {
   movedLabelIds?: readonly string[];
 }
 
-export interface MoveSelectionIntoSubsheetResult {
+export interface MoveItemsIntoSubsheetResult {
   movedNodeCount: number;
   movedLabelCount: number;
   createdPortCount: number;
 }
 
-export function moveSelectionIntoSubsheet(
+export function moveItemsIntoSubsheet(
   project: NoHALProject,
-  options: MoveSelectionIntoSubsheetOptions,
-): MoveSelectionIntoSubsheetResult {
+  options: MoveItemsIntoSubsheetOptions,
+): MoveItemsIntoSubsheetResult {
   const parentSheet = getSheet(project, options.parentSheetId);
   const childSheet = getSheet(project, options.childSheetId);
   const movedNodeIdSet = new Set(options.movedNodeIds);

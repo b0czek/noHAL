@@ -1,8 +1,4 @@
 import {
-  addfQueueEntryNodeId,
-  normalizeAddfQueueEntries,
-} from "@nohal/core/addfQueue";
-import {
   componentPrefersCanonicalInstanceNames,
   componentUsesLockedCanonicalInstanceNames,
   ensureInstanceName,
@@ -23,7 +19,6 @@ import {
   defaultNodePositionForIndex,
   defaultPortPositionForIndex,
   normalizeRotationDegrees,
-  sheetModelEdits,
 } from "@nohal/core/sheet";
 import type {
   ComponentStore,
@@ -217,81 +212,6 @@ export function sheetContainsSheet(
   return false;
 }
 
-export function pruneSheetNodeReferences(
-  sheet: SheetDefinition,
-  removedNodeIds: ReadonlySet<string>,
-): void {
-  if (removedNodeIds.size === 0) return;
-
-  sheet.directConnections = sheet.directConnections.filter(
-    (c) =>
-      !(c.a.kind === "node-pin" && removedNodeIds.has(c.a.nodeId)) &&
-      !(c.b.kind === "node-pin" && removedNodeIds.has(c.b.nodeId)),
-  );
-
-  sheet.labelAnchors = sheet.labelAnchors.filter(
-    (a) =>
-      !(
-        a.endpoint.kind === "node-pin" && removedNodeIds.has(a.endpoint.nodeId)
-      ),
-  );
-
-  if (!sheet.hal?.addfQueue) return;
-  sheet.hal.addfQueue = normalizeAddfQueueEntries(
-    sheet.hal.addfQueue.filter((entry) => {
-      const nodeId = addfQueueEntryNodeId(entry);
-      return !(nodeId && removedNodeIds.has(nodeId));
-    }),
-  );
-  if (sheet.hal.addfQueue.length === 0) delete sheet.hal.addfQueue;
-  if (Object.keys(sheet.hal).length === 0) delete sheet.hal;
-}
-
-export function removeProjectSelectionItems(
-  project: NoHALProject,
-  sheetId: string,
-  selection: {
-    nodeIds: ReadonlySet<string>;
-    labelIds: ReadonlySet<string>;
-    commentIds: ReadonlySet<string>;
-    portIds: ReadonlySet<string>;
-  },
-): void {
-  const sheet = project.sheets[sheetId];
-  if (!sheet) return;
-
-  if (selection.nodeIds.size > 0) {
-    const removedNodeIds = new Set<string>();
-    sheet.nodes = sheet.nodes.filter((node) => {
-      if (!selection.nodeIds.has(node.id)) return true;
-      removedNodeIds.add(node.id);
-      return false;
-    });
-    pruneSheetNodeReferences(sheet, removedNodeIds);
-  }
-
-  if (selection.labelIds.size > 0) {
-    sheet.labels = sheet.labels.filter(
-      (label) => !selection.labelIds.has(label.id),
-    );
-    sheet.labelAnchors = sheet.labelAnchors.filter(
-      (anchor) => !selection.labelIds.has(anchor.labelId),
-    );
-  }
-
-  if (selection.commentIds.size > 0) {
-    sheet.comments = sheet.comments.filter(
-      (comment) => !selection.commentIds.has(comment.id),
-    );
-  }
-
-  if (selection.portIds.size > 0) {
-    for (const portId of selection.portIds) {
-      sheetModelEdits.port.remove(project, sheetId, portId);
-    }
-  }
-}
-
 export function syncProjectUi(
   project: NoHALProject,
   activeSheetId: string,
@@ -323,22 +243,4 @@ export function cloneEndpoint(endpoint: SheetEndpointRef): SheetEndpointRef {
   return endpoint.kind === "node-pin"
     ? { kind: "node-pin", nodeId: endpoint.nodeId, pinKey: endpoint.pinKey }
     : { kind: "sheet-port", portId: endpoint.portId };
-}
-
-export function selectionBoundsForNodesAndLabels(
-  nodes: SheetNodeInstance[],
-  labels: { position: XY }[],
-): XY {
-  const points = [
-    ...nodes.map((node) => node.position),
-    ...labels.map((label) => label.position),
-  ];
-  if (points.length === 0) return { x: 120, y: 100 };
-  let minX = points[0].x;
-  let minY = points[0].y;
-  for (const point of points) {
-    if (point.x < minX) minX = point.x;
-    if (point.y < minY) minY = point.y;
-  }
-  return { x: minX, y: minY };
 }
