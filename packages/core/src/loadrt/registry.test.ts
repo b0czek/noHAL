@@ -44,7 +44,7 @@ describe("loadrt strategy interpolation", () => {
     expect(result.warnings).toBeUndefined();
   });
 
-  it("falls back to names=... for non-canonical names_or_num_chan instances", () => {
+  it("emits names=... for non-canonical names_or_num_chan instances", () => {
     const result = interpolateLoadrt({
       componentName: "pid",
       instancePaths: ["orient-pid"],
@@ -53,11 +53,7 @@ describe("loadrt strategy interpolation", () => {
     });
 
     expect(result.lines).toEqual(["loadrt pid names=orient-pid"]);
-    expect(
-      result.warnings?.some((w) =>
-        w.includes("expected canonical instance names"),
-      ),
-    ).toBe(true);
+    expect(result.warnings).toBeUndefined();
   });
 
   it("uses names_or_count by default when strategy is unset", () => {
