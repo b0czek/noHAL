@@ -489,18 +489,6 @@ function warnThreadFloatMismatch(args: {
   );
 }
 
-function defaultAddfTemplatesForComponent(
-  project: NoHALProject,
-  componentId: string,
-): string[] {
-  const component = project.library.components[componentId];
-  const functions = component?.functions ?? [];
-  if (functions.length === 0) return ["{instance}"];
-  return functions.map((fn) =>
-    fn.halSuffix ? `{instance}.${fn.halSuffix}` : "{instance}",
-  );
-}
-
 function createOrderedAddfCollectorState(): OrderedAddfCollectorState {
   return {
     ordered: [],
@@ -710,16 +698,7 @@ function pushDefaultComponentQueueItems(args: {
   const component = args.project.library.components[args.node.componentId];
   const functions = component?.functions ?? [];
   if (args.state.coveredByNodeEntry.has(args.node.id)) return;
-  if (functions.length === 0) {
-    pushOrderedAddfItem(args.state, {
-      queueKey:
-        addfQueueEntryKey(makeAddfQueueNodeEntry(args.node.id)) ??
-        `node:${args.node.id}`,
-      node: args.node,
-      sheetThreadOutputId: args.defaultSheetThreadId,
-    });
-    return;
-  }
+  if (functions.length === 0) return;
   const covered = args.state.coveredFunctionKeysByNodeId.get(args.node.id);
   for (const fn of functions) {
     if (covered?.has(fn.key)) continue;
@@ -975,13 +954,10 @@ function emitComponentAddfEntries(args: {
     });
     return;
   }
-  const templates = (
-    customTemplates ??
-    defaultAddfTemplatesForComponent(
-      args.project,
-      args.queueItem.node.componentId,
-    )
-  ).filter((template) => template.trim().length > 0);
+  if (!customTemplates) return;
+  const templates = customTemplates.filter(
+    (template) => template.trim().length > 0,
+  );
   emitTemplatedAddfEntries({
     addfEntries: args.addfEntries,
     templates,

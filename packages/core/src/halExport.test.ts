@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { makeAddfQueueFunctionEntry } from "./addfQueue";
+import {
+  makeAddfQueueFunctionEntry,
+  makeAddfQueueNodeEntry,
+} from "./addfQueue";
 import { exportProjectToHal } from "./halExport";
 import { createEmptyProject } from "./project";
 import { findSystemSheet, findSystemSheetNode } from "./sheet";
@@ -204,6 +207,67 @@ describe("exportProjectToHal connection signal names", () => {
       "loadrt manual_loader custom_names=manual_loader.0 count=1",
     );
     expect(text).not.toContain("loadrt manual_loader names=");
+  });
+
+  it("does not infer addf targets for realtime components without functions", () => {
+    const project = createEmptyProject("No Function Addf Export");
+    const sheet = project.sheets[project.rootSheetId];
+    project.library.components["comp:no-function-implicit"] = {
+      id: "comp:no-function-implicit",
+      name: "homecomp",
+      halComponentName: "homecomp",
+      source: "comp",
+      runtime: {
+        kind: "rt",
+        instanceNaming: { strategy: "canonical_indexed" },
+      },
+      pins: [
+        { key: "is_module", name: "is-module", direction: "out", type: "bit" },
+      ],
+      params: [],
+      functions: [],
+    };
+    project.library.components["comp:no-function-explicit"] = {
+      id: "comp:no-function-explicit",
+      name: "matrixkins",
+      halComponentName: "matrixkins",
+      source: "comp",
+      runtime: {
+        kind: "rt",
+        instanceNaming: { strategy: "canonical_indexed" },
+      },
+      pins: [{ key: "dummy", name: "dummy", direction: "out", type: "bit" }],
+      params: [],
+    };
+    sheet.nodes.push(
+      {
+        id: "node_implicit",
+        kind: "component",
+        componentId: "comp:no-function-implicit",
+        instanceName: "homecomp.0",
+        position: { x: 0, y: 0 },
+        paramValues: {},
+      },
+      {
+        id: "node_explicit",
+        kind: "component",
+        componentId: "comp:no-function-explicit",
+        instanceName: "matrixkins.0",
+        position: { x: 180, y: 0 },
+        paramValues: {},
+      },
+    );
+    sheet.hal = {
+      ...(sheet.hal ?? {}),
+      addfQueue: [makeAddfQueueNodeEntry("node_explicit")],
+    };
+
+    const { text } = exportProjectToHal(project);
+
+    expect(text).toContain("loadrt homecomp");
+    expect(text).toContain("loadrt matrixkins");
+    expect(text).not.toContain("addf homecomp.0");
+    expect(text).not.toContain("addf matrixkins.0");
   });
 
   it("preserves raw ini reference tokens in exported setp values", () => {
