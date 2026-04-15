@@ -11,6 +11,7 @@ import type {
   SheetThreadOutputDefinition,
 } from "../types";
 import { defaultNodePositionForIndex } from "./layout";
+import { isSingletonReferenceBlocked } from "./singleton";
 import { normalizeSheetThreadOutputs } from "./threads";
 
 function nextUniqueName(base: string, used: ReadonlySet<string>): string {
@@ -366,6 +367,9 @@ function addSheetReference(
   const sheet = project.sheets[sheetId];
   if (!parentSheet) return null;
   if (!sheet) return null;
+  if (isSingletonReferenceBlocked(project, parentSheetId, sheetId)) {
+    return null;
+  }
 
   const node: SheetNode = {
     id: createId("node"),

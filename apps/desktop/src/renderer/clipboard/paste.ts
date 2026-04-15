@@ -2,6 +2,7 @@ import { createId } from "@nohal/core/id";
 import {
   isProtectedSystemNode,
   isProtectedSystemSheet,
+  isSingletonReferenceBlocked,
 } from "@nohal/core/sheet";
 import type {
   NoHALProject,
@@ -176,6 +177,9 @@ function pasteNodes(args: {
     }
 
     if (isProtectedSystemSheet(next, node.sheetId)) continue;
+    if (isSingletonReferenceBlocked(next, sheet.id, node.sheetId)) {
+      continue;
+    }
     const pastedNode = cloneValue(node);
     pastedNode.id = createId("node");
     pastedNode.instanceName = ensureInstanceName(sheet, node.instanceName);
