@@ -52,6 +52,7 @@ export interface SceneView {
 export interface SceneInteractionState {
   isPanning: boolean;
   panLastScreenPos: XY | null;
+  panTriggerButton: number | null;
   backgroundTapStartScreenPos: XY | null;
   backgroundTapAdditive: boolean;
   isMarqueeSelecting: boolean;
