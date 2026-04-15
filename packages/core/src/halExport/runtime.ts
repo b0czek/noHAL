@@ -285,17 +285,6 @@ function prepareRuntimeGroups(
   return preparedByComponentName;
 }
 
-function warnUnknownRuntimeInstances(
-  ctx: ExportContext,
-  unknownRuntimeInstances: RuntimeInstanceRecord[],
-): void {
-  for (const item of unknownRuntimeInstances) {
-    ctx.warnings.push(
-      `Component '${item.instancePath}' (${item.componentName}) has unknown runtime kind; skipping loadrt/addf generation for it`,
-    );
-  }
-}
-
 function collectSortedRtGroups(
   rtInstances: RuntimeInstanceRecord[],
   preparedByComponentName: Map<string, PreparedComponentRuntimeGroup>,
@@ -470,7 +459,7 @@ function buildRuntimeSummaryLines(
   }
   if (unknownRuntimeInstances.length > 0) {
     runtimeSummaryLines.push(
-      `# Unknown-runtime components (set runtime.kind to enable loadrt/addf generation):`,
+      `# Runtime not generated for externally managed/unknown components(set runtime.kind to enable loadrt/addf generation):`,
     );
     for (const item of unknownRuntimeInstances) {
       runtimeSummaryLines.push(
@@ -1150,7 +1139,6 @@ export function buildRuntimeSections(
     ctx,
     itemsByComponentName,
   );
-  warnUnknownRuntimeInstances(ctx, unknownRuntimeInstances);
   const sortedRtGroups = collectSortedRtGroups(
     rtInstances,
     preparedByComponentName,
