@@ -110,11 +110,15 @@ export function collectNetLines(ctx: ExportContext): NetLines {
     const leafPins = records.filter(
       (r) => r.kind === "component-pin" && r.halPinPath,
     );
-    if (leafPins.length < 2) continue;
-
     const hints = groupMembers.flatMap(
       (id) => ctx.hintsByEndpointId.get(id) ?? [],
     );
+    const hasLabelHint = hints.some(
+      (hint) => hint.kind === "global" || hint.kind === "local",
+    );
+    if (leafPins.length === 0) continue;
+    if (leafPins.length < 2 && !hasLabelHint) continue;
+
     const fallbackNetName = `auto_net_${autoIndex}`;
     const candidateNetName = chooseNetName(hints, autoIndex);
     const netName = resolveNetName(ctx, candidateNetName, fallbackNetName);

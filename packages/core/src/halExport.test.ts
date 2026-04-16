@@ -64,6 +64,46 @@ function makeConnectedProject(signalName?: string) {
   return project;
 }
 
+function makeSinglePinProject(label?: {
+  name: string;
+  scope: "global" | "local";
+}) {
+  const project = createEmptyProject("Single Pin Label Test");
+  const sheet = project.sheets[project.rootSheetId];
+  project.library.components["comp:test-sink"] = {
+    id: "comp:test-sink",
+    name: "sink",
+    halComponentName: "sink",
+    source: "comp",
+    sourcePath: "tests/components/sink.comp",
+    runtime: { kind: "rt" },
+    pins: [{ key: "in0", name: "in0", direction: "in", type: "bit" }],
+    params: [],
+  };
+  sheet.nodes.push({
+    id: "node_sink",
+    kind: "component",
+    componentId: "comp:test-sink",
+    instanceName: "sink",
+    position: { x: 0, y: 0 },
+    paramValues: {},
+  });
+  if (!label) return project;
+
+  sheet.labels.push({
+    id: "label_1",
+    name: label.name,
+    scope: label.scope,
+    position: { x: 40, y: 0 },
+  });
+  sheet.labelAnchors.push({
+    id: "anchor_1",
+    labelId: "label_1",
+    endpoint: { kind: "node-pin", nodeId: "node_sink", pinKey: "in0" },
+  });
+  return project;
+}
+
 function expectContainsNetLine(text: string | undefined, line: string) {
   expect(text ?? "").toContain(line);
 }
@@ -95,6 +135,37 @@ describe("exportProjectToHal connection signal names", () => {
     expect(warnings.some((w) => w.includes("Invalid HAL signal name"))).toBe(
       true,
     );
+  });
+
+  it("emits a net for a globally labeled single pin", () => {
+    const project = makeSinglePinProject({
+      name: "global_sig",
+      scope: "global",
+    });
+
+    const { text } = exportProjectToHal(project);
+
+    expect(text).toContain("net global_sig sink.in0");
+  });
+
+  it("emits a net for a locally labeled single pin", () => {
+    const project = makeSinglePinProject({
+      name: "local_sig",
+      scope: "local",
+    });
+
+    const { text } = exportProjectToHal(project);
+
+    expect(text).toContain("net local_sig sink.in0");
+  });
+
+  it("keeps unlabeled single pins out of the export", () => {
+    const project = makeSinglePinProject();
+
+    const { text } = exportProjectToHal(project);
+
+    expect(text).toContain("# (no nets exported)");
+    expect(text).not.toContain("sink.in0");
   });
 
   it("warns when exported HAL names or signal names exceed the configured limit", () => {
