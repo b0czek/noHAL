@@ -1,7 +1,7 @@
 import { resolveComponentPinsForInstance } from "../component/instance";
 import { resolveNodeExportStage } from "../component/system";
 import { getSheet } from "../graph";
-import { isValidHalName } from "../halNames";
+import { getHalNameLengthWarning, isValidHalName } from "../halNames";
 import type { ComponentNode, NoHALProject } from "../types";
 import type { ExportContext } from "./context";
 import { pushFatal } from "./context";
@@ -16,6 +16,7 @@ export interface ParamLines {
 interface ResolvedValueTarget {
   instanceName: string;
   instancePath: string;
+  halNameLen: number;
   targetLines: string[];
   warnings: string[];
 }
@@ -35,7 +36,14 @@ function emitResolvedValueLines(
       continue;
     }
     if (!value.trim()) continue;
-    target.targetLines.push(`setp ${target.instancePath}.${name} ${value}`);
+    const halName = `${target.instancePath}.${name}`;
+    const warning = getHalNameLengthWarning(
+      "HAL name",
+      halName,
+      target.halNameLen,
+    );
+    if (warning) target.warnings.push(warning);
+    target.targetLines.push(`setp ${halName} ${value}`);
   }
 }
 
@@ -72,6 +80,7 @@ export function collectParamLines(
     const resolvedValueTarget: ResolvedValueTarget = {
       instanceName: node.instanceName,
       instancePath,
+      halNameLen: ctx.halNameLen,
       targetLines: setpTargetLines,
       warnings: ctx.warnings,
     };

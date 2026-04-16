@@ -1,3 +1,4 @@
+import { normalizeHalNameLen } from "../halNames";
 import type {
   LinuxCncIniEntry,
   LinuxCncIniSection,
@@ -49,6 +50,19 @@ export function updateProjectWireStyle(
 ): boolean {
   if (project.ui.wireStyle === style) return false;
   project.ui.wireStyle = style;
+  return true;
+}
+
+export function updateProjectHalNameLen(
+  project: NoHALProject,
+  halNameLen: number,
+): boolean {
+  const normalized = normalizeHalNameLen(halNameLen);
+  if (project.halExport?.halNameLen === normalized) return false;
+  project.halExport = {
+    ...(project.halExport ?? {}),
+    halNameLen: normalized,
+  };
   return true;
 }
 
@@ -179,6 +193,9 @@ export const projectEdits = {
       style: {
         update: updateProjectWireStyle,
       },
+    },
+    halNameLen: {
+      update: updateProjectHalNameLen,
     },
   },
   machineConfig: {

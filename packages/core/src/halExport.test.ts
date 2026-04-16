@@ -97,6 +97,29 @@ describe("exportProjectToHal connection signal names", () => {
     );
   });
 
+  it("warns when exported HAL names or signal names exceed the configured limit", () => {
+    const project = makeConnectedProject("signal_name_too_long");
+    const sheet = project.sheets[project.rootSheetId];
+    const source = sheet.nodes.find((node) => node.id === "node_a");
+    if (!source || source.kind !== "component")
+      throw new Error("expected component node");
+    source.instanceName = "very_long_source";
+    project.halExport = { halNameLen: 10 };
+
+    const { warnings } = exportProjectToHal(project);
+
+    expect(
+      warnings.some((warning) =>
+        warning.includes("HAL signal name 'signal_name_too_long'"),
+      ),
+    ).toBe(true);
+    expect(
+      warnings.some((warning) =>
+        warning.includes("HAL name 'very_long_source.out'"),
+      ),
+    ).toBe(true);
+  });
+
   it("aborts exporting when a net mixes OUT and IO pins", () => {
     const project = createEmptyProject("OutIo");
     const sheet = project.sheets[project.rootSheetId];
@@ -303,6 +326,51 @@ describe("exportProjectToHal connection signal names", () => {
 
     expect(text).toContain("setp ini_ref.0.gain [TRAJ]DEFAULT_LINEAR_VELOCITY");
     expect(text).toContain("setp ini_ref.0.offset [DISPLAY]MAX_FEED_OVERRIDE");
+  });
+
+  it("warns when exported setp targets exceed the configured limit", () => {
+    const project = createEmptyProject("Setp Length Warning");
+    const sheet = project.sheets[project.rootSheetId];
+    project.library.components["comp:test-long-setp"] = {
+      id: "comp:test-long-setp",
+      name: "long-setp",
+      halComponentName: "long_setp",
+      source: "manual",
+      sourcePath: "tests/components/long-setp.comp",
+      runtime: { kind: "rt" },
+      pins: [{ key: "gain", name: "gain", direction: "in", type: "float" }],
+      params: [
+        {
+          key: "offset",
+          name: "offset",
+          direction: "rw",
+          type: "float",
+        },
+      ],
+    };
+    sheet.nodes.push({
+      id: "node_long_setp",
+      kind: "component",
+      componentId: "comp:test-long-setp",
+      instanceName: "very_long_setp",
+      position: { x: 0, y: 0 },
+      pinInitialValues: { gain: "1.0" },
+      paramValues: { offset: "2.0" },
+    });
+    project.halExport = { halNameLen: 10 };
+
+    const { warnings } = exportProjectToHal(project);
+
+    expect(
+      warnings.some((warning) =>
+        warning.includes("HAL name 'very_long_setp.gain'"),
+      ),
+    ).toBe(true);
+    expect(
+      warnings.some((warning) =>
+        warning.includes("HAL name 'very_long_setp.offset'"),
+      ),
+    ).toBe(true);
   });
 
   it("applies custom-component max instance limits to custom loadusr exports", () => {

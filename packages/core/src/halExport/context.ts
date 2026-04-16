@@ -1,3 +1,4 @@
+import { normalizeHalNameLen } from "../halNames";
 import type { PinDirection } from "../types";
 
 export interface ExportResult {
@@ -67,6 +68,7 @@ export interface ExportContext {
   warnings: string[];
   fatalErrors: string[];
   globalLabelMembers: Map<string, string[]>;
+  halNameLen: number;
   componentInstances: Array<{
     componentName: string;
     componentId: string;
@@ -79,7 +81,7 @@ export interface ExportContext {
   endpointSeq: number;
 }
 
-export function createExportContext(): ExportContext {
+export function createExportContext(halNameLen?: number): ExportContext {
   return {
     union: new UnionFind(),
     endpoints: new Map(),
@@ -87,6 +89,7 @@ export function createExportContext(): ExportContext {
     warnings: [],
     fatalErrors: [],
     globalLabelMembers: new Map(),
+    halNameLen: normalizeHalNameLen(halNameLen),
     componentInstances: [],
     endpointSeq: 0,
   };

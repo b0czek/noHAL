@@ -5,6 +5,10 @@ import {
 } from "@nohal/core/customComponent";
 import { CUSTOM_COMPONENT_STORE_SOURCE_ID } from "@nohal/core/customComponentStore";
 import {
+  DEFAULT_HAL_NAME_LEN,
+  normalizeHalNameLen,
+} from "@nohal/core/halNames";
+import {
   addHalThread,
   removeHalThread,
   updateHalThreadFloatMode,
@@ -218,6 +222,19 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       });
       deps.setStatusT("store.status.updatedProjectWireStyle", {
         style: wireStyleLabel(deps, style),
+      });
+    },
+
+    updateProjectHalNameLen(halNameLen: number): void {
+      const normalized = normalizeHalNameLen(halNameLen);
+      const current =
+        deps.state.project.halExport?.halNameLen ?? DEFAULT_HAL_NAME_LEN;
+      if (current === normalized) return;
+      deps.withProject((project) => {
+        projectEdits.project.halNameLen.update(project, normalized);
+      });
+      deps.setStatusT("store.status.updatedProjectHalNameLen", {
+        value: normalized,
       });
     },
 

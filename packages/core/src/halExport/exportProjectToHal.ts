@@ -14,7 +14,7 @@ import { traverseSheetInstance } from "./traversal";
 export function exportProjectToHal(project: NoHALProject): ExportResult {
   reconcileProject(project);
   const shutdownText = renderShutdownHalOutput(project);
-  const ctx = createExportContext();
+  const ctx = createExportContext(project.halExport?.halNameLen);
   validateForcedSheetSingletons(project, (message) => pushFatal(ctx, message));
   validateDuplicateExportedInstancePaths(project, (message) =>
     pushFatal(ctx, message),

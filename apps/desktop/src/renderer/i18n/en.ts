@@ -183,6 +183,9 @@ export const en = {
   "projectSettings.generalProjectName": "Project Name",
   "projectSettings.generalProjectNameHelp":
     "Used in the editor title and generated build file names.",
+  "projectSettings.generalHalNameLen": "HAL_NAME_LEN",
+  "projectSettings.generalHalNameLenHelp":
+    "Warn during export when HAL names or signal names get too long for the configured limit.",
   "projectSettings.generalWireLayer": "Wire Visibility",
   "projectSettings.generalWireLayerHelp":
     "Choose whether wires stay behind components or show on top.",
@@ -571,6 +574,7 @@ export const en = {
   "store.status.failedSaveProject": "Failed to save project: {error}",
   "store.status.updatedProjectName": "Updated project name to {name}",
   "store.status.updatedProjectShutdown": "Updated shutdown HAL",
+  "store.status.updatedProjectHalNameLen": "Updated HAL_NAME_LEN to {value}",
   "store.status.updatedProjectWireLayerPosition":
     "Updated wire visibility to {position}",
   "store.status.updatedProjectWireStyle": "Updated wire style to {style}",

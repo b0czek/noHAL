@@ -1,5 +1,6 @@
 import { filter, pipe, unique } from "remeda";
 import { fixedExportStageForComponent } from "../component/system";
+import { normalizeHalNameLen } from "../halNames";
 import { reconcileHaluiManagedNodes } from "../halui";
 import { createId, slugify } from "../id";
 import { reconcileIniManagedNodes } from "../ini";
@@ -146,6 +147,17 @@ function normalizeProjectShutdown(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+function normalizeHalExportConfig(
+  value: unknown,
+): NoHALProject["halExport"] | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as NonNullable<NoHALProject["halExport"]>;
+  return {
+    ...candidate,
+    halNameLen: normalizeHalNameLen(candidate.halNameLen),
+  };
+}
+
 export function reconcileProject(project: NoHALProject): NoHALProject {
   reconcileMotmodManagedNodes(project);
   reconcileMesaManagedNodes(project);
@@ -226,6 +238,7 @@ export function createEmptyProject(name: string): NoHALProject {
     machineConfig: createEmptyMachineConfig(),
     motmod: createDefaultMotmodConfig(),
     mesa: createDefaultMesaConfig(),
+    halExport: normalizeHalExportConfig({}),
     ui: createDefaultProjectUi(top.id),
   };
 
@@ -341,6 +354,7 @@ export function parseNoHALProject(content: string): NoHALProject {
   project.machineConfig = normalizeProjectMachineConfig(project.machineConfig);
   project.motmod = normalizeMotmodConfig(project.motmod);
   project.mesa = normalizeProjectMesaConfig(project.mesa);
+  project.halExport = normalizeHalExportConfig(project.halExport);
   project.ui = normalizeProjectUi(
     project.ui,
     project.rootSheetId,
