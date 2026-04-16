@@ -48,6 +48,9 @@ export default function MesaStep(props: MesaStepProps) {
           onUpdateHostKind={props.machineImport.updateMesaImportHostKind}
           onUpdateHostIp={props.machineImport.updateMesaImportHostIp}
           onSetConnectorCard={props.machineImport.setMesaImportConnectorCard}
+          onSetConnectorProcessDataMode={
+            props.machineImport.setMesaImportConnectorProcessDataMode
+          }
           onSetRawGpioPinDirection={
             props.machineImport.setMesaImportRawGpioPinDirection
           }

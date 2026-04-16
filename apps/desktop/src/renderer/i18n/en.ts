@@ -242,6 +242,7 @@ export const en = {
   "projectSettings.mesa.gpioDirectionInput": "Input",
   "projectSettings.mesa.gpioDirectionOutput": "Output",
   "projectSettings.mesa.smartSerial": "Smart-Serial",
+  "projectSettings.mesa.processDataMode": "Process Data Mode",
   "projectSettings.mesa.channelLabel": "Channel {channel}",
   "projectSettings.mesa.validationTitle": "Validation",
   "projectSettings.mesa.syncStatusLabel": "System HAL projection",
@@ -648,6 +649,7 @@ export const en = {
   "store.status.updatedMesaHost": "Updated Mesa host model",
   "store.status.updatedMesaHostIp": "Updated Mesa host IP",
   "store.status.updatedMesaConnector": "Updated Mesa connector assignment",
+  "store.status.updatedMesaProcessDataMode": "Updated Mesa process data mode",
   "store.status.updatedMesaRawGpio": "Updated Mesa raw GPIO direction",
   "store.status.updatedMesaSmartSerial": "Updated Mesa smart-serial assignment",
   "store.status.mesaProjectionAlreadyInSync":

@@ -9,6 +9,7 @@ import {
   type ProjectMesaSmartSerialTarget,
   removeMesaHost,
   setMesaConnectorCard,
+  setMesaConnectorProcessDataMode,
   setMesaRawGpioPinDirection,
   setMesaSmartSerialCard,
   updateMesaHostIp,
@@ -62,6 +63,20 @@ export const mesaEdits = {
   ) =>
     editMesaConfig(mesaConfig, (project) => {
       setMesaConnectorCard(project, hostId, connectorKey, cardKind);
+    }),
+  setConnectorProcessDataMode: (
+    mesaConfig: ProjectMesaConfig | null,
+    hostId: string,
+    connectorKey: string,
+    processDataMode: number,
+  ) =>
+    editMesaConfig(mesaConfig, (project) => {
+      setMesaConnectorProcessDataMode(
+        project,
+        hostId,
+        connectorKey,
+        processDataMode,
+      );
     }),
   setRawGpioPinDirection: (
     mesaConfig: ProjectMesaConfig | null,

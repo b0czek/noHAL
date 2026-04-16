@@ -6,6 +6,7 @@ import {
   MESA_DB25_CARD_KINDS,
   MESA_HOST_KINDS,
   MESA_SMART_SERIAL_CARD_KINDS,
+  type MesaProcessDataModeDefinition,
 } from "./catalog";
 import type {
   ProjectMesaConfig,
@@ -86,6 +87,19 @@ function normalizeRawGpioConfig(
   return { outputPins };
 }
 
+function normalizeProcessDataMode(
+  value: unknown,
+  modes: readonly MesaProcessDataModeDefinition[] | undefined,
+  defaultMode: number | undefined,
+): number | undefined {
+  if (!modes?.length || defaultMode === undefined) return undefined;
+  const candidate = Number.parseInt(`${value ?? ""}`, 10);
+  if (modes.some((mode) => mode.mode === candidate)) {
+    return candidate;
+  }
+  return defaultMode;
+}
+
 function normalizeConnectorAssignments(
   hostKind: ProjectMesaHostKind,
   value: unknown,
@@ -104,6 +118,15 @@ function normalizeConnectorAssignments(
     if (!connector) continue;
     const cardKind = normalizeConnectorCardKind(raw.cardKind);
     if (!cardKind) continue;
+    const card = getMesaDb25CardCatalogEntry(cardKind);
+    const processDataMode =
+      cardKind === MESA_RAW_GPIO_CARD_KIND
+        ? undefined
+        : normalizeProcessDataMode(
+            raw.processDataMode,
+            card?.sserial.processDataModes,
+            card?.sserial.defaultMode,
+          );
     out.push(
       cardKind === MESA_RAW_GPIO_CARD_KIND
         ? {
@@ -114,7 +137,7 @@ function normalizeConnectorAssignments(
               raw.rawGpio,
             ),
           }
-        : { connectorKey, cardKind },
+        : { connectorKey, cardKind, processDataMode },
     );
     seen.add(connectorKey);
   }

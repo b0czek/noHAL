@@ -112,7 +112,14 @@ export function setMesaConnectorCard(
   const nextAssignment =
     cardKind === MESA_RAW_GPIO_CARD_KIND
       ? { connectorKey, cardKind, rawGpio: { outputPins: [] } }
-      : { connectorKey, cardKind };
+      : {
+          connectorKey,
+          cardKind,
+          processDataMode: getMesaDb25CardCatalogEntry(cardKind)?.sserial
+            .processDataModes?.length
+            ? getMesaDb25CardCatalogEntry(cardKind)?.sserial.defaultMode
+            : undefined,
+        };
   if (index >= 0) {
     connectors[index] = nextAssignment;
   } else connectors.push(nextAssignment);
@@ -120,6 +127,40 @@ export function setMesaConnectorCard(
   host.smartSerial = smartSerial.filter(
     (item) => item.connectorKey !== connectorKey,
   );
+  renormalizeMesa(project);
+  return true;
+}
+
+export function setMesaConnectorProcessDataMode(
+  project: NoHALProject,
+  hostId: string,
+  connectorKey: string,
+  processDataMode: number,
+): boolean {
+  const host = findMesaHost(project, hostId);
+  if (!host || !Number.isInteger(processDataMode) || processDataMode < 0) {
+    return false;
+  }
+  const connectors = host.connectors ?? [];
+  const assignment = connectors.find(
+    (item) =>
+      item.connectorKey === connectorKey &&
+      Boolean(getMesaDb25CardCatalogEntry(item.cardKind ?? "")),
+  );
+  const cardKind = assignment?.cardKind;
+  if (!assignment || !cardKind || cardKind === MESA_RAW_GPIO_CARD_KIND) {
+    return false;
+  }
+  const card = getMesaDb25CardCatalogEntry(cardKind);
+  if (
+    !card?.sserial.processDataModes?.some(
+      (mode) => mode.mode === processDataMode,
+    )
+  ) {
+    return false;
+  }
+  if (assignment.processDataMode === processDataMode) return false;
+  assignment.processDataMode = processDataMode;
   renormalizeMesa(project);
   return true;
 }

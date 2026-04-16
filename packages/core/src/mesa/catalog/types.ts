@@ -15,10 +15,12 @@ export interface MesaSchemaProfile {
   explicitParams?: ComponentParamDefinition[];
   dpll?: boolean;
   encoders?: number;
+  mpgCounters?: number;
   digitalInputs?: number;
   digitalOutputs?: number;
   analogInputs?: number;
   analogOutputs?: number;
+  fieldVoltage?: boolean;
   spindleEnable?: boolean;
   analogEnable?: boolean;
 }
@@ -56,6 +58,20 @@ export interface MesaDb25SmartSerialPortDefinition {
   channels: number;
 }
 
+export interface MesaProcessDataModeDefinition {
+  mode: number;
+  label: string;
+  description?: string;
+}
+
+export interface MesaDb25SserialPeripheralFragmentDefinition {
+  key: string;
+  displayName: string;
+  channelOffset: number;
+  schemaProfile: MesaSchemaProfile;
+  schemaProfilesByMode?: Partial<Record<number, MesaSchemaProfile>>;
+}
+
 export interface MesaHostCatalogEntry {
   kind: ProjectMesaHostKind;
   displayName: string;
@@ -71,13 +87,10 @@ export interface MesaDb25HostmotDefinition {
 }
 
 export interface MesaDb25SserialDefinition {
-  peripheralFragments: {
-    key: string;
-    displayName: string;
-    channelOffset: number;
-    schemaProfile: MesaSchemaProfile;
-  }[];
+  peripheralFragments: MesaDb25SserialPeripheralFragmentDefinition[];
   smartSerialPorts: MesaDb25SmartSerialPortDefinition[];
+  processDataModes?: readonly MesaProcessDataModeDefinition[];
+  processDataModeChannelOffsets?: readonly number[];
   defaultMode: number;
 }
 

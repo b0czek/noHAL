@@ -32,6 +32,7 @@ export type ProjectMesaSmartSerialTarget = Pick<
 export interface ProjectMesaDb25CardAssignment {
   connectorKey: string;
   cardKind?: ProjectMesaConnectorCardKind;
+  processDataMode?: number;
   rawGpio?: {
     outputPins?: number[];
   };

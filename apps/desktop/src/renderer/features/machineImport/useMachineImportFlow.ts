@@ -346,6 +346,21 @@ export function useMachineImportFlow({
       ),
     });
 
+  const setMesaImportConnectorProcessDataMode = (
+    hostId: string,
+    connectorKey: string,
+    processDataMode: number,
+  ) =>
+    dispatchMachineImportFlow({
+      type: "setMesaConfig",
+      value: mesaEdits.setConnectorProcessDataMode(
+        machineImportFlow.mesaConfig,
+        hostId,
+        connectorKey,
+        processDataMode,
+      ),
+    });
+
   const setMesaImportRawGpioPinDirection = (
     hostId: string,
     connectorKey: string,
@@ -653,6 +668,7 @@ export function useMachineImportFlow({
     updateMesaImportHostKind,
     updateMesaImportHostIp,
     setMesaImportConnectorCard,
+    setMesaImportConnectorProcessDataMode,
     setMesaImportRawGpioPinDirection,
     setMesaImportSmartSerialCard,
     changeHalImportLinkSelection,

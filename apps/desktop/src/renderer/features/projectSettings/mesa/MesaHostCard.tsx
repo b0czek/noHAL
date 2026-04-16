@@ -38,6 +38,11 @@ interface MesaHostCardProps {
     connectorKey: string,
     cardKind: ProjectMesaConnectorCardKind | undefined,
   ) => void;
+  onSetConnectorProcessDataMode: (
+    hostId: string,
+    connectorKey: string,
+    processDataMode: number,
+  ) => void;
   onSetRawGpioPinDirection: (
     hostId: string,
     connectorKey: string,
@@ -166,6 +171,15 @@ export default function MesaHostCard(props: MesaHostCardProps) {
                 connectorAssignment()?.cardKind ?? "";
               const assignedCard = () =>
                 getMesaDb25CardCatalogEntry(assignedCardKind());
+              const processDataModeOptions = () =>
+                (assignedCard()?.sserial.processDataModes ?? []).map(
+                  (mode) => ({
+                    value: `${mode.mode}`,
+                    label: mode.label,
+                  }),
+                );
+              const selectedProcessDataMode = () =>
+                `${connectorAssignment()?.processDataMode ?? assignedCard()?.sserial.defaultMode ?? 0}`;
 
               return (
                 <div class="grid gap-3">
@@ -207,6 +221,27 @@ export default function MesaHostCard(props: MesaHostCardProps) {
                       fieldLabelClass={props.fieldLabelClass}
                       onSetPinDirection={props.onSetRawGpioPinDirection}
                     />
+                  </Show>
+
+                  <Show when={processDataModeOptions().length > 0}>
+                    <div class="grid gap-2 lg:ml-[140px] lg:grid-cols-[140px_minmax(0,1fr)] lg:items-center">
+                      <div class="text-sm text-muted-foreground">
+                        {t("projectSettings.mesa.processDataMode")}
+                      </div>
+                      <StringSelect
+                        value={selectedProcessDataMode()}
+                        options={processDataModeOptions()}
+                        onChange={(value) => {
+                          const processDataMode = Number.parseInt(value, 10);
+                          if (!Number.isInteger(processDataMode)) return;
+                          props.onSetConnectorProcessDataMode(
+                            props.host.id,
+                            slot.key,
+                            processDataMode,
+                          );
+                        }}
+                      />
+                    </div>
                   </Show>
 
                   <Show
