@@ -1,5 +1,5 @@
 export const NOHAL_PROJECT_FORMAT = "nohal-project" as const;
-export const NOHAL_PROJECT_VERSION = 3 as const;
+export const NOHAL_PROJECT_VERSION = 4 as const;
 
 export const NOHAL_PROJECT_DIR_FORMAT = "nohal-project-dir" as const;
 export const NOHAL_PROJECT_DIR_VERSION = 1 as const;

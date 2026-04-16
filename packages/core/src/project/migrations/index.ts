@@ -2,10 +2,12 @@ import { NOHAL_PROJECT_FORMAT, NOHAL_PROJECT_VERSION } from "../formats";
 import type { ProjectMigration } from "./types";
 import { projectMigrationV1ToV2 } from "./v1ToV2";
 import { projectMigrationV2ToV3 } from "./v2ToV3";
+import { projectMigrationV3ToV4 } from "./v3ToV4";
 
 const PROJECT_MIGRATIONS: readonly ProjectMigration[] = [
   projectMigrationV1ToV2,
   projectMigrationV2ToV3,
+  projectMigrationV3ToV4,
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
