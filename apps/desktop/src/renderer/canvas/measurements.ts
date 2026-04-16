@@ -13,10 +13,9 @@ interface TextMeasureOptions {
   padding?: number;
 }
 
+const MAX_TEXT_MEASUREMENTS_PER_BUCKET = 4096;
 const textMeasureCache = new Map<string, Map<string, Size>>();
-const sharedMeasureText = new Konva.Text({
-  listening: false,
-});
+let sharedMeasureText: Konva.Text | null = null;
 
 function fontFamilyCacheKey(fontFamily: string): string {
   if (fontFamily === typography.family.mono) return "mono";
@@ -44,7 +43,9 @@ export function measureTextSize(options: TextMeasureOptions): Size {
   const cached = bucket.get(options.text);
   if (cached) return cached;
 
-  sharedMeasureText.setAttrs({
+  const measure = getSharedMeasureText();
+
+  measure.setAttrs({
     text: options.text,
     fontFamily: options.fontFamily,
     fontSize: options.fontSize,
@@ -53,11 +54,30 @@ export function measureTextSize(options: TextMeasureOptions): Size {
   });
 
   const measured = {
-    width: Math.ceil(sharedMeasureText.width()),
-    height: Math.ceil(sharedMeasureText.height()),
+    width: Math.ceil(measure.width()),
+    height: Math.ceil(measure.height()),
   };
   bucket.set(options.text, measured);
+  if (bucket.size > MAX_TEXT_MEASUREMENTS_PER_BUCKET) {
+    const oldestKey = bucket.keys().next().value;
+    if (oldestKey !== undefined) {
+      bucket.delete(oldestKey);
+    }
+  }
   return measured;
+}
+
+export function clearTextMeasurementCache(): void {
+  textMeasureCache.clear();
+}
+
+function getSharedMeasureText(): Konva.Text {
+  if (!sharedMeasureText) {
+    sharedMeasureText = new Konva.Text({
+      listening: false,
+    });
+  }
+  return sharedMeasureText;
 }
 
 export function measureTextWidth(

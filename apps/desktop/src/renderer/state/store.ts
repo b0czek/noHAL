@@ -8,6 +8,7 @@ import type {
 } from "@nohal/core/types";
 import { createStore, reconcile, unwrap } from "solid-js/store";
 import type { CameraState } from "../canvas";
+import { clearTextMeasurementCache } from "../canvas/measurements";
 import type { TranslationKey } from "../i18n";
 import { createComponentStoreActions } from "./store/actions/componentStoreActions";
 import { createMesaActions } from "./store/actions/mesaActions";
@@ -197,6 +198,7 @@ export function createEditorStore(
   ): void => {
     pruneMissingStoredComponentsFromProject(project, state.componentStore);
     applyComponentStoreToProject(project, state.componentStore);
+    clearTextMeasurementCache();
     resetProjectDirtyTracking();
     clearHistory();
     setState({
