@@ -4,7 +4,6 @@ export const port = {
     offset: 12,
   },
   text: {
-    charWidth: 7.2,
     widthPadding: 20,
     x: 9,
     y: 5,

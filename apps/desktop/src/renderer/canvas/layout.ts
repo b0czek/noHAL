@@ -10,6 +10,7 @@ import type {
 import { node as nodeConst } from "./constants/nodes";
 import { pin as pinConst } from "./constants/pins";
 import { surface } from "./constants/surfaces";
+import { measureMonoTextSize } from "./measurements";
 
 export type BandPinLabelMode = "horizontal" | "vertical";
 
@@ -19,6 +20,7 @@ export interface NodeLayout extends Size {
   bottomBandHeight: number;
   bottomLabelMode: BandPinLabelMode;
   pinPositionsLocal: Record<string, XY>;
+  pinLabelSizes: Record<string, Size>;
 }
 
 export interface SheetSceneLayout {
@@ -27,17 +29,12 @@ export interface SheetSceneLayout {
 }
 
 const layoutHeuristics = {
-  monoText: {
-    charWidthAt12: 7.2,
-    baseFontSize: 12,
-  },
   sideLabels: {
     // Side pin bubbles and labels sit roughly 25px away from the body on each side.
     clearance: 50,
     gap: 16,
   },
   bandPinLabels: {
-    fontSize: 11,
     horizontalPadding: 16,
     singlePinExtraWidth: 20,
     stepBasePadding: 6,
@@ -46,30 +43,12 @@ const layoutHeuristics = {
   nodeEdgePinInset: 10,
 } as const;
 
-function estimateMonoTextWidth(text: string, fontSize: number): number {
-  return Math.ceil(
-    text.length *
-      layoutHeuristics.monoText.charWidthAt12 *
-      (fontSize / layoutHeuristics.monoText.baseFontSize),
-  );
-}
-
 function computeSidePinWidth(
-  leftNames: string[],
-  rightNames: string[],
+  leftLabelWidths: number[],
+  rightLabelWidths: number[],
 ): number {
-  const leftMax = Math.max(
-    0,
-    ...leftNames.map((name) =>
-      estimateMonoTextWidth(name, layoutHeuristics.monoText.baseFontSize),
-    ),
-  );
-  const rightMax = Math.max(
-    0,
-    ...rightNames.map((name) =>
-      estimateMonoTextWidth(name, layoutHeuristics.monoText.baseFontSize),
-    ),
-  );
+  const leftMax = Math.max(0, ...leftLabelWidths);
+  const rightMax = Math.max(0, ...rightLabelWidths);
   return (
     leftMax +
     rightMax +
@@ -78,18 +57,16 @@ function computeSidePinWidth(
   );
 }
 
-function computeBandPinWidthVertical(pinNames: string[]): number {
-  if (pinNames.length === 0) return 0;
-  return Math.ceil(pinConst.columnStep * (pinNames.length + 1));
+function computeBandPinWidthVertical(pinCount: number): number {
+  if (pinCount === 0) return 0;
+  return Math.ceil(pinConst.columnStep * (pinCount + 1));
 }
 
-function computeBandPinWidthHorizontal(pinNames: string[]): number {
-  if (pinNames.length === 0) return 0;
+function computeBandPinWidthHorizontal(labelWidths: number[]): number {
+  if (labelWidths.length === 0) return 0;
 
-  const pillWidths = pinNames.map(
-    (name) =>
-      estimateMonoTextWidth(name, layoutHeuristics.bandPinLabels.fontSize) +
-      layoutHeuristics.bandPinLabels.horizontalPadding,
+  const pillWidths = labelWidths.map(
+    (width) => width + layoutHeuristics.bandPinLabels.horizontalPadding,
   );
   const count = pillWidths.length;
   const maxPill = Math.max(...pillWidths);
@@ -110,14 +87,10 @@ function computeBandPinWidthHorizontal(pinNames: string[]): number {
   return Math.ceil(requiredStep * (count + 1));
 }
 
-function computeBandHeightVertical(pinNames: string[]): number {
-  if (pinNames.length === 0) return 0;
+function computeBandHeightVertical(labelWidths: number[]): number {
+  if (labelWidths.length === 0) return 0;
 
-  const maxRotatedTextSpan = Math.max(
-    ...pinNames.map((name) =>
-      estimateMonoTextWidth(name, layoutHeuristics.bandPinLabels.fontSize),
-    ),
-  );
+  const maxRotatedTextSpan = Math.max(...labelWidths);
   const tallestPill = Math.max(
     pinConst.bottom.width,
     maxRotatedTextSpan + pinConst.bottom.textPadding,
@@ -125,8 +98,8 @@ function computeBandHeightVertical(pinNames: string[]): number {
   return tallestPill + pinConst.bottom.dotGap + surface.pin.radius;
 }
 
-function computeBandHeightHorizontal(pinNames: string[]): number {
-  if (pinNames.length === 0) return 0;
+function computeBandHeightHorizontal(pinCount: number): number {
+  if (pinCount === 0) return 0;
   return (
     nodeConst.bottom.height -
     pinConst.band.inset +
@@ -136,7 +109,7 @@ function computeBandHeightHorizontal(pinNames: string[]): number {
 }
 
 function pickBandLayout(
-  pinNames: string[],
+  labelWidths: number[],
   sideWidth: number,
   sideHeight: number,
 ): {
@@ -144,7 +117,7 @@ function pickBandLayout(
   bandHeight: number;
   widthRequirement: number;
 } {
-  if (pinNames.length === 0) {
+  if (labelWidths.length === 0) {
     return {
       mode: "horizontal",
       bandHeight: 0,
@@ -155,12 +128,12 @@ function pickBandLayout(
   const candidates = (["horizontal", "vertical"] as const).map((mode) => {
     const bandHeight =
       mode === "horizontal"
-        ? computeBandHeightHorizontal(pinNames)
-        : computeBandHeightVertical(pinNames);
+        ? computeBandHeightHorizontal(labelWidths.length)
+        : computeBandHeightVertical(labelWidths);
     const widthRequirement =
       mode === "horizontal"
-        ? computeBandPinWidthHorizontal(pinNames)
-        : computeBandPinWidthVertical(pinNames);
+        ? computeBandPinWidthHorizontal(labelWidths)
+        : computeBandPinWidthVertical(labelWidths.length);
     const candidateWidth = Math.max(
       nodeConst.width,
       sideWidth,
@@ -198,23 +171,35 @@ export function computeNodeLayout(
   sheet: SheetDefinition,
   node: SheetNodeInstance,
 ): NodeLayout {
-  const pins = getVisibleNodePins(project, sheet, node);
+  const pins = getVisibleNodePins(project, sheet, node).map((pin) => ({
+    ...pin,
+    labelSize: measureMonoTextSize(
+      pin.name,
+      pin.side === "left" || pin.side === "right"
+        ? nodeConst.title.fontSize
+        : pinConst.label.fontSize,
+    ),
+  }));
   const left = pins.filter((p) => p.side === "left");
   const right = pins.filter((p) => p.side === "right");
   const top = pins.filter((p) => p.side === "top");
   const bottom = pins.filter((p) => p.side === "bottom");
   const sideWidth = computeSidePinWidth(
-    left.map((pin) => pin.name),
-    right.map((pin) => pin.name),
+    left.map((pin) => pin.labelSize.width),
+    right.map((pin) => pin.labelSize.width),
   );
 
   const rows = Math.max(left.length, right.length, 1);
   const sideHeight = rows * nodeConst.side.rowHeight;
-  const topNames = top.map((pin) => pin.name);
-  const bottomNames = bottom.map((pin) => pin.name);
+  const topLabelWidths = top.map((pin) => pin.labelSize.width);
+  const bottomLabelWidths = bottom.map((pin) => pin.labelSize.width);
 
-  const topBandLayout = pickBandLayout(topNames, sideWidth, sideHeight);
-  const bottomBandLayout = pickBandLayout(bottomNames, sideWidth, sideHeight);
+  const topBandLayout = pickBandLayout(topLabelWidths, sideWidth, sideHeight);
+  const bottomBandLayout = pickBandLayout(
+    bottomLabelWidths,
+    sideWidth,
+    sideHeight,
+  );
 
   const topLabelMode = topBandLayout.mode;
   const topBandHeight = topBandLayout.bandHeight;
@@ -234,6 +219,9 @@ export function computeNodeLayout(
     bottomHeight +
     nodeConst.body.bottomPadding;
   const pinPositionsLocal: Record<string, XY> = {};
+  const pinLabelSizes: Record<string, Size> = Object.fromEntries(
+    pins.map((pin) => [pin.key, pin.labelSize]),
+  );
 
   top.forEach((pin, idx) => {
     const step = width / (top.length + 1);
@@ -281,6 +269,7 @@ export function computeNodeLayout(
     bottomBandHeight,
     bottomLabelMode,
     pinPositionsLocal,
+    pinLabelSizes,
   };
 }
 

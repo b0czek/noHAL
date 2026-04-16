@@ -28,29 +28,6 @@ function minimumHorizontalBandHeight(): number {
   return node.bottom.height - pinConst.band.inset + surface.pin.radius;
 }
 
-function measureKonvaText(
-  text: string,
-  fontSize: number,
-): {
-  width: number;
-  height: number;
-} {
-  const measure = new Konva.Text({
-    text,
-    fontFamily: typography.family.mono,
-    fontSize,
-  });
-
-  try {
-    return {
-      width: Math.ceil(measure.width()),
-      height: Math.ceil(measure.height()),
-    };
-  } finally {
-    measure.destroy();
-  }
-}
-
 export function renderNodes(
   ctx: RenderSceneContext,
   args: RenderNodesArgs,
@@ -94,10 +71,7 @@ export function renderNodes(
         pinKey: pin.key,
       };
       const pending = pendingKey === endpointKey(endpoint);
-      const { width: textW, height: textH } = measureKonvaText(
-        pin.name,
-        pinConst.label.fontSize,
-      );
+      const { width: textW, height: textH } = layout.pinLabelSizes[pin.key];
       const dotY = p.y;
 
       if (layout.topLabelMode === "vertical") {
@@ -218,8 +192,7 @@ export function renderNodes(
 
       const bubbleH = node.side.rowHeight - pinConst.bubble.heightReduction;
       const bubbleW =
-        measureKonvaText(pin.name, node.title.fontSize).width +
-        pinConst.bubble.widthPadding;
+        layout.pinLabelSizes[pin.key].width + pinConst.bubble.widthPadding;
       const bubbleX =
         side === "left"
           ? p.x + pinConst.bubble.offsetX
@@ -297,10 +270,7 @@ export function renderNodes(
         pinKey: pin.key,
       };
       const pending = pendingKey === endpointKey(endpoint);
-      const { width: textW, height: textH } = measureKonvaText(
-        pin.name,
-        pinConst.label.fontSize,
-      );
+      const { width: textW, height: textH } = layout.pinLabelSizes[pin.key];
       const dotY = p.y;
 
       if (layout.bottomLabelMode === "vertical") {

@@ -2,7 +2,7 @@ import Konva from "konva";
 import { comment as commentConst } from "../constants/comments";
 import { surface } from "../constants/surfaces";
 import { typography } from "../constants/typography";
-import { estimateCommentSize } from "../measurements";
+import { measureCommentSize } from "../measurements";
 import {
   bindDraggableRenderable,
   isPrimaryScenePointerButton,
@@ -30,7 +30,7 @@ export function renderComments(
     commentGroups.set(sheetComment.id, group);
 
     const content = (sheetComment.text || "").trimEnd() || " ";
-    const size = estimateCommentSize(content);
+    const size = measureCommentSize(content);
     const commentText = new Konva.Text({
       x: 0,
       y: 0,

@@ -1,8 +1,8 @@
 import type { Rect, SheetEndpointRef, Size, XY } from "@nohal/core/types";
 import type { MultiSelection } from "../../state/store/selectionTypes";
 import {
-  estimateCommentSize,
   estimatePortBox,
+  measureCommentSize,
   measureLabelBox,
 } from "../measurements";
 import type { DragSelectionTarget } from "../renderables";
@@ -123,7 +123,7 @@ function collectCommentIdsInRect(args: {
 
   for (const comment of state.sheet.comments) {
     const pos = liveCommentPositions.get(comment.id) ?? comment.position;
-    const size = estimateCommentSize(comment.text);
+    const size = measureCommentSize(comment.text);
     const commentRect = rotatedRectBounds(
       {
         x: pos.x,

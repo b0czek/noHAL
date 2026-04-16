@@ -4,8 +4,8 @@ import { scene } from "../constants/scene";
 import { getCullBounds } from "../cullBounds";
 import type { NodeLayout } from "../layout";
 import {
-  estimateCommentSize,
   estimatePortBox,
+  measureCommentSize,
   measureLabelBox,
 } from "../measurements";
 import type { SceneRenderState } from "../types";
@@ -124,7 +124,7 @@ export function rebuildCullModels(state: SceneRenderState): {
   }
 
   for (const comment of state.sheet.comments) {
-    const size = estimateCommentSize(comment.text);
+    const size = measureCommentSize(comment.text);
     commentCullModels.set(comment.id, {
       localRect: { x: 0, y: 0, width: size.width, height: size.height },
       rotationDeg: comment.rotation ?? 0,
@@ -193,7 +193,7 @@ export function computeSceneBounds(args: {
   }
 
   for (const comment of state.sheet.comments) {
-    const size = estimateCommentSize(comment.text);
+    const size = measureCommentSize(comment.text);
     expandBoundsWithRotatedRect(
       bounds,
       {
