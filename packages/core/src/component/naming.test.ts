@@ -39,6 +39,21 @@ function createGlobalDebounceLikeComponent(): ComponentDefinition {
   };
 }
 
+function createCustomLoadusrComponent(
+  componentName: string,
+): ComponentDefinition {
+  return {
+    id: `comp:${componentName}`,
+    name: componentName,
+    halComponentName: componentName,
+    source: "manual",
+    loadCommand: `loadusr -W ${componentName}`,
+    runtime: { kind: "userspace" },
+    pins: [],
+    params: [],
+  };
+}
+
 function createSheetScopedComponent(
   componentName: string,
 ): ComponentDefinition {
@@ -57,6 +72,14 @@ describe("component export namespace", () => {
   it("treats locked canonical runtime names as global by default", () => {
     expect(
       resolveComponentExportNamespace(createGlobalDebounceLikeComponent()),
+    ).toBe("global");
+  });
+
+  it("treats custom loadusr components as global by default", () => {
+    expect(
+      resolveComponentExportNamespace(
+        createCustomLoadusrComponent("manual_userspace"),
+      ),
     ).toBe("global");
   });
 

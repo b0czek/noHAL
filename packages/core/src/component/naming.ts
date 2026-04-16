@@ -36,6 +36,15 @@ export function componentPrefersCanonicalInstanceNames(
   return component?.runtime?.instanceNaming?.strategy === "canonical_indexed";
 }
 
+function componentUsesCustomLoadusrNamespace(
+  component: ComponentDefinition | undefined,
+): boolean {
+  if (!component) return false;
+  if (component.source !== "manual") return false;
+  if (component.runtime?.kind !== "userspace") return false;
+  return /^loadusr(?:\s|$)/.test(component.loadCommand?.trim() ?? "");
+}
+
 export function resolveComponentExportNamespace(
   component: ComponentDefinition | undefined,
 ): ComponentExportNamespace {
@@ -43,6 +52,7 @@ export function resolveComponentExportNamespace(
   if (explicitNamespace) return explicitNamespace;
   if (component?.system) return "global";
   if (componentUsesLockedCanonicalInstanceNames(component)) return "global";
+  if (componentUsesCustomLoadusrNamespace(component)) return "global";
   return "sheet_scoped";
 }
 

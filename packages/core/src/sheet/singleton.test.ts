@@ -41,6 +41,19 @@ function createGlobalDebounceLikeComponent(): ComponentDefinition {
   };
 }
 
+function createCustomLoadusrComponent(): ComponentDefinition {
+  return {
+    id: "comp:manual-userspace",
+    name: "manual-userspace",
+    halComponentName: "manual_userspace",
+    source: "manual",
+    loadCommand: "loadusr -W manual_userspace",
+    runtime: { kind: "userspace" },
+    pins: [],
+    params: [],
+  };
+}
+
 describe("sheet singletonity", () => {
   it("classifies sheets from reachable instances and singleton-forcing nodes", () => {
     const project = createEmptyProject("sheet-singletonity");
@@ -94,6 +107,49 @@ describe("sheet singletonity", () => {
         warning.includes("contains singleton-only nodes"),
       ),
     ).toBe(true);
+  });
+
+  it("treats custom loadusr components as singleton-forcing", () => {
+    const project = createEmptyProject("sheet-loadusr-singletonity");
+    const rootSheet = project.sheets[project.rootSheetId];
+    const childSheet = createSheet("sheet_child", "Child");
+    project.sheets[childSheet.id] = childSheet;
+
+    rootSheet.nodes.push(
+      {
+        id: "sheet_a",
+        kind: "sheet",
+        sheetId: childSheet.id,
+        instanceName: "logic_a",
+        position: { x: 0, y: 0 },
+      },
+      {
+        id: "sheet_b",
+        kind: "sheet",
+        sheetId: childSheet.id,
+        instanceName: "logic_b",
+        position: { x: 120, y: 0 },
+      },
+    );
+
+    const customLoadusrComponent = createCustomLoadusrComponent();
+    project.library.components[customLoadusrComponent.id] =
+      customLoadusrComponent;
+    childSheet.nodes.push({
+      id: "loadusr_node",
+      kind: "component",
+      componentId: customLoadusrComponent.id,
+      instanceName: "manual_userspace",
+      position: { x: 0, y: 0 },
+      paramValues: {},
+    });
+
+    const childInfo = analyzeSheetSingletons(project).get(childSheet.id);
+    expect(childInfo?.status).toBe("forced");
+    expect(childInfo?.canBeSingleton).toBe(false);
+    expect(
+      findInvalidForcedSheetSingletons(project).map((info) => info.sheetId),
+    ).toContain(childSheet.id);
   });
 
   it("propagates forced singletonity through subsheets and blocks duplicate references", () => {
