@@ -4,8 +4,8 @@ import { deriveMesaTopology } from "./derive";
 import {
   addMesaHost,
   setMesaConnectorCard,
-  setMesaConnectorProcessDataMode,
   setMesaSmartSerialCard,
+  setMesaSmartSerialProcessDataMode,
   updateMesaHostIp,
 } from "./edit";
 
@@ -18,7 +18,12 @@ describe("Mesa process data modes", () => {
 
     updateMesaHostIp(project, hostId, "10.10.10.10");
     setMesaConnectorCard(project, hostId, "p1", "7i77");
-    setMesaConnectorProcessDataMode(project, hostId, "p1", 2);
+    setMesaSmartSerialProcessDataMode(
+      project,
+      hostId,
+      { connectorKey: "p1", portKey: "io", channel: 0 },
+      2,
+    );
     setMesaSmartSerialCard(
       project,
       hostId,
@@ -64,7 +69,12 @@ describe("Mesa process data modes", () => {
 
     updateMesaHostIp(project, hostId, "10.10.10.10");
     setMesaConnectorCard(project, hostId, "p1", "7i77");
-    setMesaConnectorProcessDataMode(project, hostId, "p1", SEVEN_I77_MPG_MODE);
+    setMesaSmartSerialProcessDataMode(
+      project,
+      hostId,
+      { connectorKey: "p1", portKey: "io", channel: 0 },
+      SEVEN_I77_MPG_MODE,
+    );
     setMesaSmartSerialCard(
       project,
       hostId,

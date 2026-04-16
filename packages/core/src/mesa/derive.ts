@@ -135,16 +135,6 @@ function componentIdForPseudo(hostId: string, componentToken: string): string {
   return `system:mesa:pseudo:${sanitizeComponentToken(hostId)}:${sanitizeComponentToken(componentToken)}`;
 }
 
-function componentIdForDb25(
-  hostId: string,
-  connectorKey: string,
-  fragmentKey: string,
-): string {
-  return `system:mesa:db25:${sanitizeComponentToken(hostId)}:${sanitizeComponentToken(
-    connectorKey,
-  )}:${sanitizeComponentToken(fragmentKey)}`;
-}
-
 function componentIdForSmartSerial(
   hostId: string,
   portKey: string,
@@ -314,42 +304,28 @@ function buildHostModuleConfigTokens(profile: MesaSchemaProfile): string[] {
   return tokens;
 }
 
-function resolveDb25ProcessDataMode(
-  assignment: ProjectMesaDb25CardAssignment,
-  card: NonNullable<ReturnType<typeof getMesaDb25CardCatalogEntry>>,
+function resolveSmartSerialProcessDataMode(
+  assignment: ProjectMesaSmartSerialAssignment,
+  card: MesaSmartSerialCatalogEntry,
 ): number {
-  const supportedModes = card.sserial.processDataModes;
+  const supportedModes = card.processDataModes;
   if (!supportedModes?.length) {
-    return card.sserial.defaultMode;
+    return card.defaultMode;
   }
-  if (supportedModes.some((mode) => mode.mode === assignment.processDataMode)) {
-    return assignment.processDataMode ?? card.sserial.defaultMode;
+  const processDataMode = assignment.processDataMode;
+  if (supportedModes.some((mode) => mode.mode === processDataMode)) {
+    return processDataMode ?? card.defaultMode;
   }
-  return card.sserial.defaultMode;
+  return card.defaultMode;
 }
 
-function resolveDb25PeripheralSchemaProfile(
-  fragment: NonNullable<
-    ReturnType<typeof getMesaDb25CardCatalogEntry>
-  >["sserial"]["peripheralFragments"][number],
+function resolveSmartSerialSchemaProfile(
+  card: MesaSmartSerialCatalogEntry,
   processDataMode: number,
 ): MesaSchemaProfile {
   return (
-    fragment.schemaProfilesByMode?.[processDataMode] ?? fragment.schemaProfile
+    card.peripheralProfilesByMode?.[processDataMode] ?? card.peripheralProfile
   );
-}
-
-function resolveDb25FragmentProcessDataMode(
-  card: NonNullable<ReturnType<typeof getMesaDb25CardCatalogEntry>>,
-  fragmentChannelOffset: number,
-  processDataMode: number,
-): number {
-  if (
-    card.sserial.processDataModeChannelOffsets?.includes(fragmentChannelOffset)
-  ) {
-    return processDataMode;
-  }
-  return card.sserial.defaultMode;
 }
 
 function buildMesaHostConfigString(
@@ -381,33 +357,10 @@ function buildMesaHostConfigString(
 
   tokens.push(...buildHostModuleConfigTokens(directProfile));
 
-  for (const assignment of connectorAssignments) {
-    const connector = hostCatalog?.connectorSlots.find(
-      (item) => item.key === assignment.connectorKey,
-    );
-    const card = getMesaDb25CardCatalogEntry(assignment.cardKind ?? "");
-    const address = connector?.smartSerialAddress;
-    if (!connector || !card || !address) continue;
-    const processDataMode = resolveDb25ProcessDataMode(assignment, card);
-    const maxInternalChannel = card.sserial.peripheralFragments.reduce(
-      (max, fragment) =>
-        Math.max(max, address.channel + fragment.channelOffset),
-      address.channel,
-    );
-    const chars = ensurePort(address.portIndex, maxInternalChannel + 1);
-    for (const fragment of card.sserial.peripheralFragments) {
-      chars[address.channel + fragment.channelOffset] =
-        `${resolveDb25FragmentProcessDataMode(
-          card,
-          fragment.channelOffset,
-          processDataMode,
-        )}`;
-    }
-  }
-
   for (const assignment of smartSerialAssignments) {
     const card = getMesaSmartSerialCatalogEntry(assignment.cardKind ?? "");
     if (!card) continue;
+    const processDataMode = resolveSmartSerialProcessDataMode(assignment, card);
     if (assignment.connectorKey) {
       const connectorAssignment = connectorAssignmentsByKey.get(
         assignment.connectorKey,
@@ -426,7 +379,7 @@ function buildMesaHostConfigString(
       const nestedChannel =
         address.channel + port.baseChannelOffset + assignment.channel;
       const chars = ensurePort(address.portIndex, nestedChannel + 1);
-      chars[nestedChannel] = `${card.defaultMode}`;
+      chars[nestedChannel] = `${processDataMode}`;
       continue;
     }
     const port = hostCatalog?.smartSerialPorts.find(
@@ -434,7 +387,7 @@ function buildMesaHostConfigString(
     );
     if (!port) continue;
     const chars = ensurePort(port.portIndex, port.channels);
-    chars[assignment.channel] = `${card.defaultMode}`;
+    chars[assignment.channel] = `${processDataMode}`;
   }
 
   const sserialTokens = [...portChars.entries()]
@@ -444,21 +397,6 @@ function buildMesaHostConfigString(
   tokens.push(...sserialTokens);
 
   return tokens.join(" ");
-}
-
-function connectorInstanceAddress(
-  host: ProjectMesaHostConfig,
-  connectorKey: string,
-): { portIndex: number; channel: number } {
-  const connector = getMesaHostCatalogEntry(host.kind)?.connectorSlots.find(
-    (item) => item.key === connectorKey,
-  );
-  return (
-    connector?.smartSerialAddress ?? {
-      portIndex: connector?.order ?? 0,
-      channel: 0,
-    }
-  );
 }
 
 function normalizeMesaHostAssignments(
@@ -547,65 +485,31 @@ export function deriveMesaTopology(
     }
   };
 
-  const addDb25Nodes = (
-    ctx: MesaHostDerivationContext,
+  const addConnectorCardIssues = (
+    host: ProjectMesaHostConfig,
+    catalogHost: MesaHostCatalogEntry,
     connectorAssignments: ResolvedDb25CardAssignment[],
   ) => {
     for (const assignment of connectorAssignments) {
-      const connector = ctx.catalogHost.connectorSlots.find(
+      const connector = catalogHost.connectorSlots.find(
         (item) => item.key === assignment.connectorKey,
       );
       const card = getMesaDb25CardCatalogEntry(assignment.cardKind);
       if (!connector || !card) continue;
       if (
-        !isMesaConnectorCardCompatible(
-          ctx.host.kind,
+        isMesaConnectorCardCompatible(
+          host.kind,
           assignment.connectorKey,
           assignment.cardKind,
         )
       ) {
-        issues.push({
-          severity: "fatal",
-          message: `${card.displayName} is not compatible with ${ctx.catalogHost.displayName} ${connector.label}.`,
-          hostId: ctx.host.id,
-        });
         continue;
       }
-      const address = connectorInstanceAddress(
-        ctx.host,
-        assignment.connectorKey,
-      );
-      const processDataMode = resolveDb25ProcessDataMode(assignment, card);
-      for (const [
-        fragmentIndex,
-        fragment,
-      ] of card.sserial.peripheralFragments.entries()) {
-        const schemaProfile = resolveDb25PeripheralSchemaProfile(
-          fragment,
-          processDataMode,
-        );
-        nodes.push({
-          key: `${ctx.host.id}:${assignment.connectorKey}:${fragment.key}`,
-          hostId: ctx.host.id,
-          family: "db25",
-          componentId: componentIdForDb25(
-            ctx.host.id,
-            assignment.connectorKey,
-            fragment.key,
-          ),
-          instanceName: `${ctx.instanceName}.${assignment.cardKind}.${address.portIndex}.${address.channel + fragment.channelOffset}`,
-          displayName: `${card.displayName} ${connector.label} ${fragment.displayName}`,
-          schemaProfile,
-          preferredPosition: {
-            x: ctx.groupX + mesaLayout.offsetX.db25,
-            y:
-              mesaLayout.groupY +
-              connector.order * mesaLayout.spacingY.connector +
-              fragmentIndex * mesaLayout.spacingY.fragment,
-          },
-          summary: schemaProfileSummary(schemaProfile),
-        });
-      }
+      issues.push({
+        severity: "fatal",
+        message: `${card.displayName} is not compatible with ${catalogHost.displayName} ${connector.label}.`,
+        hostId: host.id,
+      });
     }
   };
 
@@ -632,7 +536,14 @@ export function deriveMesaTopology(
         (item) => item.key === assignment.portKey,
       );
       if (
+        !connectorAssignment ||
+        !connectorCard ||
         !port ||
+        !isMesaConnectorCardCompatible(
+          ctx.host.kind,
+          connectorAssignment.connectorKey,
+          connectorAssignment.cardKind,
+        ) ||
         !isMesaSmartSerialCardCompatible(
           ctx.host.kind,
           assignment,
@@ -651,6 +562,18 @@ export function deriveMesaTopology(
       if (!address || !connectorCard) return;
       const nestedChannel =
         address.channel + port.baseChannelOffset + assignment.channel;
+      const processDataMode = resolveSmartSerialProcessDataMode(
+        assignment,
+        card,
+      );
+      const schemaProfile = resolveSmartSerialSchemaProfile(
+        card,
+        processDataMode,
+      );
+      const displayNameSuffix =
+        port.fixedCardKind || port.channels <= 1
+          ? port.label
+          : `${port.label} ch${nestedChannel}`;
       nodes.push({
         key: `${ctx.host.id}:${assignment.connectorKey}:${assignment.portKey}:${assignment.channel}`,
         hostId: ctx.host.id,
@@ -662,18 +585,17 @@ export function deriveMesaTopology(
           assignment.connectorKey,
         ),
         instanceName: `${ctx.instanceName}.${halInstanceName}.${address.portIndex}.${nestedChannel}`,
-        displayName: `${card.displayName} ${connector.label} ${port.label} ch${nestedChannel}`,
-        schemaProfile: card.peripheralProfile,
+        displayName: `${card.displayName} ${connector.label} ${displayNameSuffix}`,
+        schemaProfile,
         preferredPosition: {
           x: ctx.groupX + mesaLayout.offsetX.sserial,
           y:
             mesaLayout.groupY +
             connector.order * mesaLayout.spacingY.connector +
-            connectorCard.sserial.peripheralFragments.length *
-              mesaLayout.spacingY.fragment +
+            port.order * mesaLayout.spacingY.fragment +
             assignment.channel * mesaLayout.spacingY.fragment,
         },
-        summary: schemaProfileSummary(card.peripheralProfile),
+        summary: schemaProfileSummary(schemaProfile),
       });
     };
 
@@ -701,6 +623,14 @@ export function deriveMesaTopology(
         });
         return;
       }
+      const processDataMode = resolveSmartSerialProcessDataMode(
+        assignment,
+        card,
+      );
+      const schemaProfile = resolveSmartSerialSchemaProfile(
+        card,
+        processDataMode,
+      );
       nodes.push({
         key: `${ctx.host.id}:${assignment.portKey}:${assignment.channel}`,
         hostId: ctx.host.id,
@@ -712,7 +642,7 @@ export function deriveMesaTopology(
         ),
         instanceName: `${ctx.instanceName}.${halInstanceName}.${port.portIndex}.${assignment.channel}`,
         displayName: `${card.displayName} ${port.label} ch${assignment.channel}`,
-        schemaProfile: card.peripheralProfile,
+        schemaProfile,
         preferredPosition: {
           x: ctx.groupX + mesaLayout.offsetX.sserial,
           y:
@@ -720,7 +650,7 @@ export function deriveMesaTopology(
             assignment.channel * mesaLayout.spacingY.directChannel +
             port.order * mesaLayout.spacingY.directPort,
         },
-        summary: schemaProfileSummary(card.peripheralProfile),
+        summary: schemaProfileSummary(schemaProfile),
       });
     };
 
@@ -780,7 +710,7 @@ export function deriveMesaTopology(
     const groupOrigin = { x: ctx.groupX, y: mesaLayout.groupY };
     addHostNodes(ctx, hostPinsProfile, pseudoComponents, groupOrigin);
     addRawGpioIssues(host, catalogHost, rawGpioAssignments);
-    addDb25Nodes(ctx, connectorAssignments);
+    addConnectorCardIssues(host, catalogHost, connectorAssignments);
     addSmartSerialNodes(ctx, smartSerialAssignments, connectorAssignmentsByKey);
 
     hostRuntimes.push({

@@ -7,9 +7,9 @@ import {
   type ProjectMesaSmartSerialTarget,
   removeMesaHost as removeMesaHostEdit,
   setMesaConnectorCard as setMesaConnectorCardEdit,
-  setMesaConnectorProcessDataMode as setMesaConnectorProcessDataModeEdit,
   setMesaRawGpioPinDirection as setMesaRawGpioPinDirectionEdit,
   setMesaSmartSerialCard as setMesaSmartSerialCardEdit,
+  setMesaSmartSerialProcessDataMode as setMesaSmartSerialProcessDataModeEdit,
   syncMesaManagedProjection as syncMesaManagedProjectionEdit,
   updateMesaHostIp as updateMesaHostIpEdit,
   updateMesaHostKind as updateMesaHostKindEdit,
@@ -61,16 +61,16 @@ export function createMesaActions(deps: EditorStoreActionContext) {
       deps.setStatusT("store.status.updatedMesaConnector");
     },
 
-    setMesaConnectorProcessDataMode(
+    setMesaSmartSerialProcessDataMode(
       hostId: string,
-      connectorKey: string,
+      target: ProjectMesaSmartSerialTarget,
       processDataMode: number,
     ): void {
       const changed = deps.withProject((project) =>
-        setMesaConnectorProcessDataModeEdit(
+        setMesaSmartSerialProcessDataModeEdit(
           project,
           hostId,
-          connectorKey,
+          target,
           processDataMode,
         ),
       );

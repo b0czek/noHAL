@@ -3,6 +3,7 @@ import type { NoHALProject } from "../types";
 import {
   getMesaDb25CardCatalogEntry,
   getMesaHostCatalogEntry,
+  getMesaSmartSerialCatalogEntry,
   MESA_DB25_CARD_KINDS,
   MESA_HOST_KINDS,
   MESA_SMART_SERIAL_CARD_KINDS,
@@ -118,15 +119,6 @@ function normalizeConnectorAssignments(
     if (!connector) continue;
     const cardKind = normalizeConnectorCardKind(raw.cardKind);
     if (!cardKind) continue;
-    const card = getMesaDb25CardCatalogEntry(cardKind);
-    const processDataMode =
-      cardKind === MESA_RAW_GPIO_CARD_KIND
-        ? undefined
-        : normalizeProcessDataMode(
-            raw.processDataMode,
-            card?.sserial.processDataModes,
-            card?.sserial.defaultMode,
-          );
     out.push(
       cardKind === MESA_RAW_GPIO_CARD_KIND
         ? {
@@ -137,11 +129,119 @@ function normalizeConnectorAssignments(
               raw.rawGpio,
             ),
           }
-        : { connectorKey, cardKind, processDataMode },
+        : { connectorKey, cardKind },
     );
     seen.add(connectorKey);
   }
   return out.sort((a, b) => a.connectorKey.localeCompare(b.connectorKey));
+}
+
+function normalizeSmartSerialProcessDataMode(
+  value: unknown,
+  cardKind: ProjectMesaSmartSerialCardKind,
+): number | undefined {
+  const card = getMesaSmartSerialCatalogEntry(cardKind);
+  return normalizeProcessDataMode(
+    value,
+    card?.processDataModes,
+    card?.defaultMode,
+  );
+}
+
+interface ResolvedSmartSerialTargetCatalog {
+  channels: number;
+  fixedCardKind?: ProjectMesaSmartSerialCardKind;
+}
+
+function resolveSmartSerialTargetCatalog(
+  hostKind: ProjectMesaHostKind,
+  connectors: ProjectMesaDb25CardAssignment[],
+  connectorKeyCandidate: string | undefined,
+  portKey: string,
+): ResolvedSmartSerialTargetCatalog | null {
+  if (connectorKeyCandidate) {
+    const connector = connectors.find(
+      (item) => item.connectorKey === connectorKeyCandidate,
+    );
+    const connectorCard = connector?.cardKind
+      ? getMesaDb25CardCatalogEntry(connector.cardKind)
+      : undefined;
+    const port = connectorCard?.sserial.smartSerialPorts.find(
+      (item) => item.key === portKey,
+    );
+    if (!port) return null;
+    return {
+      channels: port.channels,
+      fixedCardKind: port.fixedCardKind,
+    };
+  }
+  const port = getMesaHostCatalogEntry(hostKind)?.smartSerialPorts.find(
+    (item) => item.key === portKey,
+  );
+  if (!port) return null;
+  return { channels: port.channels };
+}
+
+function smartSerialAssignmentKey(
+  connectorKey: string | undefined,
+  portKey: string,
+  channel: number,
+): string {
+  return `${connectorKey ?? ""}:${portKey}:${channel}`;
+}
+
+function buildNormalizedSmartSerialAssignment(
+  connectorKeyCandidate: string | undefined,
+  portKey: string,
+  channel: number,
+  rawCardKind: unknown,
+  rawProcessDataMode: unknown,
+  targetCatalog: ResolvedSmartSerialTargetCatalog,
+): ProjectMesaSmartSerialAssignment | null {
+  const cardKind =
+    targetCatalog.fixedCardKind ?? normalizeSmartSerialCardKind(rawCardKind);
+  if (!cardKind) return null;
+  return {
+    connectorKey: connectorKeyCandidate,
+    portKey,
+    channel,
+    cardKind,
+    processDataMode: normalizeSmartSerialProcessDataMode(
+      rawProcessDataMode,
+      cardKind,
+    ),
+  };
+}
+
+function appendFixedSmartSerialAssignments(
+  connectors: ProjectMesaDb25CardAssignment[],
+  out: ProjectMesaSmartSerialAssignment[],
+  seen: Set<string>,
+): void {
+  for (const connector of connectors) {
+    const connectorCard = connector.cardKind
+      ? getMesaDb25CardCatalogEntry(connector.cardKind)
+      : undefined;
+    if (!connectorCard) continue;
+    for (const port of connectorCard.sserial.smartSerialPorts) {
+      if (!port.fixedCardKind) continue;
+      for (let channel = 0; channel < port.channels; channel += 1) {
+        const dedupeKey = smartSerialAssignmentKey(
+          connector.connectorKey,
+          port.key,
+          channel,
+        );
+        if (seen.has(dedupeKey)) continue;
+        out.push({
+          connectorKey: connector.connectorKey,
+          portKey: port.key,
+          channel,
+          cardKind: port.fixedCardKind,
+        });
+        seen.add(dedupeKey);
+      }
+    }
+  }
 }
 
 function normalizeSmartSerialAssignments(
@@ -149,7 +249,6 @@ function normalizeSmartSerialAssignments(
   connectors: ProjectMesaDb25CardAssignment[],
   hostValue: unknown,
 ): ProjectMesaSmartSerialAssignment[] {
-  const host = getMesaHostCatalogEntry(hostKind);
   const rawList = Array.isArray(hostValue) ? hostValue : [];
   const seen = new Set<string>();
   const out: ProjectMesaSmartSerialAssignment[] = [];
@@ -159,36 +258,34 @@ function normalizeSmartSerialAssignments(
       `${raw.connectorKey ?? ""}`.trim().toLowerCase() || undefined;
     const portKey = `${raw.portKey ?? ""}`.trim().toLowerCase();
     const channel = Number.parseInt(`${raw.channel ?? ""}`, 10);
-    const cardKind = normalizeSmartSerialCardKind(raw.cardKind);
-    if (!cardKind) continue;
     if (!portKey || !Number.isInteger(channel) || channel < 0) continue;
-    let channels: number | undefined;
-    if (connectorKeyCandidate) {
-      const connector = connectors.find(
-        (item) => item.connectorKey === connectorKeyCandidate,
-      );
-      const connectorCard = connector?.cardKind
-        ? getMesaDb25CardCatalogEntry(connector.cardKind)
-        : undefined;
-      const port = connectorCard?.sserial.smartSerialPorts.find(
-        (item) => item.key === portKey,
-      );
-      channels = port?.channels;
-    } else {
-      const port = host?.smartSerialPorts.find((item) => item.key === portKey);
-      channels = port?.channels;
-    }
-    if (!channels || channel >= channels) continue;
-    const dedupeKey = `${connectorKeyCandidate ?? ""}:${portKey}:${channel}`;
-    if (seen.has(dedupeKey)) continue;
-    out.push({
-      connectorKey: connectorKeyCandidate,
+    const targetCatalog = resolveSmartSerialTargetCatalog(
+      hostKind,
+      connectors,
+      connectorKeyCandidate,
+      portKey,
+    );
+    if (!targetCatalog || channel >= targetCatalog.channels) continue;
+    const dedupeKey = smartSerialAssignmentKey(
+      connectorKeyCandidate,
       portKey,
       channel,
-      cardKind,
-    });
+    );
+    if (seen.has(dedupeKey)) continue;
+    const assignment = buildNormalizedSmartSerialAssignment(
+      connectorKeyCandidate,
+      portKey,
+      channel,
+      raw.cardKind,
+      raw.processDataMode,
+      targetCatalog,
+    );
+    if (!assignment) continue;
+    out.push(assignment);
     seen.add(dedupeKey);
   }
+  appendFixedSmartSerialAssignments(connectors, out, seen);
+
   return out.sort(
     (a, b) =>
       (a.connectorKey ?? "").localeCompare(b.connectorKey ?? "") ||

@@ -56,20 +56,13 @@ export interface MesaDb25SmartSerialPortDefinition {
   order: number;
   baseChannelOffset: number;
   channels: number;
+  fixedCardKind?: ProjectMesaSmartSerialCardKind;
 }
 
 export interface MesaProcessDataModeDefinition {
   mode: number;
   label: string;
   description?: string;
-}
-
-export interface MesaDb25SserialPeripheralFragmentDefinition {
-  key: string;
-  displayName: string;
-  channelOffset: number;
-  schemaProfile: MesaSchemaProfile;
-  schemaProfilesByMode?: Partial<Record<number, MesaSchemaProfile>>;
 }
 
 export interface MesaHostCatalogEntry {
@@ -87,11 +80,7 @@ export interface MesaDb25HostmotDefinition {
 }
 
 export interface MesaDb25SserialDefinition {
-  peripheralFragments: MesaDb25SserialPeripheralFragmentDefinition[];
   smartSerialPorts: MesaDb25SmartSerialPortDefinition[];
-  processDataModes?: readonly MesaProcessDataModeDefinition[];
-  processDataModeChannelOffsets?: readonly number[];
-  defaultMode: number;
 }
 
 export interface MesaDb25CatalogEntry {
@@ -106,6 +95,9 @@ export interface MesaSmartSerialCatalogEntry {
   kind: ProjectMesaSmartSerialCardKind;
   displayName: string;
   halInstanceName?: string;
+  assignable?: boolean;
   peripheralProfile: MesaSchemaProfile;
+  peripheralProfilesByMode?: Partial<Record<number, MesaSchemaProfile>>;
+  processDataModes?: readonly MesaProcessDataModeDefinition[];
   defaultMode: number;
 }

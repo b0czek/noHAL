@@ -35,13 +35,26 @@ export function isMesaSmartSerialCardCompatible(
 ): boolean {
   const host = getMesaHostCatalogEntry(hostKind);
   if (!host) return false;
-  const port = assignment.connectorKey
-    ? getMesaDb25CardCatalogEntry(
-        connectorCardKind ?? "",
-      )?.sserial.smartSerialPorts.find(
-        (item) => item.key === assignment.portKey,
-      )
-    : host.smartSerialPorts.find((item) => item.key === assignment.portKey);
+  if (assignment.connectorKey) {
+    const port = getMesaDb25CardCatalogEntry(
+      connectorCardKind ?? "",
+    )?.sserial.smartSerialPorts.find((item) => item.key === assignment.portKey);
+    if (!port) return false;
+    if (
+      !Number.isInteger(assignment.channel) ||
+      assignment.channel < 0 ||
+      assignment.channel >= port.channels
+    ) {
+      return false;
+    }
+    if (port.fixedCardKind) {
+      return port.fixedCardKind === cardKind;
+    }
+    return !!getMesaSmartSerialCatalogEntry(cardKind);
+  }
+  const port = host.smartSerialPorts.find(
+    (item) => item.key === assignment.portKey,
+  );
   if (!port) return false;
   if (
     !Number.isInteger(assignment.channel) ||
