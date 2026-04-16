@@ -100,6 +100,34 @@ export const MESA_SMART_SERIAL_CARDS: readonly MesaSmartSerialCatalogEntry[] = [
       digitalInputs: 32,
       digitalOutputs: 16,
     },
+    peripheralProfilesByMode: {
+      1: {
+        digitalInputs: 32,
+        digitalOutputs: 16,
+        analogInputs: 4,
+        fieldVoltage: true,
+      },
+      2: {
+        digitalInputs: 32,
+        digitalOutputs: 16,
+        analogInputs: 4,
+        mpgCounters: 2,
+      },
+    },
+    processDataModes: [
+      {
+        mode: 0,
+        label: "Mode 0: I/O only",
+      },
+      {
+        mode: 1,
+        label: "Mode 1: I/O + analog inputs + field voltage",
+      },
+      {
+        mode: 2,
+        label: "Mode 2: I/O + analog inputs + MPG encoders",
+      },
+    ],
     defaultMode: 0,
   },
   {
