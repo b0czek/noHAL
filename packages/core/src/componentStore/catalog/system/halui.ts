@@ -353,6 +353,7 @@ export function createHaluiSystemComponentDefinition(
       showInCustomComponents: false,
     },
     constraints: {
+      exportNamespace: "global",
       fixedInstanceName: HALUI_INSTANCE_NAME,
     },
     runtime: { kind: "userspace" },

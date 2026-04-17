@@ -49,7 +49,6 @@ function componentUsesCustomLoadusrNamespace(
 export function resolveDefaultComponentExportNamespace(
   component: ComponentDefinition | undefined,
 ): ComponentExportNamespace {
-  if (component?.system) return "global";
   if (componentUsesLockedCanonicalInstanceNames(component)) return "global";
   if (componentUsesCustomLoadusrNamespace(component)) return "global";
   return "sheet_scoped";

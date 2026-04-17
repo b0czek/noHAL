@@ -301,6 +301,7 @@ export function createIniSystemComponentDefinition(
       showInCustomComponents: false,
     },
     constraints: {
+      exportNamespace: "global",
       fixedInstanceName: "ini",
       fixedExportStage: "postgui",
     },

@@ -71,6 +71,28 @@ function createSheetScopedComponent(
   };
 }
 
+function createExplicitGlobalSystemComponent(
+  componentName: string,
+): ComponentDefinition {
+  return {
+    id: `system:${componentName}`,
+    name: componentName,
+    halComponentName: componentName,
+    source: "manual",
+    system: {
+      manager: "test",
+      family: componentName,
+    },
+    constraints: {
+      exportNamespace: "global",
+      fixedInstanceName: componentName,
+    },
+    runtime: { kind: "unknown" },
+    pins: [],
+    params: [],
+  };
+}
+
 describe("component export namespace", () => {
   it("treats locked canonical runtime names as global by default", () => {
     expect(
@@ -94,6 +116,15 @@ describe("component export namespace", () => {
     component.constraints = { exportNamespace: "sheet_scoped" };
 
     expect(resolveComponentExportNamespace(component)).toBe("sheet_scoped");
+  });
+
+  it("treats system components as global only when the definition says so", () => {
+    const component = createExplicitGlobalSystemComponent("ini");
+
+    expect(resolveDefaultComponentExportNamespace(component)).toBe(
+      "sheet_scoped",
+    );
+    expect(resolveComponentExportNamespace(component)).toBe("global");
   });
 
   it("allows a single instance of a sheet-scoped component to export globally", () => {

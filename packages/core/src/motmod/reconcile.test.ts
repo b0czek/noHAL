@@ -118,6 +118,7 @@ describe("motmod-managed obligatory components", () => {
       showInCustomComponents: false,
     });
     expect(motionComponent?.constraints).toEqual({
+      exportNamespace: "global",
       fixedInstanceName: "motion",
     });
   });

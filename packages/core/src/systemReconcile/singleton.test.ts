@@ -67,6 +67,7 @@ function createTestSystemDefinition(): ComponentDefinition {
       family: TEST_SYSTEM_FAMILY,
     },
     constraints: {
+      exportNamespace: "global",
       fixedInstanceName: "testsys",
       fixedExportStage: "postgui",
     },
