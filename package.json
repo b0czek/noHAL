@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "pnpm --filter @nohal/desktop dev",
     "build": "pnpm --filter @nohal/desktop build",
+    "haldiff": "pnpm --filter @nohal/haldiff haldiff",
     "pack": "pnpm --filter @nohal/desktop pack",
     "dist": "pnpm --filter @nohal/desktop dist",
     "dist:linux": "pnpm --filter @nohal/desktop dist:linux",

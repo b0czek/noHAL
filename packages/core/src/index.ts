@@ -5,6 +5,7 @@ export * from "./compParser";
 export * from "./customComponent";
 export * from "./customComponentStore";
 export * from "./graph";
+export * from "./haldiff";
 export * from "./halImport";
 export * from "./halNames";
 export * from "./halThread";

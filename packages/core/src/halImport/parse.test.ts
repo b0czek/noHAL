@@ -227,6 +227,52 @@ describe("parseHalImportDraft (HAL spec behavior)", () => {
     ]);
   });
 
+  it("preserves nested instance names for unknown namespaced addf and net targets", () => {
+    const { draft, groups } = groupByComponentName(`
+      addf kb.auto-latch servo-thread
+      net usrkb-btn-auto kb.auto-latch.trigger
+      net switch-kinematics motion.digital-out-60 system.mahokins.switch-to-horizontal
+    `);
+
+    expect(draft.addfs).toContainEqual({
+      line: 1,
+      functionName: "kb.auto-latch",
+      instanceName: "kb.auto-latch",
+      isDefaultFunction: true,
+      thread: "servo-thread",
+    });
+    expect(draft.nets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "usrkb-btn-auto",
+          endpoints: [
+            {
+              rawPath: "kb.auto-latch.trigger",
+              instanceName: "kb.auto-latch",
+              pinName: "trigger",
+            },
+          ],
+        }),
+        expect.objectContaining({
+          name: "switch-kinematics",
+          endpoints: expect.arrayContaining([
+            {
+              rawPath: "system.mahokins.switch-to-horizontal",
+              instanceName: "system.mahokins",
+              pinName: "switch-to-horizontal",
+            },
+          ]),
+        }),
+      ]),
+    );
+    expect(groups.get("kb")).toMatchObject({
+      instances: [expect.objectContaining({ instanceName: "kb.auto-latch" })],
+    });
+    expect(groups.get("system")).toMatchObject({
+      instances: [expect.objectContaining({ instanceName: "system.mahokins" })],
+    });
+  });
+
   it("parses simple loadusr commands as userspace component instances", () => {
     const { draft, groups } = groupByComponentName(`
       loadusr -W hal_manualtoolchange

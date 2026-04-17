@@ -23,6 +23,7 @@
     "./componentVisibility": "./src/component/visibility.ts",
     "./customComponent": "./src/customComponent/index.ts",
     "./graph": "./src/graph.ts",
+    "./haldiff": "./src/haldiff/index.ts",
     "./halImport": "./src/halImport/index.ts",
     "./halNames": "./src/halNames.ts",
     "./halThread": "./src/halThread/index.ts",

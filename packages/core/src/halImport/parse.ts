@@ -139,6 +139,12 @@ function splitHalPath(
       fieldName: segments.slice(2).join("."),
     };
   }
+  if (segments.length >= HAL_INSTANCE_FIELD_SEGMENT_COUNT) {
+    return {
+      instanceName: segments.slice(0, -1).join("."),
+      fieldName: segments[segments.length - 1] ?? "",
+    };
+  }
   return {
     instanceName: segments[0],
     fieldName: segments.slice(1).join("."),
@@ -186,6 +192,9 @@ function splitAddfFunctionTarget(
   if (segments.length === 2 && /^\d+$/.test(segments[1] ?? "")) {
     return { instanceName: rawTarget };
   }
+  if (segments.length === 2) {
+    return { instanceName: rawTarget };
+  }
   if (
     segments.length >= HAL_INSTANCE_FIELD_SEGMENT_COUNT &&
     /^\d+$/.test(segments[1] ?? "")
@@ -196,9 +205,9 @@ function splitAddfFunctionTarget(
       ...(functionSuffix ? { functionSuffix } : {}),
     };
   }
-  const functionSuffix = segments.slice(1).join(".");
+  const functionSuffix = segments[segments.length - 1];
   return {
-    instanceName: segments[0],
+    instanceName: segments.slice(0, -1).join("."),
     ...(functionSuffix ? { functionSuffix } : {}),
   };
 }
