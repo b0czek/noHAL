@@ -145,6 +145,117 @@ describe("node actions", () => {
     expect(connection?.waypoints).toEqual([{ x: 190, y: 160 }]);
   });
 
+  it("updates a component export namespace override from the instance tab action", () => {
+    const { project } = createProjectFixture();
+    const store = createEditorStore(project, (key) => key);
+
+    store.actions.updateNodeGlobalNamespace("node_component", true);
+
+    const rootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    const node = rootSheet.nodes.find((entry) => entry.id === "node_component");
+    expect(node).toEqual(
+      expect.objectContaining({
+        kind: "component",
+        exportNamespace: "global",
+      }),
+    );
+
+    store.actions.updateNodeGlobalNamespace("node_component", false);
+
+    const updatedRootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    const updatedNode = updatedRootSheet.nodes.find(
+      (entry) => entry.id === "node_component",
+    );
+    expect(
+      updatedNode?.kind === "component"
+        ? updatedNode.exportNamespace
+        : undefined,
+    ).toBeUndefined();
+  });
+
+  it("blocks namespace changes that would introduce exported path collisions", () => {
+    const { project } = createProjectFixture();
+    const rootSheet = project.sheets[project.rootSheetId];
+    const childSheetId = "sheet_logic";
+    project.sheets[childSheetId] = {
+      id: childSheetId,
+      name: "Logic",
+      nodes: [
+        {
+          id: "node_child_component",
+          kind: "component",
+          componentId: TEST_COMPONENT_ID,
+          instanceName: "and2.0",
+          position: { x: 20, y: 20 },
+          paramValues: {},
+        },
+      ],
+      ports: [],
+      labels: [],
+      comments: [],
+      directConnections: [],
+      labelAnchors: [],
+    };
+    rootSheet.nodes.push({
+      id: "sheet_node_logic",
+      kind: "sheet",
+      sheetId: childSheetId,
+      instanceName: "logic",
+      position: { x: 360, y: 40 },
+    });
+
+    const store = createEditorStore(project, (key) => key);
+    store.setState("activeSheetId", childSheetId);
+    store.actions.updateNodeGlobalNamespace("node_child_component", true);
+
+    const node = store.state.project.sheets[childSheetId]?.nodes.find(
+      (entry) => entry.id === "node_child_component",
+    );
+    expect(
+      node?.kind === "component" ? node.exportNamespace : undefined,
+    ).toBeUndefined();
+    expect(store.state.status).toBe(
+      "Export namespace change would collide at 'and2.0'",
+    );
+  });
+
+  it("refuses namespace changes when the component is globally namespaced by definition", () => {
+    const { project } = createProjectFixture();
+    const component = project.library.components[TEST_COMPONENT_ID];
+    expect(component).toBeDefined();
+    if (!component) {
+      throw new Error("Test fixture component is missing");
+    }
+    project.library.components[TEST_COMPONENT_ID] = {
+      ...component,
+      runtime: {
+        kind: "rt",
+        instanceNaming: {
+          strategy: "canonical_indexed",
+          lockToCanonical: true,
+          maxInstances: 8,
+        },
+      },
+      constraints: {
+        exportNamespace: "global",
+      },
+    };
+
+    const store = createEditorStore(project, (key) => key);
+    store.actions.updateNodeGlobalNamespace("node_component", false);
+
+    expect(
+      store.state.project.library.components[TEST_COMPONENT_ID]?.constraints,
+    ).toEqual({
+      exportNamespace: "global",
+    });
+    expect(store.state.status).toBe(
+      "Export namespace is fixed for component 'and2'",
+    );
+  });
+
   it("converts a singly-anchored label into a sheet port with inferred direction and type", () => {
     const { project } = createProjectFixture();
     const rootSheet = project.sheets[project.rootSheetId];

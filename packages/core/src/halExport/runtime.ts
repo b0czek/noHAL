@@ -918,7 +918,7 @@ function emitComponentAddfEntries(args: {
     componentName,
     instancePath: resolveExportedInstancePath(
       args.pathParts,
-      args.queueItem.node.instanceName,
+      args.queueItem.node,
       component,
     ),
     parentSheetPath: joinInstancePath(args.pathParts),

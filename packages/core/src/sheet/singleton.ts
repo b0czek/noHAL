@@ -1,5 +1,5 @@
-import { componentExportsToGlobalNamespace } from "../component/naming";
-import type { NoHALProject, SheetNode } from "../types";
+import { nodeExportsToGlobalNamespace } from "../component/naming";
+import type { ComponentNode, NoHALProject, SheetNode } from "../types";
 import { countReachableSheetInstances } from "./instances";
 
 const INSTANCE_COUNT_LIMIT = 2;
@@ -33,10 +33,11 @@ export interface SheetSingletonInfo {
 
 function componentForcesSheetSingleton(
   project: NoHALProject,
-  componentId: string,
+  node: ComponentNode,
 ): boolean {
-  return componentExportsToGlobalNamespace(
-    project.library.components[componentId],
+  return nodeExportsToGlobalNamespace(
+    node,
+    project.library.components[node.componentId],
   );
 }
 
@@ -74,7 +75,7 @@ function collectDirectSingletonReasons(
     }
     for (const node of sheet.nodes) {
       if (node.kind !== "component") continue;
-      if (!componentForcesSheetSingleton(project, node.componentId)) continue;
+      if (!componentForcesSheetSingleton(project, node)) continue;
       const component = project.library.components[node.componentId];
       addSingletonReason(reasons, sheet.id, {
         kind: "component",

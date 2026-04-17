@@ -6,6 +6,7 @@ import {
 import type {
   ComponentDefinition,
   ComponentExportNamespace,
+  ComponentNode,
   NoHALProject,
   SheetDefinition,
 } from "../types";
@@ -45,21 +46,60 @@ function componentUsesCustomLoadusrNamespace(
   return /^loadusr(?:\s|$)/.test(component.loadCommand?.trim() ?? "");
 }
 
-export function resolveComponentExportNamespace(
+export function resolveDefaultComponentExportNamespace(
   component: ComponentDefinition | undefined,
 ): ComponentExportNamespace {
-  const explicitNamespace = component?.constraints?.exportNamespace;
-  if (explicitNamespace) return explicitNamespace;
   if (component?.system) return "global";
   if (componentUsesLockedCanonicalInstanceNames(component)) return "global";
   if (componentUsesCustomLoadusrNamespace(component)) return "global";
   return "sheet_scoped";
 }
 
+export function resolveComponentExportNamespace(
+  component: ComponentDefinition | undefined,
+): ComponentExportNamespace {
+  return (
+    component?.constraints?.exportNamespace ??
+    resolveDefaultComponentExportNamespace(component)
+  );
+}
+
+export function componentHasFixedExportNamespace(
+  component: ComponentDefinition | undefined,
+): boolean {
+  return (
+    component?.constraints?.exportNamespace !== undefined ||
+    resolveDefaultComponentExportNamespace(component) === "global"
+  );
+}
+
 export function componentExportsToGlobalNamespace(
   component: ComponentDefinition | undefined,
 ): boolean {
   return resolveComponentExportNamespace(component) === "global";
+}
+
+export function resolveNodeExportNamespace(
+  node:
+    | Pick<ComponentNode, "exportNamespace">
+    | { exportNamespace?: ComponentExportNamespace }
+    | undefined,
+  component: ComponentDefinition | undefined,
+): ComponentExportNamespace {
+  if (componentHasFixedExportNamespace(component)) {
+    return resolveComponentExportNamespace(component);
+  }
+  return node?.exportNamespace ?? resolveComponentExportNamespace(component);
+}
+
+export function nodeExportsToGlobalNamespace(
+  node:
+    | Pick<ComponentNode, "exportNamespace">
+    | { exportNamespace?: ComponentExportNamespace }
+    | undefined,
+  component: ComponentDefinition | undefined,
+): boolean {
+  return resolveNodeExportNamespace(node, component) === "global";
 }
 
 function joinInstancePath(parts: string[]): string {
@@ -70,9 +110,32 @@ export function resolveComponentInstancePath(
   pathParts: string[],
   instanceName: string,
   component: ComponentDefinition | undefined,
+  exportNamespace?: ComponentExportNamespace,
 ): string {
-  if (componentExportsToGlobalNamespace(component)) return instanceName;
+  if (
+    resolveNodeExportNamespace(
+      exportNamespace === undefined ? undefined : { exportNamespace },
+      component,
+    ) === "global"
+  ) {
+    return instanceName;
+  }
   return joinInstancePath([...pathParts, instanceName]);
+}
+
+export function resolveNodeInstancePath(
+  pathParts: string[],
+  node:
+    | Pick<ComponentNode, "instanceName" | "exportNamespace">
+    | { instanceName: string; exportNamespace?: ComponentExportNamespace },
+  component: ComponentDefinition | undefined,
+): string {
+  return resolveComponentInstancePath(
+    pathParts,
+    node.instanceName,
+    component,
+    node.exportNamespace,
+  );
 }
 
 function collectReachableComponentInstancePaths(args: {
@@ -85,9 +148,7 @@ function collectReachableComponentInstancePaths(args: {
       if (node.kind !== "component") continue;
       if (args.excludeNodeId && node.id === args.excludeNodeId) continue;
       const component = args.project.library.components[node.componentId];
-      paths.add(
-        resolveComponentInstancePath(pathParts, node.instanceName, component),
-      );
+      paths.add(resolveNodeInstancePath(pathParts, node, component));
     }
   });
   return paths;
@@ -97,21 +158,21 @@ function collectTargetComponentInstancePaths(args: {
   project: NoHALProject;
   sheetId: string;
   component: ComponentDefinition | undefined;
-  instanceName: string;
+  candidateNode: Pick<ComponentNode, "instanceName" | "exportNamespace">;
 }): string[] {
   const targetPaths = collectReachableSheetInstancePaths(
     args.project,
     args.sheetId,
   ).map((pathParts) =>
-    resolveComponentInstancePath(pathParts, args.instanceName, args.component),
+    resolveNodeInstancePath(pathParts, args.candidateNode, args.component),
   );
 
   if (
     targetPaths.length === 0 &&
-    componentExportsToGlobalNamespace(args.component)
+    nodeExportsToGlobalNamespace(args.candidateNode, args.component)
   ) {
     targetPaths.push(
-      resolveComponentInstancePath([], args.instanceName, args.component),
+      resolveNodeInstancePath([], args.candidateNode, args.component),
     );
   }
 
@@ -127,11 +188,7 @@ export function collectDuplicateExportedInstancePaths(
     for (const node of sheet.nodes) {
       if (node.kind !== "component") continue;
       const component = project.library.components[node.componentId];
-      const path = resolveComponentInstancePath(
-        pathParts,
-        node.instanceName,
-        component,
-      );
+      const path = resolveNodeInstancePath(pathParts, node, component);
       if (seen.has(path)) duplicates.add(path);
       else seen.add(path);
     }
@@ -160,8 +217,8 @@ function collectAllComponentInstancePaths(args: {
       if (node.kind !== "component") continue;
       if (args.excludeNodeId && node.id === args.excludeNodeId) continue;
       const component = args.project.library.components[node.componentId];
-      if (!componentExportsToGlobalNamespace(component)) continue;
-      paths.add(resolveComponentInstancePath([], node.instanceName, component));
+      if (!nodeExportsToGlobalNamespace(node, component)) continue;
+      paths.add(resolveNodeInstancePath([], node, component));
     }
   }
   return paths;
@@ -189,14 +246,15 @@ function targetPathsHaveSelfConflict(paths: string[]): boolean {
 function targetSheetHasLocalNodeNameConflict(args: {
   project: NoHALProject;
   sheetId: string;
-  instanceName: string;
+  candidateNode: Pick<ComponentNode, "instanceName">;
   excludeNodeId?: string;
 }): boolean {
   const sheet = args.project.sheets[args.sheetId];
   if (!sheet) return false;
   return sheet.nodes.some(
     (node) =>
-      node.instanceName === args.instanceName && node.id !== args.excludeNodeId,
+      node.instanceName === args.candidateNode.instanceName &&
+      node.id !== args.excludeNodeId,
   );
 }
 
@@ -204,7 +262,7 @@ export function hasComponentExportPathConflict(args: {
   project: NoHALProject;
   sheetId: string;
   component: ComponentDefinition | undefined;
-  instanceName: string;
+  candidateNode: Pick<ComponentNode, "instanceName" | "exportNamespace">;
   excludeNodeId?: string;
 }): boolean {
   const targetPaths = collectTargetComponentInstancePaths(args);
@@ -242,7 +300,9 @@ export function nextComponentInstanceName(
           project,
           sheetId: sheet.id,
           component,
-          instanceName: candidate,
+          candidateNode: {
+            instanceName: candidate,
+          },
         })
       ) {
         return candidate;
@@ -264,7 +324,9 @@ export function nextComponentInstanceName(
         project,
         sheetId: sheet.id,
         component,
-        instanceName: candidate,
+        candidateNode: {
+          instanceName: candidate,
+        },
       })
     ) {
       return candidate;

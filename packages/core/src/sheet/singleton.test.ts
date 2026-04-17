@@ -54,6 +54,18 @@ function createCustomLoadusrComponent(): ComponentDefinition {
   };
 }
 
+function createSheetScopedComponent(): ComponentDefinition {
+  return {
+    id: "comp:plain",
+    name: "plain",
+    halComponentName: "plain",
+    source: "manual",
+    runtime: { kind: "rt" },
+    pins: [],
+    params: [],
+  };
+}
+
 describe("sheet singletonity", () => {
   it("classifies sheets from reachable instances and singleton-forcing nodes", () => {
     const project = createEmptyProject("sheet-singletonity");
@@ -140,6 +152,49 @@ describe("sheet singletonity", () => {
       kind: "component",
       componentId: customLoadusrComponent.id,
       instanceName: "manual_userspace",
+      position: { x: 0, y: 0 },
+      paramValues: {},
+    });
+
+    const childInfo = analyzeSheetSingletons(project).get(childSheet.id);
+    expect(childInfo?.status).toBe("forced");
+    expect(childInfo?.canBeSingleton).toBe(false);
+    expect(
+      findInvalidForcedSheetSingletons(project).map((info) => info.sheetId),
+    ).toContain(childSheet.id);
+  });
+
+  it("treats per-instance global overrides as singleton-forcing", () => {
+    const project = createEmptyProject("sheet-instance-global-singletonity");
+    const rootSheet = project.sheets[project.rootSheetId];
+    const childSheet = createSheet("sheet_child", "Child");
+    project.sheets[childSheet.id] = childSheet;
+
+    rootSheet.nodes.push(
+      {
+        id: "sheet_a",
+        kind: "sheet",
+        sheetId: childSheet.id,
+        instanceName: "logic_a",
+        position: { x: 0, y: 0 },
+      },
+      {
+        id: "sheet_b",
+        kind: "sheet",
+        sheetId: childSheet.id,
+        instanceName: "logic_b",
+        position: { x: 120, y: 0 },
+      },
+    );
+
+    const component = createSheetScopedComponent();
+    project.library.components[component.id] = component;
+    childSheet.nodes.push({
+      id: "global_node",
+      kind: "component",
+      componentId: component.id,
+      instanceName: "plain_0",
+      exportNamespace: "global",
       position: { x: 0, y: 0 },
       paramValues: {},
     });

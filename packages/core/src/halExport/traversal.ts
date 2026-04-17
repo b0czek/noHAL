@@ -57,7 +57,7 @@ function createLocalEndpointIdMap(
     const pins = getNodePins(project, node);
     const instancePath =
       node.kind === "component"
-        ? resolveExportedInstancePath(pathParts, node.instanceName, component)
+        ? resolveExportedInstancePath(pathParts, node, component)
         : undefined;
     for (const pin of pins) {
       const localKey = `node:${node.id}:${pin.key}`;
@@ -154,11 +154,7 @@ function collectComponentInstances(
       ctx.componentInstances.push({
         componentName: component.halComponentName,
         componentId: node.componentId,
-        instancePath: resolveExportedInstancePath(
-          pathParts,
-          node.instanceName,
-          component,
-        ),
+        instancePath: resolveExportedInstancePath(pathParts, node, component),
         ...(node.instanceConfigValues
           ? { instanceConfigValues: { ...node.instanceConfigValues } }
           : {}),

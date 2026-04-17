@@ -5,6 +5,9 @@ import {
   hasComponentExportPathConflict,
   nextComponentInstanceName,
   resolveComponentExportNamespace,
+  resolveDefaultComponentExportNamespace,
+  resolveNodeExportNamespace,
+  resolveNodeInstancePath,
 } from "./naming";
 
 function createSheet(id: string, name: string): SheetDefinition {
@@ -83,6 +86,38 @@ describe("component export namespace", () => {
     ).toBe("global");
   });
 
+  it("allows explicit namespace overrides to differ from the default", () => {
+    const component = createGlobalDebounceLikeComponent();
+
+    expect(resolveDefaultComponentExportNamespace(component)).toBe("global");
+
+    component.constraints = { exportNamespace: "sheet_scoped" };
+
+    expect(resolveComponentExportNamespace(component)).toBe("sheet_scoped");
+  });
+
+  it("allows a single instance of a sheet-scoped component to export globally", () => {
+    const component = createSheetScopedComponent("plain");
+
+    expect(
+      resolveNodeExportNamespace({ exportNamespace: "global" }, component),
+    ).toBe("global");
+    expect(
+      resolveNodeInstancePath(
+        ["logic"],
+        { instanceName: "plain_0", exportNamespace: "global" },
+        component,
+      ),
+    ).toBe("plain_0");
+    expect(
+      resolveNodeInstancePath(
+        ["logic"],
+        { instanceName: "plain_0" },
+        component,
+      ),
+    ).toBe("logic.plain_0");
+  });
+
   it("skips conflicting global names that would collide with exported root paths", () => {
     const project = createEmptyProject("naming-collision");
     const rootSheet = project.sheets[project.rootSheetId];
@@ -148,11 +183,52 @@ describe("component export namespace", () => {
         project,
         sheetId: childSheet.id,
         component: globalComponent,
-        instanceName: "debounce.0",
+        candidateNode: {
+          instanceName: "debounce.0",
+        },
       }),
     ).toBe(true);
     expect(
       nextComponentInstanceName(project, childSheet, globalComponent),
     ).toBe(undefined);
+  });
+
+  it("detects conflicts for a single instance promoted to the global namespace", () => {
+    const project = createEmptyProject("per-instance-global-collision");
+    const rootSheet = project.sheets[project.rootSheetId];
+    const childSheet = createSheet("sheet_child", "Child");
+    project.sheets[childSheet.id] = childSheet;
+    project.library.components["comp:plain"] =
+      createSheetScopedComponent("plain");
+
+    rootSheet.nodes.push(
+      {
+        id: "root_plain",
+        kind: "component",
+        componentId: "comp:plain",
+        instanceName: "plain_0",
+        position: { x: 0, y: 0 },
+        paramValues: {},
+      },
+      {
+        id: "child_ref",
+        kind: "sheet",
+        sheetId: childSheet.id,
+        instanceName: "logic",
+        position: { x: 100, y: 0 },
+      },
+    );
+
+    expect(
+      hasComponentExportPathConflict({
+        project,
+        sheetId: childSheet.id,
+        component: project.library.components["comp:plain"],
+        candidateNode: {
+          instanceName: "plain_0",
+          exportNamespace: "global",
+        },
+      }),
+    ).toBe(true);
   });
 });

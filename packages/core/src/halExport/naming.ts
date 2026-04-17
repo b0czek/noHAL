@@ -1,6 +1,6 @@
 import { sortBy, uniqueBy } from "remeda";
-import { resolveComponentInstancePath } from "../component/naming";
-import type { ComponentDefinition } from "../types";
+import { resolveNodeInstancePath } from "../component/naming";
+import type { ComponentDefinition, ComponentNode } from "../types";
 import type { EndpointRecord, Hint } from "./context";
 
 export function joinInstancePath(parts: string[]): string {
@@ -9,10 +9,10 @@ export function joinInstancePath(parts: string[]): string {
 
 export function resolveExportedInstancePath(
   pathParts: string[],
-  instanceName: string,
+  node: Pick<ComponentNode, "instanceName" | "exportNamespace">,
   component: ComponentDefinition | undefined,
 ): string {
-  return resolveComponentInstancePath(pathParts, instanceName, component);
+  return resolveNodeInstancePath(pathParts, node, component);
 }
 
 export function chooseBoundarySignalName(

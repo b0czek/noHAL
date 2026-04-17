@@ -123,6 +123,12 @@ export const en = {
   "componentDialog.exportStagePostgui": "Postgui HAL File",
   "componentDialog.exportStageLockedPostgui":
     "Export stage is fixed by component definition.",
+  "componentDialog.exportNamespace": "Export Namespace",
+  "componentDialog.exportNamespaceGlobal": "Global namespace",
+  "componentDialog.exportNamespaceHelp":
+    "Exports this instance without sheet path prefixes.",
+  "componentDialog.exportNamespaceLocked":
+    "Export namespace is fixed by component definition or runtime naming rules.",
   "componentDialog.functions": "Realtime Functions (addf)",
   "componentDialog.noFunctions": "No function metadata.",
   "componentDialog.functionDefault": "_ (default)",

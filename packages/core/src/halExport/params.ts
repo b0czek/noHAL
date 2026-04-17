@@ -64,7 +64,7 @@ export function collectParamLines(
     if (!component) return;
     const instancePath = resolveExportedInstancePath(
       pathParts,
-      node.instanceName,
+      node,
       component,
     );
     if (!isValidHalName(instancePath)) {

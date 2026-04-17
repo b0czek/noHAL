@@ -1,4 +1,5 @@
 import {
+  componentHasFixedExportNamespace,
   componentPrefersCanonicalInstanceNames,
   componentUsesLockedCanonicalInstanceNames,
   ensureInstanceName,
@@ -32,6 +33,7 @@ import type {
 import { unwrap } from "solid-js/store";
 
 export {
+  componentHasFixedExportNamespace,
   componentPrefersCanonicalInstanceNames,
   componentUsesLockedCanonicalInstanceNames,
   createEmptyComponentStore,

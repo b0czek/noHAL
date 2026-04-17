@@ -1,11 +1,15 @@
 import { normalizeComponentPinOrder } from "@nohal/core";
 import { resolveComponentPinsForInstance } from "@nohal/core/componentInstance";
 import {
+  collectDuplicateExportedInstancePaths,
+  componentHasFixedExportNamespace,
+  resolveNodeExportNamespace,
+} from "@nohal/core/componentNaming";
+import {
   fixedExportStageForComponent,
   fixedInstanceNameForComponent,
 } from "@nohal/core/componentSystem";
 import { isComponentPlaceable } from "@nohal/core/componentVisibility";
-import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
 import {
   getSheet,
   getSheetReferenceLocations,
@@ -26,6 +30,8 @@ import type {
   XY,
 } from "@nohal/core/types";
 import {
+  applyComponentStoreEntryToProject,
+  cloneProject,
   componentUsesLockedCanonicalInstanceNames,
   defaultCommentPosition,
   defaultLabelPosition,
@@ -87,7 +93,10 @@ export function createNodeActions(deps: EditorStoreActionContext) {
           project: deps.state.project,
           sheetId,
           component,
-          instanceName: trimmed,
+          candidateNode: {
+            instanceName: trimmed,
+            exportNamespace: currentNode.exportNamespace,
+          },
           excludeNodeId: nodeId,
         })
       ) {
@@ -239,6 +248,17 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     }
   };
 
+  const setNodeExportNamespace = (
+    node: ComponentNode,
+    global: boolean,
+  ): void => {
+    if (global) {
+      node.exportNamespace = "global";
+    } else {
+      delete node.exportNamespace;
+    }
+  };
+
   return {
     async refreshComponentInStore(componentId: string): Promise<void> {
       const current = deps.state.project.library.components[componentId];
@@ -255,12 +275,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         });
         deps.withProject(
           (project) => {
-            project.library.components[entry.componentId] = entry.parsed;
-            reconcileComponentNodesForDefinition(
-              project,
-              entry.componentId,
-              entry.parsed,
-            );
+            applyComponentStoreEntryToProject(project, entry);
           },
           { recordHistory: false },
         );
@@ -691,6 +706,59 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         } else {
           delete node.exportStage;
         }
+      });
+    },
+
+    updateNodeGlobalNamespace(nodeId: string, global: boolean): void {
+      const activeSheetId = deps.state.activeSheetId;
+      const currentSheet = getSheet(deps.state.project, activeSheetId);
+      const currentNode = currentSheet.nodes.find((n) => n.id === nodeId);
+      if (!currentNode || currentNode.kind !== "component") return;
+
+      const component =
+        deps.state.project.library.components[currentNode.componentId];
+      if (!component) return;
+      if (componentHasFixedExportNamespace(component)) {
+        deps.setState(
+          "status",
+          `Export namespace is fixed for component '${component.halComponentName}'`,
+        );
+        return;
+      }
+
+      const nextNamespace = global ? "global" : "sheet_scoped";
+      if (
+        resolveNodeExportNamespace(currentNode, component) === nextNamespace
+      ) {
+        return;
+      }
+
+      const nextProject = cloneProject(deps.state.project);
+      const nextSheet = getSheet(nextProject, activeSheetId);
+      const nextNode = nextSheet.nodes.find((n) => n.id === nodeId);
+      if (!nextNode || nextNode.kind !== "component") return;
+
+      const currentDuplicates = new Set(
+        collectDuplicateExportedInstancePaths(deps.state.project),
+      );
+      setNodeExportNamespace(nextNode, global);
+      const introducedDuplicates = collectDuplicateExportedInstancePaths(
+        nextProject,
+      ).filter((path) => !currentDuplicates.has(path));
+
+      if (introducedDuplicates.length > 0) {
+        deps.setState(
+          "status",
+          `Export namespace change would collide at '${introducedDuplicates[0]}'`,
+        );
+        return;
+      }
+
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const node = sheet.nodes.find((n) => n.id === nodeId);
+        if (!node || node.kind !== "component") return;
+        setNodeExportNamespace(node, global);
       });
     },
 
