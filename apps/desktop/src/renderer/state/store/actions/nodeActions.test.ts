@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import { createEditorStore } from "../../store";
 
 const TEST_COMPONENT_ID = "comp:test-and2";
+const ROTATION_QUARTER_TURN = 90;
+const ROTATION_HALF_TURN = 180;
+const ROTATION_THREE_QUARTER_TURN = 270;
 
 function createProjectFixture() {
   const project = createEmptyProject("Node Action Fixture");
@@ -356,5 +359,67 @@ describe("node actions", () => {
     expect(store.state.status).toBe(
       "store.status.cannotConvertLabelToSheetPort",
     );
+  });
+
+  it("rotates selected labels, comments, and sheet ports in a single undo step", () => {
+    const { project } = createProjectFixture();
+    const rootSheet = project.sheets[project.rootSheetId];
+    rootSheet.labels.push({
+      id: "label_rotated",
+      name: "servo.enable",
+      scope: "local",
+      position: { x: 140, y: 140 },
+      rotation: 0,
+    });
+    rootSheet.comments.push({
+      id: "comment_rotated",
+      text: "Check interlock",
+      position: { x: 180, y: 160 },
+      rotation: ROTATION_QUARTER_TURN,
+    });
+    rootSheet.ports[0] = {
+      ...rootSheet.ports[0],
+      rotation: ROTATION_THREE_QUARTER_TURN,
+    };
+
+    const store = createEditorStore(project, (key) => key);
+    store.setState("selection", {
+      kind: "multi",
+      nodeIds: ["node_component"],
+      labelIds: ["label_rotated"],
+      commentIds: ["comment_rotated"],
+      portIds: ["port_in"],
+    });
+
+    expect(store.actions.rotateSelectionClockwise()).toBe(true);
+
+    let nextRootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    expect(
+      nextRootSheet.labels.find((entry) => entry.id === "label_rotated")
+        ?.rotation,
+    ).toBe(ROTATION_QUARTER_TURN);
+    expect(
+      nextRootSheet.comments.find((entry) => entry.id === "comment_rotated")
+        ?.rotation,
+    ).toBe(ROTATION_HALF_TURN);
+    expect(
+      nextRootSheet.ports.find((entry) => entry.id === "port_in")?.rotation,
+    ).toBe(0);
+
+    expect(store.actions.undo()).toBe(true);
+
+    nextRootSheet = store.state.project.sheets[store.state.project.rootSheetId];
+    expect(
+      nextRootSheet.labels.find((entry) => entry.id === "label_rotated")
+        ?.rotation,
+    ).toBe(0);
+    expect(
+      nextRootSheet.comments.find((entry) => entry.id === "comment_rotated")
+        ?.rotation,
+    ).toBe(ROTATION_QUARTER_TURN);
+    expect(
+      nextRootSheet.ports.find((entry) => entry.id === "port_in")?.rotation,
+    ).toBe(ROTATION_THREE_QUARTER_TURN);
   });
 });

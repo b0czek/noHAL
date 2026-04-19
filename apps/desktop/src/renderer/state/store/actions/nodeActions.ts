@@ -44,7 +44,37 @@ import {
   normalizeRotationDegrees,
   toErrorMessage,
 } from "../helpers";
-import type { EditorStoreActionContext } from "./types";
+import type { EditorSelection, EditorStoreActionContext } from "./types";
+
+const ROTATION_STEP_DEGREES = 90;
+
+function getRotatableSelectionIds(selection: EditorSelection): {
+  labelIds: Set<string>;
+  commentIds: Set<string>;
+  portIds: Set<string>;
+} {
+  if (!selection) {
+    return {
+      labelIds: new Set<string>(),
+      commentIds: new Set<string>(),
+      portIds: new Set<string>(),
+    };
+  }
+
+  if (selection.kind === "multi") {
+    return {
+      labelIds: new Set(selection.labelIds),
+      commentIds: new Set(selection.commentIds),
+      portIds: new Set(selection.portIds),
+    };
+  }
+
+  return {
+    labelIds: new Set(selection.kind === "label" ? [selection.id] : []),
+    commentIds: new Set(selection.kind === "comment" ? [selection.id] : []),
+    portIds: new Set(selection.kind === "sheet-port" ? [selection.id] : []),
+  };
+}
 
 function endpointMovesWithGroup(
   endpoint: SheetEndpointRef,
@@ -917,6 +947,53 @@ export function createNodeActions(deps: EditorStoreActionContext) {
           port.rotation = normalizeRotationDegrees(patch.rotation);
         }
       });
+    },
+
+    rotateSelectionClockwise(
+      stepDegrees: number = ROTATION_STEP_DEGREES,
+    ): boolean {
+      if (!Number.isFinite(stepDegrees) || stepDegrees === 0) return false;
+
+      const { labelIds, commentIds, portIds } = getRotatableSelectionIds(
+        deps.state.selection,
+      );
+      if (labelIds.size === 0 && commentIds.size === 0 && portIds.size === 0) {
+        return false;
+      }
+
+      const currentSheet = getSheet(
+        deps.state.project,
+        deps.state.activeSheetId,
+      );
+      const hasEligibleSelection =
+        currentSheet.labels.some((label) => labelIds.has(label.id)) ||
+        currentSheet.comments.some((comment) => commentIds.has(comment.id)) ||
+        currentSheet.ports.some((port) => portIds.has(port.id));
+      if (!hasEligibleSelection) return false;
+
+      deps.withProject((project) => {
+        const sheet = getSheet(project, deps.state.activeSheetId);
+        for (const label of sheet.labels) {
+          if (!labelIds.has(label.id)) continue;
+          label.rotation = normalizeRotationDegrees(
+            (label.rotation ?? 0) + stepDegrees,
+          );
+        }
+        for (const comment of sheet.comments) {
+          if (!commentIds.has(comment.id)) continue;
+          comment.rotation = normalizeRotationDegrees(
+            (comment.rotation ?? 0) + stepDegrees,
+          );
+        }
+        for (const port of sheet.ports) {
+          if (!portIds.has(port.id)) continue;
+          port.rotation = normalizeRotationDegrees(
+            (port.rotation ?? 0) + stepDegrees,
+          );
+        }
+      });
+
+      return true;
     },
   };
 }
