@@ -264,13 +264,13 @@ function setSheetAddfQueue(
   return normalized;
 }
 
-export type RemoveSheetPortResult =
-  | {
-      ok: true;
-      removedPortId: string;
-      removedReferenceInstanceCount: number;
-    }
-  | { ok: false; reason: "not-found" };
+export type RemoveSheetPortResult = Result<
+  Change<{
+    removedPortId: string;
+    removedReferenceInstanceCount: number;
+  }>,
+  Failure<"not-found">
+>;
 
 function removeSheetPort(
   project: NoHALProject,
@@ -278,9 +278,9 @@ function removeSheetPort(
   portId: string,
 ): RemoveSheetPortResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return { ok: false, reason: "not-found" };
+  if (!sheet) return err({ code: "not-found" });
   if (!sheet.ports.some((port) => port.id === portId)) {
-    return { ok: false, reason: "not-found" };
+    return err({ code: "not-found" });
   }
 
   const referenceLocations = getConnectedSheetPortReferenceLocations(
@@ -297,11 +297,13 @@ function removeSheetPort(
     pruneSheetNodePinReferences(parentSheet, reference.nodeId, portId);
   }
 
-  return {
-    ok: true,
-    removedPortId: portId,
-    removedReferenceInstanceCount: referenceLocations.length,
-  };
+  return ok({
+    data: {
+      removedPortId: portId,
+      removedReferenceInstanceCount: referenceLocations.length,
+    },
+    changed: true,
+  });
 }
 
 export interface AddSheetDefinitionResult {
@@ -350,9 +352,10 @@ export interface MoveSheetItemsSuccess {
   createdPortCount: number;
 }
 
-export type MoveSheetItemsResult =
-  | ({ ok: true } & MoveSheetItemsSuccess)
-  | { ok: false; reason: MoveSheetItemsFailureReason };
+export type MoveSheetItemsResult = Result<
+  Change<MoveSheetItemsSuccess>,
+  Failure<MoveSheetItemsFailureReason>
+>;
 
 export interface RemoveSheetItemsInput {
   nodeIds: ReadonlySet<string>;
@@ -497,7 +500,7 @@ function moveItemsIntoNewSubsheet(
   items: SheetItemIds,
 ): MoveSheetItemsResult {
   const prepared = prepareSheetItemsMove(project, parentSheetId, items);
-  if ("reason" in prepared) return { ok: false, reason: prepared.reason };
+  if ("reason" in prepared) return err({ code: prepared.reason });
 
   const sheet = createSheetDefinition(project);
   const node: SheetNode = {
@@ -518,15 +521,17 @@ function moveItemsIntoNewSubsheet(
     movedLabelIds: prepared.movedLabelIds,
   });
 
-  return {
-    ok: true,
-    name: sheet.name,
-    sheet,
-    node,
-    movedNodeCount: moveResult.movedNodeCount,
-    movedLabelCount: moveResult.movedLabelCount,
-    createdPortCount: moveResult.createdPortCount,
-  };
+  return ok({
+    data: {
+      name: sheet.name,
+      sheet,
+      node,
+      movedNodeCount: moveResult.movedNodeCount,
+      movedLabelCount: moveResult.movedLabelCount,
+      createdPortCount: moveResult.createdPortCount,
+    },
+    changed: true,
+  });
 }
 
 function moveItemsIntoExistingSubsheet(
@@ -536,18 +541,18 @@ function moveItemsIntoExistingSubsheet(
   items: SheetItemIds,
 ): MoveSheetItemsResult {
   const prepared = prepareSheetItemsMove(project, parentSheetId, items);
-  if ("reason" in prepared) return { ok: false, reason: prepared.reason };
+  if ("reason" in prepared) return err({ code: prepared.reason });
   if (items.nodeIds.has(subsheetNodeId)) {
-    return { ok: false, reason: "target-in-items" };
+    return err({ code: "target-in-items" });
   }
 
   const subsheetNode = prepared.parentSheet.nodes.find(
     (node): node is SheetNode =>
       node.kind === "sheet" && node.id === subsheetNodeId,
   );
-  if (!subsheetNode) return { ok: false, reason: "not-found" };
+  if (!subsheetNode) return err({ code: "not-found" });
   const childSheet = project.sheets[subsheetNode.sheetId];
-  if (!childSheet) return { ok: false, reason: "not-found" };
+  if (!childSheet) return err({ code: "not-found" });
 
   const moveResult = moveItemsIntoSubsheet(project, {
     parentSheetId,
@@ -557,15 +562,17 @@ function moveItemsIntoExistingSubsheet(
     movedLabelIds: prepared.movedLabelIds,
   });
 
-  return {
-    ok: true,
-    name: childSheet.name,
-    sheet: childSheet,
-    node: subsheetNode,
-    movedNodeCount: moveResult.movedNodeCount,
-    movedLabelCount: moveResult.movedLabelCount,
-    createdPortCount: moveResult.createdPortCount,
-  };
+  return ok({
+    data: {
+      name: childSheet.name,
+      sheet: childSheet,
+      node: subsheetNode,
+      movedNodeCount: moveResult.movedNodeCount,
+      movedLabelCount: moveResult.movedLabelCount,
+      createdPortCount: moveResult.createdPortCount,
+    },
+    changed: true,
+  });
 }
 
 function removeSheetItems(
@@ -608,9 +615,10 @@ function removeSheetItems(
   }
 }
 
-export type RemoveSheetReferenceResult =
-  | { ok: true; removedNodeId: string }
-  | { ok: false; reason: "not-found" | "protected-system-sheet" };
+export type RemoveSheetReferenceResult = Result<
+  Change<{ removedNodeId: string }>,
+  Failure<"not-found"> | Failure<"protected-system-sheet">
+>;
 
 function removeSheetReference(
   project: NoHALProject,
@@ -618,13 +626,13 @@ function removeSheetReference(
   nodeId: string,
 ): RemoveSheetReferenceResult {
   const parentSheet = project.sheets[parentSheetId];
-  if (!parentSheet) return { ok: false, reason: "not-found" };
+  if (!parentSheet) return err({ code: "not-found" });
   const target = parentSheet.nodes.find(
     (node): node is SheetNode => node.kind === "sheet" && node.id === nodeId,
   );
-  if (!target) return { ok: false, reason: "not-found" };
+  if (!target) return err({ code: "not-found" });
   if (isProtectedSystemSheet(project, target.sheetId)) {
-    return { ok: false, reason: "protected-system-sheet" };
+    return err({ code: "protected-system-sheet" });
   }
   const removedNodeIds = new Set<string>();
   const nextNodes = parentSheet.nodes.filter((node) => {
@@ -634,7 +642,7 @@ function removeSheetReference(
   });
   parentSheet.nodes = nextNodes;
   pruneSheetNodeReferences(parentSheet, removedNodeIds);
-  return { ok: true, removedNodeId: nodeId };
+  return ok({ data: { removedNodeId: nodeId }, changed: true });
 }
 
 function removeSheetNodeReferencesForDeletedDefinition(
@@ -786,9 +794,10 @@ export interface DetachSheetReferenceResult {
   node: SheetNode;
 }
 
-export type DetachSheetReferenceEditResult =
-  | ({ ok: true } & DetachSheetReferenceResult)
-  | { ok: false; reason: "not-found" | "protected-system-sheet" };
+export type DetachSheetReferenceEditResult = Result<
+  Change<DetachSheetReferenceResult>,
+  Failure<"not-found"> | Failure<"protected-system-sheet">
+>;
 
 function detachSheetReference(
   project: NoHALProject,
@@ -796,17 +805,17 @@ function detachSheetReference(
   nodeId: string,
 ): DetachSheetReferenceEditResult {
   const parentSheet = project.sheets[parentSheetId];
-  if (!parentSheet) return { ok: false, reason: "not-found" };
+  if (!parentSheet) return err({ code: "not-found" });
   const node = parentSheet.nodes.find(
     (entry): entry is SheetNode =>
       entry.kind === "sheet" && entry.id === nodeId,
   );
-  if (!node) return { ok: false, reason: "not-found" };
+  if (!node) return err({ code: "not-found" });
   if (isProtectedSystemSheet(project, node.sheetId)) {
-    return { ok: false, reason: "protected-system-sheet" };
+    return err({ code: "protected-system-sheet" });
   }
   const source = project.sheets[node.sheetId];
-  if (!source) return { ok: false, reason: "not-found" };
+  if (!source) return err({ code: "not-found" });
 
   const detachedName = nextUniqueName(
     `${source.name} Copy`,
@@ -816,20 +825,22 @@ function detachSheetReference(
   project.sheets[detachedSheet.id] = detachedSheet;
   const originalSheetId = node.sheetId;
   node.sheetId = detachedSheet.id;
-  return { ok: true, originalSheetId, detachedSheet, node };
+  return ok({
+    data: { originalSheetId, detachedSheet, node },
+    changed: true,
+  });
 }
 
-export type DeleteSheetDefinitionResult =
-  | {
-      ok: true;
-      deletedSheetIds: string[];
-      deletedSheetName: string;
-      nextActiveSheetId: string;
-    }
-  | {
-      ok: false;
-      reason: "not-found" | "root-sheet" | "protected-system-sheet";
-    };
+export type DeleteSheetDefinitionResult = Result<
+  Change<{
+    deletedSheetIds: string[];
+    deletedSheetName: string;
+    nextActiveSheetId: string;
+  }>,
+  | Failure<"not-found">
+  | Failure<"root-sheet">
+  | Failure<"protected-system-sheet">
+>;
 
 function deleteSheetDefinition(
   project: NoHALProject,
@@ -837,12 +848,12 @@ function deleteSheetDefinition(
   activeSheetId: string,
 ): DeleteSheetDefinitionResult {
   const target = project.sheets[sheetId];
-  if (!target) return { ok: false, reason: "not-found" };
+  if (!target) return err({ code: "not-found" });
   if (sheetId === project.rootSheetId) {
-    return { ok: false, reason: "root-sheet" };
+    return err({ code: "root-sheet" });
   }
   if (isProtectedSystemSheet(project, sheetId)) {
-    return { ok: false, reason: "protected-system-sheet" };
+    return err({ code: "protected-system-sheet" });
   }
 
   const referenceParentSheetIds = new Set<string>();
@@ -864,12 +875,14 @@ function deleteSheetDefinition(
       ) ?? project.rootSheetId;
   }
 
-  return {
-    ok: true,
-    deletedSheetIds: [sheetId],
-    deletedSheetName: target.name,
-    nextActiveSheetId,
-  };
+  return ok({
+    data: {
+      deletedSheetIds: [sheetId],
+      deletedSheetName: target.name,
+      nextActiveSheetId,
+    },
+    changed: true,
+  });
 }
 
 export const sheetModelEdits = {

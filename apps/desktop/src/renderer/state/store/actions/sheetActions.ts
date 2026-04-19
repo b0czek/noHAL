@@ -54,37 +54,31 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     deps.markProjectChanged();
   };
 
-  const commitSelectionMove = (
-    next: EditorStoreActionContext["state"]["project"],
-    activeSheetId: string,
-    selectedSubsheetNodeId: string,
-  ): void => {
-    commitProjectEdit(next, activeSheetId);
-    deps.setState("selection", { kind: "node", id: selectedSubsheetNodeId });
-    deps.clearPendingConnectionUi();
-  };
-
   const detachSheetReferenceAt = (
     parentSheetId: string,
     nodeId: string,
   ): string | null => {
-    const next = cloneProject(deps.state.project);
-    const result = sheetModelEdits.reference.detach(
-      next,
-      parentSheetId,
-      nodeId,
-    );
-    if (!result.ok) {
-      if (result.reason === "protected-system-sheet") {
-        deps.setStatusT("store.status.cannotDeleteSystemSheet");
-      }
-      return null;
-    }
-    commitProjectEdit(next);
-    deps.setStatusT("store.status.detachedSheetReference", {
-      name: result.detachedSheet.name,
-    });
-    return result.detachedSheet.id;
+    let detachedSheetId: string | null = null;
+
+    deps
+      .withProjectResult((project) =>
+        sheetModelEdits.reference.detach(project, parentSheetId, nodeId),
+      )
+      .match(
+        ({ data }) => {
+          detachedSheetId = data.detachedSheet.id;
+          deps.setStatusT("store.status.detachedSheetReference", {
+            name: data.detachedSheet.name,
+          });
+        },
+        (error) => {
+          if (error.code === "protected-system-sheet") {
+            deps.setStatusT("store.status.cannotDeleteSystemSheet");
+          }
+        },
+      );
+
+    return detachedSheetId;
   };
 
   return {
@@ -127,12 +121,22 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       outputId: string,
       name: string,
     ): void {
-      const result = deps.withProjectResult((project) => {
-        const sheet = getSheet(project, sheetId);
-        return sheetModelEdits.threadOutput.name.update(sheet, outputId, name);
-      });
-      if (result.isErr() || !result.value.changed) return;
-      deps.setStatusT("store.status.updatedSheetThreadOutputName");
+      deps
+        .withProjectResult((project) => {
+          const sheet = getSheet(project, sheetId);
+          return sheetModelEdits.threadOutput.name.update(
+            sheet,
+            outputId,
+            name,
+          );
+        })
+        .match(
+          ({ changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedSheetThreadOutputName");
+          },
+          () => {},
+        );
     },
 
     updateSheetThreadOutputHalBinding(
@@ -140,25 +144,36 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       outputId: string,
       halThreadId: string | null,
     ): void {
-      const result = deps.withProjectResult((project) => {
-        const sheet = getSheet(project, sheetId);
-        return sheetModelEdits.threadOutput.halBinding.update(
-          sheet,
-          outputId,
-          halThreadId,
+      deps
+        .withProjectResult((project) => {
+          const sheet = getSheet(project, sheetId);
+          return sheetModelEdits.threadOutput.halBinding.update(
+            sheet,
+            outputId,
+            halThreadId,
+          );
+        })
+        .match(
+          ({ changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedSheetThreadOutputHalBinding");
+          },
+          () => {},
         );
-      });
-      if (result.isErr() || !result.value.changed) return;
-      deps.setStatusT("store.status.updatedSheetThreadOutputHalBinding");
     },
 
     removeSheetThreadOutput(sheetId: string, outputId: string): void {
-      const result = deps.withProjectResult((project) => {
-        const sheet = getSheet(project, sheetId);
-        return sheetModelEdits.threadOutput.remove(sheet, outputId);
-      });
-      if (result.isErr()) return;
-      deps.setStatusT("store.status.removedSheetThreadOutput");
+      deps
+        .withProjectResult((project) => {
+          const sheet = getSheet(project, sheetId);
+          return sheetModelEdits.threadOutput.remove(sheet, outputId);
+        })
+        .match(
+          () => {
+            deps.setStatusT("store.status.removedSheetThreadOutput");
+          },
+          () => {},
+        );
     },
 
     setSheetAddfQueue(
@@ -204,42 +219,52 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     },
 
     putSelectionIntoSubsheet(): void {
-      const next = cloneProject(deps.state.project);
-      const moveResult = sheetModelEdits.items.moveIntoNewSubsheet(
-        next,
-        deps.state.activeSheetId,
-        resolveSheetMoveSelection(deps.state.selection),
-      );
-      if (!moveResult.ok) {
-        setSelectionMoveFailureStatus(moveResult.reason);
-        return;
-      }
-
-      commitSelectionMove(next, deps.state.activeSheetId, moveResult.node.id);
-      deps.setStatusT("store.status.putSelectionIntoSubsheet", {
-        name: moveResult.name,
-        ports: moveResult.createdPortCount,
-      });
+      deps
+        .withProjectResult((project) =>
+          sheetModelEdits.items.moveIntoNewSubsheet(
+            project,
+            deps.state.activeSheetId,
+            resolveSheetMoveSelection(deps.state.selection),
+          ),
+        )
+        .match(
+          ({ data }) => {
+            deps.setState("selection", { kind: "node", id: data.node.id });
+            deps.clearPendingConnectionUi();
+            deps.setStatusT("store.status.putSelectionIntoSubsheet", {
+              name: data.name,
+              ports: data.createdPortCount,
+            });
+          },
+          (error) => {
+            setSelectionMoveFailureStatus(error.code);
+          },
+        );
     },
 
     moveSelectionIntoSubsheetNode(subsheetNodeId: string): void {
-      const next = cloneProject(deps.state.project);
-      const moveResult = sheetModelEdits.items.moveIntoExistingSubsheet(
-        next,
-        deps.state.activeSheetId,
-        subsheetNodeId,
-        resolveSheetMoveSelection(deps.state.selection),
-      );
-      if (!moveResult.ok) {
-        setSelectionMoveFailureStatus(moveResult.reason);
-        return;
-      }
-
-      commitSelectionMove(next, deps.state.activeSheetId, moveResult.node.id);
-      deps.setStatusT("store.status.movedSelectionIntoSubsheet", {
-        name: moveResult.name,
-        ports: moveResult.createdPortCount,
-      });
+      deps
+        .withProjectResult((project) =>
+          sheetModelEdits.items.moveIntoExistingSubsheet(
+            project,
+            deps.state.activeSheetId,
+            subsheetNodeId,
+            resolveSheetMoveSelection(deps.state.selection),
+          ),
+        )
+        .match(
+          ({ data }) => {
+            deps.setState("selection", { kind: "node", id: data.node.id });
+            deps.clearPendingConnectionUi();
+            deps.setStatusT("store.status.movedSelectionIntoSubsheet", {
+              name: data.name,
+              ports: data.createdPortCount,
+            });
+          },
+          (error) => {
+            setSelectionMoveFailureStatus(error.code);
+          },
+        );
     },
 
     deleteSheetDefinition(sheetId: string): void {
@@ -253,10 +278,10 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         sheetId,
         deps.state.activeSheetId,
       );
-      if (!result.ok) {
-        if (result.reason === "root-sheet") {
+      if (result.isErr()) {
+        if (result.error.code === "root-sheet") {
           deps.setStatusT("store.status.cannotDeleteRootSheet");
-        } else if (result.reason === "protected-system-sheet") {
+        } else if (result.error.code === "protected-system-sheet") {
           deps.setStatusT("store.status.cannotDeleteSystemSheet");
         }
         return;
@@ -278,7 +303,8 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         return;
       }
 
-      const nextActiveSheetId = result.nextActiveSheetId;
+      const { deletedSheetIds, deletedSheetName, nextActiveSheetId } =
+        result.value.data;
       syncProjectUi(next, nextActiveSheetId);
 
       deps.pushUndoSnapshot();
@@ -287,28 +313,31 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       deps.setState("activeSheetId", nextActiveSheetId);
       deps.clearSelectionAndPendingUi();
       deps.setStatusT("store.status.deletedSheet", {
-        name: result.deletedSheetName,
-        count: result.deletedSheetIds.length,
+        name: deletedSheetName,
+        count: deletedSheetIds.length,
       });
     },
 
     deleteSheetReference(nodeId: string): void {
-      const currentSheetId = deps.state.activeSheetId;
-      const next = cloneProject(deps.state.project);
-      const removed = sheetModelEdits.reference.remove(
-        next,
-        currentSheetId,
-        nodeId,
-      );
-      if (!removed.ok) {
-        if (removed.reason === "protected-system-sheet") {
-          deps.setStatusT("store.status.cannotDeleteSystemSheet");
-        }
-        return;
-      }
-      commitProjectEdit(next);
-      deps.clearSelectionAndPendingUi();
-      deps.setStatusT("store.status.removedSelection");
+      deps
+        .withProjectResult((project) =>
+          sheetModelEdits.reference.remove(
+            project,
+            deps.state.activeSheetId,
+            nodeId,
+          ),
+        )
+        .match(
+          () => {
+            deps.clearSelectionAndPendingUi();
+            deps.setStatusT("store.status.removedSelection");
+          },
+          (error) => {
+            if (error.code === "protected-system-sheet") {
+              deps.setStatusT("store.status.cannotDeleteSystemSheet");
+            }
+          },
+        );
     },
 
     detachSheetReferenceAt,

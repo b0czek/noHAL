@@ -141,27 +141,33 @@ describe("sheet model edit helpers", () => {
       },
     );
 
-    expect(
-      sheetModelEdits.items.moveIntoNewSubsheet(project, root.id, {
+    const blockedBySystem = sheetModelEdits.items.moveIntoNewSubsheet(
+      project,
+      root.id,
+      {
         nodeIds: new Set(["node_system"]),
         labelIds: new Set(),
         portIds: new Set(),
-      }),
-    ).toEqual({ ok: false, reason: "protected-system-node" });
+      },
+    );
+    expect(blockedBySystem.isErr()).toBe(true);
+    if (blockedBySystem.isOk()) throw new Error("expected err result");
+    expect(blockedBySystem.error).toEqual({ code: "protected-system-node" });
     expect(root.nodes.some((node) => node.id === "node_system")).toBe(true);
 
-    expect(
-      sheetModelEdits.items.moveIntoExistingSubsheet(
-        project,
-        root.id,
-        "node_child",
-        {
-          nodeIds: new Set(["node_child"]),
-          labelIds: new Set(),
-          portIds: new Set(),
-        },
-      ),
-    ).toEqual({ ok: false, reason: "target-in-items" });
+    const blockedByTarget = sheetModelEdits.items.moveIntoExistingSubsheet(
+      project,
+      root.id,
+      "node_child",
+      {
+        nodeIds: new Set(["node_child"]),
+        labelIds: new Set(),
+        portIds: new Set(),
+      },
+    );
+    expect(blockedByTarget.isErr()).toBe(true);
+    if (blockedByTarget.isOk()) throw new Error("expected err result");
+    expect(blockedByTarget.error).toEqual({ code: "target-in-items" });
     expect(child.nodes).toHaveLength(0);
   });
 
@@ -212,11 +218,15 @@ describe("sheet model edit helpers", () => {
       grandchild.id,
     );
 
-    expect(result).toEqual({
-      ok: true,
-      deletedSheetIds: [child.id],
-      deletedSheetName: "Child",
-      nextActiveSheetId: grandchild.id,
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) throw new Error("expected ok result");
+    expect(result.value).toEqual({
+      changed: true,
+      data: {
+        deletedSheetIds: [child.id],
+        deletedSheetName: "Child",
+        nextActiveSheetId: grandchild.id,
+      },
     });
     expect(project.sheets[child.id]).toBeUndefined();
     expect(project.sheets[grandchild.id]).toBeDefined();
@@ -269,12 +279,19 @@ describe("sheet model edit helpers", () => {
       },
     });
 
-    expect(
-      sheetModelEdits.port.remove(project, child.id, "port_child_in"),
-    ).toEqual({
-      ok: true,
-      removedPortId: "port_child_in",
-      removedReferenceInstanceCount: 1,
+    const removed = sheetModelEdits.port.remove(
+      project,
+      child.id,
+      "port_child_in",
+    );
+    expect(removed.isOk()).toBe(true);
+    if (removed.isErr()) throw new Error("expected ok result");
+    expect(removed.value).toEqual({
+      changed: true,
+      data: {
+        removedPortId: "port_child_in",
+        removedReferenceInstanceCount: 1,
+      },
     });
     expect(child.ports).toHaveLength(0);
     expect(root.directConnections).toHaveLength(0);
@@ -308,13 +325,17 @@ describe("sheet model edit helpers", () => {
       "node_child",
     );
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error("expected detach to succeed");
-    expect(result.originalSheetId).toBe(child.id);
-    expect(result.detachedSheet.id).not.toBe(child.id);
-    expect(result.detachedSheet.name).toBe("Child Copy");
-    expect(result.node.sheetId).toBe(result.detachedSheet.id);
-    expect(result.detachedSheet.nodes[0]?.id).not.toBe("node_component");
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) throw new Error("expected detach to succeed");
+    expect(result.value.data.originalSheetId).toBe(child.id);
+    expect(result.value.data.detachedSheet.id).not.toBe(child.id);
+    expect(result.value.data.detachedSheet.name).toBe("Child Copy");
+    expect(result.value.data.node.sheetId).toBe(
+      result.value.data.detachedSheet.id,
+    );
+    expect(result.value.data.detachedSheet.nodes[0]?.id).not.toBe(
+      "node_component",
+    );
   });
 
   it("keeps protected system sheets immutable through sheet definition/reference edits", () => {
@@ -322,33 +343,42 @@ describe("sheet model edit helpers", () => {
     const { rootSheet, systemSheet, systemSheetNode } =
       ensureSystemSheet(project);
 
-    expect(
-      sheetModelEdits.definition.remove(
-        project,
-        systemSheet.id,
-        project.rootSheetId,
-      ),
-    ).toEqual({ ok: false, reason: "protected-system-sheet" });
+    const blockedDefinition = sheetModelEdits.definition.remove(
+      project,
+      systemSheet.id,
+      project.rootSheetId,
+    );
+    expect(blockedDefinition.isErr()).toBe(true);
+    if (blockedDefinition.isOk()) throw new Error("expected err result");
+    expect(blockedDefinition.error).toEqual({
+      code: "protected-system-sheet",
+    });
     expect(project.sheets[systemSheet.id]).toBeDefined();
 
-    expect(
-      sheetModelEdits.reference.remove(
-        project,
-        rootSheet.id,
-        systemSheetNode.id,
-      ),
-    ).toEqual({ ok: false, reason: "protected-system-sheet" });
+    const blockedReferenceRemoval = sheetModelEdits.reference.remove(
+      project,
+      rootSheet.id,
+      systemSheetNode.id,
+    );
+    expect(blockedReferenceRemoval.isErr()).toBe(true);
+    if (blockedReferenceRemoval.isOk()) throw new Error("expected err result");
+    expect(blockedReferenceRemoval.error).toEqual({
+      code: "protected-system-sheet",
+    });
     expect(rootSheet.nodes.some((node) => node.id === systemSheetNode.id)).toBe(
       true,
     );
 
-    expect(
-      sheetModelEdits.reference.detach(
-        project,
-        rootSheet.id,
-        systemSheetNode.id,
-      ),
-    ).toEqual({ ok: false, reason: "protected-system-sheet" });
+    const blockedDetach = sheetModelEdits.reference.detach(
+      project,
+      rootSheet.id,
+      systemSheetNode.id,
+    );
+    expect(blockedDetach.isErr()).toBe(true);
+    if (blockedDetach.isOk()) throw new Error("expected err result");
+    expect(blockedDetach.error).toEqual({
+      code: "protected-system-sheet",
+    });
     expect(systemSheetNode.sheetId).toBe(systemSheet.id);
   });
 });
