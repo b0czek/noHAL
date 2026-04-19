@@ -5,10 +5,6 @@ import {
 } from "@nohal/core/customComponent";
 import { CUSTOM_COMPONENT_STORE_SOURCE_ID } from "@nohal/core/customComponentStore";
 import {
-  DEFAULT_HAL_NAME_LEN,
-  normalizeHalNameLen,
-} from "@nohal/core/halNames";
-import {
   addHalThread,
   removeHalThread,
   updateHalThreadFloatMode,
@@ -104,6 +100,10 @@ async function runProjectTransition(
 }
 
 export function createProjectActions(deps: EditorStoreActionContext) {
+  const halThreadName = (threadId: string): string | null =>
+    deps.state.project.halThreads?.find((thread) => thread.id === threadId)
+      ?.name ?? null;
+
   const ensureHalComponentNameAvailable = (
     halComponentName: string,
     excludeComponentIds?: readonly string[],
@@ -187,55 +187,81 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     },
 
     updateProjectName(name: string): void {
-      const normalized = name.trim();
-      if (!normalized || normalized === deps.state.project.name) return;
-      deps.withProject((project) => {
-        if (!projectEdits.project.name.update(project, normalized)) return;
-      });
-      deps.setStatusT("store.status.updatedProjectName", {
-        name: normalized,
-      });
+      deps
+        .withProjectResult((project) =>
+          projectEdits.project.name.update(project, name),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedProjectName", {
+              name: data,
+            });
+          },
+          () => {},
+        );
     },
 
     updateProjectShutdown(shutdown: string): void {
-      if (shutdown === deps.state.project.shutdown) return;
-      deps.withProject((project) => {
-        projectEdits.project.shutdown.update(project, shutdown);
-      });
-      deps.setStatusT("store.status.updatedProjectShutdown");
+      deps
+        .withProjectResult((project) =>
+          projectEdits.project.shutdown.update(project, shutdown),
+        )
+        .match(
+          ({ changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedProjectShutdown");
+          },
+          () => {},
+        );
     },
 
     updateProjectWireLayerPosition(position: ProjectWireLayerPosition): void {
-      if (deps.state.project.ui.wireLayerPosition === position) return;
-      deps.withProject((project) => {
-        projectEdits.project.wire.visibility.update(project, position);
-      });
-      deps.setStatusT("store.status.updatedProjectWireLayerPosition", {
-        position: wireVisibilityLabel(deps, position),
-      });
+      deps
+        .withProjectResult((project) =>
+          projectEdits.project.wire.visibility.update(project, position),
+        )
+        .match(
+          ({ changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedProjectWireLayerPosition", {
+              position: wireVisibilityLabel(deps, position),
+            });
+          },
+          () => {},
+        );
     },
 
     updateProjectWireStyle(style: ProjectWireStyle): void {
-      if (deps.state.project.ui.wireStyle === style) return;
-      deps.withProject((project) => {
-        projectEdits.project.wire.style.update(project, style);
-      });
-      deps.setStatusT("store.status.updatedProjectWireStyle", {
-        style: wireStyleLabel(deps, style),
-      });
+      deps
+        .withProjectResult((project) =>
+          projectEdits.project.wire.style.update(project, style),
+        )
+        .match(
+          ({ changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedProjectWireStyle", {
+              style: wireStyleLabel(deps, style),
+            });
+          },
+          () => {},
+        );
     },
 
     updateProjectHalNameLen(halNameLen: number): void {
-      const normalized = normalizeHalNameLen(halNameLen);
-      const current =
-        deps.state.project.halExport?.halNameLen ?? DEFAULT_HAL_NAME_LEN;
-      if (current === normalized) return;
-      deps.withProject((project) => {
-        projectEdits.project.halNameLen.update(project, normalized);
-      });
-      deps.setStatusT("store.status.updatedProjectHalNameLen", {
-        value: normalized,
-      });
+      deps
+        .withProjectResult((project) =>
+          projectEdits.project.halNameLen.update(project, halNameLen),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedProjectHalNameLen", {
+              value: data,
+            });
+          },
+          () => {},
+        );
     },
 
     ensureMachineConfig(): void {
@@ -380,49 +406,61 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     },
 
     removeCustomComponent(componentId: string): void {
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.remove(project, componentId),
-      );
-      if (!finalResult.ok && finalResult.reason === "not-custom") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      if (!finalResult.ok && finalResult.reason === "in-use") {
-        deps.setStatusT("store.status.cannotRemoveCustomComponentInUse", {
-          componentName: finalResult.componentName,
-          count: finalResult.usageCount,
-        });
-        return;
-      }
-      if (finalResult.ok) {
-        deps.setStatusT("store.status.removedCustomComponent", {
-          componentName: finalResult.componentName,
-        });
-      }
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.remove(project, componentId),
+        )
+        .match(
+          ({ data }) => {
+            deps.setStatusT("store.status.removedCustomComponent", {
+              componentName: data.componentName,
+            });
+          },
+          (error) => {
+            if (error.code === "not-custom") {
+              deps.setStatusT("store.status.selectedComponentNotCustom");
+              return;
+            }
+            deps.setStatusT("store.status.cannotRemoveCustomComponentInUse", {
+              componentName: error.componentName,
+              count: error.usageCount,
+            });
+          },
+        );
     },
 
     updateCustomComponentHalComponentName(
       componentId: string,
       halComponentName: string,
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      const normalized = halComponentName.trim();
-      if (!normalized || normalized === component.halComponentName) return;
-      if (!ensureHalComponentNameAvailable(normalized, [componentId])) return;
-      deps.withProject((project) => {
-        customComponentEdits.halComponentName.update(
-          project,
-          componentId,
-          normalized,
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.halComponentName.update(
+            project,
+            componentId,
+            halComponentName,
+            { componentStore: deps.state.componentStore },
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponent", {
+              componentName: data.halComponentName,
+            });
+          },
+          (error) => {
+            if (error.code === "not-custom") {
+              deps.setStatusT("store.status.selectedComponentNotCustom");
+              return;
+            }
+            if (error.code === "duplicate-name") {
+              deps.setStatusT("store.status.duplicateHalComponentName", {
+                componentName: halComponentName.trim(),
+              });
+            }
+          },
         );
-      });
-      deps.setStatusT("store.status.updatedCustomComponent", {
-        componentName: normalized,
-      });
     },
 
     updateCustomComponentRuntimeKind(
@@ -949,82 +987,93 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     },
 
     removeHalThread(threadId: string): void {
-      const finalResult = deps.withProject((project) =>
-        removeHalThread(project, threadId),
-      );
-      if (!finalResult.ok && finalResult.reason === "last-thread") {
-        deps.setStatusT("store.status.cannotRemoveLastHalThread");
-        return;
-      }
-      if (!finalResult.ok && finalResult.reason === "required-thread") {
-        deps.setStatusT("store.status.cannotRemoveRequiredHalThread", {
-          name: finalResult.thread.name,
-        });
-        return;
-      }
-      if (finalResult.ok) {
-        deps.setStatusT("store.status.removedHalThread", {
-          name: finalResult.thread.name,
-        });
-      }
+      deps
+        .withProjectResult((project) => removeHalThread(project, threadId))
+        .match(
+          ({ data }) => {
+            deps.setStatusT("store.status.removedHalThread", {
+              name: data.name,
+            });
+          },
+          (error) => {
+            if (error.code === "last-thread") {
+              deps.setStatusT("store.status.cannotRemoveLastHalThread");
+              return;
+            }
+            if (error.code === "required-thread") {
+              deps.setStatusT("store.status.cannotRemoveRequiredHalThread", {
+                name: halThreadName(threadId) ?? threadId,
+              });
+            }
+          },
+        );
     },
 
     updateHalThreadName(threadId: string, name: string): void {
-      const trimmed = name.trim();
-      if (!trimmed) return;
-      const finalResult = deps.withProject((project) =>
-        updateHalThreadName(project, threadId, trimmed),
-      );
-      if (
-        !finalResult.ok &&
-        finalResult.reason === "required-thread" &&
-        finalResult.thread
-      ) {
-        deps.setStatusT("store.status.cannotRenameRequiredHalThread", {
-          name: finalResult.thread.name,
-        });
-        return;
-      }
-      if (!finalResult.ok && finalResult.reason === "duplicate-name") {
-        deps.setStatusT("store.status.duplicateHalThreadName", {
-          name: trimmed,
-        });
-        return;
-      }
-      if (finalResult.ok && finalResult.changed) {
-        deps.setStatusT("store.status.updatedHalThreadName", { name: trimmed });
-      }
+      deps
+        .withProjectResult((project) =>
+          updateHalThreadName(project, threadId, name),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedHalThreadName", {
+              name: data.name,
+            });
+          },
+          (error) => {
+            if (error.code === "required-thread") {
+              deps.setStatusT("store.status.cannotRenameRequiredHalThread", {
+                name: halThreadName(threadId) ?? threadId,
+              });
+              return;
+            }
+            if (error.code === "duplicate-name") {
+              deps.setStatusT("store.status.duplicateHalThreadName", {
+                name: name.trim(),
+              });
+            }
+          },
+        );
     },
 
     updateHalThreadPeriodNs(threadId: string, periodNs: number): void {
-      const result = deps.withProject((project) =>
-        updateHalThreadPeriodNs(project, threadId, periodNs),
-      );
-      if (result === null || !result.changed) return;
-      deps.setStatusT("store.status.updatedHalThreadPeriod", {
-        name: result.thread.name,
-      });
+      deps
+        .withProjectResult((project) =>
+          updateHalThreadPeriodNs(project, threadId, periodNs),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedHalThreadPeriod", {
+              name: data.name,
+            });
+          },
+          () => {},
+        );
     },
 
     updateHalThreadFloatMode(threadId: string, floatMode: "fp" | "nofp"): void {
-      const finalResult = deps.withProject((project) =>
-        updateHalThreadFloatMode(project, threadId, floatMode),
-      );
-      if (
-        !finalResult.ok &&
-        finalResult.reason === "required-thread-forced-fp"
-      ) {
-        deps.setStatusT("store.status.requiredHalThreadForcedFp", {
-          name: finalResult.thread.name,
-        });
-        return;
-      }
-      if (finalResult.ok && finalResult.changed) {
-        deps.setStatusT("store.status.updatedHalThreadFloatMode", {
-          name: finalResult.thread.name,
-          mode: floatMode,
-        });
-      }
+      deps
+        .withProjectResult((project) =>
+          updateHalThreadFloatMode(project, threadId, floatMode),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedHalThreadFloatMode", {
+              name: data.name,
+              mode: floatMode,
+            });
+          },
+          (error) => {
+            if (error.code === "forced-fp") {
+              deps.setStatusT("store.status.requiredHalThreadForcedFp", {
+                name: halThreadName(threadId) ?? threadId,
+              });
+            }
+          },
+        );
     },
 
     updateMotmodNumericConfig(
@@ -1037,27 +1086,40 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         | "trajPeriodNs",
       value: number,
     ): void {
-      deps.withProject((project) => {
-        updateMotmodNumericConfig(project, key, value);
-      });
-      deps.setStatusT("store.status.updatedMotmodConfig");
+      deps
+        .withProjectResult((project) =>
+          updateMotmodNumericConfig(project, key, value),
+        )
+        .match(
+          ({ changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedMotmodConfig");
+          },
+          () => {},
+        );
     },
 
     syncMotmodManagedProjection(): void {
-      const finalResult = deps.withProject((project) =>
-        syncMotmodManagedProjection(project),
-      );
-      if (!finalResult.changed) {
-        deps.setStatusT("store.status.motmodProjectionAlreadyInSync");
-        return;
-      }
-      deps.setStatusT("store.status.syncedMotmodProjection", {
-        added: finalResult.plan.addNodes.length,
-        removed: finalResult.plan.removeNodes.length,
-        adopted: finalResult.plan.adoptNodes.length,
-        ensured: finalResult.plan.ensureComponents.length,
-        updated: finalResult.plan.updateNodeConfigs.length,
-      });
+      deps
+        .withProjectResult((project) => syncMotmodManagedProjection(project))
+        .match(
+          ({ data, changed }) => {
+            if (!changed) {
+              deps.setStatusT("store.status.motmodProjectionAlreadyInSync");
+              return;
+            }
+            deps.setStatusT("store.status.syncedMotmodProjection", {
+              added: data.addNodes.length,
+              removed: data.removeNodes.length,
+              adopted: data.adoptNodes.length,
+              ensured: data.ensureComponents.length,
+              updated: data.updateNodeConfigs.length,
+            });
+          },
+          () => {
+            deps.setStatusT("store.status.motmodProjectionAlreadyInSync");
+          },
+        );
     },
   };
 }

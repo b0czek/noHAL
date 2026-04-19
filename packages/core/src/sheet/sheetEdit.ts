@@ -1,9 +1,12 @@
+import { err, ok, type Result } from "neverthrow";
 import { addfQueueEntryNodeId, normalizeAddfQueueEntries } from "../addfQueue";
 import { ensureInstanceName } from "../component/naming";
 import { getConnectedSheetPortReferenceLocations, getSheet } from "../graph";
 import { createId, nextUniqueName } from "../id";
 import { createSheet } from "../project";
 import type {
+  Change,
+  Failure,
   NoHALProject,
   SheetAddfQueueStoredEntry,
   SheetDefinition,
@@ -133,12 +136,10 @@ function addSheetThreadOutput(
   return output;
 }
 
-export type UpdateSheetThreadOutputNameResult =
-  | { ok: true; changed: boolean; output: SheetThreadOutputDefinition }
-  | {
-      ok: false;
-      reason: "not-found" | "empty-name" | "duplicate-name";
-    };
+export type UpdateSheetThreadOutputNameResult = Result<
+  Change<SheetThreadOutputDefinition>,
+  Failure<"not-found"> | Failure<"empty-name"> | Failure<"duplicate-name">
+>;
 
 function updateSheetThreadOutputName(
   sheet: SheetDefinition,
@@ -146,26 +147,27 @@ function updateSheetThreadOutputName(
   name: string,
 ): UpdateSheetThreadOutputNameResult {
   const trimmed = name.trim();
-  if (!trimmed) return { ok: false, reason: "empty-name" };
+  if (!trimmed) return err({ code: "empty-name" });
   if (!sheet.hal) sheet.hal = {};
   const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
   const target = current.find((item) => item.id === outputId);
-  if (!target) return { ok: false, reason: "not-found" };
+  if (!target) return err({ code: "not-found" });
   if (target.name === trimmed) {
     sheet.hal.threadOutputs = current;
-    return { ok: true, changed: false, output: target };
+    return ok({ data: target, changed: false });
   }
   if (current.some((item) => item.id !== outputId && item.name === trimmed)) {
-    return { ok: false, reason: "duplicate-name" };
+    return err({ code: "duplicate-name" });
   }
   target.name = trimmed;
   sheet.hal.threadOutputs = current;
-  return { ok: true, changed: true, output: target };
+  return ok({ data: target, changed: true });
 }
 
-export type UpdateSheetThreadOutputHalBindingResult =
-  | { ok: true; changed: boolean; output: SheetThreadOutputDefinition }
-  | { ok: false; reason: "not-found" };
+export type UpdateSheetThreadOutputHalBindingResult = Result<
+  Change<SheetThreadOutputDefinition>,
+  Failure<"not-found">
+>;
 
 function updateSheetThreadOutputHalBinding(
   sheet: SheetDefinition,
@@ -175,26 +177,26 @@ function updateSheetThreadOutputHalBinding(
   if (!sheet.hal) sheet.hal = {};
   const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
   const target = current.find((item) => item.id === outputId);
-  if (!target) return { ok: false, reason: "not-found" };
+  if (!target) return err({ code: "not-found" });
   const normalizedHalThreadId = halThreadId?.trim() || undefined;
   if (target.halThreadId === normalizedHalThreadId) {
     sheet.hal.threadOutputs = current;
-    return { ok: true, changed: false, output: target };
+    return ok({ data: target, changed: false });
   }
   if (normalizedHalThreadId) target.halThreadId = normalizedHalThreadId;
   else delete target.halThreadId;
   sheet.hal.threadOutputs = current;
-  return { ok: true, changed: true, output: target };
+  return ok({ data: target, changed: true });
 }
 
-export type RemoveSheetThreadOutputResult =
-  | {
-      ok: true;
-      removedOutputId: string;
-      fallbackOutputId: string;
-      threadOutputs: SheetThreadOutputDefinition[];
-    }
-  | { ok: false; reason: "not-found" | "last-output" };
+export type RemoveSheetThreadOutputResult = Result<
+  Change<{
+    removedOutputId: string;
+    fallbackOutputId: string;
+    threadOutputs: SheetThreadOutputDefinition[];
+  }>,
+  Failure<"not-found"> | Failure<"last-output">
+>;
 
 function removeSheetThreadOutput(
   sheet: SheetDefinition,
@@ -202,14 +204,14 @@ function removeSheetThreadOutput(
 ): RemoveSheetThreadOutputResult {
   if (!sheet.hal) sheet.hal = {};
   const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
-  if (current.length <= 1) return { ok: false, reason: "last-output" };
+  if (current.length <= 1) return err({ code: "last-output" });
   if (!current.some((item) => item.id === outputId)) {
-    return { ok: false, reason: "not-found" };
+    return err({ code: "not-found" });
   }
 
   const next = current.filter((item) => item.id !== outputId);
   const fallbackOutputId = next[0]?.id;
-  if (!fallbackOutputId) return { ok: false, reason: "last-output" };
+  if (!fallbackOutputId) return err({ code: "last-output" });
 
   sheet.hal.threadOutputs = next;
 
@@ -237,12 +239,14 @@ function removeSheetThreadOutput(
   }
 
   cleanupEmptyHal(sheet);
-  return {
-    ok: true,
-    removedOutputId: outputId,
-    fallbackOutputId,
-    threadOutputs: next,
-  };
+  return ok({
+    data: {
+      removedOutputId: outputId,
+      fallbackOutputId,
+      threadOutputs: next,
+    },
+    changed: true,
+  });
 }
 
 function setSheetAddfQueue(
@@ -311,12 +315,10 @@ export interface AddSheetReferenceResult {
   node: SheetNode;
 }
 
-export type RenameSheetDefinitionResult =
-  | { ok: true; changed: boolean; sheet: SheetDefinition }
-  | {
-      ok: false;
-      reason: "not-found" | "empty-name" | "duplicate-name";
-    };
+export type RenameSheetDefinitionResult = Result<
+  Change<SheetDefinition>,
+  Failure<"not-found"> | Failure<"empty-name"> | Failure<"duplicate-name">
+>;
 
 export interface SheetItemIds {
   nodeIds: ReadonlySet<string>;
@@ -378,22 +380,21 @@ function renameSheetDefinition(
   name: string,
 ): RenameSheetDefinitionResult {
   const target = project.sheets[sheetId];
-  if (!target) return { ok: false, reason: "not-found" };
+  if (!target) return err({ code: "not-found" });
 
   const trimmed = name.trim();
-  if (!trimmed) return { ok: false, reason: "empty-name" };
-  if (target.name === trimmed)
-    return { ok: true, changed: false, sheet: target };
+  if (!trimmed) return err({ code: "empty-name" });
+  if (target.name === trimmed) return ok({ data: target, changed: false });
   if (
     Object.values(project.sheets).some(
       (sheet) => sheet.id !== sheetId && sheet.name === trimmed,
     )
   ) {
-    return { ok: false, reason: "duplicate-name" };
+    return err({ code: "duplicate-name" });
   }
 
   target.name = trimmed;
-  return { ok: true, changed: true, sheet: target };
+  return ok({ data: target, changed: true });
 }
 
 function addSheetReference(

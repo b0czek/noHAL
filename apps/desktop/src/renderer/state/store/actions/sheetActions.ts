@@ -89,24 +89,29 @@ export function createSheetActions(deps: EditorStoreActionContext) {
 
   return {
     renameSheetDefinition(sheetId: string, name: string): void {
-      const trimmed = name.trim();
-      const result = deps.withProject((project) =>
-        sheetModelEdits.definition.rename(project, sheetId, trimmed),
-      );
-      if (!result.ok && result.reason === "empty-name") {
-        deps.setStatusT("store.status.sheetDefinitionNameRequired");
-        return;
-      }
-      if (!result.ok && result.reason === "duplicate-name") {
-        deps.setStatusT("store.status.duplicateSheetDefinitionName", {
-          name: trimmed,
-        });
-        return;
-      }
-      if (!result.ok || !result.changed) return;
-      deps.setStatusT("store.status.updatedSheetDefinitionName", {
-        name: result.sheet.name,
-      });
+      deps
+        .withProjectResult((project) =>
+          sheetModelEdits.definition.rename(project, sheetId, name),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedSheetDefinitionName", {
+              name: data.name,
+            });
+          },
+          (error) => {
+            if (error.code === "empty-name") {
+              deps.setStatusT("store.status.sheetDefinitionNameRequired");
+              return;
+            }
+            if (error.code === "duplicate-name") {
+              deps.setStatusT("store.status.duplicateSheetDefinitionName", {
+                name: name.trim(),
+              });
+            }
+          },
+        );
     },
 
     addSheetThreadOutput(sheetId: string): void {
@@ -122,17 +127,11 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       outputId: string,
       name: string,
     ): void {
-      const trimmed = name.trim();
-      if (!trimmed) return;
-      const result = deps.withProject((project) => {
+      const result = deps.withProjectResult((project) => {
         const sheet = getSheet(project, sheetId);
-        return sheetModelEdits.threadOutput.name.update(
-          sheet,
-          outputId,
-          trimmed,
-        );
+        return sheetModelEdits.threadOutput.name.update(sheet, outputId, name);
       });
-      if (!result.ok) return;
+      if (result.isErr() || !result.value.changed) return;
       deps.setStatusT("store.status.updatedSheetThreadOutputName");
     },
 
@@ -141,7 +140,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       outputId: string,
       halThreadId: string | null,
     ): void {
-      const result = deps.withProject((project) => {
+      const result = deps.withProjectResult((project) => {
         const sheet = getSheet(project, sheetId);
         return sheetModelEdits.threadOutput.halBinding.update(
           sheet,
@@ -149,16 +148,16 @@ export function createSheetActions(deps: EditorStoreActionContext) {
           halThreadId,
         );
       });
-      if (!result.ok) return;
+      if (result.isErr() || !result.value.changed) return;
       deps.setStatusT("store.status.updatedSheetThreadOutputHalBinding");
     },
 
     removeSheetThreadOutput(sheetId: string, outputId: string): void {
-      const result = deps.withProject((project) => {
+      const result = deps.withProjectResult((project) => {
         const sheet = getSheet(project, sheetId);
         return sheetModelEdits.threadOutput.remove(sheet, outputId);
       });
-      if (!result.ok) return;
+      if (result.isErr()) return;
       deps.setStatusT("store.status.removedSheetThreadOutput");
     },
 

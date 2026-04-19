@@ -37,6 +37,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "konva": "^10.2.5",
+    "neverthrow": "^8.2.0",
     "solid-icons": "^1.2.0",
     "solid-js": "^1.9.12",
     "tailwind-merge": "^3.5.0",

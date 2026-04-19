@@ -48,23 +48,27 @@ describe("sheet model edit helpers", () => {
       addfQueue: [makeAddfQueueNodeEntry("node_child", added.id)],
     };
 
-    expect(
-      sheetModelEdits.threadOutput.name.update(root, added.id, "fast"),
-    ).toEqual({
-      ok: true,
+    const renamed = sheetModelEdits.threadOutput.name.update(
+      root,
+      added.id,
+      "fast",
+    );
+    expect(renamed.isOk()).toBe(true);
+    if (renamed.isErr()) throw new Error("expected ok result");
+    expect(renamed.value).toEqual({
       changed: true,
-      output: expect.objectContaining({ id: added.id, name: "fast" }),
+      data: expect.objectContaining({ id: added.id, name: "fast" }),
     });
-    expect(
-      sheetModelEdits.threadOutput.halBinding.update(
-        root,
-        added.id,
-        "thread-servo",
-      ),
-    ).toEqual({
-      ok: true,
+    const rebound = sheetModelEdits.threadOutput.halBinding.update(
+      root,
+      added.id,
+      "thread-servo",
+    );
+    expect(rebound.isOk()).toBe(true);
+    if (rebound.isErr()) throw new Error("expected ok result");
+    expect(rebound.value).toEqual({
       changed: true,
-      output: expect.objectContaining({
+      data: expect.objectContaining({
         id: added.id,
         name: "fast",
         halThreadId: "thread-servo",
@@ -72,11 +76,15 @@ describe("sheet model edit helpers", () => {
     });
 
     const removed = sheetModelEdits.threadOutput.remove(root, added.id);
-    expect(removed).toEqual({
-      ok: true,
-      removedOutputId: added.id,
-      fallbackOutputId: root.hal?.threadOutputs?.[0]?.id,
-      threadOutputs: root.hal?.threadOutputs,
+    expect(removed.isOk()).toBe(true);
+    if (removed.isErr()) throw new Error("expected ok result");
+    expect(removed.value).toEqual({
+      changed: true,
+      data: {
+        removedOutputId: added.id,
+        fallbackOutputId: root.hal?.threadOutputs?.[0]?.id,
+        threadOutputs: root.hal?.threadOutputs,
+      },
     });
     expect(root.hal?.addfQueue).toEqual([
       expect.objectContaining({

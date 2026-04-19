@@ -27,7 +27,9 @@ describe("halThread edits", () => {
     }
 
     const removed = removeHalThread(project, threadId);
-    expect(removed.ok).toBe(true);
+    expect(removed.isOk()).toBe(true);
+    if (removed.isErr()) throw new Error("expected ok result");
+    expect(removed.value.data.id).toBe(threadId);
     expect(root.hal?.threadOutputs?.[0]?.halThreadId).toBeUndefined();
 
     const requiredThreadId = project.halThreads?.find(
@@ -35,11 +37,10 @@ describe("halThread edits", () => {
     )?.id;
     expect(requiredThreadId).toBeDefined();
     if (requiredThreadId) {
-      expect(removeHalThread(project, requiredThreadId)).toEqual({
-        ok: false,
-        reason: "required-thread",
-        thread: expect.objectContaining({ id: requiredThreadId }),
-      });
+      const blocked = removeHalThread(project, requiredThreadId);
+      expect(blocked.isErr()).toBe(true);
+      if (blocked.isOk()) throw new Error("expected err result");
+      expect(blocked.error).toEqual({ code: "required-thread" });
     }
   });
 });

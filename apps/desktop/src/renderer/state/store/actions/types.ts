@@ -1,9 +1,11 @@
 import type {
+  Change,
   ComponentStore,
   NoHALProject,
   SheetEndpointRef,
   XY,
-} from "@nohal/core/types";
+} from "@nohal/core";
+import type { Result } from "neverthrow";
 import type { CameraState } from "../../../canvas";
 import type { TranslationKey } from "../../../i18n";
 import type { Selection } from "../selectionTypes";
@@ -72,6 +74,10 @@ export interface EditorStoreActionContext {
     mutate: (project: NoHALProject) => T,
     options?: WithProjectOptions,
   ) => T;
+  withProjectResult: <T, E>(
+    mutate: (project: NoHALProject) => Result<Change<T>, E>,
+    options?: WithProjectOptions,
+  ) => Result<Change<T>, E>;
   setProjectUiActiveSheetId: (sheetId: string) => void;
   clearSelectionIfWireConnection: (connectionId: string) => void;
   clearPendingConnectionUi: () => void;

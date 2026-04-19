@@ -1,11 +1,11 @@
-import { getSheet } from "@nohal/core/graph";
 import type {
   ComponentStore,
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
   XY,
-} from "@nohal/core/types";
+} from "@nohal/core";
+import { getSheet } from "@nohal/core/graph";
 import { createStore, reconcile, unwrap } from "solid-js/store";
 import type { CameraState } from "../canvas";
 import { clearTextMeasurementCache } from "../canvas/measurements";
@@ -171,6 +171,22 @@ export function createEditorStore(
     return result;
   };
 
+  const withProjectResult: EditorStoreActionContext["withProjectResult"] = (
+    mutate,
+    options,
+  ) => {
+    const next = cloneProject(state.project);
+    const result = mutate(next);
+    if (result.isErr() || !result.value.changed) return result;
+    syncProjectUi(next, state.activeSheetId);
+    if (options?.recordHistory !== false) pushUndoSnapshot();
+    setState("project", next);
+    const shouldMarkDirty =
+      options?.markDirty ?? options?.recordHistory !== false;
+    if (shouldMarkDirty) markProjectChanged();
+    return result;
+  };
+
   const withComponentStore = (
     mutate: (componentStore: ComponentStore) => void,
   ) => {
@@ -325,6 +341,7 @@ export function createEditorStore(
     clearHistory,
     withComponentStore,
     withProject,
+    withProjectResult,
     setProjectUiActiveSheetId,
     clearSelectionIfWireConnection,
     clearPendingConnectionUi,

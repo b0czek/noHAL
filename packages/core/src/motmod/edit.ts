@@ -1,4 +1,10 @@
-import type { NoHALProject, ProjectMotmodConfig } from "../types";
+import { err, ok, type Result } from "neverthrow";
+import type {
+  Change,
+  Failure,
+  NoHALProject,
+  ProjectMotmodConfig,
+} from "../types";
 import { DEFAULT_MOTMOD_CONFIG } from "./config";
 import {
   type MotmodReconcilePlan,
@@ -16,27 +22,25 @@ export function updateMotmodNumericConfig(
   project: NoHALProject,
   key: keyof ProjectMotmodConfig,
   value: number,
-): boolean {
-  if (!Number.isFinite(value)) return false;
+): Result<Change<number>, Failure<"invalid-value">> {
+  if (!Number.isFinite(value)) return err({ code: "invalid-value" });
   const rounded = Math.round(value);
   const normalized =
     key === "numJoints" || key === "numSpindles"
       ? Math.max(1, rounded)
       : Math.max(0, rounded);
   const motmod = ensureProjectMotmod(project);
-  if (motmod[key] === normalized) return false;
+  if (motmod[key] === normalized)
+    return ok({ data: normalized, changed: false });
   motmod[key] = normalized;
-  return true;
+  return ok({ data: normalized, changed: true });
 }
 
-export function syncMotmodManagedProjection(project: NoHALProject): {
-  changed: boolean;
-  plan: MotmodReconcilePlan;
-} {
+export function syncMotmodManagedProjection(
+  project: NoHALProject,
+): Result<Change<MotmodReconcilePlan>, never> {
   const plan = planMotmodReconcile(project);
-  if (plan.inSync) {
-    return { changed: false, plan };
-  }
+  if (plan.inSync) return ok({ data: plan, changed: false });
   reconcileMotmodManagedNodes(project);
-  return { changed: true, plan };
+  return ok({ data: plan, changed: true });
 }

@@ -1,10 +1,14 @@
+import { err, ok, type Result } from "neverthrow";
 import { createId } from "../id";
 import type {
+  Change,
   ComponentDefinition,
   ComponentFunctionDefinition,
   ComponentNode,
   ComponentParamDefinition,
   ComponentPinDefinition,
+  ComponentStore,
+  Failure,
   NoHALProject,
 } from "../types";
 import { customComponentDefinitionEdits } from "./definitionEdit";
@@ -14,6 +18,7 @@ import {
   findManualComponent,
   projectUsesComponentDefinition,
 } from "./shared";
+import { findHalComponentNameConflict } from "./validation";
 
 function add(
   project: NoHALProject,
@@ -31,28 +36,37 @@ function add(
   return component;
 }
 
-export type RemoveCustomComponentResult =
-  | { ok: true; componentName: string }
-  | { ok: false; reason: "not-custom" }
-  | { ok: false; reason: "in-use"; componentName: string; usageCount: number };
+export type RemoveCustomComponentError =
+  | Failure<"not-custom">
+  | (Failure<"in-use"> & {
+      componentName: string;
+      usageCount: number;
+    });
+
+export type RemoveCustomComponentResult = Result<
+  Change<{ componentName: string }>,
+  RemoveCustomComponentError
+>;
 
 function remove(
   project: NoHALProject,
   componentId: string,
 ): RemoveCustomComponentResult {
   const component = findManualComponent(project, componentId);
-  if (!component) return { ok: false, reason: "not-custom" };
+  if (!component) return err({ code: "not-custom" });
   const usageCount = projectUsesComponentDefinition(project, componentId);
   if (usageCount > 0) {
-    return {
-      ok: false,
-      reason: "in-use",
+    return err({
+      code: "in-use",
       componentName: component.halComponentName,
       usageCount,
-    };
+    });
   }
   delete project.library.components[componentId];
-  return { ok: true, componentName: component.halComponentName };
+  return ok({
+    data: { componentName: component.halComponentName },
+    changed: true,
+  });
 }
 
 function updateProjectCustomComponent(
@@ -66,17 +80,35 @@ function updateProjectCustomComponent(
   return component;
 }
 
+export type UpdateHalComponentNameError =
+  | Failure<"not-custom">
+  | Failure<"empty-name">
+  | Failure<"duplicate-name">;
+
 function updateHalComponentName(
   project: NoHALProject,
   componentId: string,
   halComponentName: string,
-): ComponentDefinition | null {
-  return updateProjectCustomComponent(project, componentId, (component) => {
-    customComponentDefinitionEdits.halComponentName.update(
-      component,
-      halComponentName,
-    );
+  options?: { componentStore?: ComponentStore },
+): Result<Change<ComponentDefinition>, UpdateHalComponentNameError> {
+  const component = findManualComponent(project, componentId);
+  if (!component) return err({ code: "not-custom" });
+
+  const normalized = halComponentName.trim();
+  if (!normalized) return err({ code: "empty-name" });
+  if (component.halComponentName === normalized)
+    return ok({ data: component, changed: false });
+
+  const conflict = findHalComponentNameConflict({
+    halComponentName: normalized,
+    project,
+    componentStore: options?.componentStore,
+    excludeComponentIds: [componentId],
   });
+  if (conflict) return err({ code: "duplicate-name" });
+
+  customComponentDefinitionEdits.halComponentName.update(component, normalized);
+  return ok({ data: component, changed: true });
 }
 
 function updateRuntimeKind(
