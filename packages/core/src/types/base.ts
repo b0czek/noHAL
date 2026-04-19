@@ -30,12 +30,3 @@ export interface Bounds {
 }
 
 export type Rect = XY & Size;
-
-export interface Failure<C extends string = string> {
-  code: C;
-}
-
-export interface Change<T> {
-  data: T;
-  changed: boolean;
-}

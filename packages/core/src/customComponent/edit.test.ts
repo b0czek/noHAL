@@ -40,7 +40,9 @@ describe("custom component edits", () => {
       "pin",
     );
 
-    expect(removed?.pinName).toBe("pin");
+    expect(removed.isOk()).toBe(true);
+    if (removed.isErr()) throw new Error("expected ok result");
+    expect(removed.value.data.pinName).toBe("pin");
     expect(project.library.components[componentId]?.pins).toEqual([]);
     const updatedNode = root.nodes.find(
       (candidate) =>
@@ -53,8 +55,10 @@ describe("custom component edits", () => {
     }
 
     const added = customComponentEdits.pin.add(project, componentId);
-    expect(added?.pin.name).toBe("pin");
-    expect(added?.pin.key).toBe("pin");
+    expect(added.isOk()).toBe(true);
+    if (added.isErr()) throw new Error("expected ok result");
+    expect(added.value.data.pin.name).toBe("pin");
+    expect(added.value.data.pin.key).toBe("pin");
   });
 
   it("edits standalone component definitions for import flows", () => {
@@ -116,17 +120,21 @@ describe("custom component edits", () => {
     };
 
     const added = customComponentEdits.function.add(project, componentId);
-    expect(added?.fn.declaredName).toBe("function");
-    expect(added?.fn.halSuffix).toBe("function");
-    expect(added?.fn.floatMode).toBe("fp");
+    expect(added.isOk()).toBe(true);
+    if (added.isErr()) throw new Error("expected ok result");
+    expect(added.value.data.fn.declaredName).toBe("function");
+    expect(added.value.data.fn.halSuffix).toBe("function");
+    expect(added.value.data.fn.floatMode).toBe("fp");
 
     const updatedName = customComponentEdits.function.name.update(
       project,
       componentId,
-      added?.fn.key ?? "",
+      added.value.data.fn.key,
       "servo",
     );
-    expect(updatedName?.functionName).toBe("servo");
+    expect(updatedName.isOk()).toBe(true);
+    if (updatedName.isErr()) throw new Error("expected ok result");
+    expect(updatedName.value.data.functionName).toBe("servo");
     expect(project.library.components[componentId]?.functions).toMatchObject([
       {
         declaredName: "servo",
@@ -141,7 +149,9 @@ describe("custom component edits", () => {
       project.library.components[componentId]?.functions?.[0]?.key ?? "",
       "nofp",
     );
-    expect(updatedFloatMode?.functionName).toBe("servo");
+    expect(updatedFloatMode.isOk()).toBe(true);
+    if (updatedFloatMode.isErr()) throw new Error("expected ok result");
+    expect(updatedFloatMode.value.data.functionName).toBe("servo");
     expect(
       project.library.components[componentId]?.functions?.[0]?.floatMode,
     ).toBe("nofp");
@@ -151,11 +161,14 @@ describe("custom component edits", () => {
       componentId,
       project.library.components[componentId]?.functions?.[0]?.key ?? "",
     );
-    expect(removed?.functionName).toBe("servo");
+    expect(removed.isOk()).toBe(true);
+    if (removed.isErr()) throw new Error("expected ok result");
+    expect(removed.value.data.functionName).toBe("servo");
     expect(project.library.components[componentId]?.functions).toBeUndefined();
   });
 
   it("does not add custom realtime functions unless the runtime is rt", () => {
+    const project = createEmptyProject("Custom Component Invalid Runtime");
     const component: ComponentDefinition = {
       id: "manual:test",
       name: "test",
@@ -165,8 +178,16 @@ describe("custom component edits", () => {
       pins: [],
       params: [],
     };
+    project.library.components[component.id] = component;
 
+    const result = customComponentEdits.function.add(project, component.id);
     expect(customComponentDefinitionEdits.function.add(component)).toBeNull();
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) throw new Error("expected err result");
+    expect(result.error).toEqual({
+      code: "unsupported",
+      detail: "invalid-runtime",
+    });
     expect(component.functions).toBeUndefined();
   });
 });

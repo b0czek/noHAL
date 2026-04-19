@@ -1,8 +1,7 @@
 import { err, ok, type Result } from "neverthrow";
 import { normalizeHalNameLen } from "../halNames";
+import type { Change, Failure } from "../result";
 import type {
-  Change,
-  Failure,
   LinuxCncIniEntry,
   LinuxCncIniSection,
   NoHALProject,
@@ -22,9 +21,9 @@ function nextUniqueIniLabel(base: string, existing: readonly string[]): string {
 export function updateProjectName(
   project: NoHALProject,
   name: string,
-): Result<Change<string>, Failure<"empty-name">> {
+): Result<Change<string>, Failure<"invalid-input", "empty-name">> {
   const normalized = name.trim();
-  if (!normalized) return err({ code: "empty-name" });
+  if (!normalized) return err({ code: "invalid-input", detail: "empty-name" });
   if (normalized === project.name)
     return ok({ data: project.name, changed: false });
   project.name = normalized;

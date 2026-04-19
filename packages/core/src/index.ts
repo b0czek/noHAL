@@ -19,6 +19,7 @@ export * from "./mesa";
 export * from "./motmod";
 export * from "./pinOrder";
 export * from "./project";
+export * from "./result";
 export * from "./sheet";
 export * from "./types";
 export * from "./validation";

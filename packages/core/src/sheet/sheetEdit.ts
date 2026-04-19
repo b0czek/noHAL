@@ -4,9 +4,8 @@ import { ensureInstanceName } from "../component/naming";
 import { getConnectedSheetPortReferenceLocations, getSheet } from "../graph";
 import { createId, nextUniqueName } from "../id";
 import { createSheet } from "../project";
+import type { Change, Failure } from "../result";
 import type {
-  Change,
-  Failure,
   NoHALProject,
   SheetAddfQueueStoredEntry,
   SheetDefinition,
@@ -138,7 +137,9 @@ function addSheetThreadOutput(
 
 export type UpdateSheetThreadOutputNameResult = Result<
   Change<SheetThreadOutputDefinition>,
-  Failure<"not-found"> | Failure<"empty-name"> | Failure<"duplicate-name">
+  | Failure<"not-found">
+  | Failure<"invalid-input", "empty-name">
+  | Failure<"conflict", "duplicate-name">
 >;
 
 function updateSheetThreadOutputName(
@@ -147,7 +148,7 @@ function updateSheetThreadOutputName(
   name: string,
 ): UpdateSheetThreadOutputNameResult {
   const trimmed = name.trim();
-  if (!trimmed) return err({ code: "empty-name" });
+  if (!trimmed) return err({ code: "invalid-input", detail: "empty-name" });
   if (!sheet.hal) sheet.hal = {};
   const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
   const target = current.find((item) => item.id === outputId);
@@ -157,7 +158,7 @@ function updateSheetThreadOutputName(
     return ok({ data: target, changed: false });
   }
   if (current.some((item) => item.id !== outputId && item.name === trimmed)) {
-    return err({ code: "duplicate-name" });
+    return err({ code: "conflict", detail: "duplicate-name" });
   }
   target.name = trimmed;
   sheet.hal.threadOutputs = current;
@@ -195,7 +196,7 @@ export type RemoveSheetThreadOutputResult = Result<
     fallbackOutputId: string;
     threadOutputs: SheetThreadOutputDefinition[];
   }>,
-  Failure<"not-found"> | Failure<"last-output">
+  Failure<"not-found"> | Failure<"forbidden", "last-output">
 >;
 
 function removeSheetThreadOutput(
@@ -204,14 +205,18 @@ function removeSheetThreadOutput(
 ): RemoveSheetThreadOutputResult {
   if (!sheet.hal) sheet.hal = {};
   const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
-  if (current.length <= 1) return err({ code: "last-output" });
+  if (current.length <= 1) {
+    return err({ code: "forbidden", detail: "last-output" });
+  }
   if (!current.some((item) => item.id === outputId)) {
     return err({ code: "not-found" });
   }
 
   const next = current.filter((item) => item.id !== outputId);
   const fallbackOutputId = next[0]?.id;
-  if (!fallbackOutputId) return err({ code: "last-output" });
+  if (!fallbackOutputId) {
+    return err({ code: "forbidden", detail: "last-output" });
+  }
 
   sheet.hal.threadOutputs = next;
 
@@ -319,7 +324,9 @@ export interface AddSheetReferenceResult {
 
 export type RenameSheetDefinitionResult = Result<
   Change<SheetDefinition>,
-  Failure<"not-found"> | Failure<"empty-name"> | Failure<"duplicate-name">
+  | Failure<"not-found">
+  | Failure<"invalid-input", "empty-name">
+  | Failure<"conflict", "duplicate-name">
 >;
 
 export interface SheetItemIds {
@@ -354,7 +361,11 @@ export interface MoveSheetItemsSuccess {
 
 export type MoveSheetItemsResult = Result<
   Change<MoveSheetItemsSuccess>,
-  Failure<MoveSheetItemsFailureReason>
+  | Failure<"not-found">
+  | Failure<"invalid-input", "no-movable-items">
+  | Failure<"invalid-input", "only-ports">
+  | Failure<"invalid-input", "target-in-items">
+  | Failure<"forbidden", "protected-system-node">
 >;
 
 export interface RemoveSheetItemsInput {
@@ -386,14 +397,14 @@ function renameSheetDefinition(
   if (!target) return err({ code: "not-found" });
 
   const trimmed = name.trim();
-  if (!trimmed) return err({ code: "empty-name" });
+  if (!trimmed) return err({ code: "invalid-input", detail: "empty-name" });
   if (target.name === trimmed) return ok({ data: target, changed: false });
   if (
     Object.values(project.sheets).some(
       (sheet) => sheet.id !== sheetId && sheet.name === trimmed,
     )
   ) {
-    return err({ code: "duplicate-name" });
+    return err({ code: "conflict", detail: "duplicate-name" });
   }
 
   target.name = trimmed;
@@ -500,7 +511,13 @@ function moveItemsIntoNewSubsheet(
   items: SheetItemIds,
 ): MoveSheetItemsResult {
   const prepared = prepareSheetItemsMove(project, parentSheetId, items);
-  if ("reason" in prepared) return err({ code: prepared.reason });
+  if ("reason" in prepared) {
+    if (prepared.reason === "not-found") return err({ code: "not-found" });
+    if (prepared.reason === "protected-system-node") {
+      return err({ code: "forbidden", detail: "protected-system-node" });
+    }
+    return err({ code: "invalid-input", detail: prepared.reason });
+  }
 
   const sheet = createSheetDefinition(project);
   const node: SheetNode = {
@@ -541,9 +558,15 @@ function moveItemsIntoExistingSubsheet(
   items: SheetItemIds,
 ): MoveSheetItemsResult {
   const prepared = prepareSheetItemsMove(project, parentSheetId, items);
-  if ("reason" in prepared) return err({ code: prepared.reason });
+  if ("reason" in prepared) {
+    if (prepared.reason === "not-found") return err({ code: "not-found" });
+    if (prepared.reason === "protected-system-node") {
+      return err({ code: "forbidden", detail: "protected-system-node" });
+    }
+    return err({ code: "invalid-input", detail: prepared.reason });
+  }
   if (items.nodeIds.has(subsheetNodeId)) {
-    return err({ code: "target-in-items" });
+    return err({ code: "invalid-input", detail: "target-in-items" });
   }
 
   const subsheetNode = prepared.parentSheet.nodes.find(
@@ -617,7 +640,7 @@ function removeSheetItems(
 
 export type RemoveSheetReferenceResult = Result<
   Change<{ removedNodeId: string }>,
-  Failure<"not-found"> | Failure<"protected-system-sheet">
+  Failure<"not-found"> | Failure<"forbidden", "protected-system-sheet">
 >;
 
 function removeSheetReference(
@@ -632,7 +655,7 @@ function removeSheetReference(
   );
   if (!target) return err({ code: "not-found" });
   if (isProtectedSystemSheet(project, target.sheetId)) {
-    return err({ code: "protected-system-sheet" });
+    return err({ code: "forbidden", detail: "protected-system-sheet" });
   }
   const removedNodeIds = new Set<string>();
   const nextNodes = parentSheet.nodes.filter((node) => {
@@ -796,7 +819,7 @@ export interface DetachSheetReferenceResult {
 
 export type DetachSheetReferenceEditResult = Result<
   Change<DetachSheetReferenceResult>,
-  Failure<"not-found"> | Failure<"protected-system-sheet">
+  Failure<"not-found"> | Failure<"forbidden", "protected-system-sheet">
 >;
 
 function detachSheetReference(
@@ -812,7 +835,7 @@ function detachSheetReference(
   );
   if (!node) return err({ code: "not-found" });
   if (isProtectedSystemSheet(project, node.sheetId)) {
-    return err({ code: "protected-system-sheet" });
+    return err({ code: "forbidden", detail: "protected-system-sheet" });
   }
   const source = project.sheets[node.sheetId];
   if (!source) return err({ code: "not-found" });
@@ -838,8 +861,8 @@ export type DeleteSheetDefinitionResult = Result<
     nextActiveSheetId: string;
   }>,
   | Failure<"not-found">
-  | Failure<"root-sheet">
-  | Failure<"protected-system-sheet">
+  | Failure<"forbidden", "root-sheet">
+  | Failure<"forbidden", "protected-system-sheet">
 >;
 
 function deleteSheetDefinition(
@@ -850,10 +873,10 @@ function deleteSheetDefinition(
   const target = project.sheets[sheetId];
   if (!target) return err({ code: "not-found" });
   if (sheetId === project.rootSheetId) {
-    return err({ code: "root-sheet" });
+    return err({ code: "forbidden", detail: "root-sheet" });
   }
   if (isProtectedSystemSheet(project, sheetId)) {
-    return err({ code: "protected-system-sheet" });
+    return err({ code: "forbidden", detail: "protected-system-sheet" });
   }
 
   const referenceParentSheetIds = new Set<string>();

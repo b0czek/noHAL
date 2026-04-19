@@ -1,10 +1,6 @@
 import { err, ok, type Result } from "neverthrow";
-import type {
-  Change,
-  Failure,
-  NoHALProject,
-  ProjectMotmodConfig,
-} from "../types";
+import type { Change, Failure } from "../result";
+import type { NoHALProject, ProjectMotmodConfig } from "../types";
 import { DEFAULT_MOTMOD_CONFIG } from "./config";
 import {
   type MotmodReconcilePlan,
@@ -22,8 +18,10 @@ export function updateMotmodNumericConfig(
   project: NoHALProject,
   key: keyof ProjectMotmodConfig,
   value: number,
-): Result<Change<number>, Failure<"invalid-value">> {
-  if (!Number.isFinite(value)) return err({ code: "invalid-value" });
+): Result<Change<number>, Failure<"invalid-input", "invalid-value">> {
+  if (!Number.isFinite(value)) {
+    return err({ code: "invalid-input", detail: "invalid-value" });
+  }
   const rounded = Math.round(value);
   const normalized =
     key === "numJoints" || key === "numSpindles"

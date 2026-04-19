@@ -152,7 +152,10 @@ describe("sheet model edit helpers", () => {
     );
     expect(blockedBySystem.isErr()).toBe(true);
     if (blockedBySystem.isOk()) throw new Error("expected err result");
-    expect(blockedBySystem.error).toEqual({ code: "protected-system-node" });
+    expect(blockedBySystem.error).toEqual({
+      code: "forbidden",
+      detail: "protected-system-node",
+    });
     expect(root.nodes.some((node) => node.id === "node_system")).toBe(true);
 
     const blockedByTarget = sheetModelEdits.items.moveIntoExistingSubsheet(
@@ -167,7 +170,10 @@ describe("sheet model edit helpers", () => {
     );
     expect(blockedByTarget.isErr()).toBe(true);
     if (blockedByTarget.isOk()) throw new Error("expected err result");
-    expect(blockedByTarget.error).toEqual({ code: "target-in-items" });
+    expect(blockedByTarget.error).toEqual({
+      code: "invalid-input",
+      detail: "target-in-items",
+    });
     expect(child.nodes).toHaveLength(0);
   });
 
@@ -351,7 +357,8 @@ describe("sheet model edit helpers", () => {
     expect(blockedDefinition.isErr()).toBe(true);
     if (blockedDefinition.isOk()) throw new Error("expected err result");
     expect(blockedDefinition.error).toEqual({
-      code: "protected-system-sheet",
+      code: "forbidden",
+      detail: "protected-system-sheet",
     });
     expect(project.sheets[systemSheet.id]).toBeDefined();
 
@@ -363,7 +370,8 @@ describe("sheet model edit helpers", () => {
     expect(blockedReferenceRemoval.isErr()).toBe(true);
     if (blockedReferenceRemoval.isOk()) throw new Error("expected err result");
     expect(blockedReferenceRemoval.error).toEqual({
-      code: "protected-system-sheet",
+      code: "forbidden",
+      detail: "protected-system-sheet",
     });
     expect(rootSheet.nodes.some((node) => node.id === systemSheetNode.id)).toBe(
       true,
@@ -377,7 +385,8 @@ describe("sheet model edit helpers", () => {
     expect(blockedDetach.isErr()).toBe(true);
     if (blockedDetach.isOk()) throw new Error("expected err result");
     expect(blockedDetach.error).toEqual({
-      code: "protected-system-sheet",
+      code: "forbidden",
+      detail: "protected-system-sheet",
     });
     expect(systemSheetNode.sheetId).toBe(systemSheet.id);
   });

@@ -40,7 +40,10 @@ describe("halThread edits", () => {
       const blocked = removeHalThread(project, requiredThreadId);
       expect(blocked.isErr()).toBe(true);
       if (blocked.isOk()) throw new Error("expected err result");
-      expect(blocked.error).toEqual({ code: "required-thread" });
+      expect(blocked.error).toEqual({
+        code: "forbidden",
+        detail: "required-thread",
+      });
     }
   });
 });

@@ -1,8 +1,7 @@
+import type { FailureCode } from "@nohal/core";
+import { matchFailure } from "@nohal/core";
 import { getSheet, getSheetReferenceLocations } from "@nohal/core/graph";
-import type {
-  MoveSheetItemsFailureReason,
-  SheetItemIds,
-} from "@nohal/core/sheet";
+import type { SheetItemIds } from "@nohal/core/sheet";
 import { sheetModelEdits } from "@nohal/core/sheet";
 import type { SheetAddfQueueStoredEntry, XY } from "@nohal/core/types";
 import { cloneProject, findNode, syncProjectUi } from "../helpers";
@@ -30,18 +29,28 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     );
   };
 
-  const setSelectionMoveFailureStatus = (
-    reason: MoveSheetItemsFailureReason,
-  ): void => {
-    if (reason === "no-movable-items") {
-      deps.setStatusT("store.status.cannotSubsheetEmptySelection");
-    } else if (reason === "only-ports") {
-      deps.setStatusT("store.status.cannotSubsheetOnlyPortsSelection");
-    } else if (reason === "protected-system-node") {
-      deps.setStatusT("store.status.cannotSubsheetSystemManagedComponent");
-    } else if (reason === "target-in-items") {
-      deps.setStatusT("store.status.cannotMoveSelectionIntoSameSubsheet");
-    }
+  const setSelectionMoveFailureStatus = (error: {
+    code: FailureCode;
+    detail?: string;
+  }): void => {
+    matchFailure(error, {
+      "invalid-input": {
+        "no-movable-items": () => {
+          deps.setStatusT("store.status.cannotSubsheetEmptySelection");
+        },
+        "only-ports": () => {
+          deps.setStatusT("store.status.cannotSubsheetOnlyPortsSelection");
+        },
+        "target-in-items": () => {
+          deps.setStatusT("store.status.cannotMoveSelectionIntoSameSubsheet");
+        },
+      },
+      forbidden: {
+        "protected-system-node": () => {
+          deps.setStatusT("store.status.cannotSubsheetSystemManagedComponent");
+        },
+      },
+    });
   };
 
   const commitProjectEdit = (
@@ -72,9 +81,13 @@ export function createSheetActions(deps: EditorStoreActionContext) {
           });
         },
         (error) => {
-          if (error.code === "protected-system-sheet") {
-            deps.setStatusT("store.status.cannotDeleteSystemSheet");
-          }
+          matchFailure(error, {
+            forbidden: {
+              "protected-system-sheet": () => {
+                deps.setStatusT("store.status.cannotDeleteSystemSheet");
+              },
+            },
+          });
         },
       );
 
@@ -95,15 +108,20 @@ export function createSheetActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            if (error.code === "empty-name") {
-              deps.setStatusT("store.status.sheetDefinitionNameRequired");
-              return;
-            }
-            if (error.code === "duplicate-name") {
-              deps.setStatusT("store.status.duplicateSheetDefinitionName", {
-                name: name.trim(),
-              });
-            }
+            matchFailure(error, {
+              "invalid-input": {
+                "empty-name": () => {
+                  deps.setStatusT("store.status.sheetDefinitionNameRequired");
+                },
+              },
+              conflict: {
+                "duplicate-name": () => {
+                  deps.setStatusT("store.status.duplicateSheetDefinitionName", {
+                    name: name.trim(),
+                  });
+                },
+              },
+            });
           },
         );
     },
@@ -237,7 +255,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            setSelectionMoveFailureStatus(error.code);
+            setSelectionMoveFailureStatus(error);
           },
         );
     },
@@ -262,7 +280,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            setSelectionMoveFailureStatus(error.code);
+            setSelectionMoveFailureStatus(error);
           },
         );
     },
@@ -279,11 +297,16 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         deps.state.activeSheetId,
       );
       if (result.isErr()) {
-        if (result.error.code === "root-sheet") {
-          deps.setStatusT("store.status.cannotDeleteRootSheet");
-        } else if (result.error.code === "protected-system-sheet") {
-          deps.setStatusT("store.status.cannotDeleteSystemSheet");
-        }
+        matchFailure(result.error, {
+          forbidden: {
+            "root-sheet": () => {
+              deps.setStatusT("store.status.cannotDeleteRootSheet");
+            },
+            "protected-system-sheet": () => {
+              deps.setStatusT("store.status.cannotDeleteSystemSheet");
+            },
+          },
+        });
         return;
       }
 
@@ -333,9 +356,13 @@ export function createSheetActions(deps: EditorStoreActionContext) {
             deps.setStatusT("store.status.removedSelection");
           },
           (error) => {
-            if (error.code === "protected-system-sheet") {
-              deps.setStatusT("store.status.cannotDeleteSystemSheet");
-            }
+            matchFailure(error, {
+              forbidden: {
+                "protected-system-sheet": () => {
+                  deps.setStatusT("store.status.cannotDeleteSystemSheet");
+                },
+              },
+            });
           },
         );
     },
