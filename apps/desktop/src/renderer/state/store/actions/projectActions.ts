@@ -1,3 +1,10 @@
+import type {
+  HalValueType,
+  NoHALProject,
+  ProjectWireLayerPosition,
+  ProjectWireStyle,
+} from "@nohal/core";
+import { matchFailure } from "@nohal/core";
 import {
   customComponentEdits,
   findHalComponentNameConflict,
@@ -17,12 +24,6 @@ import {
   updateMotmodNumericConfig,
 } from "@nohal/core/motmod";
 import { type ProjectReadResult, projectEdits } from "@nohal/core/project";
-import type {
-  HalValueType,
-  NoHALProject,
-  ProjectWireLayerPosition,
-  ProjectWireStyle,
-} from "@nohal/core/types";
 import { unwrap } from "solid-js/store";
 import type { TranslationKey } from "../../../i18n";
 import {
@@ -103,6 +104,10 @@ export function createProjectActions(deps: EditorStoreActionContext) {
   const halThreadName = (threadId: string): string | null =>
     deps.state.project.halThreads?.find((thread) => thread.id === threadId)
       ?.name ?? null;
+
+  const setSelectedComponentNotCustomStatus = (): void => {
+    deps.setStatusT("store.status.selectedComponentNotCustom");
+  };
 
   const ensureHalComponentNameAvailable = (
     halComponentName: string,
@@ -417,13 +422,23 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            if (error.code === "not-custom") {
-              deps.setStatusT("store.status.selectedComponentNotCustom");
-              return;
-            }
-            deps.setStatusT("store.status.cannotRemoveCustomComponentInUse", {
-              componentName: error.componentName,
-              count: error.usageCount,
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  deps.setStatusT("store.status.selectedComponentNotCustom");
+                },
+              },
+              "in-use": {
+                "placed-component": (failure) => {
+                  deps.setStatusT(
+                    "store.status.cannotRemoveCustomComponentInUse",
+                    {
+                      componentName: failure.componentName,
+                      count: failure.usageCount,
+                    },
+                  );
+                },
+              },
             });
           },
         );
@@ -450,15 +465,20 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            if (error.code === "not-custom") {
-              deps.setStatusT("store.status.selectedComponentNotCustom");
-              return;
-            }
-            if (error.code === "duplicate-name") {
-              deps.setStatusT("store.status.duplicateHalComponentName", {
-                componentName: halComponentName.trim(),
-              });
-            }
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+              conflict: {
+                "duplicate-name": () => {
+                  deps.setStatusT("store.status.duplicateHalComponentName", {
+                    componentName: halComponentName.trim(),
+                  });
+                },
+              },
+            });
           },
         );
     },
@@ -467,115 +487,116 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       componentId: string,
       runtimeKind: "rt" | "userspace" | "unknown",
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      if ((component.runtime?.kind ?? "unknown") === runtimeKind) return;
-      let componentName = "";
-      deps.withProject((project) => {
-        const updated = customComponentEdits.runtimeKind.update(
-          project,
-          componentId,
-          runtimeKind,
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.runtimeKind.update(
+            project,
+            componentId,
+            runtimeKind,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponent", {
+              componentName: data.halComponentName,
+            });
+          },
+          () => {
+            setSelectedComponentNotCustomStatus();
+          },
         );
-        if (!updated) return;
-        componentName = updated.halComponentName;
-      });
-      deps.setStatusT("store.status.updatedCustomComponent", {
-        componentName,
-      });
     },
 
     updateCustomComponentLoadCommand(
       componentId: string,
       loadCommand: string,
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      if ((component.loadCommand ?? "").trim() === loadCommand.trim()) return;
-      let componentName = "";
-      deps.withProject((project) => {
-        const updated = customComponentEdits.loadCommand.update(
-          project,
-          componentId,
-          loadCommand,
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.loadCommand.update(
+            project,
+            componentId,
+            loadCommand,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponentLoad", {
+              componentName: data.halComponentName,
+            });
+          },
+          () => {
+            setSelectedComponentNotCustomStatus();
+          },
         );
-        if (!updated) return;
-        componentName = updated.halComponentName;
-      });
-      deps.setStatusT("store.status.updatedCustomComponentLoad", {
-        componentName,
-      });
     },
 
     updateCustomComponentMaxInstances(
       componentId: string,
       maxInstances: number | undefined,
     ): void {
-      const component = deps.state.project.library.components[componentId];
-
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-
-      let componentName = "";
-
-      deps.withProject((project) => {
-        const updated = customComponentEdits.maxInstances.update(
-          project,
-          componentId,
-          maxInstances,
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.maxInstances.update(
+            project,
+            componentId,
+            maxInstances,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponent", {
+              componentName: data.halComponentName,
+            });
+          },
+          () => {
+            setSelectedComponentNotCustomStatus();
+          },
         );
-
-        if (!updated) return;
-
-        componentName = updated.halComponentName;
-      });
-
-      deps.setStatusT("store.status.updatedCustomComponent", {
-        componentName,
-      });
     },
 
     addCustomComponentPin(componentId: string): void {
-      let componentName = "";
-      let added = false;
-      deps.withProject((project) => {
-        const result = customComponentEdits.pin.add(project, componentId);
-        if (!result) return;
-        componentName = result.component.halComponentName;
-        added = true;
-      });
-      if (!added) {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      deps.setStatusT("store.status.addedCustomComponentPin", {
-        componentName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.pin.add(project, componentId),
+        )
+        .match(
+          ({ data }) => {
+            deps.setStatusT("store.status.addedCustomComponentPin", {
+              componentName: data.component.halComponentName,
+            });
+          },
+          () => {
+            setSelectedComponentNotCustomStatus();
+          },
+        );
     },
 
     removeCustomComponentPin(componentId: string, pinKey: string): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      if (!component.pins.some((candidate) => candidate.key === pinKey)) return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.pin.remove(project, componentId, pinKey),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.removedCustomComponentPin", {
-        componentName: finalResult.component.halComponentName,
-        pinName: finalResult.pinName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.pin.remove(project, componentId, pinKey),
+        )
+        .match(
+          ({ data }) => {
+            deps.setStatusT("store.status.removedCustomComponentPin", {
+              componentName: data.component.halComponentName,
+              pinName: data.pinName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     updateCustomComponentPinName(
@@ -583,28 +604,33 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       pinKey: string,
       pinName: string,
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      const pin = component.pins.find((candidate) => candidate.key === pinKey);
-      if (!pin) return;
-      const normalized = pinName.trim();
-      if (!normalized || normalized === pin.name) return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.pin.name.update(
-          project,
-          componentId,
-          pinKey,
-          normalized,
-        ),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.updatedCustomComponentPin", {
-        componentName: finalResult.component.halComponentName,
-        pinName: finalResult.pinName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.pin.name.update(
+            project,
+            componentId,
+            pinKey,
+            pinName,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponentPin", {
+              componentName: data.component.halComponentName,
+              pinName: data.pinName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     updateCustomComponentPinType(
@@ -612,26 +638,33 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       pinKey: string,
       pinType: HalValueType,
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      const pin = component.pins.find((candidate) => candidate.key === pinKey);
-      if (!pin || pin.type === pinType) return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.pin.type.update(
-          project,
-          componentId,
-          pinKey,
-          pinType,
-        ),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.updatedCustomComponentPin", {
-        componentName: finalResult.component.halComponentName,
-        pinName: finalResult.pinName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.pin.type.update(
+            project,
+            componentId,
+            pinKey,
+            pinType,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponentPin", {
+              componentName: data.component.halComponentName,
+              pinName: data.pinName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     updateCustomComponentPinDirection(
@@ -639,63 +672,75 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       pinKey: string,
       direction: "in" | "out" | "io",
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      const pin = component.pins.find((candidate) => candidate.key === pinKey);
-      if (!pin || pin.direction === direction) return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.pin.direction.update(
-          project,
-          componentId,
-          pinKey,
-          direction,
-        ),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.updatedCustomComponentPinDirection", {
-        componentName: finalResult.component.halComponentName,
-        pinName: finalResult.pinName,
-        direction,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.pin.direction.update(
+            project,
+            componentId,
+            pinKey,
+            direction,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponentPinDirection", {
+              componentName: data.component.halComponentName,
+              pinName: data.pinName,
+              direction,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     addCustomComponentParam(componentId: string): void {
-      let componentName = "";
-      let added = false;
-      deps.withProject((project) => {
-        const result = customComponentEdits.param.add(project, componentId);
-        if (!result) return;
-        componentName = result.component.halComponentName;
-        added = true;
-      });
-      if (!added) {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      deps.setStatusT("store.status.addedCustomComponentParam", {
-        componentName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.param.add(project, componentId),
+        )
+        .match(
+          ({ data }) => {
+            deps.setStatusT("store.status.addedCustomComponentParam", {
+              componentName: data.component.halComponentName,
+            });
+          },
+          () => {
+            setSelectedComponentNotCustomStatus();
+          },
+        );
     },
 
     removeCustomComponentParam(componentId: string, paramKey: string): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      if (!component.params.some((candidate) => candidate.key === paramKey))
-        return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.param.remove(project, componentId, paramKey),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.removedCustomComponentParam", {
-        componentName: finalResult.component.halComponentName,
-        paramName: finalResult.paramName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.param.remove(project, componentId, paramKey),
+        )
+        .match(
+          ({ data }) => {
+            deps.setStatusT("store.status.removedCustomComponentParam", {
+              componentName: data.component.halComponentName,
+              paramName: data.paramName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     updateCustomComponentParamName(
@@ -703,30 +748,33 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       paramKey: string,
       paramName: string,
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      const param = component.params.find(
-        (candidate) => candidate.key === paramKey,
-      );
-      if (!param) return;
-      const normalized = paramName.trim();
-      if (!normalized || normalized === param.name) return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.param.name.update(
-          project,
-          componentId,
-          paramKey,
-          normalized,
-        ),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.updatedCustomComponentParam", {
-        componentName: finalResult.component.halComponentName,
-        paramName: finalResult.paramName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.param.name.update(
+            project,
+            componentId,
+            paramKey,
+            paramName,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponentParam", {
+              componentName: data.component.halComponentName,
+              paramName: data.paramName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     updateCustomComponentParamType(
@@ -734,28 +782,33 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       paramKey: string,
       paramType: HalValueType,
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      const param = component.params.find(
-        (candidate) => candidate.key === paramKey,
-      );
-      if (!param || param.type === paramType) return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.param.type.update(
-          project,
-          componentId,
-          paramKey,
-          paramType,
-        ),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.updatedCustomComponentParam", {
-        componentName: finalResult.component.halComponentName,
-        paramName: finalResult.paramName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.param.type.update(
+            project,
+            componentId,
+            paramKey,
+            paramType,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponentParam", {
+              componentName: data.component.halComponentName,
+              paramName: data.paramName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     updateCustomComponentParamDirection(
@@ -763,28 +816,33 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       paramKey: string,
       paramDirection: "r" | "rw",
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      const param = component.params.find(
-        (candidate) => candidate.key === paramKey,
-      );
-      if (!param || param.direction === paramDirection) return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.param.direction.update(
-          project,
-          componentId,
-          paramKey,
-          paramDirection,
-        ),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.updatedCustomComponentParam", {
-        componentName: finalResult.component.halComponentName,
-        paramName: finalResult.paramName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.param.direction.update(
+            project,
+            componentId,
+            paramKey,
+            paramDirection,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponentParam", {
+              componentName: data.component.halComponentName,
+              paramName: data.paramName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     updateCustomComponentParamDefaultValue(
@@ -792,69 +850,87 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       paramKey: string,
       defaultValue: string,
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      const param = component.params.find(
-        (candidate) => candidate.key === paramKey,
-      );
-      if (!param || (param.defaultValue ?? "") === defaultValue) return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.param.defaultValue.update(
-          project,
-          componentId,
-          paramKey,
-          defaultValue,
-        ),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.updatedCustomComponentParam", {
-        componentName: finalResult.component.halComponentName,
-        paramName: finalResult.paramName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.param.defaultValue.update(
+            project,
+            componentId,
+            paramKey,
+            defaultValue,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponentParam", {
+              componentName: data.component.halComponentName,
+              paramName: data.paramName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     addCustomComponentFunction(componentId: string): void {
-      let componentName = "";
-      let added = false;
-      deps.withProject((project) => {
-        const result = customComponentEdits.function.add(project, componentId);
-        if (!result) return;
-        componentName = result.component.halComponentName;
-        added = true;
-      });
-      if (!added) {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      deps.setStatusT("store.status.addedCustomComponentFunction", {
-        componentName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.function.add(project, componentId),
+        )
+        .match(
+          ({ data }) => {
+            deps.setStatusT("store.status.addedCustomComponentFunction", {
+              componentName: data.component.halComponentName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     removeCustomComponentFunction(
       componentId: string,
       functionKey: string,
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      if (
-        !component.functions?.some((candidate) => candidate.key === functionKey)
-      )
-        return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.function.remove(project, componentId, functionKey),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.removedCustomComponentFunction", {
-        componentName: finalResult.component.halComponentName,
-        functionName: finalResult.functionName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.function.remove(
+            project,
+            componentId,
+            functionKey,
+          ),
+        )
+        .match(
+          ({ data }) => {
+            deps.setStatusT("store.status.removedCustomComponentFunction", {
+              componentName: data.component.halComponentName,
+              functionName: data.functionName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     updateCustomComponentFunctionName(
@@ -862,30 +938,33 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       functionKey: string,
       functionName: string,
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      const fn = component.functions?.find(
-        (candidate) => candidate.key === functionKey,
-      );
-      if (!fn) return;
-      const normalized = functionName.trim();
-      if (!normalized || normalized === fn.declaredName) return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.function.name.update(
-          project,
-          componentId,
-          functionKey,
-          normalized,
-        ),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.updatedCustomComponentFunction", {
-        componentName: finalResult.component.halComponentName,
-        functionName: finalResult.functionName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.function.name.update(
+            project,
+            componentId,
+            functionKey,
+            functionName,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponentFunction", {
+              componentName: data.component.halComponentName,
+              functionName: data.functionName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     updateCustomComponentFunctionFloatMode(
@@ -893,28 +972,33 @@ export function createProjectActions(deps: EditorStoreActionContext) {
       functionKey: string,
       floatMode: "fp" | "nofp" | "unknown",
     ): void {
-      const component = deps.state.project.library.components[componentId];
-      if (!component || component.source === "comp") {
-        deps.setStatusT("store.status.selectedComponentNotCustom");
-        return;
-      }
-      const fn = component.functions?.find(
-        (candidate) => candidate.key === functionKey,
-      );
-      if (!fn || fn.floatMode === floatMode) return;
-      const finalResult = deps.withProject((project) =>
-        customComponentEdits.function.floatMode.update(
-          project,
-          componentId,
-          functionKey,
-          floatMode,
-        ),
-      );
-      if (finalResult === null) return;
-      deps.setStatusT("store.status.updatedCustomComponentFunction", {
-        componentName: finalResult.component.halComponentName,
-        functionName: finalResult.functionName,
-      });
+      deps
+        .withProjectResult((project) =>
+          customComponentEdits.function.floatMode.update(
+            project,
+            componentId,
+            functionKey,
+            floatMode,
+          ),
+        )
+        .match(
+          ({ data, changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedCustomComponentFunction", {
+              componentName: data.component.halComponentName,
+              functionName: data.functionName,
+            });
+          },
+          (error) => {
+            matchFailure(error, {
+              "not-found": {
+                "custom-component": () => {
+                  setSelectedComponentNotCustomStatus();
+                },
+              },
+            });
+          },
+        );
     },
 
     async promoteCustomComponentToStore(
@@ -996,15 +1080,21 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            if (error.code === "last-thread") {
-              deps.setStatusT("store.status.cannotRemoveLastHalThread");
-              return;
-            }
-            if (error.code === "required-thread") {
-              deps.setStatusT("store.status.cannotRemoveRequiredHalThread", {
-                name: halThreadName(threadId) ?? threadId,
-              });
-            }
+            matchFailure(error, {
+              forbidden: {
+                "last-thread": () => {
+                  deps.setStatusT("store.status.cannotRemoveLastHalThread");
+                },
+                "required-thread": () => {
+                  deps.setStatusT(
+                    "store.status.cannotRemoveRequiredHalThread",
+                    {
+                      name: halThreadName(threadId) ?? threadId,
+                    },
+                  );
+                },
+              },
+            });
           },
         );
     },
@@ -1022,17 +1112,25 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            if (error.code === "required-thread") {
-              deps.setStatusT("store.status.cannotRenameRequiredHalThread", {
-                name: halThreadName(threadId) ?? threadId,
-              });
-              return;
-            }
-            if (error.code === "duplicate-name") {
-              deps.setStatusT("store.status.duplicateHalThreadName", {
-                name: name.trim(),
-              });
-            }
+            matchFailure(error, {
+              forbidden: {
+                "required-thread": () => {
+                  deps.setStatusT(
+                    "store.status.cannotRenameRequiredHalThread",
+                    {
+                      name: halThreadName(threadId) ?? threadId,
+                    },
+                  );
+                },
+              },
+              conflict: {
+                "duplicate-name": () => {
+                  deps.setStatusT("store.status.duplicateHalThreadName", {
+                    name: name.trim(),
+                  });
+                },
+              },
+            });
           },
         );
     },
@@ -1067,11 +1165,15 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            if (error.code === "forced-fp") {
-              deps.setStatusT("store.status.requiredHalThreadForcedFp", {
-                name: halThreadName(threadId) ?? threadId,
-              });
-            }
+            matchFailure(error, {
+              forbidden: {
+                "forced-fp": () => {
+                  deps.setStatusT("store.status.requiredHalThreadForcedFp", {
+                    name: halThreadName(threadId) ?? threadId,
+                  });
+                },
+              },
+            });
           },
         );
     },
