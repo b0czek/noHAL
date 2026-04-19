@@ -1,4 +1,4 @@
-import { slugify } from "../id";
+import { nextUniqueName, slugify } from "../id";
 import {
   collectReachableSheetInstancePaths,
   walkReachableSheetInstances,
@@ -13,13 +13,6 @@ import type {
 
 const DEFAULT_CANONICAL_INSTANCE_LIMIT = 10_000;
 const DEFAULT_FREE_INSTANCE_LIMIT = 10_000;
-
-function nextUniqueName(base: string, used: ReadonlySet<string>): string {
-  if (!used.has(base)) return base;
-  let index = 2;
-  while (used.has(`${base}${index}`)) index += 1;
-  return `${base}${index}`;
-}
 
 export function componentUsesLockedCanonicalInstanceNames(
   component: ComponentDefinition | undefined,

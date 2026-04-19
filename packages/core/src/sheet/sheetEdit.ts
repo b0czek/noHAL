@@ -1,7 +1,7 @@
 import { addfQueueEntryNodeId, normalizeAddfQueueEntries } from "../addfQueue";
 import { ensureInstanceName } from "../component/naming";
 import { getConnectedSheetPortReferenceLocations, getSheet } from "../graph";
-import { createId } from "../id";
+import { createId, nextUniqueName } from "../id";
 import { createSheet } from "../project";
 import type {
   NoHALProject,
@@ -17,13 +17,6 @@ import { isSingletonReferenceBlocked } from "./singleton";
 import { moveItemsIntoSubsheet } from "./subsheetMove";
 import { isProtectedSystemNode, isProtectedSystemSheet } from "./system";
 import { normalizeSheetThreadOutputs } from "./threads";
-
-function nextUniqueName(base: string, used: ReadonlySet<string>): string {
-  if (!used.has(base)) return base;
-  let index = 2;
-  while (used.has(`${base}${index}`)) index += 1;
-  return `${base}${index}`;
-}
 
 function pruneSheetNodeReferences(
   sheet: SheetDefinition,

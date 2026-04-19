@@ -1,6 +1,6 @@
 import { isSystemComponent } from "../component/system";
 import { getSheet } from "../graph";
-import { createId, slugify } from "../id";
+import { createId, nextUniqueName, slugify } from "../id";
 import type {
   ComponentDefinition,
   NoHALProject,
@@ -44,13 +44,6 @@ function createSystemSheet(): SheetDefinition {
       threadOutputs: createDefaultSheetThreadOutputs(),
     },
   };
-}
-
-function nextUniqueName(base: string, used: ReadonlySet<string>): string {
-  if (!used.has(base)) return base;
-  let index = 2;
-  while (used.has(`${base}${index}`)) index += 1;
-  return `${base}${index}`;
 }
 
 function ensureSystemInstanceName(rootSheet: SheetDefinition): string {

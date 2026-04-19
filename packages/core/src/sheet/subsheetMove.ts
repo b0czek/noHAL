@@ -4,7 +4,7 @@ import {
   normalizeAddfQueueEntries,
 } from "../addfQueue";
 import { endpointKey, getSheet, resolveEndpointInSheet } from "../graph";
-import { createId } from "../id";
+import { createId, nextUniqueName } from "../id";
 import { createSheetPortDraft } from "../project";
 import type {
   DirectConnection,
@@ -31,13 +31,6 @@ function directConnectionPairKey(
   const aKey = endpointKey(a);
   const bKey = endpointKey(b);
   return aKey < bKey ? `${aKey}|${bKey}` : `${bKey}|${aKey}`;
-}
-
-function nextUniqueName(base: string, used: ReadonlySet<string>): string {
-  if (!used.has(base)) return base;
-  let index = 2;
-  while (used.has(`${base}${index}`)) index += 1;
-  return `${base}${index}`;
 }
 
 function childOutputIdByParentOutputId(
