@@ -1,5 +1,10 @@
-import type { Result } from "neverthrow";
-import type { Change, Failure } from "../result";
+import type {
+  ChangeResult,
+  ForbiddenFailure,
+  InvalidInputFailure,
+  NotFoundFailure,
+  UnsupportedFailure,
+} from "../result";
 import type {
   ProjectMesaDb25CardAssignment,
   ProjectMesaGpioDirection,
@@ -7,66 +12,49 @@ import type {
   ProjectMesaSmartSerialTarget,
 } from "./types";
 
-export type MesaHostError = Failure<"not-found", "mesa-host">;
-export type MesaConnectorNotFoundError = Failure<"not-found", "mesa-connector">;
-export type SmartSerialPortNotFoundError = Failure<
-  "not-found",
-  "smart-serial-port"
->;
-export type SmartSerialAssignmentNotFoundError = Failure<
-  "not-found",
-  "smart-serial-assignment"
->;
-export type RawGpioAssignmentNotFoundError = Failure<
-  "not-found",
-  "raw-gpio-assignment"
->;
-export type FixedCardKindError = Failure<"forbidden", "fixed-card-kind">;
-export type ConnectorCardUnsupportedError = Failure<
-  "unsupported",
-  "connector-card"
->;
-export type RawGpioUnsupportedError = Failure<"unsupported", "raw-gpio">;
-export type SmartSerialChannelError = Failure<
-  "invalid-input",
-  "smart-serial-channel"
->;
-export type ProcessDataModeError = Failure<
-  "invalid-input",
-  "process-data-mode"
->;
-export type PinIndexError = Failure<"invalid-input", "pin-index">;
-export type SmartSerialCardError = Failure<
-  "invalid-input",
-  "smart-serial-card"
+export type MesaHostFailure = NotFoundFailure<"mesa-host">;
+export type MesaConnectorNotFoundFailure = NotFoundFailure<"mesa-connector">;
+export type SmartSerialPortNotFoundFailure = NotFoundFailure<"smart-serial-port">;
+export type SmartSerialAssignmentNotFoundFailure =
+  NotFoundFailure<"smart-serial-assignment">;
+export type RawGpioAssignmentNotFoundFailure =
+  NotFoundFailure<"raw-gpio-assignment">;
+export type FixedCardKindFailure = ForbiddenFailure<"fixed-card-kind">;
+export type ConnectorCardUnsupportedFailure =
+  UnsupportedFailure<"connector-card">;
+export type RawGpioUnsupportedFailure = UnsupportedFailure<"raw-gpio">;
+export type SmartSerialChannelFailure =
+  InvalidInputFailure<"smart-serial-channel">;
+export type ProcessDataModeFailure = InvalidInputFailure<"process-data-mode">;
+export type PinIndexFailure = InvalidInputFailure<"pin-index">;
+export type SmartSerialCardFailure = InvalidInputFailure<"smart-serial-card">;
+
+export type MesaSmartSerialPortFailure =
+  | SmartSerialPortNotFoundFailure
+  | FixedCardKindFailure;
+
+export type ValidateMesaSmartSerialTargetFailure =
+  | MesaSmartSerialPortFailure
+  | SmartSerialChannelFailure;
+
+export type SetMesaSmartSerialProcessDataModeFailure =
+  | MesaHostFailure
+  | SmartSerialAssignmentNotFoundFailure
+  | ProcessDataModeFailure;
+
+export type SetMesaRawGpioPinDirectionFailure =
+  | MesaHostFailure
+  | RawGpioAssignmentNotFoundFailure
+  | PinIndexFailure;
+
+export type SetMesaSmartSerialProcessDataModeResult = ChangeResult<
+  number,
+  SetMesaSmartSerialProcessDataModeFailure
 >;
 
-export type MesaSmartSerialPortError =
-  | SmartSerialPortNotFoundError
-  | FixedCardKindError;
-
-export type ValidateMesaSmartSerialTargetError =
-  | MesaSmartSerialPortError
-  | SmartSerialChannelError;
-
-export type SetMesaSmartSerialProcessDataModeError =
-  | MesaHostError
-  | SmartSerialAssignmentNotFoundError
-  | ProcessDataModeError;
-
-export type SetMesaRawGpioPinDirectionError =
-  | MesaHostError
-  | RawGpioAssignmentNotFoundError
-  | PinIndexError;
-
-export type SetMesaSmartSerialProcessDataModeResult = Result<
-  Change<number>,
-  SetMesaSmartSerialProcessDataModeError
->;
-
-export type SetMesaRawGpioPinDirectionResult = Result<
-  Change<ProjectMesaGpioDirection>,
-  SetMesaRawGpioPinDirectionError
+export type SetMesaRawGpioPinDirectionResult = ChangeResult<
+  ProjectMesaGpioDirection,
+  SetMesaRawGpioPinDirectionFailure
 >;
 
 export interface SetMesaConnectorCardChange {
@@ -74,15 +62,15 @@ export interface SetMesaConnectorCardChange {
   assignment: ProjectMesaDb25CardAssignment | null;
 }
 
-export type SetMesaConnectorCardError =
-  | MesaHostError
-  | MesaConnectorNotFoundError
-  | ConnectorCardUnsupportedError
-  | RawGpioUnsupportedError;
+export type SetMesaConnectorCardFailure =
+  | MesaHostFailure
+  | MesaConnectorNotFoundFailure
+  | ConnectorCardUnsupportedFailure
+  | RawGpioUnsupportedFailure;
 
-export type SetMesaConnectorCardResult = Result<
-  Change<SetMesaConnectorCardChange>,
-  SetMesaConnectorCardError
+export type SetMesaConnectorCardResult = ChangeResult<
+  SetMesaConnectorCardChange,
+  SetMesaConnectorCardFailure
 >;
 
 export interface SetMesaSmartSerialCardChange {
@@ -90,13 +78,13 @@ export interface SetMesaSmartSerialCardChange {
   assignment: ProjectMesaSmartSerialAssignment | null;
 }
 
-export type SetMesaSmartSerialCardError =
-  | MesaHostError
-  | MesaSmartSerialPortError
-  | SmartSerialChannelError
-  | SmartSerialCardError;
+export type SetMesaSmartSerialCardFailure =
+  | MesaHostFailure
+  | MesaSmartSerialPortFailure
+  | SmartSerialChannelFailure
+  | SmartSerialCardFailure;
 
-export type SetMesaSmartSerialCardResult = Result<
-  Change<SetMesaSmartSerialCardChange>,
-  SetMesaSmartSerialCardError
+export type SetMesaSmartSerialCardResult = ChangeResult<
+  SetMesaSmartSerialCardChange,
+  SetMesaSmartSerialCardFailure
 >;

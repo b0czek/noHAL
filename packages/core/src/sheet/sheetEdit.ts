@@ -1,10 +1,17 @@
-import { err, ok, type Result } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { addfQueueEntryNodeId, normalizeAddfQueueEntries } from "../addfQueue";
 import { ensureInstanceName } from "../component/naming";
 import { getConnectedSheetPortReferenceLocations, getSheet } from "../graph";
 import { createId, nextUniqueName } from "../id";
 import { createSheet } from "../project";
-import type { Change, Failure } from "../result";
+import type {
+  ChangeResult,
+  DuplicateNameFailure,
+  EmptyNameFailure,
+  ForbiddenFailure,
+  InvalidInputFailure,
+  NotFoundFailure,
+} from "../result";
 import type {
   NoHALProject,
   SheetAddfQueueStoredEntry,
@@ -135,11 +142,9 @@ function addSheetThreadOutput(
   return output;
 }
 
-export type UpdateSheetThreadOutputNameResult = Result<
-  Change<SheetThreadOutputDefinition>,
-  | Failure<"not-found">
-  | Failure<"invalid-input", "empty-name">
-  | Failure<"conflict", "duplicate-name">
+export type UpdateSheetThreadOutputNameResult = ChangeResult<
+  SheetThreadOutputDefinition,
+  NotFoundFailure | EmptyNameFailure | DuplicateNameFailure
 >;
 
 function updateSheetThreadOutputName(
@@ -165,9 +170,9 @@ function updateSheetThreadOutputName(
   return ok({ data: target, changed: true });
 }
 
-export type UpdateSheetThreadOutputHalBindingResult = Result<
-  Change<SheetThreadOutputDefinition>,
-  Failure<"not-found">
+export type UpdateSheetThreadOutputHalBindingResult = ChangeResult<
+  SheetThreadOutputDefinition,
+  NotFoundFailure
 >;
 
 function updateSheetThreadOutputHalBinding(
@@ -190,13 +195,13 @@ function updateSheetThreadOutputHalBinding(
   return ok({ data: target, changed: true });
 }
 
-export type RemoveSheetThreadOutputResult = Result<
-  Change<{
+export type RemoveSheetThreadOutputResult = ChangeResult<
+  {
     removedOutputId: string;
     fallbackOutputId: string;
     threadOutputs: SheetThreadOutputDefinition[];
-  }>,
-  Failure<"not-found"> | Failure<"forbidden", "last-output">
+  },
+  NotFoundFailure | ForbiddenFailure<"last-output">
 >;
 
 function removeSheetThreadOutput(
@@ -269,12 +274,12 @@ function setSheetAddfQueue(
   return normalized;
 }
 
-export type RemoveSheetPortResult = Result<
-  Change<{
+export type RemoveSheetPortResult = ChangeResult<
+  {
     removedPortId: string;
     removedReferenceInstanceCount: number;
-  }>,
-  Failure<"not-found">
+  },
+  NotFoundFailure
 >;
 
 function removeSheetPort(
@@ -322,11 +327,9 @@ export interface AddSheetReferenceResult {
   node: SheetNode;
 }
 
-export type RenameSheetDefinitionResult = Result<
-  Change<SheetDefinition>,
-  | Failure<"not-found">
-  | Failure<"invalid-input", "empty-name">
-  | Failure<"conflict", "duplicate-name">
+export type RenameSheetDefinitionResult = ChangeResult<
+  SheetDefinition,
+  NotFoundFailure | EmptyNameFailure | DuplicateNameFailure
 >;
 
 export interface SheetItemIds {
@@ -359,13 +362,13 @@ export interface MoveSheetItemsSuccess {
   createdPortCount: number;
 }
 
-export type MoveSheetItemsResult = Result<
-  Change<MoveSheetItemsSuccess>,
-  | Failure<"not-found">
-  | Failure<"invalid-input", "no-movable-items">
-  | Failure<"invalid-input", "only-ports">
-  | Failure<"invalid-input", "target-in-items">
-  | Failure<"forbidden", "protected-system-node">
+export type MoveSheetItemsResult = ChangeResult<
+  MoveSheetItemsSuccess,
+  | NotFoundFailure
+  | InvalidInputFailure<"no-movable-items">
+  | InvalidInputFailure<"only-ports">
+  | InvalidInputFailure<"target-in-items">
+  | ForbiddenFailure<"protected-system-node">
 >;
 
 export interface RemoveSheetItemsInput {
@@ -638,9 +641,9 @@ function removeSheetItems(
   }
 }
 
-export type RemoveSheetReferenceResult = Result<
-  Change<{ removedNodeId: string }>,
-  Failure<"not-found"> | Failure<"forbidden", "protected-system-sheet">
+export type RemoveSheetReferenceResult = ChangeResult<
+  { removedNodeId: string },
+  NotFoundFailure | ForbiddenFailure<"protected-system-sheet">
 >;
 
 function removeSheetReference(
@@ -817,9 +820,9 @@ export interface DetachSheetReferenceResult {
   node: SheetNode;
 }
 
-export type DetachSheetReferenceEditResult = Result<
-  Change<DetachSheetReferenceResult>,
-  Failure<"not-found"> | Failure<"forbidden", "protected-system-sheet">
+export type DetachSheetReferenceEditResult = ChangeResult<
+  DetachSheetReferenceResult,
+  NotFoundFailure | ForbiddenFailure<"protected-system-sheet">
 >;
 
 function detachSheetReference(
@@ -854,15 +857,15 @@ function detachSheetReference(
   });
 }
 
-export type DeleteSheetDefinitionResult = Result<
-  Change<{
+export type DeleteSheetDefinitionResult = ChangeResult<
+  {
     deletedSheetIds: string[];
     deletedSheetName: string;
     nextActiveSheetId: string;
-  }>,
-  | Failure<"not-found">
-  | Failure<"forbidden", "root-sheet">
-  | Failure<"forbidden", "protected-system-sheet">
+  },
+  | NotFoundFailure
+  | ForbiddenFailure<"root-sheet">
+  | ForbiddenFailure<"protected-system-sheet">
 >;
 
 function deleteSheetDefinition(

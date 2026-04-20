@@ -1,6 +1,6 @@
 import { err, ok, type Result } from "neverthrow";
 import { createId } from "../id";
-import type { Change } from "../result";
+import type { ChangeResult } from "../result";
 import type { NoHALProject } from "../types";
 import {
   getMesaDb25CardCatalogEntry,
@@ -9,12 +9,12 @@ import {
   isMesaConnectorCardCompatible,
 } from "./catalog";
 import type {
-  MesaHostError,
+  MesaHostFailure,
   SetMesaConnectorCardResult,
   SetMesaRawGpioPinDirectionResult,
   SetMesaSmartSerialCardResult,
   SetMesaSmartSerialProcessDataModeResult,
-  ValidateMesaSmartSerialTargetError,
+  ValidateMesaSmartSerialTargetFailure,
 } from "./editTypes";
 import {
   type MesaReconcilePlan,
@@ -53,7 +53,7 @@ function renormalizeMesa(project: NoHALProject): void {
 function requireMesaHost(
   project: NoHALProject,
   hostId: string,
-): Result<ProjectMesaHostConfig, MesaHostError> {
+): Result<ProjectMesaHostConfig, MesaHostFailure> {
   const host = findMesaHost(project, hostId);
   if (!host) return err({ code: "not-found", detail: "mesa-host" });
   return ok(host);
@@ -62,7 +62,7 @@ function requireMesaHost(
 function validateMesaSmartSerialTarget(
   host: ProjectMesaHostConfig,
   target: ProjectMesaSmartSerialTarget,
-): Result<void, ValidateMesaSmartSerialTargetError> {
+): Result<void, ValidateMesaSmartSerialTargetFailure> {
   const connectorCard = target.connectorKey
     ? getMesaDb25CardCatalogEntry(
         (host.connectors ?? []).find(
@@ -318,7 +318,7 @@ function applyMesaRawGpioPinDirection(
 export function addMesaHost(
   project: NoHALProject,
   kind: ProjectMesaHostKind = DEFAULT_MESA_HOST_KIND,
-): Result<Change<string>, never> {
+): ChangeResult<string> {
   const mesa = ensureProjectMesa(project);
   const hostId = createId("mesa_host");
   mesa.hosts.push({
@@ -335,7 +335,7 @@ export function addMesaHost(
 export function removeMesaHost(
   project: NoHALProject,
   hostId: string,
-): Result<Change<string>, MesaHostError> {
+): ChangeResult<string, MesaHostFailure> {
   const mesa = ensureProjectMesa(project);
   const index = mesa.hosts.findIndex((host) => host.id === hostId);
   if (index < 0) return err({ code: "not-found", detail: "mesa-host" });
@@ -348,7 +348,7 @@ export function updateMesaHostKind(
   project: NoHALProject,
   hostId: string,
   kind: ProjectMesaHostKind,
-): Result<Change<ProjectMesaHostKind>, MesaHostError> {
+): ChangeResult<ProjectMesaHostKind, MesaHostFailure> {
   return requireMesaHost(project, hostId).andThen((host) => {
     if (host.kind === kind) return ok({ data: host.kind, changed: false });
     host.kind = kind;
@@ -361,7 +361,7 @@ export function updateMesaHostIp(
   project: NoHALProject,
   hostId: string,
   ip: string,
-): Result<Change<string>, MesaHostError> {
+): ChangeResult<string, MesaHostFailure> {
   return requireMesaHost(project, hostId).andThen((host) => {
     if (host.ip === ip) return ok({ data: host.ip, changed: false });
     host.ip = ip;
@@ -433,7 +433,7 @@ export function setMesaSmartSerialCard(
 
 export function syncMesaManagedProjection(
   project: NoHALProject,
-): Result<Change<MesaReconcilePlan>, never> {
+): ChangeResult<MesaReconcilePlan> {
   const plan = planMesaReconcile(project);
   if (plan.inSync) return ok({ data: plan, changed: false });
   reconcileMesaManagedNodes(project);

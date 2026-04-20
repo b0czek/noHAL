@@ -1,5 +1,5 @@
-import { err, ok, type Result } from "neverthrow";
-import type { Change, Failure } from "../result";
+import { err, ok } from "neverthrow";
+import type { ChangeResult, InvalidInputFailure } from "../result";
 import type { NoHALProject, ProjectMotmodConfig } from "../types";
 import { DEFAULT_MOTMOD_CONFIG } from "./config";
 import {
@@ -18,7 +18,7 @@ export function updateMotmodNumericConfig(
   project: NoHALProject,
   key: keyof ProjectMotmodConfig,
   value: number,
-): Result<Change<number>, Failure<"invalid-input", "invalid-value">> {
+): ChangeResult<number, InvalidInputFailure<"invalid-value">> {
   if (!Number.isFinite(value)) {
     return err({ code: "invalid-input", detail: "invalid-value" });
   }
@@ -36,7 +36,7 @@ export function updateMotmodNumericConfig(
 
 export function syncMotmodManagedProjection(
   project: NoHALProject,
-): Result<Change<MotmodReconcilePlan>, never> {
+): ChangeResult<MotmodReconcilePlan> {
   const plan = planMotmodReconcile(project);
   if (plan.inSync) return ok({ data: plan, changed: false });
   reconcileMotmodManagedNodes(project);

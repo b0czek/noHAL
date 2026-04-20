@@ -1,6 +1,6 @@
-import { err, ok, type Result } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { normalizeHalNameLen } from "../halNames";
-import type { Change, Failure } from "../result";
+import type { ChangeResult, EmptyNameFailure } from "../result";
 import type {
   LinuxCncIniEntry,
   LinuxCncIniSection,
@@ -21,7 +21,7 @@ function nextUniqueIniLabel(base: string, existing: readonly string[]): string {
 export function updateProjectName(
   project: NoHALProject,
   name: string,
-): Result<Change<string>, Failure<"invalid-input", "empty-name">> {
+): ChangeResult<string, EmptyNameFailure> {
   const normalized = name.trim();
   if (!normalized) return err({ code: "invalid-input", detail: "empty-name" });
   if (normalized === project.name)
@@ -33,7 +33,7 @@ export function updateProjectName(
 export function updateProjectShutdown(
   project: NoHALProject,
   shutdown: string,
-): Result<Change<string>, never> {
+): ChangeResult<string> {
   if (project.shutdown === shutdown)
     return ok({ data: project.shutdown, changed: false });
   project.shutdown = shutdown;
@@ -43,7 +43,7 @@ export function updateProjectShutdown(
 export function updateProjectWireLayerPosition(
   project: NoHALProject,
   position: ProjectWireLayerPosition,
-): Result<Change<ProjectWireLayerPosition>, never> {
+): ChangeResult<ProjectWireLayerPosition> {
   if (project.ui.wireLayerPosition === position) {
     return ok({ data: project.ui.wireLayerPosition, changed: false });
   }
@@ -54,7 +54,7 @@ export function updateProjectWireLayerPosition(
 export function updateProjectWireStyle(
   project: NoHALProject,
   style: ProjectWireStyle,
-): Result<Change<ProjectWireStyle>, never> {
+): ChangeResult<ProjectWireStyle> {
   if (project.ui.wireStyle === style)
     return ok({ data: project.ui.wireStyle, changed: false });
   project.ui.wireStyle = style;
@@ -64,7 +64,7 @@ export function updateProjectWireStyle(
 export function updateProjectHalNameLen(
   project: NoHALProject,
   halNameLen: number,
-): Result<Change<number>, never> {
+): ChangeResult<number> {
   const normalized = normalizeHalNameLen(halNameLen);
   if (project.halExport?.halNameLen === normalized) {
     return ok({ data: normalized, changed: false });

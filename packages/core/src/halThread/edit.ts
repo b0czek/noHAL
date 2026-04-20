@@ -1,7 +1,13 @@
-import { err, ok, type Result } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { createId } from "../id";
 import { isRequiredHalThreadName } from "../project";
-import type { Change, Failure } from "../result";
+import type {
+  ChangeResult,
+  DuplicateNameFailure,
+  ForbiddenFailure,
+  InvalidInputFailure,
+  NotFoundFailure,
+} from "../result";
 import type { HalThreadDefinition, NoHALProject } from "../types";
 
 function nextUniqueThreadName(
@@ -31,11 +37,11 @@ export function addHalThread(project: NoHALProject): HalThreadDefinition {
   return thread;
 }
 
-export type RemoveHalThreadResult = Result<
-  Change<HalThreadDefinition>,
-  | Failure<"not-found">
-  | Failure<"forbidden", "last-thread">
-  | Failure<"forbidden", "required-thread">
+export type RemoveHalThreadResult = ChangeResult<
+  HalThreadDefinition,
+  | NotFoundFailure
+  | ForbiddenFailure<"last-thread">
+  | ForbiddenFailure<"required-thread">
 >;
 
 export function removeHalThread(
@@ -62,11 +68,9 @@ export function removeHalThread(
   return ok({ data: thread, changed: true });
 }
 
-export type UpdateHalThreadNameResult = Result<
-  Change<HalThreadDefinition>,
-  | Failure<"not-found">
-  | Failure<"forbidden", "required-thread">
-  | Failure<"conflict", "duplicate-name">
+export type UpdateHalThreadNameResult = ChangeResult<
+  HalThreadDefinition,
+  NotFoundFailure | ForbiddenFailure<"required-thread"> | DuplicateNameFailure
 >;
 
 export function updateHalThreadName(
@@ -98,9 +102,9 @@ export function updateHalThreadPeriodNs(
   project: NoHALProject,
   threadId: string,
   periodNs: number,
-): Result<
-  Change<HalThreadDefinition>,
-  Failure<"invalid-input", "invalid-period"> | Failure<"not-found">
+): ChangeResult<
+  HalThreadDefinition,
+  InvalidInputFailure<"invalid-period"> | NotFoundFailure
 > {
   if (!Number.isFinite(periodNs)) {
     return err({ code: "invalid-input", detail: "invalid-period" });
@@ -116,9 +120,9 @@ export function updateHalThreadPeriodNs(
   return ok({ data: thread, changed: true });
 }
 
-export type UpdateHalThreadFloatModeResult = Result<
-  Change<HalThreadDefinition>,
-  Failure<"not-found"> | Failure<"forbidden", "forced-fp">
+export type UpdateHalThreadFloatModeResult = ChangeResult<
+  HalThreadDefinition,
+  NotFoundFailure | ForbiddenFailure<"forced-fp">
 >;
 
 export function updateHalThreadFloatMode(
