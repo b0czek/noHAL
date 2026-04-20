@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyProject, reconcileProject } from "../project";
+import { expectOk } from "../testUtils/result";
 import { deriveMesaTopology } from "./derive";
 import {
   addMesaHost,
@@ -14,21 +15,25 @@ const SEVEN_I77_MPG_MODE = 3;
 describe("Mesa process data modes", () => {
   it("projects 7i77 mode 2 analog inputs onto channel 0 and exports the selected sserial mode", () => {
     const project = createEmptyProject("Mesa 7i77 mode 2");
-    const hostId = addMesaHost(project, "7i92t");
+    const hostId = expectOk(addMesaHost(project, "7i92t")).data;
 
-    updateMesaHostIp(project, hostId, "10.10.10.10");
-    setMesaConnectorCard(project, hostId, "p1", "7i77");
-    setMesaSmartSerialProcessDataMode(
-      project,
-      hostId,
-      { connectorKey: "p1", portKey: "io", channel: 0 },
-      2,
+    expectOk(updateMesaHostIp(project, hostId, "10.10.10.10"));
+    expectOk(setMesaConnectorCard(project, hostId, "p1", "7i77"));
+    expectOk(
+      setMesaSmartSerialProcessDataMode(
+        project,
+        hostId,
+        { connectorKey: "p1", portKey: "io", channel: 0 },
+        2,
+      ),
     );
-    setMesaSmartSerialCard(
-      project,
-      hostId,
-      { connectorKey: "p1", portKey: "rs422", channel: 0 },
-      "7i84",
+    expectOk(
+      setMesaSmartSerialCard(
+        project,
+        hostId,
+        { connectorKey: "p1", portKey: "rs422", channel: 0 },
+        "7i84",
+      ),
     );
 
     const topology = deriveMesaTopology(project.mesa ?? { hosts: [] });
@@ -65,21 +70,25 @@ describe("Mesa process data modes", () => {
 
   it("projects 7i77 mode 3 MPGs as local counter pins instead of generic encoder modules", () => {
     const project = createEmptyProject("Mesa 7i77 mode 3");
-    const hostId = addMesaHost(project, "7i92t");
+    const hostId = expectOk(addMesaHost(project, "7i92t")).data;
 
-    updateMesaHostIp(project, hostId, "10.10.10.10");
-    setMesaConnectorCard(project, hostId, "p1", "7i77");
-    setMesaSmartSerialProcessDataMode(
-      project,
-      hostId,
-      { connectorKey: "p1", portKey: "io", channel: 0 },
-      SEVEN_I77_MPG_MODE,
+    expectOk(updateMesaHostIp(project, hostId, "10.10.10.10"));
+    expectOk(setMesaConnectorCard(project, hostId, "p1", "7i77"));
+    expectOk(
+      setMesaSmartSerialProcessDataMode(
+        project,
+        hostId,
+        { connectorKey: "p1", portKey: "io", channel: 0 },
+        SEVEN_I77_MPG_MODE,
+      ),
     );
-    setMesaSmartSerialCard(
-      project,
-      hostId,
-      { connectorKey: "p1", portKey: "rs422", channel: 0 },
-      "7i84",
+    expectOk(
+      setMesaSmartSerialCard(
+        project,
+        hostId,
+        { connectorKey: "p1", portKey: "rs422", channel: 0 },
+        "7i84",
+      ),
     );
 
     const topology = deriveMesaTopology(project.mesa ?? { hosts: [] });

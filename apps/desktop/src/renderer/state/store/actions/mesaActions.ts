@@ -1,3 +1,4 @@
+import { type FailureCode, matchFailure } from "@nohal/core";
 import {
   addMesaHost as addMesaHostEdit,
   type ProjectMesaConnectorCardKind,
@@ -17,36 +18,148 @@ import {
 import type { EditorStoreActionContext } from "./types";
 
 export function createMesaActions(deps: EditorStoreActionContext) {
+  const setMesaHostMissingStatus = (): void => {
+    deps.setStatusT("store.status.mesaHostMissing");
+  };
+
+  const setMesaConnectorFailureStatus = (error: {
+    code: FailureCode;
+    detail?: string;
+  }): void => {
+    matchFailure(error, {
+      "not-found": {
+        "mesa-host": () => {
+          setMesaHostMissingStatus();
+        },
+        "mesa-connector": () => {
+          deps.setStatusT("store.status.mesaConnectorUnavailable");
+        },
+      },
+      unsupported: {
+        "connector-card": () => {
+          deps.setStatusT("store.status.mesaConnectorUnavailable");
+        },
+        "raw-gpio": () => {
+          deps.setStatusT("store.status.mesaRawGpioUnavailable");
+        },
+      },
+    });
+  };
+
+  const setMesaSmartSerialTargetFailureStatus = (error: {
+    code: FailureCode;
+    detail?: string;
+  }): void => {
+    matchFailure(error, {
+      "not-found": {
+        "mesa-host": () => {
+          setMesaHostMissingStatus();
+        },
+        "smart-serial-port": () => {
+          deps.setStatusT("store.status.mesaSmartSerialTargetUnavailable");
+        },
+        "smart-serial-assignment": () => {
+          deps.setStatusT("store.status.mesaSmartSerialTargetUnavailable");
+        },
+      },
+      forbidden: {
+        "fixed-card-kind": () => {
+          deps.setStatusT("store.status.mesaSmartSerialTargetFixed");
+        },
+      },
+      "invalid-input": {
+        "smart-serial-channel": () => {
+          deps.setStatusT("store.status.mesaInvalidSmartSerialChannel");
+        },
+        "process-data-mode": () => {
+          deps.setStatusT("store.status.mesaInvalidProcessDataMode");
+        },
+        "smart-serial-card": () => {
+          deps.setStatusT("store.status.mesaSmartSerialTargetUnavailable");
+        },
+      },
+    });
+  };
+
+  const setMesaRawGpioFailureStatus = (error: {
+    code: FailureCode;
+    detail?: string;
+  }): void => {
+    matchFailure(error, {
+      "not-found": {
+        "mesa-host": () => {
+          setMesaHostMissingStatus();
+        },
+        "raw-gpio-assignment": () => {
+          deps.setStatusT("store.status.mesaRawGpioUnavailable");
+        },
+      },
+      "invalid-input": {
+        "pin-index": () => {
+          deps.setStatusT("store.status.mesaInvalidRawGpioPin");
+        },
+      },
+    });
+  };
+
   return {
     addMesaHost(kind?: ProjectMesaHostKind): void {
-      const hostId = deps.withProject((project) =>
-        addMesaHostEdit(project, kind),
-      );
-      deps.setStatusT("store.status.addedMesaHost", { hostId });
+      deps
+        .withProjectResult((project) => addMesaHostEdit(project, kind))
+        .match(
+          ({ data }) => {
+            deps.setStatusT("store.status.addedMesaHost", { hostId: data });
+          },
+          () => {
+            setMesaHostMissingStatus();
+          },
+        );
     },
 
     removeMesaHost(hostId: string): void {
-      const changed = deps.withProject((project) =>
-        removeMesaHostEdit(project, hostId),
-      );
-      if (!changed) return;
-      deps.setStatusT("store.status.removedMesaHost");
+      deps
+        .withProjectResult((project) => removeMesaHostEdit(project, hostId))
+        .match(
+          ({ changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.removedMesaHost");
+          },
+          () => {
+            setMesaHostMissingStatus();
+          },
+        );
     },
 
     updateMesaHostKind(hostId: string, kind: ProjectMesaHostKind): void {
-      const changed = deps.withProject((project) =>
-        updateMesaHostKindEdit(project, hostId, kind),
-      );
-      if (!changed) return;
-      deps.setStatusT("store.status.updatedMesaHost");
+      deps
+        .withProjectResult((project) =>
+          updateMesaHostKindEdit(project, hostId, kind),
+        )
+        .match(
+          ({ changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedMesaHost");
+          },
+          () => {
+            setMesaHostMissingStatus();
+          },
+        );
     },
 
     updateMesaHostIp(hostId: string, ip: string): void {
-      const changed = deps.withProject((project) =>
-        updateMesaHostIpEdit(project, hostId, ip),
-      );
-      if (!changed) return;
-      deps.setStatusT("store.status.updatedMesaHostIp");
+      deps
+        .withProjectResult((project) =>
+          updateMesaHostIpEdit(project, hostId, ip),
+        )
+        .match(
+          ({ changed }) => {
+            if (!changed) return;
+            deps.setStatusT("store.status.updatedMesaHostIp");
+          },
+          () => {
+            setMesaHostMissingStatus();
+          },
+        );
     },
 
     setMesaConnectorCard(
@@ -54,11 +167,14 @@ export function createMesaActions(deps: EditorStoreActionContext) {
       connectorKey: string,
       cardKind: ProjectMesaConnectorCardKind | undefined,
     ): void {
-      const changed = deps.withProject((project) =>
-        setMesaConnectorCardEdit(project, hostId, connectorKey, cardKind),
-      );
-      if (!changed) return;
-      deps.setStatusT("store.status.updatedMesaConnector");
+      deps
+        .withProjectResult((project) =>
+          setMesaConnectorCardEdit(project, hostId, connectorKey, cardKind),
+        )
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedMesaConnector");
+        }, setMesaConnectorFailureStatus);
     },
 
     setMesaSmartSerialProcessDataMode(
@@ -66,16 +182,19 @@ export function createMesaActions(deps: EditorStoreActionContext) {
       target: ProjectMesaSmartSerialTarget,
       processDataMode: number,
     ): void {
-      const changed = deps.withProject((project) =>
-        setMesaSmartSerialProcessDataModeEdit(
-          project,
-          hostId,
-          target,
-          processDataMode,
-        ),
-      );
-      if (!changed) return;
-      deps.setStatusT("store.status.updatedMesaProcessDataMode");
+      deps
+        .withProjectResult((project) =>
+          setMesaSmartSerialProcessDataModeEdit(
+            project,
+            hostId,
+            target,
+            processDataMode,
+          ),
+        )
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedMesaProcessDataMode");
+        }, setMesaSmartSerialTargetFailureStatus);
     },
 
     setMesaRawGpioPinDirection(
@@ -84,17 +203,20 @@ export function createMesaActions(deps: EditorStoreActionContext) {
       pinIndex: number,
       direction: ProjectMesaGpioDirection,
     ): void {
-      const changed = deps.withProject((project) =>
-        setMesaRawGpioPinDirectionEdit(
-          project,
-          hostId,
-          connectorKey,
-          pinIndex,
-          direction,
-        ),
-      );
-      if (!changed) return;
-      deps.setStatusT("store.status.updatedMesaRawGpio");
+      deps
+        .withProjectResult((project) =>
+          setMesaRawGpioPinDirectionEdit(
+            project,
+            hostId,
+            connectorKey,
+            pinIndex,
+            direction,
+          ),
+        )
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedMesaRawGpio");
+        }, setMesaRawGpioFailureStatus);
     },
 
     setMesaSmartSerialCard(
@@ -102,27 +224,34 @@ export function createMesaActions(deps: EditorStoreActionContext) {
       target: ProjectMesaSmartSerialTarget,
       cardKind: ProjectMesaSmartSerialCardKind | undefined,
     ): void {
-      const changed = deps.withProject((project) =>
-        setMesaSmartSerialCardEdit(project, hostId, target, cardKind),
-      );
-      if (!changed) return;
-      deps.setStatusT("store.status.updatedMesaSmartSerial");
+      deps
+        .withProjectResult((project) =>
+          setMesaSmartSerialCardEdit(project, hostId, target, cardKind),
+        )
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedMesaSmartSerial");
+        }, setMesaSmartSerialTargetFailureStatus);
     },
 
     syncMesaManagedProjection(): void {
-      const finalResult = deps.withProject((project) =>
-        syncMesaManagedProjectionEdit(project),
-      );
-      if (!finalResult.changed) {
-        deps.setStatusT("store.status.mesaProjectionAlreadyInSync");
-        return;
-      }
-      deps.setStatusT("store.status.syncedMesaProjection", {
-        added: finalResult.plan.addNodes.length,
-        removed: finalResult.plan.removeNodes.length,
-        ensured: finalResult.plan.ensureComponents.length,
-        updated: finalResult.plan.updateNodes.length,
-      });
+      deps
+        .withProjectResult((project) => syncMesaManagedProjectionEdit(project))
+        .match(
+          ({ data, changed }) => {
+            if (!changed) {
+              deps.setStatusT("store.status.mesaProjectionAlreadyInSync");
+              return;
+            }
+            deps.setStatusT("store.status.syncedMesaProjection", {
+              added: data.addNodes.length,
+              removed: data.removeNodes.length,
+              ensured: data.ensureComponents.length,
+              updated: data.updateNodes.length,
+            });
+          },
+          () => {},
+        );
     },
   };
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { exportProjectToHal } from "../halExport";
 import { createEmptyProject, reconcileProject } from "../project";
+import { expectErr, expectOk } from "../testUtils/result";
 import {
   addMesaHost,
   setMesaConnectorCard,
@@ -11,25 +12,32 @@ import { MESA_RAW_GPIO_CARD_KIND } from "./types";
 
 const FIRST_RAW_GPIO_PIN_INDEX = 1;
 const SECOND_RAW_GPIO_OUTPUT_PIN_INDEX = 4;
+const OUT_OF_RANGE_RAW_GPIO_PIN_INDEX = 17;
 
 function makeRawGpioProject() {
   const project = createEmptyProject("Mesa Raw GPIO");
-  const hostId = addMesaHost(project, "7i92t");
-  updateMesaHostIp(project, hostId, "192.168.1.121");
-  setMesaConnectorCard(project, hostId, "p2", MESA_RAW_GPIO_CARD_KIND);
-  setMesaRawGpioPinDirection(
-    project,
-    hostId,
-    "p2",
-    FIRST_RAW_GPIO_PIN_INDEX,
-    "output",
+  const hostId = expectOk(addMesaHost(project, "7i92t")).data;
+  expectOk(updateMesaHostIp(project, hostId, "192.168.1.121"));
+  expectOk(
+    setMesaConnectorCard(project, hostId, "p2", MESA_RAW_GPIO_CARD_KIND),
   );
-  setMesaRawGpioPinDirection(
-    project,
-    hostId,
-    "p2",
-    SECOND_RAW_GPIO_OUTPUT_PIN_INDEX,
-    "output",
+  expectOk(
+    setMesaRawGpioPinDirection(
+      project,
+      hostId,
+      "p2",
+      FIRST_RAW_GPIO_PIN_INDEX,
+      "output",
+    ),
+  );
+  expectOk(
+    setMesaRawGpioPinDirection(
+      project,
+      hostId,
+      "p2",
+      SECOND_RAW_GPIO_OUTPUT_PIN_INDEX,
+      "output",
+    ),
   );
   return project;
 }
@@ -37,22 +45,26 @@ function makeRawGpioProject() {
 describe("Mesa raw GPIO support", () => {
   it("stores per-pin raw GPIO output selection on the connector assignment", () => {
     const project = createEmptyProject("Mesa Raw GPIO Edit");
-    const hostId = addMesaHost(project, "7i92t");
+    const hostId = expectOk(addMesaHost(project, "7i92t")).data;
 
-    setMesaConnectorCard(project, hostId, "p2", MESA_RAW_GPIO_CARD_KIND);
-
-    expect(setMesaRawGpioPinDirection(project, hostId, "p2", 1, "output")).toBe(
-      true,
+    expectOk(
+      setMesaConnectorCard(project, hostId, "p2", MESA_RAW_GPIO_CARD_KIND),
     );
+
+    expect(
+      expectOk(setMesaRawGpioPinDirection(project, hostId, "p2", 1, "output"))
+        .changed,
+    ).toBe(true);
     expect(
       project.mesa?.hosts[0]?.connectors?.find(
         (item) => item.connectorKey === "p2",
       )?.rawGpio?.outputPins,
     ).toEqual([1]);
 
-    expect(setMesaRawGpioPinDirection(project, hostId, "p2", 1, "input")).toBe(
-      true,
-    );
+    expect(
+      expectOk(setMesaRawGpioPinDirection(project, hostId, "p2", 1, "input"))
+        .changed,
+    ).toBe(true);
     expect(
       project.mesa?.hosts[0]?.connectors?.find(
         (item) => item.connectorKey === "p2",
@@ -112,5 +124,29 @@ describe("Mesa raw GPIO support", () => {
     expect(text).toContain("setp hm2_7i92t.0.gpio.018.is_output 1");
     expect(text).toContain("setp hm2_7i92t.0.gpio.021.is_output 1");
     expect(text).not.toContain("setp hm2_7i92t.0.gpio.017.is_output 1");
+  });
+
+  it("rejects raw GPIO pins outside the connector range", () => {
+    const project = createEmptyProject("Mesa Raw GPIO Invalid Pin");
+    const hostId = expectOk(addMesaHost(project, "7i92t")).data;
+
+    expectOk(
+      setMesaConnectorCard(project, hostId, "p2", MESA_RAW_GPIO_CARD_KIND),
+    );
+
+    expect(
+      expectErr(
+        setMesaRawGpioPinDirection(
+          project,
+          hostId,
+          "p2",
+          OUT_OF_RANGE_RAW_GPIO_PIN_INDEX,
+          "output",
+        ),
+      ),
+    ).toEqual({
+      code: "invalid-input",
+      detail: "pin-index",
+    });
   });
 });

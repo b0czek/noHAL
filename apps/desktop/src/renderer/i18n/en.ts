@@ -658,6 +658,21 @@ export const en = {
   "store.status.updatedMesaProcessDataMode": "Updated Mesa process data mode",
   "store.status.updatedMesaRawGpio": "Updated Mesa raw GPIO direction",
   "store.status.updatedMesaSmartSerial": "Updated Mesa smart-serial assignment",
+  "store.status.mesaHostMissing": "Mesa host no longer exists",
+  "store.status.mesaConnectorUnavailable":
+    "Selected Mesa connector is not available on this host",
+  "store.status.mesaRawGpioUnavailable":
+    "Raw GPIO is not enabled on this connector",
+  "store.status.mesaInvalidRawGpioPin":
+    "Selected Mesa raw GPIO pin is not valid for this connector",
+  "store.status.mesaSmartSerialTargetUnavailable":
+    "Selected Mesa smart-serial target is not available",
+  "store.status.mesaSmartSerialTargetFixed":
+    "This Mesa smart-serial target has a fixed card assignment",
+  "store.status.mesaInvalidSmartSerialChannel":
+    "Selected Mesa smart-serial channel is not valid for this port",
+  "store.status.mesaInvalidProcessDataMode":
+    "Selected Mesa process data mode is not valid for this card",
   "store.status.mesaProjectionAlreadyInSync":
     "Mesa system projection is already in sync",
   "store.status.syncedMesaProjection":
