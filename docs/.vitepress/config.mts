@@ -35,6 +35,17 @@ export default defineConfig({
         ],
       },
       {
+        text: "Workflows",
+        items: [{ text: "Import a machine", link: "/import-machine" }],
+      },
+      {
+        text: "Build",
+        items: [
+          { text: "Export (HAL output)", link: "/export" },
+          { text: "Build outputs", link: "/build" },
+        ],
+      },
+      {
         text: "Project Settings",
         items: [
           { text: "INI Editor", link: "/advanced/ini-editor" },
