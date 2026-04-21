@@ -3,3 +3,5 @@ dist/
 out/
 .electron-vite/
 *.log
+docs/.vitepress/cache/
+docs/.vitepress/dist/

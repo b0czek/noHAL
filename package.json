@@ -11,6 +11,10 @@
     "dist:linux": "pnpm --filter @nohal/desktop dist:linux",
     "dist:win": "pnpm --filter @nohal/desktop dist:win",
     "preview": "pnpm --filter @nohal/desktop preview",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "docs:diagrams": "bash docs/scripts/render-diagrams.sh",
     "test": "pnpm -r test",
     "test:watch": "pnpm --filter @nohal/desktop test:watch",
     "generate:linuxcnc-stores": "pnpm --filter @nohal/core generate:linuxcnc-stores",
@@ -20,6 +24,7 @@
     "format": "biome format --write ."
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.12"
+    "@biomejs/biome": "^2.4.12",
+    "vitepress": "^1.6.4"
   }
 }
