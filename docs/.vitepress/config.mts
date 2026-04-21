@@ -12,7 +12,7 @@ export default defineConfig({
     nav: [
       { text: "Guide", link: "/installation" },
       { text: "Workflows", link: "/quickstart" },
-      { text: "Advanced", link: "/sheets" },
+      { text: "Project Settings", link: "/advanced/ini-editor" },
       { text: "Help", link: "/troubleshooting" },
     ],
     sidebar: [
@@ -32,6 +32,15 @@ export default defineConfig({
           { text: "Wiring", link: "/concepts/wiring" },
           { text: "Threading", link: "/concepts/threading" },
           { text: "Component Store", link: "/concepts/component-store" },
+        ],
+      },
+      {
+        text: "Project Settings",
+        items: [
+          { text: "INI Editor", link: "/advanced/ini-editor" },
+          { text: "motmod", link: "/advanced/motmod" },
+          { text: "Mesa / HostMot2", link: "/advanced/mesa" },
+          { text: "Shutdown HAL", link: "/advanced/shutdown" },
         ],
       },
     ],
