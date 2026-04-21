@@ -11,9 +11,8 @@ export default defineConfig({
     logo: "/assets/icon.svg",
     nav: [
       { text: "Guide", link: "/installation" },
-      { text: "Workflows", link: "/quickstart" },
+      { text: "Workflows", link: "/import-machine" },
       { text: "Project Settings", link: "/advanced/ini-editor" },
-      { text: "Help", link: "/troubleshooting" },
     ],
     sidebar: [
       {

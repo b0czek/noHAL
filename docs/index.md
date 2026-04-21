@@ -13,11 +13,11 @@ hero:
       text: Get Started
       link: /installation
     - theme: alt
-      text: Quickstart
-      link: /quickstart
+      text: Concepts
+      link: /concepts
     - theme: alt
       text: Import Existing HAL
-      link: /importing-existing-hal
+      link: /import-machine
 
 features:
   - title: Create or import a project
