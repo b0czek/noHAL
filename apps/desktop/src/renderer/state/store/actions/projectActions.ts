@@ -4,7 +4,7 @@ import type {
   ProjectWireLayerPosition,
   ProjectWireStyle,
 } from "@nohal/core";
-import { matchFailure } from "@nohal/core";
+import { type FailureLike, matchFailure } from "@nohal/core";
 import {
   customComponentEdits,
   findHalComponentNameConflict,
@@ -107,6 +107,35 @@ export function createProjectActions(deps: EditorStoreActionContext) {
 
   const setSelectedComponentNotCustomStatus = (): void => {
     deps.setStatusT("store.status.selectedComponentNotCustom");
+  };
+
+  const reportCustomComponentEditFailure = (error: FailureLike): void => {
+    matchFailure(error, {
+      "not-found": {
+        "custom-component": () => {
+          setSelectedComponentNotCustomStatus();
+        },
+        pin: () => {
+          deps.setStatusT("store.status.customComponentMemberNotFound");
+        },
+        param: () => {
+          deps.setStatusT("store.status.customComponentMemberNotFound");
+        },
+        function: () => {
+          deps.setStatusT("store.status.customComponentMemberNotFound");
+        },
+      },
+      "invalid-input": {
+        "empty-name": () => {
+          deps.setStatusT("store.status.customComponentNameRequired");
+        },
+      },
+      unsupported: {
+        "invalid-runtime": () => {
+          deps.setStatusT("store.status.customComponentFunctionRequiresRt");
+        },
+      },
+    });
   };
 
   const ensureHalComponentNameAvailable = (
@@ -478,6 +507,11 @@ export function createProjectActions(deps: EditorStoreActionContext) {
                   });
                 },
               },
+              "invalid-input": {
+                "empty-name": () => {
+                  deps.setStatusT("store.status.customComponentNameRequired");
+                },
+              },
             });
           },
         );
@@ -502,8 +536,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
               componentName: data.halComponentName,
             });
           },
-          () => {
-            setSelectedComponentNotCustomStatus();
+          (error) => {
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -527,8 +561,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
               componentName: data.halComponentName,
             });
           },
-          () => {
-            setSelectedComponentNotCustomStatus();
+          (error) => {
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -552,8 +586,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
               componentName: data.halComponentName,
             });
           },
-          () => {
-            setSelectedComponentNotCustomStatus();
+          (error) => {
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -569,8 +603,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
               componentName: data.component.halComponentName,
             });
           },
-          () => {
-            setSelectedComponentNotCustomStatus();
+          (error) => {
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -588,13 +622,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -622,13 +650,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -656,13 +678,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -691,13 +707,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -713,8 +723,8 @@ export function createProjectActions(deps: EditorStoreActionContext) {
               componentName: data.component.halComponentName,
             });
           },
-          () => {
-            setSelectedComponentNotCustomStatus();
+          (error) => {
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -732,13 +742,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -766,13 +770,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -800,13 +798,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -834,13 +826,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -868,13 +854,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -891,13 +871,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -922,13 +896,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -956,13 +924,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },
@@ -990,13 +952,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-            });
+            reportCustomComponentEditFailure(error);
           },
         );
     },

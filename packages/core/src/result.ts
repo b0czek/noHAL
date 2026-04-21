@@ -40,7 +40,7 @@ export type InUseFailure<D extends string = never> = Failure<"in-use", D>;
 export type EmptyNameFailure = InvalidInputFailure<"empty-name">;
 export type DuplicateNameFailure = ConflictFailure<"duplicate-name">;
 
-interface FailureLike {
+export interface FailureLike {
   code: FailureCode;
   detail?: string;
 }

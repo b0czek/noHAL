@@ -631,6 +631,11 @@ export const en = {
     "Updated function {functionName} on custom component {componentName}",
   "store.status.duplicateHalComponentName":
     "HAL component name already exists: {componentName}",
+  "store.status.customComponentNameRequired": "HAL component name is required",
+  "store.status.customComponentMemberNotFound":
+    "That pin, parameter, or function was not found on the custom component",
+  "store.status.customComponentFunctionRequiresRt":
+    "Realtime functions require the component runtime to be set to realtime",
   "store.status.addedSheetThreadOutput": "Added sheet thread output",
   "store.status.updatedSheetThreadOutputName":
     "Updated sheet thread output name",

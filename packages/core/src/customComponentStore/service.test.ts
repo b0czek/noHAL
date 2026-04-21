@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { customComponentDefinitionEdits } from "../customComponent";
 import { createMemoryIo } from "../testUtils/memoryIo";
+import { expectOk } from "../testUtils/result";
 import { createCustomComponentStoreService } from "./service";
 import { STORE_CUSTOM_COMPONENT_ID_PREFIX } from "./shared";
 
@@ -37,12 +38,19 @@ describe("custom component store", () => {
     });
 
     const updatedComponent = structuredClone(created.parsed);
-    customComponentDefinitionEdits.halComponentName.update(
+    const renamed = customComponentDefinitionEdits.halComponentName.update(
       updatedComponent,
       "store_logic_renamed",
     );
-    customComponentDefinitionEdits.runtimeKind.update(updatedComponent, "rt");
-    customComponentDefinitionEdits.pin.add(updatedComponent);
+    const runtimeUpdated = customComponentDefinitionEdits.runtimeKind.update(
+      updatedComponent,
+      "rt",
+    );
+    const pinAdded = customComponentDefinitionEdits.pin.add(updatedComponent);
+
+    expectOk(renamed);
+    expectOk(runtimeUpdated);
+    expectOk(pinAdded);
 
     const updated = await service.updateCustomComponentInStore(
       STORE_FILE_PATH,
@@ -74,10 +82,12 @@ describe("custom component store", () => {
     );
 
     const updatedComponent = structuredClone(created.parsed);
-    customComponentDefinitionEdits.halComponentName.update(
+    const renamed = customComponentDefinitionEdits.halComponentName.update(
       updatedComponent,
       "store_logic",
     );
+
+    expectOk(renamed);
 
     await expect(
       service.updateCustomComponentInStore(
