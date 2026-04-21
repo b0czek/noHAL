@@ -68,6 +68,7 @@ This produces Linux `AppImage` and `deb` artifacts for the desktop app.
 
 ## Docs
 
+- Published manual: [b0czek.github.io/noHAL](https://b0czek.github.io/noHAL/)
 - Manual source lives in [`docs/`](./docs/).
 
 ```bash
