@@ -1,3 +1,4 @@
+import { resolveNodeExportNamespace } from "@nohal/core/componentNaming";
 import {
   fixedExportStageForComponent,
   fixedInstanceNameForComponent,
@@ -5,9 +6,19 @@ import {
 import { createMemo, Show } from "solid-js";
 import BufferedInput from "../../components/form/BufferedInput";
 import StringSelect from "../../components/form/StringSelect";
+import {
+  Switch,
+  SwitchControl,
+  SwitchDescription,
+  SwitchLabel,
+  SwitchThumb,
+} from "../../components/ui/switch";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
-import { componentUsesLockedCanonicalInstanceNames } from "../../state/store/helpers";
+import {
+  componentHasFixedExportNamespace,
+  componentUsesLockedCanonicalInstanceNames,
+} from "../../state/store/helpers";
 import type { ComponentSettingsTabProps } from "./types";
 
 export default function InstanceTab(props: ComponentSettingsTabProps) {
@@ -20,6 +31,14 @@ export default function InstanceTab(props: ComponentSettingsTabProps) {
   });
   const fixedExportStage = createMemo(() =>
     fixedExportStageForComponent(component()),
+  );
+  const exportsGlobally = createMemo(
+    () =>
+      resolveNodeExportNamespace(props.node() ?? undefined, component()) ===
+      "global",
+  );
+  const exportNamespaceLocked = createMemo(() =>
+    componentHasFixedExportNamespace(component()),
   );
   const instanceNameLocked = createMemo(
     () =>
@@ -106,6 +125,38 @@ export default function InstanceTab(props: ComponentSettingsTabProps) {
                   }}
                 />
               </div>
+              <div class="grid gap-2">
+                <span class={fieldLabelClass}>
+                  {t("componentDialog.exportNamespace")}
+                </span>
+                <Switch
+                  checked={exportsGlobally()}
+                  disabled={exportNamespaceLocked()}
+                  onChange={(checked) => {
+                    const currentNode = props.node();
+                    if (!currentNode) return;
+                    actions.updateNodeGlobalNamespace(currentNode.id, checked);
+                  }}
+                  class="flex items-start justify-between gap-3 rounded-xl bg-black/20 p-3"
+                >
+                  <div class="grid gap-1">
+                    <SwitchLabel>
+                      {t("componentDialog.exportNamespaceGlobal")}
+                    </SwitchLabel>
+                    <SwitchDescription class="text-sm text-muted-foreground">
+                      {t("componentDialog.exportNamespaceHelp")}
+                    </SwitchDescription>
+                  </div>
+                  <SwitchControl>
+                    <SwitchThumb />
+                  </SwitchControl>
+                </Switch>
+              </div>
+              <Show when={exportNamespaceLocked()}>
+                <div class="text-sm text-muted-foreground">
+                  {t("componentDialog.exportNamespaceLocked")}
+                </div>
+              </Show>
               <Show when={!!fixedExportStage()}>
                 <div class="text-sm text-muted-foreground">
                   {t("componentDialog.exportStageLockedPostgui")}

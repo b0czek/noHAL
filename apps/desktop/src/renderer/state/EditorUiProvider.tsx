@@ -17,10 +17,10 @@ import type { GeneralSettingsTab } from "../features/generalSettings/types";
 import { useEditorStore } from "./EditorStoreProvider";
 
 export type ComponentSearchScope = "sheet" | "project";
-export type CanvasFocusTarget = {
+export interface CanvasFocusTarget {
   kind: "node" | "label" | "comment" | "sheet-port";
   id: string;
-};
+}
 export type CanvasPlacement =
   | { kind: "component"; componentId: string }
   | { kind: "subsheet"; sheetId?: string }
@@ -31,27 +31,29 @@ export type CanvasPlacement =
       direction: PinDirection;
       type: HalValueType;
     };
-export type ComponentEditorOverlay = {
+export interface ComponentEditorOverlay {
   kind: "component-editor";
   nodeId: string;
-};
-export type GeneralSettingsOverlay = {
+}
+export interface GeneralSettingsOverlay {
   kind: "general-settings";
   initialTab?: GeneralSettingsTab;
-};
-export type ProjectSettingsOverlay = { kind: "project-settings" };
-export type SheetSettingsOverlay = {
+}
+export interface ProjectSettingsOverlay {
+  kind: "project-settings";
+}
+export interface SheetSettingsOverlay {
   kind: "sheet-settings";
   sheetId: string;
   referenceTarget?: {
     parentSheetId: string;
     nodeId: string;
   };
-};
-export type ComponentSearchOverlay = {
+}
+export interface ComponentSearchOverlay {
   kind: "component-search";
   scope: ComponentSearchScope;
-};
+}
 export type EditorOverlay =
   | ComponentEditorOverlay
   | GeneralSettingsOverlay
@@ -59,17 +61,23 @@ export type EditorOverlay =
   | SheetSettingsOverlay
   | ComponentSearchOverlay;
 
-type CanvasFocusRequest = {
+interface CanvasFocusRequest {
   requestId: number;
   sheetId: string;
   target: CanvasFocusTarget;
-};
+}
 
 function createEditorUiState() {
   const { state, actions } = useEditorStore();
   const [overlay, setOverlay] = createSignal<EditorOverlay | null>(null);
   const [placementMode, setPlacementMode] =
     createSignal<CanvasPlacement | null>(null);
+  const [componentSearchQueries, setComponentSearchQueries] = createSignal<
+    Record<ComponentSearchScope, string>
+  >({
+    sheet: "",
+    project: "",
+  });
   const [canvasFocusRequest, setCanvasFocusRequest] =
     createSignal<CanvasFocusRequest | null>(null);
   let nextCanvasFocusRequestId = 1;
@@ -221,6 +229,13 @@ function createEditorUiState() {
     ) => openOverlay({ kind: "sheet-settings", sheetId, referenceTarget }),
     openComponentSearch: (scope: ComponentSearchScope) =>
       openOverlay({ kind: "component-search", scope }),
+    getComponentSearchQuery: (scope: ComponentSearchScope) =>
+      componentSearchQueries()[scope],
+    setComponentSearchQuery: (scope: ComponentSearchScope, query: string) =>
+      setComponentSearchQueries((current) => {
+        if (current[scope] === query) return current;
+        return { ...current, [scope]: query };
+      }),
     beginPlacementMode,
     togglePlacementMode,
     cancelPlacementMode: () => setPlacementMode(null),

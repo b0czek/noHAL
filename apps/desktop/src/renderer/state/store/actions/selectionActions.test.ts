@@ -1,5 +1,5 @@
 import { createEmptyProject, createSheet } from "@nohal/core/project";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { NoHALApi } from "../../../../preload/api";
 import { createEditorStore } from "../../store";
 
@@ -102,19 +102,26 @@ function createProjectFixture() {
 
 function installClipboardMock() {
   let clipboardText = "";
-  (globalThis as { window?: { nohal: NoHALApi } }).window = {
+  const confirm = vi.fn(() => true);
+  (
+    globalThis as unknown as {
+      window?: { nohal: NoHALApi; confirm?: typeof confirm };
+    }
+  ).window = {
     nohal: {
       readClipboardText: () => clipboardText,
       writeClipboardText: (text: string) => {
         clipboardText = text;
       },
     } as NoHALApi,
+    confirm,
   };
   return {
     read: () => clipboardText,
     write: (text: string) => {
       clipboardText = text;
     },
+    confirm,
   };
 }
 
@@ -432,6 +439,110 @@ describe("selection actions", () => {
     expect(store.state.status).toBe(
       "store.status.removedSelectionSkippedSystemManaged",
     );
+  });
+
+  it("removes parent-sheet connections when deleting a used sheet port", () => {
+    const clipboard = installClipboardMock();
+    const project = createEmptyProject("Sheet Port Dependency Removal");
+    const rootSheet = project.sheets[project.rootSheetId];
+    const childSheet = createSheet("Child");
+    childSheet.ports.push({
+      id: "port_child_in",
+      name: "child_in",
+      direction: "in",
+      type: "bit",
+      side: "right",
+      position: { x: 0, y: 0 },
+    });
+    project.sheets[childSheet.id] = childSheet;
+
+    rootSheet.nodes.push({
+      id: "node_child",
+      kind: "sheet",
+      sheetId: childSheet.id,
+      instanceName: "child",
+      position: { x: 100, y: 80 },
+    });
+    rootSheet.ports.push({
+      id: "port_root_in",
+      name: "root_in",
+      direction: "in",
+      type: "bit",
+      side: "right",
+      position: { x: 10, y: 10 },
+    });
+    rootSheet.directConnections.push({
+      id: "conn_child_port",
+      a: { kind: "sheet-port", portId: "port_root_in" },
+      b: { kind: "node-pin", nodeId: "node_child", pinKey: "port_child_in" },
+    });
+
+    const store = createEditorStore(project, (key) => key);
+    store.actions.setActiveSheet(childSheet.id);
+    store.actions.select({ kind: "sheet-port", id: "port_child_in" });
+    store.actions.removeSelection();
+
+    expect(clipboard.confirm).toHaveBeenCalledWith(
+      "inspector.confirmDeleteSheetPortUsersSingle",
+    );
+    expect(store.state.project.sheets[childSheet.id]?.ports).toHaveLength(0);
+    const nextRootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    expect(nextRootSheet.directConnections).toHaveLength(0);
+    expect(store.state.selection).toBe(null);
+  });
+
+  it("cancels deleting a used sheet port when the confirmation is rejected", () => {
+    const clipboard = installClipboardMock();
+    clipboard.confirm.mockReturnValue(false);
+
+    const project = createEmptyProject("Sheet Port Dependency Cancellation");
+    const rootSheet = project.sheets[project.rootSheetId];
+    const childSheet = createSheet("Child");
+    childSheet.ports.push({
+      id: "port_child_in",
+      name: "child_in",
+      direction: "in",
+      type: "bit",
+      side: "right",
+      position: { x: 0, y: 0 },
+    });
+    project.sheets[childSheet.id] = childSheet;
+
+    rootSheet.nodes.push({
+      id: "node_child",
+      kind: "sheet",
+      sheetId: childSheet.id,
+      instanceName: "child",
+      position: { x: 100, y: 80 },
+    });
+    rootSheet.ports.push({
+      id: "port_root_in",
+      name: "root_in",
+      direction: "in",
+      type: "bit",
+      side: "right",
+      position: { x: 10, y: 10 },
+    });
+    rootSheet.directConnections.push({
+      id: "conn_child_port",
+      a: { kind: "sheet-port", portId: "port_root_in" },
+      b: { kind: "node-pin", nodeId: "node_child", pinKey: "port_child_in" },
+    });
+
+    const store = createEditorStore(project, (key) => key);
+    store.actions.setActiveSheet(childSheet.id);
+    store.actions.select({ kind: "sheet-port", id: "port_child_in" });
+    store.actions.removeSelection();
+
+    expect(store.state.project.sheets[childSheet.id]?.ports).toHaveLength(1);
+    const nextRootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    expect(nextRootSheet.directConnections).toHaveLength(1);
+    expect(store.state.selection).toEqual({
+      kind: "sheet-port",
+      id: "port_child_in",
+    });
   });
 
   it("deletes a selected sheet reference without deleting its definition", () => {

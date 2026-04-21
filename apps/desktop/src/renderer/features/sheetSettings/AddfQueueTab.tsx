@@ -3,7 +3,11 @@ import {
   makeAddfQueueNodeEntry,
 } from "@nohal/core/addfQueue";
 import { HiOutlineChevronDown, HiOutlineChevronUp } from "solid-icons/hi";
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import { For, Show } from "solid-js";
+import {
+  createDragReorderController,
+  DragReorderHandle,
+} from "../../components/reorderable/DragReorder";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { useI18n } from "../../i18n";
@@ -13,13 +17,12 @@ import type { SheetQueueRow } from "./types";
 export default function AddfQueueTab() {
   const { t } = useI18n();
   const settings = useSheetSettings();
-  const [draggingRowKey, setDraggingRowKey] = createSignal<string | null>(null);
-  const [dropTargetId, setDropTargetId] = createSignal<string | null>(null);
+  const reorder = createDragReorderController();
   const rowContainerClass = (rowKey: string) => {
-    if (draggingRowKey() === rowKey) {
+    if (reorder.isDragging(rowKey)) {
       return "border-accent/30 bg-accent/10 opacity-65";
     }
-    if (dropTargetId() === `row:${rowKey}`) {
+    if (reorder.isDropTarget(`row:${rowKey}`)) {
       return "border-accent/30 bg-accent/10";
     }
     return "bg-black/20";
@@ -104,21 +107,6 @@ export default function AddfQueueTab() {
     settings.commitRows(nextRows);
     return updatedRow.rowKey;
   };
-
-  createEffect(() => {
-    if (!draggingRowKey()) return;
-    const finishDrag = () => {
-      setDraggingRowKey(null);
-      setDropTargetId(null);
-    };
-    window.addEventListener("pointerup", finishDrag);
-    window.addEventListener("pointercancel", finishDrag);
-    onCleanup(() => {
-      window.removeEventListener("pointerup", finishDrag);
-      window.removeEventListener("pointercancel", finishDrag);
-    });
-  });
-
   return (
     <div class="grid gap-6">
       <div class="grid gap-1">
@@ -160,10 +148,10 @@ export default function AddfQueueTab() {
               <section
                 class="grid gap-3 rounded-2xl p-3"
                 onPointerEnter={() => {
-                  const dragged = draggingRowKey();
+                  const dragged = reorder.draggingItemId();
                   if (!dragged) return;
                   if (group.rows.length > 0) return;
-                  setDropTargetId(`thread:${group.output.id}:end`);
+                  reorder.setDropTargetId(`thread:${group.output.id}:end`);
                   appendRowToThread(dragged, group.output.id);
                 }}
               >
@@ -181,42 +169,22 @@ export default function AddfQueueTab() {
                         class={`grid gap-3 rounded-xl p-3 transition sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center ${rowContainerClass(row.rowKey)}`}
                         role="presentation"
                         onPointerEnter={() => {
-                          const dragged = draggingRowKey();
+                          const dragged = reorder.draggingItemId();
                           if (!dragged || dragged === row.rowKey) return;
-                          setDropTargetId(`row:${row.rowKey}`);
+                          reorder.setDropTargetId(`row:${row.rowKey}`);
                           moveRowBefore(dragged, row.rowKey, group.output.id);
                         }}
                         onPointerUp={() => {
-                          if (!draggingRowKey()) return;
-                          setDraggingRowKey(null);
-                          setDropTargetId(null);
+                          if (!reorder.draggingItemId()) return;
+                          reorder.finishDrag();
                         }}
                       >
-                        <button
-                          type="button"
-                          class={`grid h-10 w-10 place-items-center rounded-lg transition ${
-                            draggingRowKey() === row.rowKey
-                              ? "bg-accent/10"
-                              : "hover:bg-accent/5"
-                          }`}
-                          title={t("sheetSettings.dragToReorder")}
-                          onPointerDown={(evt) => {
-                            evt.preventDefault();
-                            evt.stopPropagation();
-                            setDraggingRowKey(row.rowKey);
-                            setDropTargetId(`row:${row.rowKey}`);
-                          }}
-                        >
-                          <span
-                            class="grid grid-cols-2 gap-1"
-                            aria-hidden="true"
-                          >
-                            <span class="h-1 w-1 rounded-full bg-foreground/70" />
-                            <span class="h-1 w-1 rounded-full bg-foreground/70" />
-                            <span class="h-1 w-1 rounded-full bg-foreground/70" />
-                            <span class="h-1 w-1 rounded-full bg-foreground/70" />
-                          </span>
-                        </button>
+                        <DragReorderHandle
+                          controller={reorder}
+                          itemId={row.rowKey}
+                          label={t("sheetSettings.dragToReorder")}
+                          dropTargetId={`row:${row.rowKey}`}
+                        />
 
                         <div class="min-w-0">
                           <div class="mono truncate font-medium">
@@ -308,20 +276,19 @@ export default function AddfQueueTab() {
 
                   <div
                     class={`min-h-[18px] rounded-lg transition ${
-                      dropTargetId() === `thread:${group.output.id}:end`
+                      reorder.isDropTarget(`thread:${group.output.id}:end`)
                         ? "border border-dashed border-accent/30 bg-accent/10"
                         : "bg-white/[0.03]"
                     }`}
                     onPointerEnter={() => {
-                      const dragged = draggingRowKey();
+                      const dragged = reorder.draggingItemId();
                       if (!dragged) return;
-                      setDropTargetId(`thread:${group.output.id}:end`);
+                      reorder.setDropTargetId(`thread:${group.output.id}:end`);
                       appendRowToThread(dragged, group.output.id);
                     }}
                     onPointerUp={() => {
-                      if (!draggingRowKey()) return;
-                      setDraggingRowKey(null);
-                      setDropTargetId(null);
+                      if (!reorder.draggingItemId()) return;
+                      reorder.finishDrag();
                     }}
                   />
                 </div>

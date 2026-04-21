@@ -25,7 +25,8 @@ function reconcileSmartSerialComponent(cardKind: "7i66-8" | "7i66-24") {
   return Object.values(project.library.components).find(
     (component) =>
       component.system?.manager === "mesa" &&
-      component.system?.family === "sserial",
+      component.system?.family === "sserial" &&
+      component.constraints?.fixedInstanceName === "hm2_7i92t.0.7i66.0.2",
   );
 }
 

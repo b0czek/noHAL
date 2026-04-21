@@ -88,6 +88,7 @@ export function createSceneRuntime(
     },
     state: {
       lastState: null,
+      renderedSheetId: null,
       cursorPos: null,
       camera: { x: 0, y: 0, scale: 1 },
       selectedConnectionId: null,
@@ -103,6 +104,7 @@ export function createSceneRuntime(
       interaction: {
         isPanning: false,
         panLastScreenPos: null,
+        panTriggerButton: null,
         backgroundTapStartScreenPos: null,
         backgroundTapAdditive: false,
         isMarqueeSelecting: false,

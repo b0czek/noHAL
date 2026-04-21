@@ -1,5 +1,14 @@
 import type { CoreDirEntry, CoreIo } from "../types";
 
+function createErrnoError(
+  message: string,
+  code: string,
+): Error & { code: string } {
+  const error = new Error(message) as Error & { code: string };
+  error.code = code;
+  return error;
+}
+
 function normalizePath(path: string): string {
   const absolute = path.startsWith("/");
   const segments: string[] = [];
@@ -84,7 +93,7 @@ export function createMemoryIo(): MemoryIoHarness {
 
   function assertDirExists(dirPath: string): void {
     if (directories.has(dirPath)) return;
-    throw new Error(`ENOENT: no such directory '${dirPath}'`);
+    throw createErrnoError(`ENOENT: no such directory '${dirPath}'`, "ENOENT");
   }
 
   function parentDir(path: string): string {
@@ -133,7 +142,10 @@ export function createMemoryIo(): MemoryIoHarness {
         if (files.has(normalized)) {
           return { isDirectory: () => false };
         }
-        throw new Error(`ENOENT: no such file or directory '${normalized}'`);
+        throw createErrnoError(
+          `ENOENT: no such file or directory '${normalized}'`,
+          "ENOENT",
+        );
       },
       makeDir: async (dirPath, options) => {
         const normalized = pathApi.resolve(dirPath);
@@ -153,14 +165,20 @@ export function createMemoryIo(): MemoryIoHarness {
         const normalized = pathApi.resolve(filePath);
         const file = files.get(normalized);
         if (file === undefined) {
-          throw new Error(`ENOENT: no such file '${normalized}'`);
+          throw createErrnoError(
+            `ENOENT: no such file '${normalized}'`,
+            "ENOENT",
+          );
         }
         return file;
       },
       removeFile: async (filePath) => {
         const normalized = pathApi.resolve(filePath);
         if (!files.delete(normalized)) {
-          throw new Error(`ENOENT: no such file '${normalized}'`);
+          throw createErrnoError(
+            `ENOENT: no such file '${normalized}'`,
+            "ENOENT",
+          );
         }
       },
       renamePath: async (fromPath, toPath) => {
@@ -168,7 +186,10 @@ export function createMemoryIo(): MemoryIoHarness {
         const normalizedTo = pathApi.resolve(toPath);
         const file = files.get(normalizedFrom);
         if (file === undefined) {
-          throw new Error(`ENOENT: no such file '${normalizedFrom}'`);
+          throw createErrnoError(
+            `ENOENT: no such file '${normalizedFrom}'`,
+            "ENOENT",
+          );
         }
         assertDirExists(parentDir(normalizedTo));
         files.delete(normalizedFrom);

@@ -5,6 +5,7 @@ import type {
   PortSide,
   XY,
 } from "./base";
+import type { ComponentExportNamespace } from "./components";
 
 export interface SheetPort {
   id: string;
@@ -28,7 +29,9 @@ export interface ComponentNode {
   instanceConfigValues?: Record<string, string>;
   pinInitialValues?: Record<string, string>;
   hiddenPinKeys?: string[];
+  pinOrder?: string[];
   exportStage?: "main" | "postgui";
+  exportNamespace?: ComponentExportNamespace;
 }
 
 export interface SheetNode {

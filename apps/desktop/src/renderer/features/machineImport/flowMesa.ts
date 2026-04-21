@@ -11,6 +11,7 @@ import {
   setMesaConnectorCard,
   setMesaRawGpioPinDirection,
   setMesaSmartSerialCard,
+  setMesaSmartSerialProcessDataMode,
   updateMesaHostIp,
   updateMesaHostKind,
 } from "@nohal/core/mesa";
@@ -62,6 +63,20 @@ export const mesaEdits = {
   ) =>
     editMesaConfig(mesaConfig, (project) => {
       setMesaConnectorCard(project, hostId, connectorKey, cardKind);
+    }),
+  setSmartSerialProcessDataMode: (
+    mesaConfig: ProjectMesaConfig | null,
+    hostId: string,
+    target: ProjectMesaSmartSerialTarget,
+    processDataMode: number,
+  ) =>
+    editMesaConfig(mesaConfig, (project) => {
+      setMesaSmartSerialProcessDataMode(
+        project,
+        hostId,
+        target,
+        processDataMode,
+      );
     }),
   setRawGpioPinDirection: (
     mesaConfig: ProjectMesaConfig | null,

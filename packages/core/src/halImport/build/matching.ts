@@ -1,4 +1,4 @@
-import { resolveComponentPinsForInstance } from "../../componentInstance";
+import { resolveComponentPinsForInstance } from "../../component/instance";
 import type {
   ComponentDefinition,
   ComponentPinDefinition,

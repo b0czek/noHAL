@@ -12,6 +12,9 @@ export default function MesaTab() {
       onUpdateHostKind={actions.updateMesaHostKind}
       onUpdateHostIp={actions.updateMesaHostIp}
       onSetConnectorCard={actions.setMesaConnectorCard}
+      onSetSmartSerialProcessDataMode={
+        actions.setMesaSmartSerialProcessDataMode
+      }
       onSetRawGpioPinDirection={actions.setMesaRawGpioPinDirection}
       onSetSmartSerialCard={actions.setMesaSmartSerialCard}
       syncProject={state.project}

@@ -16,37 +16,31 @@ export const MESA_DB25_CARDS: readonly MesaDb25CatalogEntry[] = [
       },
     },
     sserial: {
-      peripheralFragments: [
+      smartSerialPorts: [
         {
           key: "io",
-          displayName: "Digital I/O",
-          channelOffset: 0,
-          schemaProfile: {
-            digitalInputs: 32,
-            digitalOutputs: 16,
-          },
+          label: "Digital I/O",
+          order: 0,
+          baseChannelOffset: 0,
+          channels: 1,
+          fixedCardKind: "7i77-io",
         },
         {
           key: "analog",
-          displayName: "Analog + Spindle",
-          channelOffset: 1,
-          schemaProfile: {
-            spindleEnable: true,
-            analogEnable: true,
-            analogOutputs: 6,
-          },
+          label: "Analog + Spindle",
+          order: 1,
+          baseChannelOffset: 1,
+          channels: 1,
+          fixedCardKind: "7i77-analog",
         },
-      ],
-      smartSerialPorts: [
         {
           key: "rs422",
           label: "RS422 Smart-Serial",
-          order: 0,
+          order: 2,
           baseChannelOffset: 2,
           channels: 1,
         },
       ],
-      defaultMode: 0,
     },
   },
 ] as const;

@@ -43,4 +43,8 @@ export const wire = {
     // biome-ignore lint/style/noMagicNumbers: Dash patterns are clearer inline than as single-use aliases.
     dash: [7, 5] as number[],
   },
+  labelSelectionGuide: {
+    stroke: "rgba(255, 214, 122, 0.24)",
+    strokeWidth: 1.4,
+  },
 } as const;

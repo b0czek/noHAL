@@ -1,9 +1,15 @@
 import type {
   ComponentDefinition,
+  ComponentFunctionDefinition,
   ComponentParamDefinition,
   ComponentPinDefinition,
 } from "../types";
-import { createCustomComponentParam, createCustomComponentPin } from "./shared";
+import {
+  createCustomComponentFunction,
+  createCustomComponentParam,
+  createCustomComponentPin,
+  nextUniqueMemberKey,
+} from "./shared";
 
 function normalizeMaxInstances(
   maxInstances: number | undefined,
@@ -134,6 +140,68 @@ function addParam(component: ComponentDefinition): ComponentParamDefinition {
   return param;
 }
 
+function addFunction(
+  component: ComponentDefinition,
+): ComponentFunctionDefinition | null {
+  if (component.runtime?.kind !== "rt") return null;
+  const fn = createCustomComponentFunction(component);
+  component.functions ??= [];
+  component.functions.push(fn);
+  return fn;
+}
+
+function removeFunction(
+  component: ComponentDefinition,
+  functionKey: string,
+): ComponentFunctionDefinition | null {
+  const fn = component.functions?.find(
+    (candidate) => candidate.key === functionKey,
+  );
+  if (!fn) return null;
+  component.functions = component.functions?.filter(
+    (candidate) => candidate.key !== functionKey,
+  );
+  if (component.functions && component.functions.length === 0) {
+    delete component.functions;
+  }
+  return fn;
+}
+
+function updateFunctionName(
+  component: ComponentDefinition,
+  functionKey: string,
+  functionName: string,
+): ComponentFunctionDefinition | null {
+  const fn = component.functions?.find(
+    (candidate) => candidate.key === functionKey,
+  );
+  const normalized = functionName.trim();
+  if (!fn || !normalized) return null;
+  fn.declaredName = normalized;
+  fn.halSuffix = normalized === "_" ? "" : normalized;
+  fn.key = nextUniqueMemberKey(
+    normalized === "_" ? "default" : normalized,
+    (component.functions ?? [])
+      .filter((candidate) => candidate.key !== functionKey)
+      .map((candidate) => candidate.key),
+    "function",
+  );
+  return fn;
+}
+
+function updateFunctionFloatMode(
+  component: ComponentDefinition,
+  functionKey: string,
+  floatMode: ComponentFunctionDefinition["floatMode"],
+): ComponentFunctionDefinition | null {
+  const fn = component.functions?.find(
+    (candidate) => candidate.key === functionKey,
+  );
+  if (!fn) return null;
+  fn.floatMode = floatMode;
+  return fn;
+}
+
 function removeParam(
   component: ComponentDefinition,
   paramKey: string,
@@ -242,6 +310,16 @@ export const customComponentDefinitionEdits = {
     },
     defaultValue: {
       update: updateParamDefaultValue,
+    },
+  },
+  function: {
+    add: addFunction,
+    remove: removeFunction,
+    name: {
+      update: updateFunctionName,
+    },
+    floatMode: {
+      update: updateFunctionFloatMode,
     },
   },
 } as const;

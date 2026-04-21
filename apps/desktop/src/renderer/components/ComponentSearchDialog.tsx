@@ -5,7 +5,14 @@ import {
   HiOutlineDocumentText,
   HiOutlineTag,
 } from "solid-icons/hi";
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  Show,
+  untrack,
+} from "solid-js";
 import { Portal } from "solid-js/web";
 import type { OverlayDialogProps } from "../app/types";
 import { useI18n } from "../i18n";
@@ -92,9 +99,12 @@ export default function ComponentSearchDialog(
   });
 
   createEffect(() => {
-    props.scope;
-    setQuery("");
-    setActiveIndex(props.scope === "sheet" ? -1 : 0);
+    const scope = props.scope;
+    const previousQuery = untrack(() =>
+      editorUi.getComponentSearchQuery(scope),
+    );
+    setQuery(previousQuery);
+    setActiveIndex(scope === "sheet" ? -1 : 0);
     queueMicrotask(() => {
       queryInputEl?.focus();
       queryInputEl?.select();
@@ -136,12 +146,21 @@ export default function ComponentSearchDialog(
     options?: { close?: boolean },
   ) => {
     if (!result) return;
-    if (state.activeSheetId !== result.sheetId) {
-      actions.setActiveSheet(result.sheetId);
+    const applySelection = () => {
+      if (state.activeSheetId !== result.sheetId) {
+        actions.setActiveSheet(result.sheetId);
+      }
+      actions.select(result.target);
+      editorUi.requestCanvasFocus(result.sheetId, result.target);
+    };
+
+    if (!options?.close) {
+      applySelection();
+      return;
     }
-    actions.select(result.target);
-    editorUi.requestCanvasFocus(result.sheetId, result.target);
-    if (options?.close) props.onClose();
+
+    props.onClose();
+    queueMicrotask(applySelection);
   };
 
   const jumpToResult = (step: number) => {
@@ -283,7 +302,9 @@ export default function ComponentSearchDialog(
           scope: scopeLabel,
         })}
         onInput={(evt) => {
-          setQuery(evt.currentTarget.value);
+          const nextQuery = evt.currentTarget.value;
+          setQuery(nextQuery);
+          editorUi.setComponentSearchQuery(props.scope, nextQuery);
           setActiveIndex(props.scope === "project" ? 0 : -1);
         }}
         onKeyDown={handleQueryKeyDown}

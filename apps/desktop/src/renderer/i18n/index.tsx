@@ -14,11 +14,11 @@ type TranslationParams = Record<
   string | number | boolean | null | undefined
 >;
 
-type I18nContextValue = {
+interface I18nContextValue {
   locale: () => LocaleCode;
   t: (key: TranslationKey, params?: TranslationParams) => string;
   formatDateTime: (value: string | number | Date) => string;
-};
+}
 
 const MESSAGES = {
   en,

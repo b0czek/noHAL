@@ -1,11 +1,11 @@
 import type { EditorSelection } from "./actions/types";
 
-export type SelectionIdBuckets = {
+export interface SelectionIdBuckets {
   nodeIds: Set<string>;
   labelIds: Set<string>;
   commentIds: Set<string>;
   portIds: Set<string>;
-};
+}
 
 function createSelectionIdBuckets(args?: {
   nodeIds?: Iterable<string>;

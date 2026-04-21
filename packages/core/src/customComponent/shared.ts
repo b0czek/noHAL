@@ -1,14 +1,16 @@
 import { safeKey } from "../id";
 import type {
   ComponentDefinition,
+  ComponentFunctionDefinition,
   ComponentParamDefinition,
   ComponentPinDefinition,
+  ImportedComponentDefinition,
   NoHALProject,
 } from "../types";
 
 export function nextUniqueIdentifier(
   base: string,
-  existing: ReadonlyArray<string>,
+  existing: readonly string[],
   separator = "_",
 ): string {
   const normalized = base.trim() || "item";
@@ -20,7 +22,7 @@ export function nextUniqueIdentifier(
 
 export function nextUniqueMemberKey(
   preferredName: string,
-  existingKeys: ReadonlyArray<string>,
+  existingKeys: readonly string[],
   fallback: string,
 ): string {
   const baseKey = safeKey(preferredName) || fallback;
@@ -70,6 +72,60 @@ export function createCustomComponentParam(
     name,
     direction: "rw",
     type: "float",
+  };
+}
+
+export function createCustomComponentFunction(
+  component: ComponentDefinition,
+): ComponentFunctionDefinition {
+  const existingNames = (component.functions ?? []).map(
+    (fn) => fn.declaredName,
+  );
+  const declaredName = nextUniqueIdentifier("function", existingNames);
+  const halSuffix = declaredName;
+  return {
+    key: nextUniqueMemberKey(
+      declaredName,
+      (component.functions ?? []).map((fn) => fn.key),
+      "function",
+    ),
+    declaredName,
+    halSuffix,
+    floatMode: "fp",
+  };
+}
+
+export function createCustomComponentDefinition(options: {
+  componentId: string;
+  existingHalComponentNames: readonly string[];
+  baseHalComponentName?: string;
+}): ComponentDefinition {
+  const halComponentName = nextUniqueIdentifier(
+    options.baseHalComponentName ?? "custom_component",
+    options.existingHalComponentNames,
+  );
+
+  return {
+    id: options.componentId,
+    name: halComponentName,
+    halComponentName,
+    source: "manual",
+    runtime: { kind: "unknown" },
+    pins: [],
+    params: [],
+  };
+}
+
+export function toImportedCustomComponentDefinition(
+  component: ComponentDefinition,
+): ImportedComponentDefinition {
+  return {
+    ...component,
+    source: "manual",
+    parseMeta: {
+      parser: "nohal-manual-v1",
+      warnings: [],
+    },
   };
 }
 

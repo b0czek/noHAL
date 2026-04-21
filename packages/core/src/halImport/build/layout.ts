@@ -24,28 +24,28 @@ import { buildPlacementNodeGroups, planNodeGrid } from "./placement";
 
 type ImportNodeSide = "left" | "right" | "bottom";
 
-type ImportLabelDemand = {
+interface ImportLabelDemand {
   left: string[];
   right: string[];
   bottom: string[];
-};
+}
 
-type ImportPlannedLabel = {
+interface ImportPlannedLabel {
   anchorKey: string;
   netName: string;
   netLine: number;
   nodeId: string;
   pinKey: string;
   side: ImportNodeSide;
-};
+}
 
-type ImportLabelPlacementInfo = {
+interface ImportLabelPlacementInfo {
   slot: number;
   pinSideIndex?: number;
   peerIndexOnPin: number;
   peerCountOnPin: number;
   bottomStackOffsetY?: number;
-};
+}
 
 function planDirectConnectionEdgesForNet(options: {
   prepared: ImportPreparedNet;

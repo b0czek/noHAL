@@ -37,11 +37,11 @@ interface UseCanvasContextMenuArgs {
   getScene: () => SheetScene | null;
 }
 
-type SelectionActionItems = {
+interface SelectionActionItems {
   copyItem: ContextMenuActionItem;
   moveItem: ContextMenuActionItem;
   deleteItem: ContextMenuActionItem;
-};
+}
 
 const CONTEXT_MENU_VIEWPORT_PADDING = 8;
 
@@ -439,6 +439,10 @@ export function useCanvasContextMenu(args: UseCanvasContextMenuArgs) {
         items: [
           selectionItems.copyItem,
           selectionItems.moveItem,
+          {
+            label: t("canvasContext.convertLabelToPort"),
+            onSelect: () => actions.convertLabelToSheetPort(target.id),
+          },
           selectionItems.deleteItem,
         ],
       };

@@ -21,12 +21,12 @@ import { clearSheetLookupCache } from "../wires/lookup";
 import { clampScenePos } from "./bounds";
 import {
   applyCamera,
-  centerCamera,
   centerCameraOnWorldPoint,
   clientToWorld,
   screenToWorld,
   zoomCameraByFactor,
 } from "./camera";
+import { resolveSheetCamera } from "./cameraSelection";
 import {
   computeSceneBounds,
   focusCenterFromCullModel,
@@ -71,12 +71,7 @@ export function createKonvaSheetScene(
   callbacks: SceneCallbacks,
 ): SheetScene {
   const runtime = createSceneRuntime(container, callbacks);
-  runtime.state.camera = centerCamera({
-    stageWidth: runtime.view.stage.width(),
-    stageHeight: runtime.view.stage.height(),
-    sceneBounds: runtime.state.sceneBounds,
-  });
-  applyCameraToRuntime();
+  applyCameraToRuntime({ notify: false });
   runtime.state.interactionCleanup = bindSceneInteractions(runtime, {
     syncPlacementPreview,
     applyCamera: applyCameraToRuntime,
@@ -227,6 +222,16 @@ export function createKonvaSheetScene(
         state,
         nodeLayouts: runtime.graph.nodeLayouts,
       });
+      runtime.state.camera = resolveSheetCamera({
+        currentCamera: runtime.state.camera,
+        previousSheetId: runtime.state.renderedSheetId,
+        nextSheetId: sheet.id,
+        storedCamera: state.camera,
+        stageWidth: runtime.view.stage.width(),
+        stageHeight: runtime.view.stage.height(),
+        sceneBounds: runtime.state.sceneBounds,
+      });
+      runtime.state.renderedSheetId = sheet.id;
       applyCameraToRuntime();
       redrawWires(true);
 
@@ -287,8 +292,7 @@ export function createKonvaSheetScene(
     const clamped = clampPos(pos);
     const state = runtime.state.lastState;
     if (
-      !state ||
-      !state.gridResolution ||
+      !state?.gridResolution ||
       runtime.state.interaction.gridSnapOverridePressed
     ) {
       return clamped;
@@ -309,12 +313,15 @@ export function createKonvaSheetScene(
     if (runtime.state.lastState?.pendingEndpoint) redrawWires();
   }
 
-  function applyCameraToRuntime(): void {
+  function applyCameraToRuntime(options?: { notify?: boolean }): void {
     applyCamera({
       runtime,
       updateCullVisibility,
       syncPlacementPreview,
-      onCameraChange: runtime.callbacks.onCameraChange,
+      onCameraChange:
+        options?.notify === false
+          ? undefined
+          : runtime.callbacks.onCameraChange,
     });
   }
 

@@ -30,6 +30,11 @@ export interface MesaConfigEditorProps {
     connectorKey: string,
     cardKind: ProjectMesaConnectorCardKind | undefined,
   ) => void;
+  onSetSmartSerialProcessDataMode: (
+    hostId: string,
+    target: ProjectMesaSmartSerialTarget,
+    processDataMode: number,
+  ) => void;
   onSetRawGpioPinDirection: (
     hostId: string,
     connectorKey: string,
@@ -104,6 +109,9 @@ export default function MesaConfigEditor(props: MesaConfigEditorProps) {
                 onUpdateHostKind={props.onUpdateHostKind}
                 onUpdateHostIp={props.onUpdateHostIp}
                 onSetConnectorCard={props.onSetConnectorCard}
+                onSetSmartSerialProcessDataMode={
+                  props.onSetSmartSerialProcessDataMode
+                }
                 onSetRawGpioPinDirection={props.onSetRawGpioPinDirection}
                 onSetSmartSerialCard={props.onSetSmartSerialCard}
               />

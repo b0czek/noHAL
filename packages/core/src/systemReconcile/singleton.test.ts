@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveComponentPinsForInstance } from "../componentInstance";
+import { resolveComponentPinsForInstance } from "../component/instance";
 import { getNodePins } from "../graph";
 import { exportProjectToHal } from "../halExport";
 import { createId } from "../id";
@@ -67,6 +67,7 @@ function createTestSystemDefinition(): ComponentDefinition {
       family: TEST_SYSTEM_FAMILY,
     },
     constraints: {
+      exportNamespace: "global",
       fixedInstanceName: "testsys",
       fixedExportStage: "postgui",
     },
@@ -330,8 +331,11 @@ describe("systemReconcile singleton", () => {
     });
 
     const out = exportProjectToHal(project);
-    expect(out.text).not.toContain("net testsys_extra");
+    expect(out.text).toContain("net testsys_extra system.src.out");
     expect(out.postguiText ?? "").toContain(
+      "net testsys_extra testsys.aux-ready",
+    );
+    expect(out.postguiText ?? "").not.toContain(
       "net testsys_extra system.src.out testsys.aux-ready",
     );
   });

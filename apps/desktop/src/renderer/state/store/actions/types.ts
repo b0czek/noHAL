@@ -4,6 +4,7 @@ import type {
   SheetEndpointRef,
   XY,
 } from "@nohal/core/types";
+import type { CameraState } from "../../../canvas";
 import type { TranslationKey } from "../../../i18n";
 import type { Selection } from "../selectionTypes";
 
@@ -22,10 +23,10 @@ export type SetEditorState = <K extends keyof EditorState>(
   value: EditorState[K],
 ) => void;
 
-export type WithProjectOptions = {
+export interface WithProjectOptions {
   recordHistory?: boolean;
   markDirty?: boolean;
-};
+}
 
 export type EditorSelection = Selection;
 
@@ -36,6 +37,7 @@ export interface EditorState {
   isDirty: boolean;
   canvasCursorPos: XY | null;
   activeSheetId: string;
+  sheetCameras: Record<string, CameraState>;
   canUndo: boolean;
   canRedo: boolean;
   selection: EditorSelection;

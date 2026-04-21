@@ -1,3 +1,4 @@
+import { DEFAULT_HAL_NAME_LEN } from "@nohal/core/halNames";
 import StringSelect from "../../components/form/StringSelect";
 import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
@@ -8,6 +9,13 @@ export default function GeneralTab() {
   const { state, actions } = useEditorStore();
   const fieldLabelClass =
     "text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground";
+  const halNameLen = () =>
+    state.project.halExport?.halNameLen ?? DEFAULT_HAL_NAME_LEN;
+  const setHalNameLen = (rawValue: string) => {
+    const next = Number.parseInt(rawValue, 10);
+    if (!Number.isFinite(next)) return;
+    actions.updateProjectHalNameLen(next);
+  };
   const wireVisibilityOptions = () => [
     {
       value: "under-components",
@@ -64,6 +72,23 @@ export default function GeneralTab() {
               actions.updateProjectName(evt.currentTarget.value)
             }
           />
+        </div>
+
+        <div class="grid gap-2">
+          <span class={fieldLabelClass}>
+            {t("projectSettings.generalHalNameLen")}
+          </span>
+          <Input
+            type="number"
+            min="2"
+            step="1"
+            class="mono w-full max-w-xs"
+            value={String(halNameLen())}
+            onChange={(evt) => setHalNameLen(evt.currentTarget.value)}
+          />
+          <div class="text-xs text-muted-foreground">
+            {t("projectSettings.generalHalNameLenHelp")}
+          </div>
         </div>
 
         <div class="grid gap-2">

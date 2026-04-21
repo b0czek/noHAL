@@ -45,9 +45,12 @@ export interface ComponentSystemMetadata {
   subfamily?: string;
 }
 
+export type ComponentExportNamespace = "sheet_scoped" | "global";
+
 export interface ComponentConstraintPolicy {
   fixedInstanceName?: string;
   fixedExportStage?: "main" | "postgui";
+  exportNamespace?: ComponentExportNamespace;
 }
 
 export type ComponentLoadrtStrategyId =
@@ -125,7 +128,7 @@ export interface ComponentDefinition {
 
 export interface ImportedComponentDefinition extends ComponentDefinition {
   parseMeta: {
-    parser: "nohal-comp-v1";
+    parser: "nohal-comp-v1" | "nohal-manual-v1";
     warnings: string[];
     rawHeader?: string;
   };

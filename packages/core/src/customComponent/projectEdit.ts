@@ -1,6 +1,8 @@
 import { createId } from "../id";
 import type {
   ComponentDefinition,
+  ComponentFunctionDefinition,
+  ComponentNode,
   ComponentParamDefinition,
   ComponentPinDefinition,
   NoHALProject,
@@ -8,30 +10,24 @@ import type {
 import { customComponentDefinitionEdits } from "./definitionEdit";
 import { reconcileComponentNodesForDefinition } from "./reconcile";
 import {
+  createCustomComponentDefinition,
   findManualComponent,
-  nextUniqueIdentifier,
   projectUsesComponentDefinition,
 } from "./shared";
 
-function add(project: NoHALProject): ComponentDefinition {
-  const existingNames = Object.values(project.library.components)
-    .map((component) => component.halComponentName)
-    .filter((name) => name.trim().length > 0);
-  const componentId = `manual:${createId("component")}`;
-  const halComponentName = nextUniqueIdentifier(
-    "custom_component",
-    existingNames,
+function add(
+  project: NoHALProject,
+  options?: { halComponentName?: string },
+): ComponentDefinition {
+  const existingNames = Object.values(project.library.components).map(
+    (component) => component.halComponentName,
   );
-  const component: ComponentDefinition = {
-    id: componentId,
-    name: halComponentName,
-    halComponentName,
-    source: "manual",
-    runtime: { kind: "unknown" },
-    pins: [],
-    params: [],
-  };
-  project.library.components[componentId] = component;
+  const component = createCustomComponentDefinition({
+    componentId: `manual:${createId("component")}`,
+    existingHalComponentNames: existingNames,
+    baseHalComponentName: options?.halComponentName,
+  });
+  project.library.components[component.id] = component;
   return component;
 }
 
@@ -124,6 +120,27 @@ function addPin(
   return { component, pin };
 }
 
+function removePinStateFromNode(node: ComponentNode, pinKey: string): void {
+  if (node.pinInitialValues) {
+    delete node.pinInitialValues[pinKey];
+    if (Object.keys(node.pinInitialValues).length === 0) {
+      delete node.pinInitialValues;
+    }
+  }
+  if (node.hiddenPinKeys) {
+    node.hiddenPinKeys = node.hiddenPinKeys.filter((key) => key !== pinKey);
+    if (node.hiddenPinKeys.length === 0) {
+      delete node.hiddenPinKeys;
+    }
+  }
+  if (node.pinOrder) {
+    node.pinOrder = node.pinOrder.filter((key) => key !== pinKey);
+    if (node.pinOrder.length === 0) {
+      delete node.pinOrder;
+    }
+  }
+}
+
 function removePin(
   project: NoHALProject,
   componentId: string,
@@ -137,18 +154,7 @@ function removePin(
     for (const node of sheet.nodes) {
       if (node.kind !== "component" || node.componentId !== componentId)
         continue;
-      if (node.pinInitialValues) {
-        delete node.pinInitialValues[pinKey];
-        if (Object.keys(node.pinInitialValues).length === 0) {
-          delete node.pinInitialValues;
-        }
-      }
-      if (node.hiddenPinKeys) {
-        node.hiddenPinKeys = node.hiddenPinKeys.filter((key) => key !== pinKey);
-        if (node.hiddenPinKeys.length === 0) {
-          delete node.hiddenPinKeys;
-        }
-      }
+      removePinStateFromNode(node, pinKey);
     }
   }
   reconcileComponentNodesForDefinition(project, componentId, component);
@@ -215,6 +221,66 @@ function addParam(
   const param = customComponentDefinitionEdits.param.add(component);
   reconcileComponentNodesForDefinition(project, componentId, component);
   return { component, param };
+}
+
+function addFunction(
+  project: NoHALProject,
+  componentId: string,
+): { component: ComponentDefinition; fn: ComponentFunctionDefinition } | null {
+  const component = findManualComponent(project, componentId);
+  if (!component) return null;
+  const fn = customComponentDefinitionEdits.function.add(component);
+  if (!fn) return null;
+  return { component, fn };
+}
+
+function removeFunction(
+  project: NoHALProject,
+  componentId: string,
+  functionKey: string,
+): { component: ComponentDefinition; functionName: string } | null {
+  const component = findManualComponent(project, componentId);
+  if (!component) return null;
+  const fn = customComponentDefinitionEdits.function.remove(
+    component,
+    functionKey,
+  );
+  if (!fn) return null;
+  return { component, functionName: fn.declaredName };
+}
+
+function updateFunctionName(
+  project: NoHALProject,
+  componentId: string,
+  functionKey: string,
+  functionName: string,
+): { component: ComponentDefinition; functionName: string } | null {
+  const component = findManualComponent(project, componentId);
+  if (!component) return null;
+  const fn = customComponentDefinitionEdits.function.name.update(
+    component,
+    functionKey,
+    functionName,
+  );
+  if (!fn) return null;
+  return { component, functionName: fn.declaredName };
+}
+
+function updateFunctionFloatMode(
+  project: NoHALProject,
+  componentId: string,
+  functionKey: string,
+  floatMode: ComponentFunctionDefinition["floatMode"],
+): { component: ComponentDefinition; functionName: string } | null {
+  const component = findManualComponent(project, componentId);
+  if (!component) return null;
+  const fn = customComponentDefinitionEdits.function.floatMode.update(
+    component,
+    functionKey,
+    floatMode,
+  );
+  if (!fn) return null;
+  return { component, functionName: fn.declaredName };
 }
 
 function removeParam(
@@ -352,6 +418,16 @@ export const customComponentEdits = {
     },
     defaultValue: {
       update: updateParamDefaultValue,
+    },
+  },
+  function: {
+    add: addFunction,
+    remove: removeFunction,
+    name: {
+      update: updateFunctionName,
+    },
+    floatMode: {
+      update: updateFunctionFloatMode,
     },
   },
 } as const;

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { makeAddfQueueFunctionEntry } from "./addfQueue";
+import {
+  makeAddfQueueFunctionEntry,
+  makeAddfQueueNodeEntry,
+} from "./addfQueue";
 import { exportProjectToHal } from "./halExport";
 import { createEmptyProject } from "./project";
 import { findSystemSheet, findSystemSheetNode } from "./sheet";
@@ -61,6 +64,50 @@ function makeConnectedProject(signalName?: string) {
   return project;
 }
 
+function makeSinglePinProject(label?: {
+  name: string;
+  scope: "global" | "local";
+}) {
+  const project = createEmptyProject("Single Pin Label Test");
+  const sheet = project.sheets[project.rootSheetId];
+  project.library.components["comp:test-sink"] = {
+    id: "comp:test-sink",
+    name: "sink",
+    halComponentName: "sink",
+    source: "comp",
+    sourcePath: "tests/components/sink.comp",
+    runtime: { kind: "rt" },
+    pins: [{ key: "in0", name: "in0", direction: "in", type: "bit" }],
+    params: [],
+  };
+  sheet.nodes.push({
+    id: "node_sink",
+    kind: "component",
+    componentId: "comp:test-sink",
+    instanceName: "sink",
+    position: { x: 0, y: 0 },
+    paramValues: {},
+  });
+  if (!label) return project;
+
+  sheet.labels.push({
+    id: "label_1",
+    name: label.name,
+    scope: label.scope,
+    position: { x: 40, y: 0 },
+  });
+  sheet.labelAnchors.push({
+    id: "anchor_1",
+    labelId: "label_1",
+    endpoint: { kind: "node-pin", nodeId: "node_sink", pinKey: "in0" },
+  });
+  return project;
+}
+
+function expectContainsNetLine(text: string | undefined, line: string) {
+  expect(text ?? "").toContain(line);
+}
+
 describe("exportProjectToHal connection signal names", () => {
   it("uses a direct connection signalName for exported net naming", () => {
     const project = makeConnectedProject(" machine_enable ");
@@ -88,6 +135,60 @@ describe("exportProjectToHal connection signal names", () => {
     expect(warnings.some((w) => w.includes("Invalid HAL signal name"))).toBe(
       true,
     );
+  });
+
+  it("emits a net for a globally labeled single pin", () => {
+    const project = makeSinglePinProject({
+      name: "global_sig",
+      scope: "global",
+    });
+
+    const { text } = exportProjectToHal(project);
+
+    expect(text).toContain("net global_sig sink.in0");
+  });
+
+  it("emits a net for a locally labeled single pin", () => {
+    const project = makeSinglePinProject({
+      name: "local_sig",
+      scope: "local",
+    });
+
+    const { text } = exportProjectToHal(project);
+
+    expect(text).toContain("net local_sig sink.in0");
+  });
+
+  it("keeps unlabeled single pins out of the export", () => {
+    const project = makeSinglePinProject();
+
+    const { text } = exportProjectToHal(project);
+
+    expect(text).toContain("# (no nets exported)");
+    expect(text).not.toContain("sink.in0");
+  });
+
+  it("warns when exported HAL names or signal names exceed the configured limit", () => {
+    const project = makeConnectedProject("signal_name_too_long");
+    const sheet = project.sheets[project.rootSheetId];
+    const source = sheet.nodes.find((node) => node.id === "node_a");
+    if (!source || source.kind !== "component")
+      throw new Error("expected component node");
+    source.instanceName = "very_long_source";
+    project.halExport = { halNameLen: 10 };
+
+    const { warnings } = exportProjectToHal(project);
+
+    expect(
+      warnings.some((warning) =>
+        warning.includes("HAL signal name 'signal_name_too_long'"),
+      ),
+    ).toBe(true);
+    expect(
+      warnings.some((warning) =>
+        warning.includes("HAL name 'very_long_source.out'"),
+      ),
+    ).toBe(true);
   });
 
   it("aborts exporting when a net mixes OUT and IO pins", () => {
@@ -202,6 +303,67 @@ describe("exportProjectToHal connection signal names", () => {
     expect(text).not.toContain("loadrt manual_loader names=");
   });
 
+  it("does not infer addf targets for realtime components without functions", () => {
+    const project = createEmptyProject("No Function Addf Export");
+    const sheet = project.sheets[project.rootSheetId];
+    project.library.components["comp:no-function-implicit"] = {
+      id: "comp:no-function-implicit",
+      name: "homecomp",
+      halComponentName: "homecomp",
+      source: "comp",
+      runtime: {
+        kind: "rt",
+        instanceNaming: { strategy: "canonical_indexed" },
+      },
+      pins: [
+        { key: "is_module", name: "is-module", direction: "out", type: "bit" },
+      ],
+      params: [],
+      functions: [],
+    };
+    project.library.components["comp:no-function-explicit"] = {
+      id: "comp:no-function-explicit",
+      name: "matrixkins",
+      halComponentName: "matrixkins",
+      source: "comp",
+      runtime: {
+        kind: "rt",
+        instanceNaming: { strategy: "canonical_indexed" },
+      },
+      pins: [{ key: "dummy", name: "dummy", direction: "out", type: "bit" }],
+      params: [],
+    };
+    sheet.nodes.push(
+      {
+        id: "node_implicit",
+        kind: "component",
+        componentId: "comp:no-function-implicit",
+        instanceName: "homecomp.0",
+        position: { x: 0, y: 0 },
+        paramValues: {},
+      },
+      {
+        id: "node_explicit",
+        kind: "component",
+        componentId: "comp:no-function-explicit",
+        instanceName: "matrixkins.0",
+        position: { x: 180, y: 0 },
+        paramValues: {},
+      },
+    );
+    sheet.hal = {
+      ...(sheet.hal ?? {}),
+      addfQueue: [makeAddfQueueNodeEntry("node_explicit")],
+    };
+
+    const { text } = exportProjectToHal(project);
+
+    expect(text).toContain("loadrt homecomp");
+    expect(text).toContain("loadrt matrixkins");
+    expect(text).not.toContain("addf homecomp.0");
+    expect(text).not.toContain("addf matrixkins.0");
+  });
+
   it("preserves raw ini reference tokens in exported setp values", () => {
     const project = createEmptyProject("INI Setp Export");
     const sheet = project.sheets[project.rootSheetId];
@@ -235,6 +397,51 @@ describe("exportProjectToHal connection signal names", () => {
 
     expect(text).toContain("setp ini_ref.0.gain [TRAJ]DEFAULT_LINEAR_VELOCITY");
     expect(text).toContain("setp ini_ref.0.offset [DISPLAY]MAX_FEED_OVERRIDE");
+  });
+
+  it("warns when exported setp targets exceed the configured limit", () => {
+    const project = createEmptyProject("Setp Length Warning");
+    const sheet = project.sheets[project.rootSheetId];
+    project.library.components["comp:test-long-setp"] = {
+      id: "comp:test-long-setp",
+      name: "long-setp",
+      halComponentName: "long_setp",
+      source: "manual",
+      sourcePath: "tests/components/long-setp.comp",
+      runtime: { kind: "rt" },
+      pins: [{ key: "gain", name: "gain", direction: "in", type: "float" }],
+      params: [
+        {
+          key: "offset",
+          name: "offset",
+          direction: "rw",
+          type: "float",
+        },
+      ],
+    };
+    sheet.nodes.push({
+      id: "node_long_setp",
+      kind: "component",
+      componentId: "comp:test-long-setp",
+      instanceName: "very_long_setp",
+      position: { x: 0, y: 0 },
+      pinInitialValues: { gain: "1.0" },
+      paramValues: { offset: "2.0" },
+    });
+    project.halExport = { halNameLen: 10 };
+
+    const { warnings } = exportProjectToHal(project);
+
+    expect(
+      warnings.some((warning) =>
+        warning.includes("HAL name 'very_long_setp.gain'"),
+      ),
+    ).toBe(true);
+    expect(
+      warnings.some((warning) =>
+        warning.includes("HAL name 'very_long_setp.offset'"),
+      ),
+    ).toBe(true);
   });
 
   it("applies custom-component max instance limits to custom loadusr exports", () => {
@@ -285,9 +492,13 @@ describe("exportProjectToHal connection signal names", () => {
   it("emits nets for postgui-marked component instances into postgui output", () => {
     const project = makeConnectedProject("ui_sig");
     const sheet = project.sheets[project.rootSheetId];
+    const source = sheet.nodes.find((node) => node.id === "node_a");
     const sink = sheet.nodes.find((node) => node.id === "node_b");
+    if (!source || source.kind !== "component")
+      throw new Error("expected component node");
     if (!sink || sink.kind !== "component")
       throw new Error("expected component node");
+    source.exportStage = "postgui";
     sink.exportStage = "postgui";
 
     const { text, postguiText } = exportProjectToHal(project);
@@ -297,6 +508,38 @@ describe("exportProjectToHal connection signal names", () => {
     expect(text).not.toContain("net ui_sig src.out sink.in0");
     expect(postguiText).toBeDefined();
     expect(postguiText).toContain("net ui_sig src.out sink.in0");
+  });
+
+  it("splits mixed-stage nets across main and postgui outputs with the same net name", () => {
+    const project = makeConnectedProject("ui_sig");
+    const sheet = project.sheets[project.rootSheetId];
+    const sink = sheet.nodes.find((node) => node.id === "node_b");
+    if (!sink || sink.kind !== "component")
+      throw new Error("expected component node");
+    sink.exportStage = "postgui";
+
+    const { text, postguiText } = exportProjectToHal(project);
+
+    expectContainsNetLine(text, "net ui_sig src.out");
+    expect(text).not.toContain("net ui_sig src.out sink.in0");
+    expectContainsNetLine(postguiText, "net ui_sig sink.in0");
+    expect(postguiText).not.toContain("net ui_sig src.out sink.in0");
+  });
+
+  it("keeps the same net name when a postgui output drives a main-stage consumer", () => {
+    const project = makeConnectedProject("ui_sig");
+    const sheet = project.sheets[project.rootSheetId];
+    const source = sheet.nodes.find((node) => node.id === "node_a");
+    if (!source || source.kind !== "component")
+      throw new Error("expected component node");
+    source.exportStage = "postgui";
+
+    const { text, postguiText } = exportProjectToHal(project);
+
+    expectContainsNetLine(text, "net ui_sig sink.in0");
+    expect(text).not.toContain("net ui_sig src.out sink.in0");
+    expectContainsNetLine(postguiText, "net ui_sig src.out");
+    expect(postguiText).not.toContain("net ui_sig src.out sink.in0");
   });
 
   it("emits a separate shutdown HAL output when configured", () => {

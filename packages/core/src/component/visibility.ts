@@ -1,4 +1,4 @@
-import type { ComponentDefinition } from "./types";
+import type { ComponentDefinition } from "../types";
 
 export function isComponentPlaceable(component: ComponentDefinition): boolean {
   return component.visibility?.placeable !== false;

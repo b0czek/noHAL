@@ -1,6 +1,6 @@
-import { isSystemComponent } from "../componentSystem";
+import { isSystemComponent } from "../component/system";
 import { getSheet } from "../graph";
-import { createId, slugify } from "../id";
+import { createId, nextUniqueName, slugify } from "../id";
 import type {
   ComponentDefinition,
   NoHALProject,
@@ -9,7 +9,7 @@ import type {
   XY,
 } from "../types";
 import { defaultNodePositionForIndex } from "./layout";
-import { moveSelectionIntoSubsheet } from "./subsheetMove";
+import { moveItemsIntoSubsheet } from "./subsheetMove";
 import {
   createDefaultSheetThreadOutputs,
   firstSheetThreadOutputId,
@@ -44,13 +44,6 @@ function createSystemSheet(): SheetDefinition {
       threadOutputs: createDefaultSheetThreadOutputs(),
     },
   };
-}
-
-function nextUniqueName(base: string, used: ReadonlySet<string>): string {
-  if (!used.has(base)) return base;
-  let index = 2;
-  while (used.has(`${base}${index}`)) index += 1;
-  return `${base}${index}`;
 }
 
 function ensureSystemInstanceName(rootSheet: SheetDefinition): string {
@@ -202,7 +195,7 @@ export function moveRootSystemComponentsToSystemSheet(
       })
       .map((label) => label.id),
   );
-  moveSelectionIntoSubsheet(project, {
+  moveItemsIntoSubsheet(project, {
     parentSheetId: rootSheet.id,
     childSheetId: systemSheet.id,
     subsheetNode: systemSheetNode,

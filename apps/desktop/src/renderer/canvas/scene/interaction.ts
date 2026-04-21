@@ -16,7 +16,7 @@ const BACKGROUND_TAP_THRESHOLD_PX = 4;
 const KEYBOARD_ZOOM_FACTOR = 1.08;
 const WHEEL_LINE_DELTA_PX = 16;
 
-type SceneInteractionOps = {
+interface SceneInteractionOps {
   syncPlacementPreview: () => void;
   applyCamera: () => void;
   redrawWires: () => void;
@@ -26,7 +26,35 @@ type SceneInteractionOps = {
   cancelMarqueeSelection: () => void;
   finishMarqueeSelection: () => void;
   updateMarqueeRect: () => void;
-};
+}
+
+function setPanCursor(container: HTMLDivElement, active: boolean): void {
+  const cursor = active ? "grabbing" : "";
+  container.style.cursor = cursor;
+  document.documentElement.style.cursor = cursor;
+}
+
+function isPointerLockedPan(
+  container: HTMLDivElement,
+  interaction: SceneRuntime["state"]["interaction"],
+): boolean {
+  return (
+    interaction.isPanning &&
+    interaction.panTriggerButton !== null &&
+    document.pointerLockElement === container
+  );
+}
+
+function stopPan(runtime: SceneRuntime, container: HTMLDivElement): void {
+  const shouldReleasePointerLock =
+    runtime.state.interaction.panTriggerButton !== null &&
+    document.pointerLockElement === container;
+  runtime.state.interaction.isPanning = false;
+  runtime.state.interaction.panLastScreenPos = null;
+  runtime.state.interaction.panTriggerButton = null;
+  setPanCursor(container, false);
+  if (shouldReleasePointerLock) document.exitPointerLock();
+}
 
 function resetBackgroundTapState(runtime: SceneRuntime): void {
   runtime.state.interaction.backgroundTapStartScreenPos = null;
@@ -60,8 +88,7 @@ function maybeSnapWorldPos(runtime: SceneRuntime, pos: XY): XY {
   const clamped = clampRuntimePos(runtime, pos);
   const state = runtime.state.lastState;
   if (
-    !state ||
-    !state.gridResolution ||
+    !state?.gridResolution ||
     runtime.state.interaction.gridSnapOverridePressed
   ) {
     return clamped;
@@ -159,8 +186,11 @@ function handlePanStart(args: {
   evt.cancelBubble = true;
   runtime.state.interaction.isPanning = true;
   runtime.state.interaction.panLastScreenPos = { x: pos.x, y: pos.y };
+  runtime.state.interaction.panTriggerButton =
+    evt.evt instanceof MouseEvent ? evt.evt.button : null;
   runtime.state.interaction.backgroundTapStartScreenPos = null;
-  container.style.cursor = "grabbing";
+  setPanCursor(container, true);
+  if (evt.evt instanceof MouseEvent) container.requestPointerLock?.();
   preventCancelableEvent(evt);
   return true;
 }
@@ -292,13 +322,63 @@ export function bindSceneInteractions(
   const onWindowBlur = () => {
     runtime.state.interaction.gridSnapOverridePressed = false;
     runtime.state.interaction.spacePressed = false;
+    stopPan(runtime, container);
     syncCursorPosFromScreenPos(runtime, stage.getPointerPosition(), toWorld);
     syncPlacementPreview();
+  };
+
+  const onWindowMouseMove = (evt: MouseEvent) => {
+    syncGridSnapOverrideFromPointerEvent(runtime, evt);
+    if (!isPointerLockedPan(container, runtime.state.interaction)) return;
+
+    if (evt.movementX !== 0 || evt.movementY !== 0) {
+      panCamera(runtime.state.camera, evt.movementX, evt.movementY);
+      applyCamera();
+    }
+
+    syncCursorPosFromScreenPos(
+      runtime,
+      runtime.state.interaction.panLastScreenPos,
+      toWorld,
+    );
+    syncPlacementPreview();
+    if (runtime.state.lastState?.pendingEndpoint) redrawWires();
+    evt.preventDefault();
+  };
+
+  const onWindowMouseUp = (evt: MouseEvent) => {
+    const { interaction } = runtime.state;
+    if (
+      !interaction.isPanning ||
+      (interaction.panTriggerButton !== null &&
+        evt.button !== interaction.panTriggerButton)
+    ) {
+      return;
+    }
+
+    stopPan(runtime, container);
+  };
+
+  const onPointerLockChange = () => {
+    const { interaction } = runtime.state;
+    if (document.pointerLockElement === container) {
+      if (interaction.isPanning && interaction.panTriggerButton !== null) {
+        setPanCursor(container, true);
+      }
+      return;
+    }
+
+    if (interaction.isPanning && interaction.panTriggerButton !== null) {
+      stopPan(runtime, container);
+    }
   };
 
   window.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("keyup", onKeyUp);
   window.addEventListener("blur", onWindowBlur);
+  window.addEventListener("mousemove", onWindowMouseMove, true);
+  window.addEventListener("mouseup", onWindowMouseUp, true);
+  document.addEventListener("pointerlockchange", onPointerLockChange);
 
   placementHitRect.on(`mousedown${EVENT_NS} touchstart${EVENT_NS}`, (evt) => {
     if (!runtime.state.lastState?.placement) return;
@@ -321,7 +401,14 @@ export function bindSceneInteractions(
     const screenPos = pos ? { x: pos.x, y: pos.y } : null;
 
     const { interaction } = runtime.state;
-    if (interaction.isPanning && screenPos && interaction.panLastScreenPos) {
+    if (isPointerLockedPan(container, interaction)) return;
+
+    if (
+      interaction.isPanning &&
+      interaction.panTriggerButton === null &&
+      screenPos &&
+      interaction.panLastScreenPos
+    ) {
       const dx = screenPos.x - interaction.panLastScreenPos.x;
       const dy = screenPos.y - interaction.panLastScreenPos.y;
       panCamera(runtime.state.camera, dx, dy);
@@ -361,8 +448,7 @@ export function bindSceneInteractions(
   );
 
   stage.on(`mouseleave${EVENT_NS}`, () => {
-    runtime.state.interaction.isPanning = false;
-    runtime.state.interaction.panLastScreenPos = null;
+    if (runtime.state.interaction.isPanning) return;
     runtime.state.interaction.backgroundTapStartScreenPos = null;
     runtime.state.interaction.backgroundTapAdditive = false;
     cancelMarqueeSelection();
@@ -404,11 +490,9 @@ export function bindSceneInteractions(
       !runtime.state.lastState?.pendingEndpoint &&
       !runtime.state.lastState?.placement;
 
-    runtime.state.interaction.isPanning = false;
-    runtime.state.interaction.panLastScreenPos = null;
+    stopPan(runtime, container);
     runtime.state.interaction.backgroundTapStartScreenPos = null;
     runtime.state.interaction.backgroundTapAdditive = false;
-    container.style.cursor = "";
 
     if (shouldClearSelection) runtime.callbacks.onSelect(null);
   });
@@ -449,6 +533,10 @@ export function bindSceneInteractions(
     window.removeEventListener("keydown", onKeyDown, true);
     window.removeEventListener("keyup", onKeyUp);
     window.removeEventListener("blur", onWindowBlur);
+    window.removeEventListener("mousemove", onWindowMouseMove, true);
+    window.removeEventListener("mouseup", onWindowMouseUp, true);
+    document.removeEventListener("pointerlockchange", onPointerLockChange);
+    stopPan(runtime, container);
     stage.off(EVENT_NS);
     placementHitRect.off(EVENT_NS);
   };

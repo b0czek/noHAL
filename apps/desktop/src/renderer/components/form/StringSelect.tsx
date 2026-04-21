@@ -14,7 +14,7 @@ export interface StringSelectOption {
 
 interface StringSelectProps {
   value?: string;
-  options: ReadonlyArray<StringSelectOption>;
+  options: readonly StringSelectOption[];
   placeholder?: string;
   disabled?: boolean;
   class?: string;
@@ -44,9 +44,15 @@ export default function StringSelect(props: StringSelectProps) {
       }}
     >
       <SelectTrigger class={props.class}>
-        <SelectValue<StringSelectOption>>
-          {(state) => state.selectedOption()?.label ?? props.placeholder}
-        </SelectValue>
+        <div class="min-w-0 flex-1 text-left">
+          <SelectValue<StringSelectOption>>
+            {(state) => (
+              <span class="block truncate">
+                {state.selectedOption()?.label ?? props.placeholder}
+              </span>
+            )}
+          </SelectValue>
+        </div>
       </SelectTrigger>
       <SelectContent />
     </Select>

@@ -28,7 +28,7 @@ export function listStoreEntriesForLinuxCncVersion(
 export function listStoreSourcesForLinuxCncVersion(
   componentStore: ComponentStore,
   linuxcncVersion: LinuxCncVersion,
-): Array<ComponentStore["sources"][string]> {
+): ComponentStore["sources"][string][] {
   return Object.values(componentStore.sources).filter((source) => {
     if (source.kind !== "linuxcnc-builtin") return true;
     return source.linuxcncVersion === linuxcncVersion;

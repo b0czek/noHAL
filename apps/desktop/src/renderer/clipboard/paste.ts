@@ -2,6 +2,7 @@ import { createId } from "@nohal/core/id";
 import {
   isProtectedSystemNode,
   isProtectedSystemSheet,
+  isSingletonReferenceBlocked,
 } from "@nohal/core/sheet";
 import type {
   NoHALProject,
@@ -28,21 +29,21 @@ const PASTE_OFFSET_PX = 40;
 
 type CloneValue = <T>(value: T) => T;
 
-type PasteMaps = {
+interface PasteMaps {
   nodeIdMap: Map<string, string>;
   labelIdMap: Map<string, string>;
   portIdMap: Map<string, string>;
-};
+}
 
-type PasteTranslation = {
+interface PasteTranslation {
   translatePoint: (point: XY) => XY;
-};
+}
 
-export type SelectionClipboardPasteResult = {
+export interface SelectionClipboardPasteResult {
   project: NoHALProject;
   selection: EditorSelection;
   count: number;
-};
+}
 
 export function pasteSelectionClipboardSnapshot(args: {
   project: NoHALProject;
@@ -163,7 +164,7 @@ function pasteNodes(args: {
     if (node.kind === "component") {
       const component = next.library.components[node.componentId];
       if (!component || isProtectedSystemNode(next, node)) continue;
-      const instanceName = nextComponentInstanceName(sheet, component);
+      const instanceName = nextComponentInstanceName(next, sheet, component);
       if (!instanceName) continue;
       const pastedNode = cloneValue(node);
       pastedNode.id = createId("node");
@@ -176,6 +177,9 @@ function pasteNodes(args: {
     }
 
     if (isProtectedSystemSheet(next, node.sheetId)) continue;
+    if (isSingletonReferenceBlocked(next, sheet.id, node.sheetId)) {
+      continue;
+    }
     const pastedNode = cloneValue(node);
     pastedNode.id = createId("node");
     pastedNode.instanceName = ensureInstanceName(sheet, node.instanceName);

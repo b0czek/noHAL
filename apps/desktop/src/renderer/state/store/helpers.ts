@@ -1,11 +1,9 @@
 import {
-  addfQueueEntryNodeId,
-  normalizeAddfQueueEntries,
-} from "@nohal/core/addfQueue";
-import {
+  componentHasFixedExportNamespace,
   componentPrefersCanonicalInstanceNames,
   componentUsesLockedCanonicalInstanceNames,
   ensureInstanceName,
+  hasComponentExportPathConflict,
   nextComponentInstanceName,
 } from "@nohal/core/componentNaming";
 import {
@@ -14,6 +12,7 @@ import {
   listStoreEntriesForLinuxCncVersion,
 } from "@nohal/core/componentStore";
 import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
+import { STORE_CUSTOM_COMPONENT_ID_PREFIX } from "@nohal/core/customComponentStore";
 import { endpointKey } from "@nohal/core/graph";
 import {
   defaultCommentPositionForIndex,
@@ -24,6 +23,7 @@ import {
 } from "@nohal/core/sheet";
 import type {
   ComponentStore,
+  ComponentStoreEntry,
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
@@ -32,14 +32,16 @@ import type {
 } from "@nohal/core/types";
 import { unwrap } from "solid-js/store";
 
-export { createEmptyComponentStore };
 export {
-  ensureInstanceName,
-  nextComponentInstanceName,
+  componentHasFixedExportNamespace,
   componentPrefersCanonicalInstanceNames,
   componentUsesLockedCanonicalInstanceNames,
+  createEmptyComponentStore,
+  ensureInstanceName,
+  hasComponentExportPathConflict,
+  nextComponentInstanceName,
+  normalizeRotationDegrees,
 };
-export { normalizeRotationDegrees };
 
 export function cloneProject(project: NoHALProject): NoHALProject {
   return structuredClone(unwrap(project));
@@ -70,6 +72,18 @@ export function applyComponentStoreToProject(
   }
 }
 
+export function applyComponentStoreEntryToProject(
+  project: NoHALProject,
+  entry: ComponentStoreEntry,
+): void {
+  project.library.components[entry.componentId] = entry.parsed;
+  reconcileComponentNodesForDefinition(
+    project,
+    entry.componentId,
+    entry.parsed,
+  );
+}
+
 function projectUsesComponentDefinition(
   project: NoHALProject,
   componentId: string,
@@ -88,8 +102,12 @@ export function pruneMissingStoredComponentsFromProject(
   for (const [componentId, component] of Object.entries(
     project.library.components,
   )) {
-    if (component.source !== "comp") continue;
     const entry = componentStore.components[componentId];
+    const isStoreBackedComponent =
+      !!entry ||
+      component.source === "comp" ||
+      componentId.startsWith(STORE_CUSTOM_COMPONENT_ID_PREFIX);
+    if (!isStoreBackedComponent) continue;
     if (
       entry &&
       isStoreEntryCompatibleWithLinuxCncVersion(
@@ -105,15 +123,34 @@ export function pruneMissingStoredComponentsFromProject(
   }
 }
 
-export function getComponentSourceDisplayPath(
+export function getComponentSourceDisplayLabel(
   componentStore: ComponentStore,
   sourceId: string,
 ): string {
   const source = componentStore.sources[sourceId];
   if (!source) return sourceId;
+  if (source.kind === "manual") return "Custom Components";
   if (source.kind === "comp-dir") return source.dirPath;
   if (source.kind === "comp-file") return source.filePath;
   return `LinuxCNC ${source.linuxcncVersion} built-ins (${source.refName})`;
+}
+
+export function repointComponentDefinitionId(
+  project: NoHALProject,
+  fromComponentId: string,
+  toComponentId: string,
+): number {
+  let repointedCount = 0;
+  for (const sheet of Object.values(project.sheets)) {
+    for (const node of sheet.nodes) {
+      if (node.kind !== "component" || node.componentId !== fromComponentId) {
+        continue;
+      }
+      node.componentId = toComponentId;
+      repointedCount += 1;
+    }
+  }
+  return repointedCount;
 }
 
 export function nextName(base: string, used: Set<string>): string {
@@ -177,97 +214,6 @@ export function sheetContainsSheet(
   return false;
 }
 
-export function pruneSheetNodeReferences(
-  sheet: SheetDefinition,
-  removedNodeIds: ReadonlySet<string>,
-): void {
-  if (removedNodeIds.size === 0) return;
-
-  sheet.directConnections = sheet.directConnections.filter(
-    (c) =>
-      !(c.a.kind === "node-pin" && removedNodeIds.has(c.a.nodeId)) &&
-      !(c.b.kind === "node-pin" && removedNodeIds.has(c.b.nodeId)),
-  );
-
-  sheet.labelAnchors = sheet.labelAnchors.filter(
-    (a) =>
-      !(
-        a.endpoint.kind === "node-pin" && removedNodeIds.has(a.endpoint.nodeId)
-      ),
-  );
-
-  if (!sheet.hal?.addfQueue) return;
-  sheet.hal.addfQueue = normalizeAddfQueueEntries(
-    sheet.hal.addfQueue.filter((entry) => {
-      const nodeId = addfQueueEntryNodeId(entry);
-      return !(nodeId && removedNodeIds.has(nodeId));
-    }),
-  );
-  if (sheet.hal.addfQueue.length === 0) delete sheet.hal.addfQueue;
-  if (Object.keys(sheet.hal).length === 0) delete sheet.hal;
-}
-
-export function pruneSheetPortReferences(
-  sheet: SheetDefinition,
-  removedPortIds: ReadonlySet<string>,
-): void {
-  if (removedPortIds.size === 0) return;
-
-  sheet.directConnections = sheet.directConnections.filter(
-    (c) =>
-      !(c.a.kind === "sheet-port" && removedPortIds.has(c.a.portId)) &&
-      !(c.b.kind === "sheet-port" && removedPortIds.has(c.b.portId)),
-  );
-
-  sheet.labelAnchors = sheet.labelAnchors.filter(
-    (a) =>
-      !(
-        a.endpoint.kind === "sheet-port" &&
-        removedPortIds.has(a.endpoint.portId)
-      ),
-  );
-}
-
-export function removeSheetSelectionItems(
-  sheet: SheetDefinition,
-  selection: {
-    nodeIds: ReadonlySet<string>;
-    labelIds: ReadonlySet<string>;
-    commentIds: ReadonlySet<string>;
-    portIds: ReadonlySet<string>;
-  },
-): void {
-  if (selection.nodeIds.size > 0) {
-    const removedNodeIds = new Set<string>();
-    sheet.nodes = sheet.nodes.filter((node) => {
-      if (!selection.nodeIds.has(node.id)) return true;
-      removedNodeIds.add(node.id);
-      return false;
-    });
-    pruneSheetNodeReferences(sheet, removedNodeIds);
-  }
-
-  if (selection.labelIds.size > 0) {
-    sheet.labels = sheet.labels.filter(
-      (label) => !selection.labelIds.has(label.id),
-    );
-    sheet.labelAnchors = sheet.labelAnchors.filter(
-      (anchor) => !selection.labelIds.has(anchor.labelId),
-    );
-  }
-
-  if (selection.commentIds.size > 0) {
-    sheet.comments = sheet.comments.filter(
-      (comment) => !selection.commentIds.has(comment.id),
-    );
-  }
-
-  if (selection.portIds.size > 0) {
-    sheet.ports = sheet.ports.filter((port) => !selection.portIds.has(port.id));
-    pruneSheetPortReferences(sheet, selection.portIds);
-  }
-}
-
 export function syncProjectUi(
   project: NoHALProject,
   activeSheetId: string,
@@ -299,22 +245,4 @@ export function cloneEndpoint(endpoint: SheetEndpointRef): SheetEndpointRef {
   return endpoint.kind === "node-pin"
     ? { kind: "node-pin", nodeId: endpoint.nodeId, pinKey: endpoint.pinKey }
     : { kind: "sheet-port", portId: endpoint.portId };
-}
-
-export function selectionBoundsForNodesAndLabels(
-  nodes: SheetNodeInstance[],
-  labels: { position: XY }[],
-): XY {
-  const points = [
-    ...nodes.map((node) => node.position),
-    ...labels.map((label) => label.position),
-  ];
-  if (points.length === 0) return { x: 120, y: 100 };
-  let minX = points[0].x;
-  let minY = points[0].y;
-  for (const point of points) {
-    if (point.x < minX) minX = point.x;
-    if (point.y < minY) minY = point.y;
-  }
-  return { x: minX, y: minY };
 }

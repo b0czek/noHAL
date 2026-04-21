@@ -10,7 +10,7 @@ import type {
 
 export type MachineImportFlowStep = "machine-files" | "mesa" | "link";
 
-export type MachineImportFlowState = {
+export interface MachineImportFlowState {
   isActive: boolean;
   step: MachineImportFlowStep;
   isBusy: boolean;
@@ -26,7 +26,7 @@ export type MachineImportFlowState = {
   systemLinkGroupIds: string[];
   generatedLocalComponents: Record<string, ComponentDefinition>;
   placementHeuristic: HalImportPlacementHeuristic;
-};
+}
 
 export type FlowEvent =
   | { type: "open" }

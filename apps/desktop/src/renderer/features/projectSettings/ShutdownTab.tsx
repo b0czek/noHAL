@@ -4,11 +4,11 @@ import { Dynamic } from "solid-js/web";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
 
-type LazyCodeEditorProps = {
+interface LazyCodeEditorProps {
   value: string;
   onChange: (value: string) => void;
   language: "linuxcnc-hal";
-};
+}
 
 export default function ShutdownTab() {
   const { t } = useI18n();

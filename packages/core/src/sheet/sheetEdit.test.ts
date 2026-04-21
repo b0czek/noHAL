@@ -1,7 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { makeAddfQueueNodeEntry } from "../addfQueue";
 import { createEmptyProject, createSheet } from "../project";
+import type { ComponentDefinition } from "../types";
 import { sheetModelEdits } from "./sheetEdit";
+import { ensureSystemSheet } from "./system";
+
+function createSystemComponent(id: string): ComponentDefinition {
+  return {
+    id,
+    name: "System Component",
+    halComponentName: "system_component",
+    source: "manual",
+    pins: [],
+    params: [],
+    system: {
+      manager: "test",
+      family: "test",
+    },
+  };
+}
 
 describe("sheet model edit helpers", () => {
   it("manages sheet thread outputs and remaps dependent references", () => {
@@ -90,6 +107,56 @@ describe("sheet model edit helpers", () => {
     expect(project.sheets[second?.sheet.id ?? ""]).toBeTruthy();
   });
 
+  it("rejects invalid sheet item moves before mutating the project", () => {
+    const project = createEmptyProject("Sheet Item Move Guard");
+    const root = project.sheets[project.rootSheetId];
+    const child = createSheet("Child");
+    project.sheets[child.id] = child;
+    project.library.components["system:test"] =
+      createSystemComponent("system:test");
+
+    root.nodes.push(
+      {
+        id: "node_child",
+        kind: "sheet",
+        sheetId: child.id,
+        instanceName: "child",
+        position: { x: 20, y: 30 },
+      },
+      {
+        id: "node_system",
+        kind: "component",
+        componentId: "system:test",
+        instanceName: "system_component",
+        position: { x: 60, y: 70 },
+        paramValues: {},
+      },
+    );
+
+    expect(
+      sheetModelEdits.items.moveIntoNewSubsheet(project, root.id, {
+        nodeIds: new Set(["node_system"]),
+        labelIds: new Set(),
+        portIds: new Set(),
+      }),
+    ).toEqual({ ok: false, reason: "protected-system-node" });
+    expect(root.nodes.some((node) => node.id === "node_system")).toBe(true);
+
+    expect(
+      sheetModelEdits.items.moveIntoExistingSubsheet(
+        project,
+        root.id,
+        "node_child",
+        {
+          nodeIds: new Set(["node_child"]),
+          labelIds: new Set(),
+          portIds: new Set(),
+        },
+      ),
+    ).toEqual({ ok: false, reason: "target-in-items" });
+    expect(child.nodes).toHaveLength(0);
+  });
+
   it("deletes only the targeted definition and prunes its references", () => {
     const project = createEmptyProject("Delete Sheet Definition");
     const root = project.sheets[project.rootSheetId];
@@ -150,6 +217,62 @@ describe("sheet model edit helpers", () => {
     expect(root.labelAnchors).toHaveLength(0);
   });
 
+  it("deletes a sheet port and prunes parent-sheet usages", () => {
+    const project = createEmptyProject("Delete Sheet Port");
+    const root = project.sheets[project.rootSheetId];
+    const child = createSheet("Child");
+    child.ports.push({
+      id: "port_child_in",
+      name: "child_in",
+      direction: "in",
+      type: "bit",
+      side: "right",
+      position: { x: 0, y: 0 },
+    });
+    project.sheets[child.id] = child;
+
+    root.nodes.push({
+      id: "node_child",
+      kind: "sheet",
+      sheetId: child.id,
+      instanceName: "child",
+      position: { x: 20, y: 30 },
+    });
+    root.ports.push({
+      id: "port_root_in",
+      name: "root_in",
+      direction: "in",
+      type: "bit",
+      side: "right",
+      position: { x: 0, y: 0 },
+    });
+    root.directConnections.push({
+      id: "conn_child_port",
+      a: { kind: "sheet-port", portId: "port_root_in" },
+      b: { kind: "node-pin", nodeId: "node_child", pinKey: "port_child_in" },
+    });
+    root.labelAnchors.push({
+      id: "anchor_child_port",
+      labelId: "label-1",
+      endpoint: {
+        kind: "node-pin",
+        nodeId: "node_child",
+        pinKey: "port_child_in",
+      },
+    });
+
+    expect(
+      sheetModelEdits.port.remove(project, child.id, "port_child_in"),
+    ).toEqual({
+      ok: true,
+      removedPortId: "port_child_in",
+      removedReferenceInstanceCount: 1,
+    });
+    expect(child.ports).toHaveLength(0);
+    expect(root.directConnections).toHaveLength(0);
+    expect(root.labelAnchors).toHaveLength(0);
+  });
+
   it("detaches a sheet reference into an independent definition snapshot", () => {
     const project = createEmptyProject("Detach Sheet Reference");
     const root = project.sheets[project.rootSheetId];
@@ -177,11 +300,47 @@ describe("sheet model edit helpers", () => {
       "node_child",
     );
 
-    expect(result).not.toBeNull();
-    expect(result?.originalSheetId).toBe(child.id);
-    expect(result?.detachedSheet.id).not.toBe(child.id);
-    expect(result?.detachedSheet.name).toBe("Child Copy");
-    expect(result?.node.sheetId).toBe(result?.detachedSheet.id);
-    expect(result?.detachedSheet.nodes[0]?.id).not.toBe("node_component");
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected detach to succeed");
+    expect(result.originalSheetId).toBe(child.id);
+    expect(result.detachedSheet.id).not.toBe(child.id);
+    expect(result.detachedSheet.name).toBe("Child Copy");
+    expect(result.node.sheetId).toBe(result.detachedSheet.id);
+    expect(result.detachedSheet.nodes[0]?.id).not.toBe("node_component");
+  });
+
+  it("keeps protected system sheets immutable through sheet definition/reference edits", () => {
+    const project = createEmptyProject("Protected System Sheet Edit");
+    const { rootSheet, systemSheet, systemSheetNode } =
+      ensureSystemSheet(project);
+
+    expect(
+      sheetModelEdits.definition.remove(
+        project,
+        systemSheet.id,
+        project.rootSheetId,
+      ),
+    ).toEqual({ ok: false, reason: "protected-system-sheet" });
+    expect(project.sheets[systemSheet.id]).toBeDefined();
+
+    expect(
+      sheetModelEdits.reference.remove(
+        project,
+        rootSheet.id,
+        systemSheetNode.id,
+      ),
+    ).toEqual({ ok: false, reason: "protected-system-sheet" });
+    expect(rootSheet.nodes.some((node) => node.id === systemSheetNode.id)).toBe(
+      true,
+    );
+
+    expect(
+      sheetModelEdits.reference.detach(
+        project,
+        rootSheet.id,
+        systemSheetNode.id,
+      ),
+    ).toEqual({ ok: false, reason: "protected-system-sheet" });
+    expect(systemSheetNode.sheetId).toBe(systemSheet.id);
   });
 });

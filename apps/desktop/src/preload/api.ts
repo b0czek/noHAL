@@ -1,6 +1,7 @@
 import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
 import type { ProjectReadResult } from "@nohal/core/project";
 import type {
+  ComponentDefinition,
   ComponentStore,
   ComponentStoreEntry,
   ImportedComponentDefinition,
@@ -22,6 +23,11 @@ export interface NoHALApi {
   onRequestSaveBeforeClose(listener: () => Promise<boolean>): () => void;
   getAppSettings(): Promise<AppSettings>;
   updateAppSettings(patch: AppSettingsPatch): Promise<AppSettings>;
+  getCustomComponentStorePathInfo(): Promise<{
+    path: string;
+    defaultPath: string;
+    isDefault: boolean;
+  }>;
   newProject(
     linuxcncVersion?: LinuxCncVersion,
   ): Promise<{ project: NoHALProject } | null>;
@@ -43,12 +49,28 @@ export interface NoHALApi {
     halFiles: MachineConfigHalFileSelection[],
   ): Promise<MachineConfigImportDraft>;
   importCompFile(): Promise<ImportedComponentDefinition | null>;
+  pickCustomComponentStoreFile(
+    defaultPath?: string | null,
+  ): Promise<string | null>;
   pickDirectory(defaultPath?: string | null): Promise<string | null>;
   scanCompDir(dirPath: string): Promise<{
     imported: ImportedComponentDefinition[];
     errors: Array<{ filePath: string; error: string }>;
   }>;
   loadComponentStore(): Promise<ComponentStore>;
+  addManualComponentToStore(
+    halComponentName?: string,
+  ): Promise<ComponentStoreEntry>;
+  updateManualComponentInStore(
+    componentId: string,
+    component: ImportedComponentDefinition,
+  ): Promise<ComponentStoreEntry>;
+  removeManualComponentFromStore(
+    componentId: string,
+  ): Promise<{ sourceId: string; componentId: string }>;
+  promoteProjectCustomComponentToStore(
+    component: ComponentDefinition,
+  ): Promise<ComponentStoreEntry>;
   importCompFileToStore(): Promise<ComponentStoreEntry | null>;
   addCompDirSourceToStore(): Promise<{
     sourceId: string;

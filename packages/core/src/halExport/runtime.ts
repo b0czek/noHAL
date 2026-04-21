@@ -6,7 +6,7 @@ import {
   makeAddfQueueNodeEntry,
   makeAddfQueueSubsheetOutputEntry,
 } from "../addfQueue";
-import { resolveAddfFunctionTarget } from "../componentFunctions";
+import { resolveAddfFunctionTarget } from "../component/functions";
 import { interpolateCustomLoadCommand } from "../customComponent/loadCommand";
 import { getSheet } from "../graph";
 import { isValidHalName } from "../halNames";
@@ -285,23 +285,12 @@ function prepareRuntimeGroups(
   return preparedByComponentName;
 }
 
-function warnUnknownRuntimeInstances(
-  ctx: ExportContext,
-  unknownRuntimeInstances: RuntimeInstanceRecord[],
-): void {
-  for (const item of unknownRuntimeInstances) {
-    ctx.warnings.push(
-      `Component '${item.instancePath}' (${item.componentName}) has unknown runtime kind; skipping loadrt/addf generation for it`,
-    );
-  }
-}
-
 function collectSortedRtGroups(
   rtInstances: RuntimeInstanceRecord[],
   preparedByComponentName: Map<string, PreparedComponentRuntimeGroup>,
   rules: ComponentRules,
   loadOrderIndex: Map<string, number>,
-): Array<[string, PreparedComponentRuntimeGroup]> {
+): [string, PreparedComponentRuntimeGroup][] {
   const rtGroups = new Map<string, PreparedComponentRuntimeGroup>();
   for (const item of rtInstances) {
     const prepared = preparedByComponentName.get(item.componentName);
@@ -417,7 +406,7 @@ function buildThreadsLoadrtLines(
 }
 
 function appendRtComponentLoadrtLines(args: {
-  sortedRtGroups: Array<[string, PreparedComponentRuntimeGroup]>;
+  sortedRtGroups: [string, PreparedComponentRuntimeGroup][];
   rules: ComponentRules;
   ctx: ExportContext;
   loadrtLines: string[];
@@ -470,7 +459,7 @@ function buildRuntimeSummaryLines(
   }
   if (unknownRuntimeInstances.length > 0) {
     runtimeSummaryLines.push(
-      `# Unknown-runtime components (set runtime.kind to enable loadrt/addf generation):`,
+      `# Runtime not generated for externally managed/unknown components(set runtime.kind to enable loadrt/addf generation):`,
     );
     for (const item of unknownRuntimeInstances) {
       runtimeSummaryLines.push(
@@ -497,18 +486,6 @@ function warnThreadFloatMismatch(args: {
   args.warnedFpThreadMismatch.add(key);
   args.ctx.warnings.push(
     `Function '${args.functionTarget}' requires fp but is scheduled in nofp thread '${args.threadName}'`,
-  );
-}
-
-function defaultAddfTemplatesForComponent(
-  project: NoHALProject,
-  componentId: string,
-): string[] {
-  const component = project.library.components[componentId];
-  const functions = component?.functions ?? [];
-  if (functions.length === 0) return ["{instance}"];
-  return functions.map((fn) =>
-    fn.halSuffix ? `{instance}.${fn.halSuffix}` : "{instance}",
   );
 }
 
@@ -721,16 +698,7 @@ function pushDefaultComponentQueueItems(args: {
   const component = args.project.library.components[args.node.componentId];
   const functions = component?.functions ?? [];
   if (args.state.coveredByNodeEntry.has(args.node.id)) return;
-  if (functions.length === 0) {
-    pushOrderedAddfItem(args.state, {
-      queueKey:
-        addfQueueEntryKey(makeAddfQueueNodeEntry(args.node.id)) ??
-        `node:${args.node.id}`,
-      node: args.node,
-      sheetThreadOutputId: args.defaultSheetThreadId,
-    });
-    return;
-  }
+  if (functions.length === 0) return;
   const covered = args.state.coveredFunctionKeysByNodeId.get(args.node.id);
   for (const fn of functions) {
     if (covered?.has(fn.key)) continue;
@@ -950,7 +918,7 @@ function emitComponentAddfEntries(args: {
     componentName,
     instancePath: resolveExportedInstancePath(
       args.pathParts,
-      args.queueItem.node.instanceName,
+      args.queueItem.node,
       component,
     ),
     parentSheetPath: joinInstancePath(args.pathParts),
@@ -986,13 +954,10 @@ function emitComponentAddfEntries(args: {
     });
     return;
   }
-  const templates = (
-    customTemplates ??
-    defaultAddfTemplatesForComponent(
-      args.project,
-      args.queueItem.node.componentId,
-    )
-  ).filter((template) => template.trim().length > 0);
+  if (!customTemplates) return;
+  const templates = customTemplates.filter(
+    (template) => template.trim().length > 0,
+  );
   emitTemplatedAddfEntries({
     addfEntries: args.addfEntries,
     templates,
@@ -1150,7 +1115,6 @@ export function buildRuntimeSections(
     ctx,
     itemsByComponentName,
   );
-  warnUnknownRuntimeInstances(ctx, unknownRuntimeInstances);
   const sortedRtGroups = collectSortedRtGroups(
     rtInstances,
     preparedByComponentName,

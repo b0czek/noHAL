@@ -7,10 +7,10 @@ import { surface } from "../constants/surfaces";
 import { typography } from "../constants/typography";
 import { wire } from "../constants/wires";
 import {
-  estimateCommentSize,
-  estimatePortLabelWidth,
+  measureCommentSize,
   measureLabelBox,
   measureLabelScopeWidth,
+  measurePortLabelWidth,
 } from "../measurements";
 import { dirStroke, labelFill, typeFill } from "../theme";
 import type {
@@ -145,7 +145,7 @@ export function buildPlacementPreview(args: {
 
   if (placement.kind === "comment") {
     const content = "Comment";
-    const size = estimateCommentSize(content);
+    const size = measureCommentSize(content);
     group.add(
       new Konva.Rect({
         x: 0,
@@ -218,7 +218,7 @@ export function buildPlacementPreview(args: {
   }
 
   const name = previewPortName(placement.direction);
-  const width = estimatePortLabelWidth(name);
+  const width = measurePortLabelWidth(name);
   const side = previewPortSide(placement.direction);
   let labelRectX = port.label.offset;
   let labelRectY = -port.label.height / 2;

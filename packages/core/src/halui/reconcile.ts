@@ -1,3 +1,4 @@
+import { isManagedBySystemManager } from "../component/system";
 import {
   createHaluiSystemComponentDefinition,
   defaultPositionForHalui,
@@ -5,7 +6,6 @@ import {
   HALUI_SYSTEM_FAMILY,
   HALUI_SYSTEM_MANAGER,
 } from "../componentStore/catalog/system/halui";
-import { isManagedBySystemManager } from "../componentSystem";
 import { reconcileSystemSingleton } from "../systemReconcile/singleton";
 import type { ComponentNode, NoHALProject } from "../types";
 

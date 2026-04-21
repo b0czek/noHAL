@@ -9,6 +9,7 @@ import {
   setMesaConnectorCard as setMesaConnectorCardEdit,
   setMesaRawGpioPinDirection as setMesaRawGpioPinDirectionEdit,
   setMesaSmartSerialCard as setMesaSmartSerialCardEdit,
+  setMesaSmartSerialProcessDataMode as setMesaSmartSerialProcessDataModeEdit,
   syncMesaManagedProjection as syncMesaManagedProjectionEdit,
   updateMesaHostIp as updateMesaHostIpEdit,
   updateMesaHostKind as updateMesaHostKindEdit,
@@ -58,6 +59,23 @@ export function createMesaActions(deps: EditorStoreActionContext) {
       );
       if (!changed) return;
       deps.setStatusT("store.status.updatedMesaConnector");
+    },
+
+    setMesaSmartSerialProcessDataMode(
+      hostId: string,
+      target: ProjectMesaSmartSerialTarget,
+      processDataMode: number,
+    ): void {
+      const changed = deps.withProject((project) =>
+        setMesaSmartSerialProcessDataModeEdit(
+          project,
+          hostId,
+          target,
+          processDataMode,
+        ),
+      );
+      if (!changed) return;
+      deps.setStatusT("store.status.updatedMesaProcessDataMode");
     },
 
     setMesaRawGpioPinDirection(

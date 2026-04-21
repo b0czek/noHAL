@@ -21,6 +21,7 @@ export function createIocontrolSystemComponentDefinition(): ComponentDefinition 
       showInCustomComponents: false,
     },
     constraints: {
+      exportNamespace: "global",
       fixedInstanceName: IOCONTROL_INSTANCE_NAME,
     },
     runtime: { kind: "userspace" },

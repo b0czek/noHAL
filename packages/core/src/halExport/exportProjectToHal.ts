@@ -1,8 +1,10 @@
 import { unique } from "remeda";
+import { validateDuplicateExportedInstancePaths } from "../component/naming";
 import { reconcileProject } from "../project";
+import { validateForcedSheetSingletons } from "../sheet/singleton";
 import type { NoHALProject } from "../types";
 import type { ExportResult } from "./context";
-import { createExportContext } from "./context";
+import { createExportContext, pushFatal } from "./context";
 import { collectNetLines } from "./nets";
 import { collectParamLines } from "./params";
 import { renderHalOutput, renderShutdownHalOutput } from "./render";
@@ -12,7 +14,11 @@ import { traverseSheetInstance } from "./traversal";
 export function exportProjectToHal(project: NoHALProject): ExportResult {
   reconcileProject(project);
   const shutdownText = renderShutdownHalOutput(project);
-  const ctx = createExportContext();
+  const ctx = createExportContext(project.halExport?.halNameLen);
+  validateForcedSheetSingletons(project, (message) => pushFatal(ctx, message));
+  validateDuplicateExportedInstancePaths(project, (message) =>
+    pushFatal(ctx, message),
+  );
   traverseSheetInstance(ctx, project, project.rootSheetId, [], []);
 
   for (const members of ctx.globalLabelMembers.values()) {

@@ -1,3 +1,4 @@
+import { normalizeHalNameLen } from "../halNames";
 import type {
   LinuxCncIniEntry,
   LinuxCncIniSection,
@@ -8,10 +9,7 @@ import type {
 } from "../types";
 import { createEmptyMachineConfig } from "./project";
 
-function nextUniqueIniLabel(
-  base: string,
-  existing: ReadonlyArray<string>,
-): string {
+function nextUniqueIniLabel(base: string, existing: readonly string[]): string {
   if (!existing.includes(base)) return base;
   let index = 1;
   while (existing.includes(`${base}_${index}`)) index += 1;
@@ -52,6 +50,19 @@ export function updateProjectWireStyle(
 ): boolean {
   if (project.ui.wireStyle === style) return false;
   project.ui.wireStyle = style;
+  return true;
+}
+
+export function updateProjectHalNameLen(
+  project: NoHALProject,
+  halNameLen: number,
+): boolean {
+  const normalized = normalizeHalNameLen(halNameLen);
+  if (project.halExport?.halNameLen === normalized) return false;
+  project.halExport = {
+    ...(project.halExport ?? {}),
+    halNameLen: normalized,
+  };
   return true;
 }
 
@@ -182,6 +193,9 @@ export const projectEdits = {
       style: {
         update: updateProjectWireStyle,
       },
+    },
+    halNameLen: {
+      update: updateProjectHalNameLen,
     },
   },
   machineConfig: {

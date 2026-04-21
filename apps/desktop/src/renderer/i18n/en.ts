@@ -76,6 +76,7 @@ export const en = {
   "canvasContext.detachSheetReference": "Detach Reference",
   "canvasContext.putEverythingIntoSubsheet": "Into Subsheet",
   "canvasContext.splitConnectionIntoLabels": "Split Into Labels",
+  "canvasContext.convertLabelToPort": "Convert To Port",
   "canvasContext.removeConnection": "Remove Connection",
   "canvasContext.removeLabelAnchor": "Remove Label Anchor",
   "canvasContext.deleteWaypoint": "Delete Waypoint",
@@ -122,6 +123,12 @@ export const en = {
   "componentDialog.exportStagePostgui": "Postgui HAL File",
   "componentDialog.exportStageLockedPostgui":
     "Export stage is fixed by component definition.",
+  "componentDialog.exportNamespace": "Export Namespace",
+  "componentDialog.exportNamespaceGlobal": "Global namespace",
+  "componentDialog.exportNamespaceHelp":
+    "Exports this instance without sheet path prefixes.",
+  "componentDialog.exportNamespaceLocked":
+    "Export namespace is fixed by component definition or runtime naming rules.",
   "componentDialog.functions": "Realtime Functions (addf)",
   "componentDialog.noFunctions": "No function metadata.",
   "componentDialog.functionDefault": "_ (default)",
@@ -130,6 +137,9 @@ export const en = {
   "componentDialog.noParameters": "No parameters.",
   "componentDialog.instanceConfig": "Instance Configuration",
   "componentDialog.noInstanceConfig": "No per-instance configuration fields.",
+  "componentDialog.dragToReorder": "Drag to reorder",
+  "componentDialog.pinSettingsDescription":
+    "Adjust per-instance pin order, visibility, and initial values.",
   "componentDialog.pinInitialValues": "Pin Initial Values (setp)",
   "componentDialog.pinVisibility": "Visible on canvas",
   "componentDialog.pinVisibilityConnectedHint":
@@ -171,7 +181,7 @@ export const en = {
   "projectSettings.tabMotmod": "motmod",
   "projectSettings.tabMesa": "Mesa",
   "projectSettings.tabThreads": "HAL Threads",
-  "projectSettings.tabCustomComponents": "Custom Components",
+  "projectSettings.tabCustomComponents": "Project Custom Components",
   "projectSettings.tabShutdown": "Shutdown",
   "projectSettings.tabIniEditor": "INI Editor",
   "projectSettings.generalTitle": "General",
@@ -179,6 +189,9 @@ export const en = {
   "projectSettings.generalProjectName": "Project Name",
   "projectSettings.generalProjectNameHelp":
     "Used in the editor title and generated build file names.",
+  "projectSettings.generalHalNameLen": "HAL_NAME_LEN",
+  "projectSettings.generalHalNameLenHelp":
+    "Warn during export when HAL names or signal names get too long for the configured limit.",
   "projectSettings.generalWireLayer": "Wire Visibility",
   "projectSettings.generalWireLayerHelp":
     "Choose whether wires stay behind components or show on top.",
@@ -235,6 +248,7 @@ export const en = {
   "projectSettings.mesa.gpioDirectionInput": "Input",
   "projectSettings.mesa.gpioDirectionOutput": "Output",
   "projectSettings.mesa.smartSerial": "Smart-Serial",
+  "projectSettings.mesa.processDataMode": "Process Data Mode",
   "projectSettings.mesa.channelLabel": "Channel {channel}",
   "projectSettings.mesa.validationTitle": "Validation",
   "projectSettings.mesa.syncStatusLabel": "System HAL projection",
@@ -244,9 +258,9 @@ export const en = {
     "Pending: +{add} add, -{remove} remove, {ensure} ensure components, {update} rename/update nodes",
   "projectSettings.mesa.syncNow": "Sync now",
   "projectSettings.mesa.noCard": "(none)",
-  "customComponents.title": "Custom Components",
+  "customComponents.title": "Project Custom Components",
   "customComponents.help":
-    "Components that are not backed by a `.comp` file. You can define the command used to load them.",
+    "Project-scoped components that are not backed by a `.comp` file. You can define the command used to load them.",
   "customComponents.addComponent": "Add Component",
   "customComponents.catalogTitle": "Custom Components",
   "customComponents.editorTitle": "Component Editor",
@@ -255,6 +269,9 @@ export const en = {
   "customComponents.empty":
     "No custom components yet. Import a HAL config or add a component that is not in the component library.",
   "customComponents.removeComponent": "Remove Component",
+  "customComponents.promoteToStore": "Promote to Store",
+  "customComponents.confirmPromoteToStore":
+    "Promote {name} to the Component Store?\n\nThis moves the component out of the current project, creates a store custom component, repoints existing placed instances to the store version, and removes the project-local version.",
   "customComponents.cannotRemoveInUse":
     "Component is used by {count} placed instance(s). Remove instances first.",
   "customComponents.componentName": "HAL Component Name",
@@ -283,6 +300,9 @@ export const en = {
   "customComponents.paramDirectionRead": "r",
   "customComponents.paramDirectionReadWrite": "rw",
   "customComponents.paramDefaultValue": "Default Value",
+  "customComponents.functionsTitle": "Realtime Functions (addf)",
+  "customComponents.addFunction": "Add Function",
+  "customComponents.noFunctions": "No realtime functions defined.",
   "customComponents.optionalValue": "(optional)",
 
   "sheetSettings.ariaLabel": "Sheet Settings",
@@ -441,7 +461,11 @@ export const en = {
   "componentStore.title": "Component Store",
   "componentStore.summary": "{components} components • {sources} sources",
   "componentStore.sources": "Component Sources",
+  "componentStore.addSource": "Add Source",
+  "componentStore.addCustomSource": "Custom Components",
   "componentStore.addDirSource": "Add Dir Source",
+  "componentStore.addComponent": "Add Component",
+  "componentStore.viewStore": "View Store",
   "componentStore.importCompFile": "Import .comp",
   "componentStore.sourceComponentsCount": "{count} components",
   "componentStore.lastScan": "last scan {time}",
@@ -454,9 +478,24 @@ export const en = {
   "componentStore.filterPlaceholder": "Filter components...",
   "componentStore.componentStats": "{pins} pins • {params} params",
   "componentStore.componentWarnings": "{count} warnings",
+  "componentStore.customSource": "Global Custom Components",
+  "componentStore.customSourceBadge": "global",
+  "componentStore.customSourceDescription":
+    "Global custom component definitions shared across projects",
+  "componentStore.customStoreLocationLabel": "Custom Store File",
+  "componentStore.customStoreLocationHelp":
+    "Choose where global custom components are stored.",
+  "componentStore.customStoreCurrentPath": "Current file",
+  "componentStore.customStoreUsingDefault":
+    "Using the default app data location.",
+  "componentStore.customStoreDefaultPath": "Default location: {path}",
+  "componentStore.chooseCustomStorePath": "Choose File",
+  "componentStore.resetCustomStorePath": "Use Default",
   "componentStore.dirSource": "dir source",
   "componentStore.fileImport": "file import",
   "componentStore.builtinSource": "built-in library",
+  "componentStore.editComponent": "Edit",
+  "componentStore.noCustomComponents": "No global custom components yet.",
   "componentStore.noStoredComponents": "No components yet.",
   "componentStore.noMatchingComponents": "No matching components.",
 
@@ -510,6 +549,10 @@ export const en = {
   "inspector.nothingSelected": "Nothing selected.",
   "inspector.multipleSelected": "Multiple items selected.",
   "inspector.deleteSelection": "Delete Selection",
+  "inspector.confirmDeleteSheetPortUsersSingle":
+    "This port is still used by {count} parent sheet instance(s). Remove those connections and continue?",
+  "inspector.confirmDeleteSheetPortUsersMulti":
+    "{ports} selected ports are still used by {count} parent sheet instance(s). Remove those connections and continue?",
   "inspector.directConnections": "Direct Connections",
   "inspector.warnings": "Warnings",
   "inspector.openComponentSettings": "Open Component Settings",
@@ -538,6 +581,7 @@ export const en = {
   "store.status.failedSaveProject": "Failed to save project: {error}",
   "store.status.updatedProjectName": "Updated project name to {name}",
   "store.status.updatedProjectShutdown": "Updated shutdown HAL",
+  "store.status.updatedProjectHalNameLen": "Updated HAL_NAME_LEN to {value}",
   "store.status.updatedProjectWireLayerPosition":
     "Updated wire visibility to {position}",
   "store.status.updatedProjectWireStyle": "Updated wire style to {style}",
@@ -554,6 +598,8 @@ export const en = {
   "store.status.updatedIniValue": "Updated INI value",
   "store.status.selectedComponentNotCustom":
     "Selected component is not a custom component",
+  "store.status.selectedComponentNotStoredCustom":
+    "Selected component is not a custom component from the component store",
   "store.status.addedCustomComponent": "Added custom component {componentName}",
   "store.status.removedCustomComponent":
     "Removed custom component {componentName}",
@@ -577,6 +623,14 @@ export const en = {
     "Removed parameter {paramName} from custom component {componentName}",
   "store.status.updatedCustomComponentParam":
     "Updated parameter {paramName} on custom component {componentName}",
+  "store.status.addedCustomComponentFunction":
+    "Added realtime function to custom component {componentName}",
+  "store.status.removedCustomComponentFunction":
+    "Removed function {functionName} from custom component {componentName}",
+  "store.status.updatedCustomComponentFunction":
+    "Updated function {functionName} on custom component {componentName}",
+  "store.status.duplicateHalComponentName":
+    "HAL component name already exists: {componentName}",
   "store.status.addedSheetThreadOutput": "Added sheet thread output",
   "store.status.updatedSheetThreadOutputName":
     "Updated sheet thread output name",
@@ -601,6 +655,7 @@ export const en = {
   "store.status.updatedMesaHost": "Updated Mesa host model",
   "store.status.updatedMesaHostIp": "Updated Mesa host IP",
   "store.status.updatedMesaConnector": "Updated Mesa connector assignment",
+  "store.status.updatedMesaProcessDataMode": "Updated Mesa process data mode",
   "store.status.updatedMesaRawGpio": "Updated Mesa raw GPIO direction",
   "store.status.updatedMesaSmartSerial": "Updated Mesa smart-serial assignment",
   "store.status.mesaProjectionAlreadyInSync":
@@ -621,6 +676,7 @@ export const en = {
     "No imported machine configuration is loaded",
   "store.status.importedCompToStore":
     "Imported .comp to store: {componentName}",
+  "store.status.storeCustomSourceReady": "Custom Components source is ready",
   "store.status.addedDirSource":
     "Added dir source {path}: {components} components, {removed} removed ({errors} errors)",
   "store.status.refreshedSource":
@@ -629,6 +685,10 @@ export const en = {
   "store.status.deletedSource":
     "Deleted source {path} ({removed} components removed)",
   "store.status.deleteSourceFailed": "Delete source failed: {error}",
+  "store.status.promotedCustomComponentToStore":
+    "Promoted custom component {componentName} to the component store ({count} node(s) repointed)",
+  "store.status.storeComponentMutationFailed":
+    "Component store update failed: {error}",
   "store.status.selectedComponentNotStoredComp":
     "Selected component is not from the component library",
   "store.status.refreshedComponent": "Refreshed component: {componentName}",
@@ -689,6 +749,10 @@ export const en = {
   "store.status.removedConnection": "Removed connection",
   "store.status.splitConnectionIntoLabels":
     "Split connection into labels ({name})",
+  "store.status.convertedLabelToSheetPort":
+    "Converted label to sheet port ({name})",
+  "store.status.cannotConvertLabelToSheetPort":
+    "Label must be attached to exactly one component pin to convert it to a port",
   "store.status.updatedWireRoute": "Updated wire route",
   "store.status.removedLabelAnchor": "Removed label anchor",
   "store.warning.importError": "Import error {filePath}: {error}",

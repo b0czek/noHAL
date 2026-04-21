@@ -7,6 +7,8 @@ import type {
   XY,
 } from "@nohal/core/types";
 import { createStore, reconcile, unwrap } from "solid-js/store";
+import type { CameraState } from "../canvas";
+import { clearTextMeasurementCache } from "../canvas/measurements";
 import type { TranslationKey } from "../i18n";
 import { createComponentStoreActions } from "./store/actions/componentStoreActions";
 import { createMesaActions } from "./store/actions/mesaActions";
@@ -61,6 +63,7 @@ export function createEditorStore(
     isDirty: false,
     canvasCursorPos: null,
     activeSheetId: initialProject.ui.activeSheetId,
+    sheetCameras: {},
     canUndo: false,
     canRedo: false,
     selection: null,
@@ -195,6 +198,7 @@ export function createEditorStore(
   ): void => {
     pruneMissingStoredComponentsFromProject(project, state.componentStore);
     applyComponentStoreToProject(project, state.componentStore);
+    clearTextMeasurementCache();
     resetProjectDirtyTracking();
     clearHistory();
     setState({
@@ -204,6 +208,7 @@ export function createEditorStore(
       isDirty: false,
       canvasCursorPos: null,
       activeSheetId: project.ui.activeSheetId,
+      sheetCameras: {},
       canUndo: false,
       canRedo: false,
       selection: null,
@@ -294,6 +299,20 @@ export function createEditorStore(
     }
   };
 
+  const setSheetCamera = (sheetId: string, camera: CameraState): void => {
+    if (!state.project.sheets[sheetId]) return;
+    const current = state.sheetCameras[sheetId];
+    if (
+      current &&
+      current.x === camera.x &&
+      current.y === camera.y &&
+      current.scale === camera.scale
+    ) {
+      return;
+    }
+    setState("sheetCameras", sheetId, { ...camera });
+  };
+
   const actionCtx: EditorStoreActionContext = {
     state,
     setState: setActionState,
@@ -353,6 +372,8 @@ export function createEditorStore(
     setStatus(message: string): void {
       setState("status", message);
     },
+
+    setSheetCamera,
 
     ...sheetActions,
     ...componentStoreActions,

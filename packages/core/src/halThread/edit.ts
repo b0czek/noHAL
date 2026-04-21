@@ -4,7 +4,7 @@ import type { HalThreadDefinition, NoHALProject } from "../types";
 
 function nextUniqueThreadName(
   base: string,
-  existing: ReadonlyArray<string>,
+  existing: readonly string[],
 ): string {
   const normalized = base.trim() || "thread";
   if (!existing.includes(normalized)) return normalized;

@@ -1,3 +1,4 @@
+import { isManagedBySystemManager } from "../component/system";
 import {
   createMotmodSystemComponentDefinition,
   defaultPositionForMotmodFamily,
@@ -7,7 +8,6 @@ import {
   managedInstanceConfigValuesForFamily,
   requiredMotmodInstancesByFamily,
 } from "../componentStore/catalog/system/motmod";
-import { isManagedBySystemManager } from "../componentSystem";
 import { createId } from "../id";
 import { ensureSystemSheet, findSystemSheet } from "../sheet";
 import {

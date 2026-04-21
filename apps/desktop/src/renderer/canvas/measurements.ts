@@ -5,58 +5,140 @@ import { label } from "./constants/labels";
 import { port as portConst } from "./constants/ports";
 import { typography } from "./constants/typography";
 
-const labelWidthMeasureCache = new Map<
-  string,
-  { scopeW: number; nameW: number }
->();
+interface TextMeasureOptions {
+  text: string;
+  fontFamily: string;
+  fontSize: number;
+  lineHeight?: number;
+  padding?: number;
+}
 
-function measureTextWidth(
+const MAX_TEXT_MEASUREMENTS_PER_BUCKET = 4096;
+const textMeasureCache = new Map<string, Map<string, Size>>();
+let sharedMeasureText: Konva.Text | null = null;
+
+function fontFamilyCacheKey(fontFamily: string): string {
+  if (fontFamily === typography.family.mono) return "mono";
+  if (fontFamily === typography.family.sans) return "sans";
+  return fontFamily;
+}
+
+function textMeasureBucketKey(options: TextMeasureOptions): string {
+  return [
+    fontFamilyCacheKey(options.fontFamily),
+    options.fontSize,
+    options.lineHeight ?? 1,
+    options.padding ?? 0,
+  ].join("\u0000");
+}
+
+export function measureTextSize(options: TextMeasureOptions): Size {
+  const bucketKey = textMeasureBucketKey(options);
+  let bucket = textMeasureCache.get(bucketKey);
+  if (!bucket) {
+    bucket = new Map<string, Size>();
+    textMeasureCache.set(bucketKey, bucket);
+  }
+
+  const cached = bucket.get(options.text);
+  if (cached) return cached;
+
+  const measure = getSharedMeasureText();
+
+  measure.setAttrs({
+    text: options.text,
+    fontFamily: options.fontFamily,
+    fontSize: options.fontSize,
+    lineHeight: options.lineHeight ?? 1,
+    padding: options.padding ?? 0,
+  });
+
+  const measured = {
+    width: Math.ceil(measure.width()),
+    height: Math.ceil(measure.height()),
+  };
+  bucket.set(options.text, measured);
+  if (bucket.size > MAX_TEXT_MEASUREMENTS_PER_BUCKET) {
+    const oldestKey = bucket.keys().next().value;
+    if (oldestKey !== undefined) {
+      bucket.delete(oldestKey);
+    }
+  }
+  return measured;
+}
+
+export function clearTextMeasurementCache(): void {
+  textMeasureCache.clear();
+}
+
+function getSharedMeasureText(): Konva.Text {
+  if (!sharedMeasureText) {
+    sharedMeasureText = new Konva.Text({
+      listening: false,
+    });
+  }
+  return sharedMeasureText;
+}
+
+export function measureTextWidth(
   text: string,
   fontFamily: string,
   fontSize: number,
 ): number {
-  const measure = new Konva.Text({
+  return measureTextSize({
     text,
     fontFamily,
     fontSize,
+  }).width;
+}
+
+export function measureMonoTextSize(
+  text: string,
+  fontSize: number,
+  options?: Pick<TextMeasureOptions, "lineHeight" | "padding">,
+): Size {
+  return measureTextSize({
+    text,
+    fontFamily: typography.family.mono,
+    fontSize,
+    ...options,
   });
-  const width = Math.ceil(measure.width());
-  measure.destroy();
-  return width;
+}
+
+export function measureSansTextSize(
+  text: string,
+  fontSize: number,
+  options?: Pick<TextMeasureOptions, "lineHeight" | "padding">,
+): Size {
+  return measureTextSize({
+    text,
+    fontFamily: typography.family.sans,
+    fontSize,
+    ...options,
+  });
 }
 
 export function measureLabelScopeWidth(scope: string): number {
-  return measureTextWidth(scope, typography.family.sans, label.scope.fontSize);
+  return measureSansTextSize(scope, label.scope.fontSize).width;
 }
 
-export function estimatePortLabelWidth(name: string): number {
+export function measurePortLabelWidth(name: string): number {
   return (
-    Math.ceil(name.length * portConst.text.charWidth) +
+    measureMonoTextSize(name, portConst.text.fontSize).width +
     portConst.text.widthPadding
   );
 }
 
 export function measureLabelBox(scope: string, name: string): Size {
-  const cacheKey = `${scope}\u0000${name}`;
-  let cached = labelWidthMeasureCache.get(cacheKey);
-  if (!cached) {
-    cached = {
-      scopeW: measureLabelScopeWidth(scope),
-      nameW: measureTextWidth(
-        name,
-        typography.family.mono,
-        label.name.fontSize,
-      ),
-    };
-    labelWidthMeasureCache.set(cacheKey, cached);
-  }
+  const scopeW = measureLabelScopeWidth(scope);
+  const nameW = measureMonoTextSize(name, label.name.fontSize).width;
 
   return {
     width:
       label.box.padding.left +
-      cached.scopeW +
+      scopeW +
       label.box.middleGap +
-      cached.nameW +
+      nameW +
       label.box.padding.right,
     height: label.box.height,
   };
@@ -68,21 +150,15 @@ export function measureLabelBoxForLabel(
   return measureLabelBox(label.scope, label.name);
 }
 
-export function estimateCommentSize(text: string): Size {
-  const lines = text.replace(/\r/g, "").split("\n");
-  const maxLineLength = Math.max(1, ...lines.map((line) => line.length));
-  const lineCount = Math.max(1, lines.length);
+export function measureCommentSize(text: string | null | undefined): Size {
+  const content = (text || "").trimEnd() || " ";
+  const measured = measureSansTextSize(content, commentConst.font.size, {
+    lineHeight: commentConst.font.lineHeight,
+    padding: commentConst.box.padding,
+  });
   return {
-    width: Math.max(
-      commentConst.box.minWidth,
-      Math.ceil(maxLineLength * commentConst.measure.charWidth) +
-        commentConst.measure.widthPadding,
-    ),
-    height: Math.max(
-      commentConst.box.minHeight,
-      Math.ceil(lineCount * commentConst.measure.lineHeight) +
-        commentConst.measure.heightPadding,
-    ),
+    width: Math.max(commentConst.box.minWidth, measured.width),
+    height: Math.max(commentConst.box.minHeight, measured.height),
   };
 }
 
@@ -91,7 +167,7 @@ export function estimatePortBox(
   position?: XY,
 ): Rect {
   const pos = position ?? port.position;
-  const width = estimatePortLabelWidth(port.name);
+  const width = measurePortLabelWidth(port.name);
   const height = portConst.label.height;
   let x = pos.x + portConst.label.offset;
   let y = pos.y - height / 2;

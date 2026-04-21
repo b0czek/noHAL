@@ -413,6 +413,18 @@ function createAnalogOutputPins(
   }));
 }
 
+function createMpgCounterPins(
+  count: number | undefined,
+): ComponentPinDefinition[] {
+  if (!count || count <= 0) return [];
+  return Array.from({ length: count }, (_, index) => ({
+    key: `enc_${index}_count`,
+    name: `enc${index}.count`,
+    direction: "out" as const,
+    type: "s32" as const,
+  }));
+}
+
 export function pinsForMesaSchemaProfile(
   profile: MesaSchemaProfile,
 ): ComponentPinDefinition[] {
@@ -428,12 +440,20 @@ export function pinsForMesaSchemaProfile(
     ...createDigitalOutputPins(spec.digitalOutputs),
     ...createIndexedPins(
       spec.analogInputs,
-      (index) => `analogin.${`${index}`.padStart(2, "0")}`,
+      (index) => `analogin${index}`,
       "out",
       "float",
       "analogin",
     ),
     ...createAnalogOutputPins(spec.analogOutputs),
+    ...createMpgCounterPins(spec.mpgCounters),
+    ...createFlagPin(
+      spec.fieldVoltage,
+      "field_voltage",
+      "fieldvoltage",
+      "out",
+      "float",
+    ),
     ...createFlagPin(
       spec.spindleEnable,
       "spindle_enable",
@@ -473,6 +493,7 @@ export function mergeMesaSchemaProfiles(
   const explicitParams = new Map<string, ComponentParamDefinition>();
   const numericKeys = [
     "encoders",
+    "mpgCounters",
     "digitalInputs",
     "digitalOutputs",
     "analogInputs",
@@ -480,6 +501,7 @@ export function mergeMesaSchemaProfiles(
   ] as const satisfies readonly (keyof MesaSchemaProfile)[];
   const booleanKeys = [
     "dpll",
+    "fieldVoltage",
     "spindleEnable",
     "analogEnable",
   ] as const satisfies readonly (keyof MesaSchemaProfile)[];
@@ -515,10 +537,12 @@ export function schemaProfileSummary(profile: MesaSchemaProfile): string {
   const parts = [
     spec.dpll ? "dpll" : null,
     spec.encoders ? `${spec.encoders} encoder` : null,
+    spec.mpgCounters ? `${spec.mpgCounters} MPG` : null,
     spec.digitalInputs ? `${spec.digitalInputs} DI` : null,
     spec.digitalOutputs ? `${spec.digitalOutputs} DO` : null,
     spec.analogInputs ? `${spec.analogInputs} AI` : null,
     spec.analogOutputs ? `${spec.analogOutputs} AO` : null,
+    spec.fieldVoltage ? "field voltage" : null,
     spec.spindleEnable ? "spindle ena" : null,
     spec.analogEnable ? "analog ena" : null,
   ].filter(Boolean);

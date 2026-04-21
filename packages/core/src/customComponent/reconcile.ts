@@ -1,5 +1,6 @@
 import { pickBy, pullObject, unique } from "remeda";
-import { resolveComponentPinsForInstance } from "../componentInstance";
+import { resolveComponentPinsForInstance } from "../component/instance";
+import { normalizeComponentPinOrder } from "../pinOrder";
 import type { ComponentDefinition, NoHALProject } from "../types";
 
 function mergeKnownValuesWithDefaults(
@@ -104,6 +105,15 @@ export function reconcileComponentNodesForDefinition(
         delete node.hiddenPinKeys;
       } else {
         node.hiddenPinKeys = nextHiddenPinKeys;
+      }
+
+      const nextPinOrder = normalizeComponentPinOrder(node.pinOrder, [
+        ...validPinKeys,
+      ]);
+      if (!nextPinOrder) {
+        delete node.pinOrder;
+      } else {
+        node.pinOrder = nextPinOrder;
       }
     }
   }

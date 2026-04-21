@@ -1,23 +1,22 @@
 import { addfQueueEntryNodeId, normalizeAddfQueueEntries } from "../addfQueue";
-import { ensureInstanceName } from "../componentNaming";
-import { createId } from "../id";
+import { ensureInstanceName } from "../component/naming";
+import { getConnectedSheetPortReferenceLocations, getSheet } from "../graph";
+import { createId, nextUniqueName } from "../id";
 import { createSheet } from "../project";
 import type {
   NoHALProject,
   SheetAddfQueueStoredEntry,
   SheetDefinition,
+  SheetLabel,
   SheetNode,
+  SheetNodeInstance,
   SheetThreadOutputDefinition,
 } from "../types";
 import { defaultNodePositionForIndex } from "./layout";
+import { isSingletonReferenceBlocked } from "./singleton";
+import { moveItemsIntoSubsheet } from "./subsheetMove";
+import { isProtectedSystemNode, isProtectedSystemSheet } from "./system";
 import { normalizeSheetThreadOutputs } from "./threads";
-
-function nextUniqueName(base: string, used: ReadonlySet<string>): string {
-  if (!used.has(base)) return base;
-  let index = 2;
-  while (used.has(`${base}${index}`)) index += 1;
-  return `${base}${index}`;
-}
 
 function pruneSheetNodeReferences(
   sheet: SheetDefinition,
@@ -54,6 +53,62 @@ function pruneSheetNodeReferences(
   );
   if (sheet.hal.addfQueue.length === 0) delete sheet.hal.addfQueue;
   if (Object.keys(sheet.hal).length === 0) delete sheet.hal;
+}
+
+function pruneSheetNodePinReferences(
+  sheet: SheetDefinition,
+  nodeId: string,
+  pinKey: string,
+): void {
+  sheet.directConnections = sheet.directConnections.filter(
+    (connection) =>
+      !(
+        connection.a.kind === "node-pin" &&
+        connection.a.nodeId === nodeId &&
+        connection.a.pinKey === pinKey
+      ) &&
+      !(
+        connection.b.kind === "node-pin" &&
+        connection.b.nodeId === nodeId &&
+        connection.b.pinKey === pinKey
+      ),
+  );
+
+  sheet.labelAnchors = sheet.labelAnchors.filter(
+    (anchor) =>
+      !(
+        anchor.endpoint.kind === "node-pin" &&
+        anchor.endpoint.nodeId === nodeId &&
+        anchor.endpoint.pinKey === pinKey
+      ),
+  );
+}
+
+function pruneSheetPortReferences(
+  sheet: SheetDefinition,
+  removedPortIds: ReadonlySet<string>,
+): void {
+  if (removedPortIds.size === 0) return;
+
+  sheet.directConnections = sheet.directConnections.filter(
+    (connection) =>
+      !(
+        connection.a.kind === "sheet-port" &&
+        removedPortIds.has(connection.a.portId)
+      ) &&
+      !(
+        connection.b.kind === "sheet-port" &&
+        removedPortIds.has(connection.b.portId)
+      ),
+  );
+
+  sheet.labelAnchors = sheet.labelAnchors.filter(
+    (anchor) =>
+      !(
+        anchor.endpoint.kind === "sheet-port" &&
+        removedPortIds.has(anchor.endpoint.portId)
+      ),
+  );
 }
 
 function cleanupEmptyHal(sheet: SheetDefinition): void {
@@ -205,6 +260,46 @@ function setSheetAddfQueue(
   return normalized;
 }
 
+export type RemoveSheetPortResult =
+  | {
+      ok: true;
+      removedPortId: string;
+      removedReferenceInstanceCount: number;
+    }
+  | { ok: false; reason: "not-found" };
+
+function removeSheetPort(
+  project: NoHALProject,
+  sheetId: string,
+  portId: string,
+): RemoveSheetPortResult {
+  const sheet = project.sheets[sheetId];
+  if (!sheet) return { ok: false, reason: "not-found" };
+  if (!sheet.ports.some((port) => port.id === portId)) {
+    return { ok: false, reason: "not-found" };
+  }
+
+  const referenceLocations = getConnectedSheetPortReferenceLocations(
+    project,
+    sheetId,
+    portId,
+  );
+
+  sheet.ports = sheet.ports.filter((port) => port.id !== portId);
+  pruneSheetPortReferences(sheet, new Set([portId]));
+
+  for (const reference of referenceLocations) {
+    const parentSheet = getSheet(project, reference.parentSheetId);
+    pruneSheetNodePinReferences(parentSheet, reference.nodeId, portId);
+  }
+
+  return {
+    ok: true,
+    removedPortId: portId,
+    removedReferenceInstanceCount: referenceLocations.length,
+  };
+}
+
 export interface AddSheetDefinitionResult {
   name: string;
   sheet: SheetDefinition;
@@ -222,6 +317,47 @@ export type RenameSheetDefinitionResult =
       ok: false;
       reason: "not-found" | "empty-name" | "duplicate-name";
     };
+
+export interface SheetItemIds {
+  nodeIds: ReadonlySet<string>;
+  labelIds: ReadonlySet<string>;
+  portIds: ReadonlySet<string>;
+}
+
+export type MoveSheetItemsFailureReason =
+  | "not-found"
+  | "no-movable-items"
+  | "only-ports"
+  | "protected-system-node"
+  | "target-in-items";
+
+interface PreparedSheetItemsMove {
+  parentSheet: SheetDefinition;
+  movedNodes: SheetNodeInstance[];
+  movedLabels: SheetLabel[];
+  movedNodeIds: string[];
+  movedLabelIds: string[];
+}
+
+export interface MoveSheetItemsSuccess {
+  name: string;
+  sheet: SheetDefinition;
+  node: SheetNode;
+  movedNodeCount: number;
+  movedLabelCount: number;
+  createdPortCount: number;
+}
+
+export type MoveSheetItemsResult =
+  | ({ ok: true } & MoveSheetItemsSuccess)
+  | { ok: false; reason: MoveSheetItemsFailureReason };
+
+export interface RemoveSheetItemsInput {
+  nodeIds: ReadonlySet<string>;
+  labelIds: ReadonlySet<string>;
+  commentIds: ReadonlySet<string>;
+  portIds: ReadonlySet<string>;
+}
 
 function createSheetDefinition(
   project: NoHALProject,
@@ -269,6 +405,9 @@ function addSheetReference(
   const sheet = project.sheets[sheetId];
   if (!parentSheet) return null;
   if (!sheet) return null;
+  if (isSingletonReferenceBlocked(project, parentSheetId, sheetId)) {
+    return null;
+  }
 
   const node: SheetNode = {
     id: createId("node"),
@@ -295,23 +434,206 @@ function addSheetDefinition(
   return { name: sheet.name, sheet, node: placed.node };
 }
 
+function prepareSheetItemsMove(
+  project: NoHALProject,
+  parentSheetId: string,
+  items: SheetItemIds,
+): PreparedSheetItemsMove | { reason: MoveSheetItemsFailureReason } {
+  if (
+    items.nodeIds.size === 0 &&
+    items.labelIds.size === 0 &&
+    items.portIds.size > 0
+  ) {
+    return { reason: "only-ports" };
+  }
+
+  const parentSheet = project.sheets[parentSheetId];
+  if (!parentSheet) return { reason: "not-found" };
+
+  const movedNodes = parentSheet.nodes.filter((node) =>
+    items.nodeIds.has(node.id),
+  );
+  const movedLabels = parentSheet.labels.filter((label) =>
+    items.labelIds.has(label.id),
+  );
+  if (movedNodes.some((node) => isProtectedSystemNode(project, node))) {
+    return { reason: "protected-system-node" };
+  }
+  if (movedNodes.length === 0 && movedLabels.length === 0) {
+    return { reason: "no-movable-items" };
+  }
+
+  return {
+    parentSheet,
+    movedNodes,
+    movedLabels,
+    movedNodeIds: movedNodes.map((node) => node.id),
+    movedLabelIds: movedLabels.map((label) => label.id),
+  };
+}
+
+function boundsForNodesAndLabels(
+  nodes: { position: { x: number; y: number } }[],
+  labels: { position: { x: number; y: number } }[],
+): { x: number; y: number } {
+  const points = [
+    ...nodes.map((node) => node.position),
+    ...labels.map((label) => label.position),
+  ];
+  if (points.length === 0) return defaultNodePositionForIndex(0);
+  let minX = points[0].x;
+  let minY = points[0].y;
+  for (const point of points) {
+    if (point.x < minX) minX = point.x;
+    if (point.y < minY) minY = point.y;
+  }
+  return { x: minX, y: minY };
+}
+
+function moveItemsIntoNewSubsheet(
+  project: NoHALProject,
+  parentSheetId: string,
+  items: SheetItemIds,
+): MoveSheetItemsResult {
+  const prepared = prepareSheetItemsMove(project, parentSheetId, items);
+  if ("reason" in prepared) return { ok: false, reason: prepared.reason };
+
+  const sheet = createSheetDefinition(project);
+  const node: SheetNode = {
+    id: createId("node"),
+    kind: "sheet",
+    sheetId: sheet.id,
+    instanceName: ensureInstanceName(prepared.parentSheet, sheet.name),
+    position: boundsForNodesAndLabels(
+      prepared.movedNodes,
+      prepared.movedLabels,
+    ),
+  };
+  const moveResult = moveItemsIntoSubsheet(project, {
+    parentSheetId,
+    childSheetId: sheet.id,
+    subsheetNode: node,
+    movedNodeIds: prepared.movedNodeIds,
+    movedLabelIds: prepared.movedLabelIds,
+  });
+
+  return {
+    ok: true,
+    name: sheet.name,
+    sheet,
+    node,
+    movedNodeCount: moveResult.movedNodeCount,
+    movedLabelCount: moveResult.movedLabelCount,
+    createdPortCount: moveResult.createdPortCount,
+  };
+}
+
+function moveItemsIntoExistingSubsheet(
+  project: NoHALProject,
+  parentSheetId: string,
+  subsheetNodeId: string,
+  items: SheetItemIds,
+): MoveSheetItemsResult {
+  const prepared = prepareSheetItemsMove(project, parentSheetId, items);
+  if ("reason" in prepared) return { ok: false, reason: prepared.reason };
+  if (items.nodeIds.has(subsheetNodeId)) {
+    return { ok: false, reason: "target-in-items" };
+  }
+
+  const subsheetNode = prepared.parentSheet.nodes.find(
+    (node): node is SheetNode =>
+      node.kind === "sheet" && node.id === subsheetNodeId,
+  );
+  if (!subsheetNode) return { ok: false, reason: "not-found" };
+  const childSheet = project.sheets[subsheetNode.sheetId];
+  if (!childSheet) return { ok: false, reason: "not-found" };
+
+  const moveResult = moveItemsIntoSubsheet(project, {
+    parentSheetId,
+    childSheetId: childSheet.id,
+    subsheetNode,
+    movedNodeIds: prepared.movedNodeIds,
+    movedLabelIds: prepared.movedLabelIds,
+  });
+
+  return {
+    ok: true,
+    name: childSheet.name,
+    sheet: childSheet,
+    node: subsheetNode,
+    movedNodeCount: moveResult.movedNodeCount,
+    movedLabelCount: moveResult.movedLabelCount,
+    createdPortCount: moveResult.createdPortCount,
+  };
+}
+
+function removeSheetItems(
+  project: NoHALProject,
+  sheetId: string,
+  items: RemoveSheetItemsInput,
+): void {
+  const sheet = project.sheets[sheetId];
+  if (!sheet) return;
+
+  if (items.nodeIds.size > 0) {
+    const removedNodeIds = new Set<string>();
+    sheet.nodes = sheet.nodes.filter((node) => {
+      if (!items.nodeIds.has(node.id)) return true;
+      removedNodeIds.add(node.id);
+      return false;
+    });
+    pruneSheetNodeReferences(sheet, removedNodeIds);
+  }
+
+  if (items.labelIds.size > 0) {
+    sheet.labels = sheet.labels.filter(
+      (label) => !items.labelIds.has(label.id),
+    );
+    sheet.labelAnchors = sheet.labelAnchors.filter(
+      (anchor) => !items.labelIds.has(anchor.labelId),
+    );
+  }
+
+  if (items.commentIds.size > 0) {
+    sheet.comments = sheet.comments.filter(
+      (comment) => !items.commentIds.has(comment.id),
+    );
+  }
+
+  if (items.portIds.size > 0) {
+    for (const portId of items.portIds) {
+      removeSheetPort(project, sheetId, portId);
+    }
+  }
+}
+
+export type RemoveSheetReferenceResult =
+  | { ok: true; removedNodeId: string }
+  | { ok: false; reason: "not-found" | "protected-system-sheet" };
+
 function removeSheetReference(
   project: NoHALProject,
   parentSheetId: string,
   nodeId: string,
-): boolean {
+): RemoveSheetReferenceResult {
   const parentSheet = project.sheets[parentSheetId];
-  if (!parentSheet) return false;
+  if (!parentSheet) return { ok: false, reason: "not-found" };
+  const target = parentSheet.nodes.find(
+    (node): node is SheetNode => node.kind === "sheet" && node.id === nodeId,
+  );
+  if (!target) return { ok: false, reason: "not-found" };
+  if (isProtectedSystemSheet(project, target.sheetId)) {
+    return { ok: false, reason: "protected-system-sheet" };
+  }
   const removedNodeIds = new Set<string>();
   const nextNodes = parentSheet.nodes.filter((node) => {
     if (node.id !== nodeId) return true;
     removedNodeIds.add(node.id);
     return false;
   });
-  if (removedNodeIds.size === 0) return false;
   parentSheet.nodes = nextNodes;
   pruneSheetNodeReferences(parentSheet, removedNodeIds);
-  return true;
+  return { ok: true, removedNodeId: nodeId };
 }
 
 function removeSheetNodeReferencesForDeletedDefinition(
@@ -463,20 +785,27 @@ export interface DetachSheetReferenceResult {
   node: SheetNode;
 }
 
+export type DetachSheetReferenceEditResult =
+  | ({ ok: true } & DetachSheetReferenceResult)
+  | { ok: false; reason: "not-found" | "protected-system-sheet" };
+
 function detachSheetReference(
   project: NoHALProject,
   parentSheetId: string,
   nodeId: string,
-): DetachSheetReferenceResult | null {
+): DetachSheetReferenceEditResult {
   const parentSheet = project.sheets[parentSheetId];
-  if (!parentSheet) return null;
+  if (!parentSheet) return { ok: false, reason: "not-found" };
   const node = parentSheet.nodes.find(
     (entry): entry is SheetNode =>
       entry.kind === "sheet" && entry.id === nodeId,
   );
-  if (!node) return null;
+  if (!node) return { ok: false, reason: "not-found" };
+  if (isProtectedSystemSheet(project, node.sheetId)) {
+    return { ok: false, reason: "protected-system-sheet" };
+  }
   const source = project.sheets[node.sheetId];
-  if (!source) return null;
+  if (!source) return { ok: false, reason: "not-found" };
 
   const detachedName = nextUniqueName(
     `${source.name} Copy`,
@@ -486,7 +815,7 @@ function detachSheetReference(
   project.sheets[detachedSheet.id] = detachedSheet;
   const originalSheetId = node.sheetId;
   node.sheetId = detachedSheet.id;
-  return { originalSheetId, detachedSheet, node };
+  return { ok: true, originalSheetId, detachedSheet, node };
 }
 
 export type DeleteSheetDefinitionResult =
@@ -496,7 +825,10 @@ export type DeleteSheetDefinitionResult =
       deletedSheetName: string;
       nextActiveSheetId: string;
     }
-  | { ok: false; reason: "not-found" | "root-sheet" };
+  | {
+      ok: false;
+      reason: "not-found" | "root-sheet" | "protected-system-sheet";
+    };
 
 function deleteSheetDefinition(
   project: NoHALProject,
@@ -507,6 +839,9 @@ function deleteSheetDefinition(
   if (!target) return { ok: false, reason: "not-found" };
   if (sheetId === project.rootSheetId) {
     return { ok: false, reason: "root-sheet" };
+  }
+  if (isProtectedSystemSheet(project, sheetId)) {
+    return { ok: false, reason: "protected-system-sheet" };
   }
 
   const referenceParentSheetIds = new Set<string>();
@@ -537,6 +872,9 @@ function deleteSheetDefinition(
 }
 
 export const sheetModelEdits = {
+  port: {
+    remove: removeSheetPort,
+  },
   threadOutput: {
     add: addSheetThreadOutput,
     remove: removeSheetThreadOutput,
@@ -555,6 +893,11 @@ export const sheetModelEdits = {
     add: addSheetDefinition,
     rename: renameSheetDefinition,
     remove: deleteSheetDefinition,
+  },
+  items: {
+    moveIntoNewSubsheet: moveItemsIntoNewSubsheet,
+    moveIntoExistingSubsheet: moveItemsIntoExistingSubsheet,
+    remove: removeSheetItems,
   },
   reference: {
     add: addSheetReference,

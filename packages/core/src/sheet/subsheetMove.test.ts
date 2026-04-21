@@ -6,9 +6,9 @@ import {
   REQUIRED_HAL_THREAD_NAME,
 } from "../project";
 import type { SheetNode } from "../types";
-import { moveSelectionIntoSubsheet } from "./subsheetMove";
+import { moveItemsIntoSubsheet } from "./subsheetMove";
 
-describe("moveSelectionIntoSubsheet", () => {
+describe("moveItemsIntoSubsheet", () => {
   it("rewires parent/child connections and remaps addf queue entries", () => {
     const project = createEmptyProject("Subsheet Move");
     const root = project.sheets[project.rootSheetId];
@@ -107,7 +107,7 @@ describe("moveSelectionIntoSubsheet", () => {
       position: { x: 420, y: 100 },
     };
 
-    const result = moveSelectionIntoSubsheet(project, {
+    const result = moveItemsIntoSubsheet(project, {
       parentSheetId: root.id,
       childSheetId: child.id,
       subsheetNode,
@@ -252,7 +252,7 @@ describe("moveSelectionIntoSubsheet", () => {
       position: { x: 420, y: 100 },
     };
 
-    moveSelectionIntoSubsheet(project, {
+    moveItemsIntoSubsheet(project, {
       parentSheetId: root.id,
       childSheetId: child.id,
       subsheetNode,

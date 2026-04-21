@@ -11,6 +11,11 @@ export interface ComponentStoreSourceRef {
   filePath: string;
 }
 
+export interface ComponentStoreManualSourceRef {
+  kind: "manual";
+  sourceId: string;
+}
+
 export interface ComponentStoreDirComponentSourceRef {
   kind: "comp-dir";
   sourceId: string;
@@ -21,6 +26,15 @@ export interface ComponentStoreLinuxCncBuiltinSourceRef {
   kind: "linuxcnc-builtin";
   sourceId: string;
   filePath: string;
+}
+
+export interface ComponentStoreManualSource {
+  id: string;
+  kind: "manual";
+  createdAt: string;
+  updatedAt: string;
+  lastScanAt?: string;
+  lastError?: string;
 }
 
 export interface ComponentStoreDirSource {
@@ -60,6 +74,7 @@ export interface ComponentStoreLinuxCncBuiltinSource {
 export interface ComponentStoreEntry {
   componentId: string;
   sourceRef:
+    | ComponentStoreManualSourceRef
     | ComponentStoreSourceRef
     | ComponentStoreDirComponentSourceRef
     | ComponentStoreLinuxCncBuiltinSourceRef;
@@ -73,6 +88,7 @@ export interface ComponentStore {
   version: typeof NOHAL_COMPONENT_STORE_VERSION;
   sources: Record<
     string,
+    | ComponentStoreManualSource
     | ComponentStoreDirSource
     | ComponentStoreFileSource
     | ComponentStoreLinuxCncBuiltinSource

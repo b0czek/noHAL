@@ -1,6 +1,7 @@
 import type { Bounds, XY } from "@nohal/core/types";
+import type { CameraState } from "../types";
 import { clampRuntimePos, sceneWorldExtents } from "./bounds";
-import type { CameraState, SceneRuntime } from "./types";
+import type { SceneRuntime } from "./types";
 
 const CAMERA_OVERSCROLL_PX = 220;
 const CAMERA_MIN_SCALE = 0.1;

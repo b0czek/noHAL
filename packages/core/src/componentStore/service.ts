@@ -238,6 +238,9 @@ export const refreshComponentSourceInStore =
         "Embedded LinuxCNC version stores are read-only. Regenerate them using pnpm generate:linuxcnc-stores.",
       );
     }
+    if (source.kind !== "comp-file") {
+      throw new Error(`Unsupported component source for refresh: ${sourceId}`);
+    }
 
     const nowIso = new Date().toISOString();
     const errors: Array<{ filePath: string; error: string }> = [];

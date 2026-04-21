@@ -1,6 +1,10 @@
 import { createId } from "../id";
 import type { NoHALProject } from "../types";
-import { getMesaDb25CardCatalogEntry } from "./catalog";
+import {
+  getMesaDb25CardCatalogEntry,
+  getMesaHostCatalogEntry,
+  getMesaSmartSerialCatalogEntry,
+} from "./catalog";
 import {
   type MesaReconcilePlan,
   planMesaReconcile,
@@ -124,6 +128,36 @@ export function setMesaConnectorCard(
   return true;
 }
 
+export function setMesaSmartSerialProcessDataMode(
+  project: NoHALProject,
+  hostId: string,
+  target: ProjectMesaSmartSerialTarget,
+  processDataMode: number,
+): boolean {
+  const host = findMesaHost(project, hostId);
+  if (!host || !Number.isInteger(processDataMode) || processDataMode < 0) {
+    return false;
+  }
+  const assignment = (host.smartSerial ?? []).find(
+    (item) =>
+      item.connectorKey === target.connectorKey &&
+      item.portKey === target.portKey &&
+      item.channel === target.channel,
+  );
+  const cardKind = assignment?.cardKind;
+  const card = cardKind ? getMesaSmartSerialCatalogEntry(cardKind) : undefined;
+  if (!assignment || !card) {
+    return false;
+  }
+  if (!card.processDataModes?.some((mode) => mode.mode === processDataMode)) {
+    return false;
+  }
+  if (assignment.processDataMode === processDataMode) return false;
+  assignment.processDataMode = processDataMode;
+  renormalizeMesa(project);
+  return true;
+}
+
 export function setMesaRawGpioPinDirection(
   project: NoHALProject,
   hostId: string,
@@ -160,6 +194,22 @@ export function setMesaSmartSerialCard(
 ): boolean {
   const host = findMesaHost(project, hostId);
   if (!host) return false;
+  const connectorCard = target.connectorKey
+    ? getMesaDb25CardCatalogEntry(
+        (host.connectors ?? []).find(
+          (item) => item.connectorKey === target.connectorKey,
+        )?.cardKind ?? "",
+      )
+    : undefined;
+  const connectorPort = connectorCard?.sserial.smartSerialPorts.find(
+    (item) => item.key === target.portKey,
+  );
+  const hostPort = !target.connectorKey
+    ? getMesaHostCatalogEntry(host.kind)?.smartSerialPorts.find(
+        (item) => item.key === target.portKey,
+      )
+    : undefined;
+  if (connectorPort?.fixedCardKind) return false;
   if (
     target.connectorKey &&
     !(host.connectors ?? []).some(
@@ -170,6 +220,7 @@ export function setMesaSmartSerialCard(
   ) {
     return false;
   }
+  if (!connectorPort && !hostPort) return false;
   const smartSerial = host.smartSerial ?? [];
   const index = smartSerial.findIndex(
     (item) =>
@@ -185,7 +236,15 @@ export function setMesaSmartSerialCard(
     return true;
   }
   if (index >= 0 && smartSerial[index]?.cardKind === cardKind) return false;
-  const next = { ...target, cardKind };
+  const card = getMesaSmartSerialCatalogEntry(cardKind);
+  if (!card) return false;
+  const next = {
+    ...target,
+    cardKind,
+    processDataMode: card.processDataModes?.length
+      ? card.defaultMode
+      : undefined,
+  };
   if (index >= 0) smartSerial[index] = next;
   else smartSerial.push(next);
   host.smartSerial = smartSerial;

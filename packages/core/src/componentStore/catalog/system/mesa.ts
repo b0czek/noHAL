@@ -54,6 +54,7 @@ export function createMesaSystemComponentDefinition(
       showInCustomComponents: false,
     },
     constraints: {
+      exportNamespace: "global",
       fixedInstanceName: node.instanceName,
     },
     runtime,

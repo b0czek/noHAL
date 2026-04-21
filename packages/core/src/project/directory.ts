@@ -1,7 +1,8 @@
 import { pickBy } from "remeda";
 import corePackageJson from "../../package.json";
-import { isSystemComponent } from "../componentSystem";
+import { isSystemComponent } from "../component/system";
 import { slugify } from "../id";
+import { writeFileAtomic } from "../io/writeFileAtomic";
 import type {
   CoreIo,
   NoHALProject,
@@ -27,9 +28,6 @@ const NOHAL_CORE_VERSION =
   typeof corePackageJson.version === "string"
     ? corePackageJson.version
     : "0.0.0";
-const ATOMIC_WRITE_RANDOM_SUFFIX_RADIX = 36;
-const ATOMIC_WRITE_RANDOM_SUFFIX_START = 2;
-const ATOMIC_WRITE_RANDOM_SUFFIX_END = 10;
 
 export interface ProjectPersistenceOptions {
   savedWith?: string;
@@ -82,35 +80,6 @@ interface NoHALProjectSheetFile {
 
 function stringifyJson(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
-}
-
-let atomicWriteCounter = 0;
-
-function atomicTempPathFor(filePath: string): string {
-  atomicWriteCounter += 1;
-  const randomSuffix = Math.random()
-    .toString(ATOMIC_WRITE_RANDOM_SUFFIX_RADIX)
-    .slice(ATOMIC_WRITE_RANDOM_SUFFIX_START, ATOMIC_WRITE_RANDOM_SUFFIX_END);
-  return `${filePath}.tmp-${Date.now()}-${atomicWriteCounter}-${randomSuffix}`;
-}
-
-async function writeFileAtomic(
-  io: CoreIo,
-  filePath: string,
-  content: string,
-): Promise<void> {
-  const tempPath = atomicTempPathFor(filePath);
-  try {
-    await io.fs.writeTextFile(tempPath, content);
-    await io.fs.renamePath(tempPath, filePath);
-  } catch (error) {
-    try {
-      await io.fs.removeFile(tempPath);
-    } catch {
-      // Best-effort cleanup only; original error should be preserved.
-    }
-    throw error;
-  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

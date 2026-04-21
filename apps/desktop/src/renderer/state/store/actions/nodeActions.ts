@@ -1,14 +1,20 @@
+import { normalizeComponentPinOrder } from "@nohal/core";
 import { resolveComponentPinsForInstance } from "@nohal/core/componentInstance";
+import {
+  collectDuplicateExportedInstancePaths,
+  componentHasFixedExportNamespace,
+  resolveNodeExportNamespace,
+} from "@nohal/core/componentNaming";
 import {
   fixedExportStageForComponent,
   fixedInstanceNameForComponent,
 } from "@nohal/core/componentSystem";
 import { isComponentPlaceable } from "@nohal/core/componentVisibility";
-import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
 import {
   getSheet,
   getSheetReferenceLocations,
   isNodePinConnected,
+  resolveEndpointInSheet,
 } from "@nohal/core/graph";
 import { isValidHalName } from "@nohal/core/halNames";
 import { createId } from "@nohal/core/id";
@@ -24,18 +30,51 @@ import type {
   XY,
 } from "@nohal/core/types";
 import {
+  applyComponentStoreEntryToProject,
+  cloneProject,
   componentUsesLockedCanonicalInstanceNames,
   defaultCommentPosition,
   defaultLabelPosition,
   defaultNodePosition,
   defaultPortPosition,
   forcedPortSideForDirection,
+  hasComponentExportPathConflict,
   nextComponentInstanceName,
   nextName,
   normalizeRotationDegrees,
   toErrorMessage,
 } from "../helpers";
-import type { EditorStoreActionContext } from "./types";
+import type { EditorSelection, EditorStoreActionContext } from "./types";
+
+const ROTATION_STEP_DEGREES = 90;
+
+function getRotatableSelectionIds(selection: EditorSelection): {
+  labelIds: Set<string>;
+  commentIds: Set<string>;
+  portIds: Set<string>;
+} {
+  if (!selection) {
+    return {
+      labelIds: new Set<string>(),
+      commentIds: new Set<string>(),
+      portIds: new Set<string>(),
+    };
+  }
+
+  if (selection.kind === "multi") {
+    return {
+      labelIds: new Set(selection.labelIds),
+      commentIds: new Set(selection.commentIds),
+      portIds: new Set(selection.portIds),
+    };
+  }
+
+  return {
+    labelIds: new Set(selection.kind === "label" ? [selection.id] : []),
+    commentIds: new Set(selection.kind === "comment" ? [selection.id] : []),
+    portIds: new Set(selection.kind === "sheet-port" ? [selection.id] : []),
+  };
+}
 
 function endpointMovesWithGroup(
   endpoint: SheetEndpointRef,
@@ -79,8 +118,25 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         );
         return;
       }
-    }
-    if (
+      if (
+        hasComponentExportPathConflict({
+          project: deps.state.project,
+          sheetId,
+          component,
+          candidateNode: {
+            instanceName: trimmed,
+            exportNamespace: currentNode.exportNamespace,
+          },
+          excludeNodeId: nodeId,
+        })
+      ) {
+        deps.setState(
+          "status",
+          `Instance name collides in exported HAL namespace: ${trimmed}`,
+        );
+        return;
+      }
+    } else if (
       currentSheet.nodes.some(
         (n) => n.id !== nodeId && n.instanceName === trimmed,
       )
@@ -207,6 +263,32 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     }
   };
 
+  const pruneNodePinOrder = (
+    node: ComponentNode,
+    validPinKeys: readonly string[],
+  ): void => {
+    const nextPinOrder = normalizeComponentPinOrder(
+      node.pinOrder,
+      validPinKeys,
+    );
+    if (nextPinOrder) {
+      node.pinOrder = nextPinOrder;
+    } else {
+      delete node.pinOrder;
+    }
+  };
+
+  const setNodeExportNamespace = (
+    node: ComponentNode,
+    global: boolean,
+  ): void => {
+    if (global) {
+      node.exportNamespace = "global";
+    } else {
+      delete node.exportNamespace;
+    }
+  };
+
   return {
     async refreshComponentInStore(componentId: string): Promise<void> {
       const current = deps.state.project.library.components[componentId];
@@ -223,12 +305,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         });
         deps.withProject(
           (project) => {
-            project.library.components[entry.componentId] = entry.parsed;
-            reconcileComponentNodesForDefinition(
-              project,
-              entry.componentId,
-              entry.parsed,
-            );
+            applyComponentStoreEntryToProject(project, entry);
           },
           { recordHistory: false },
         );
@@ -253,11 +330,15 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       }
       const activeSheetId = deps.state.activeSheetId;
       const currentSheet = getSheet(deps.state.project, activeSheetId);
-      const instanceName = nextComponentInstanceName(currentSheet, comp);
+      const instanceName = nextComponentInstanceName(
+        deps.state.project,
+        currentSheet,
+        comp,
+      );
       if (!instanceName) {
         deps.setState(
           "status",
-          `No available canonical instance names left for component '${comp.halComponentName}'`,
+          `No available export-safe instance names left for component '${comp.halComponentName}'`,
         );
         return;
       }
@@ -530,6 +611,10 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         const validPinKeys = new Set(resolvedPins.map((pin) => pin.key));
         pruneNodePinInitialValues(node, validPinKeys);
         pruneHiddenPinKeys(node, validPinKeys);
+        pruneNodePinOrder(
+          node,
+          resolvedPins.map((pin) => pin.key),
+        );
       });
     },
 
@@ -591,6 +676,51 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       }
     },
 
+    updateNodePinOrder(nodeId: string, pinOrder: readonly string[]): void {
+      const activeSheetId = deps.state.activeSheetId;
+      const currentSheet = getSheet(deps.state.project, activeSheetId);
+      const currentNode = currentSheet.nodes.find((node) => node.id === nodeId);
+      if (!currentNode || currentNode.kind !== "component") return;
+      const component =
+        deps.state.project.library.components[currentNode.componentId];
+      if (!component) return;
+
+      const validPinKeys = resolveComponentPinsForInstance(
+        component,
+        currentNode.instanceConfigValues,
+      ).map((pin) => pin.key);
+      const normalizedPinOrder = normalizeComponentPinOrder(
+        pinOrder,
+        validPinKeys,
+      );
+      const currentPinOrder = normalizeComponentPinOrder(
+        currentNode.pinOrder,
+        validPinKeys,
+      );
+      if (
+        normalizedPinOrder &&
+        currentPinOrder &&
+        normalizedPinOrder.length === currentPinOrder.length &&
+        normalizedPinOrder?.every(
+          (key, index) => key === currentPinOrder[index],
+        )
+      ) {
+        return;
+      }
+      if (!normalizedPinOrder && !currentPinOrder) return;
+
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const node = sheet.nodes.find((candidate) => candidate.id === nodeId);
+        if (!node || node.kind !== "component") return;
+        if (normalizedPinOrder) {
+          node.pinOrder = normalizedPinOrder;
+        } else {
+          delete node.pinOrder;
+        }
+      });
+    },
+
     updateNodeExportStage(nodeId: string, stage: "main" | "postgui"): void {
       const activeSheetId = deps.state.activeSheetId;
       deps.withProject((project) => {
@@ -606,6 +736,59 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         } else {
           delete node.exportStage;
         }
+      });
+    },
+
+    updateNodeGlobalNamespace(nodeId: string, global: boolean): void {
+      const activeSheetId = deps.state.activeSheetId;
+      const currentSheet = getSheet(deps.state.project, activeSheetId);
+      const currentNode = currentSheet.nodes.find((n) => n.id === nodeId);
+      if (!currentNode || currentNode.kind !== "component") return;
+
+      const component =
+        deps.state.project.library.components[currentNode.componentId];
+      if (!component) return;
+      if (componentHasFixedExportNamespace(component)) {
+        deps.setState(
+          "status",
+          `Export namespace is fixed for component '${component.halComponentName}'`,
+        );
+        return;
+      }
+
+      const nextNamespace = global ? "global" : "sheet_scoped";
+      if (
+        resolveNodeExportNamespace(currentNode, component) === nextNamespace
+      ) {
+        return;
+      }
+
+      const nextProject = cloneProject(deps.state.project);
+      const nextSheet = getSheet(nextProject, activeSheetId);
+      const nextNode = nextSheet.nodes.find((n) => n.id === nodeId);
+      if (!nextNode || nextNode.kind !== "component") return;
+
+      const currentDuplicates = new Set(
+        collectDuplicateExportedInstancePaths(deps.state.project),
+      );
+      setNodeExportNamespace(nextNode, global);
+      const introducedDuplicates = collectDuplicateExportedInstancePaths(
+        nextProject,
+      ).filter((path) => !currentDuplicates.has(path));
+
+      if (introducedDuplicates.length > 0) {
+        deps.setState(
+          "status",
+          `Export namespace change would collide at '${introducedDuplicates[0]}'`,
+        );
+        return;
+      }
+
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const node = sheet.nodes.find((n) => n.id === nodeId);
+        if (!node || node.kind !== "component") return;
+        setNodeExportNamespace(node, global);
       });
     },
 
@@ -632,6 +815,74 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         if (patch.rotation !== undefined) {
           label.rotation = normalizeRotationDegrees(patch.rotation);
         }
+      });
+    },
+
+    convertLabelToSheetPort(labelId: string): void {
+      const activeSheetId = deps.state.activeSheetId;
+      const currentSheet = getSheet(deps.state.project, activeSheetId);
+      const label = currentSheet.labels.find((entry) => entry.id === labelId);
+      if (!label) return;
+
+      const anchors = currentSheet.labelAnchors.filter(
+        (entry) => entry.labelId === labelId,
+      );
+      if (anchors.length !== 1) {
+        deps.setStatusT("store.status.cannotConvertLabelToSheetPort");
+        return;
+      }
+
+      const [anchor] = anchors;
+      if (anchor.endpoint.kind !== "node-pin") {
+        deps.setStatusT("store.status.cannotConvertLabelToSheetPort");
+        return;
+      }
+
+      const endpoint = anchor.endpoint;
+      const resolved = resolveEndpointInSheet(
+        deps.state.project,
+        activeSheetId,
+        endpoint,
+      );
+      const usedPortNames = new Set(
+        currentSheet.ports.map((entry) => entry.name),
+      );
+      const portName = nextName(label.name, usedPortNames);
+
+      let createdPortId: string | null = null;
+      deps.withProject((project) => {
+        const sheet = getSheet(project, activeSheetId);
+        const currentLabel = sheet.labels.find((entry) => entry.id === labelId);
+        if (!currentLabel) return;
+
+        const port = createSheetPortDraft(
+          portName,
+          resolved.direction,
+          resolved.type,
+        );
+        port.name = portName;
+        port.position = { ...currentLabel.position };
+        createdPortId = port.id;
+        sheet.ports.push(port);
+        sheet.directConnections.push({
+          id: createId("conn"),
+          a: {
+            kind: "node-pin",
+            nodeId: endpoint.nodeId,
+            pinKey: endpoint.pinKey,
+          },
+          b: { kind: "sheet-port", portId: port.id },
+        });
+        sheet.labelAnchors = sheet.labelAnchors.filter(
+          (entry) => entry.labelId !== labelId,
+        );
+        sheet.labels = sheet.labels.filter((entry) => entry.id !== labelId);
+      });
+
+      if (!createdPortId) return;
+      deps.setState("selection", { kind: "sheet-port", id: createdPortId });
+      deps.setStatusT("store.status.convertedLabelToSheetPort", {
+        name: portName,
       });
     },
 
@@ -696,6 +947,53 @@ export function createNodeActions(deps: EditorStoreActionContext) {
           port.rotation = normalizeRotationDegrees(patch.rotation);
         }
       });
+    },
+
+    rotateSelectionClockwise(
+      stepDegrees: number = ROTATION_STEP_DEGREES,
+    ): boolean {
+      if (!Number.isFinite(stepDegrees) || stepDegrees === 0) return false;
+
+      const { labelIds, commentIds, portIds } = getRotatableSelectionIds(
+        deps.state.selection,
+      );
+      if (labelIds.size === 0 && commentIds.size === 0 && portIds.size === 0) {
+        return false;
+      }
+
+      const currentSheet = getSheet(
+        deps.state.project,
+        deps.state.activeSheetId,
+      );
+      const hasEligibleSelection =
+        currentSheet.labels.some((label) => labelIds.has(label.id)) ||
+        currentSheet.comments.some((comment) => commentIds.has(comment.id)) ||
+        currentSheet.ports.some((port) => portIds.has(port.id));
+      if (!hasEligibleSelection) return false;
+
+      deps.withProject((project) => {
+        const sheet = getSheet(project, deps.state.activeSheetId);
+        for (const label of sheet.labels) {
+          if (!labelIds.has(label.id)) continue;
+          label.rotation = normalizeRotationDegrees(
+            (label.rotation ?? 0) + stepDegrees,
+          );
+        }
+        for (const comment of sheet.comments) {
+          if (!commentIds.has(comment.id)) continue;
+          comment.rotation = normalizeRotationDegrees(
+            (comment.rotation ?? 0) + stepDegrees,
+          );
+        }
+        for (const port of sheet.ports) {
+          if (!portIds.has(port.id)) continue;
+          port.rotation = normalizeRotationDegrees(
+            (port.rotation ?? 0) + stepDegrees,
+          );
+        }
+      });
+
+      return true;
     },
   };
 }

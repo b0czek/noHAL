@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { useI18n } from "../../i18n";
 import { useEditorStore } from "../../state/EditorStoreProvider";
+import FloatModeToggle from "./FloatModeToggle";
 
 export default function ThreadsTab() {
   const { t } = useI18n();
@@ -76,39 +77,18 @@ export default function ThreadsTab() {
                 <span class={fieldLabelClass}>
                   {t("threadsDialog.floatMode")}
                 </span>
-                <div class="inline-flex min-h-9 w-fit items-center gap-2 justify-self-start rounded-xl bg-black/20 p-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={
-                      !isServoThread(thread.name) &&
-                      (thread.floatMode ?? "fp") === "nofp"
-                        ? "default"
-                        : "ghost"
-                    }
-                    disabled={isServoThread(thread.name)}
-                    onClick={() =>
-                      actions.updateHalThreadFloatMode(thread.id, "nofp")
-                    }
-                  >
-                    {t("threadsDialog.floatNoFp")}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={
-                      isServoThread(thread.name) ||
-                      (thread.floatMode ?? "fp") === "fp"
-                        ? "default"
-                        : "ghost"
-                    }
-                    onClick={() =>
-                      actions.updateHalThreadFloatMode(thread.id, "fp")
-                    }
-                  >
-                    {t("threadsDialog.floatFp")}
-                  </Button>
-                </div>
+                <FloatModeToggle
+                  class="justify-self-start"
+                  value={
+                    isServoThread(thread.name)
+                      ? "fp"
+                      : (thread.floatMode ?? "fp")
+                  }
+                  disableNoFp={isServoThread(thread.name)}
+                  onChange={(value) =>
+                    actions.updateHalThreadFloatMode(thread.id, value)
+                  }
+                />
               </div>
               <div class="grid grid-cols-[58px_40px_auto] items-center justify-end gap-3 lg:justify-self-end">
                 <Show

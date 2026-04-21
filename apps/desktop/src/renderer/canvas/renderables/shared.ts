@@ -14,10 +14,10 @@ import type { SceneCallbacks } from "../types";
 
 export type ClampPosFn = (pos: XY) => XY;
 
-export type DragSelectionTarget = {
+export interface DragSelectionTarget {
   kind: "node" | "label" | "comment" | "sheet-port";
   id: string;
-};
+}
 
 export interface RenderDragSelectionOps {
   onSelectionDragStart: (target: DragSelectionTarget, pos: XY) => boolean;

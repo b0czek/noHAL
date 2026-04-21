@@ -22,7 +22,7 @@ export default function InterfaceTab() {
   const settingOptions = <K extends AppSettingKey>(
     definition: AppSettingDefinition<K>,
   ) =>
-    definition.options.map((option) => ({
+    (definition.options ?? []).map((option) => ({
       value: definition.serialize(option.value),
       label: option.label,
     }));

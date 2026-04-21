@@ -5,6 +5,8 @@ export type ProjectMesaDb25CardKind = "7i77";
 export type ProjectMesaSmartSerialCardKind =
   | "7i66-8"
   | "7i66-24"
+  | "7i77-analog"
+  | "7i77-io"
   | "7i84"
   | "7i71"
   | "7i72";
@@ -22,6 +24,7 @@ export interface ProjectMesaSmartSerialAssignment {
   portKey: string;
   channel: number;
   cardKind?: ProjectMesaSmartSerialCardKind;
+  processDataMode?: number;
 }
 
 export type ProjectMesaSmartSerialTarget = Pick<

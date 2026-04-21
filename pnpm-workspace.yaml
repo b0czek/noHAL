@@ -4,5 +4,6 @@ packages:
 
 onlyBuiltDependencies:
   - electron
+  - electron-winstaller
   - esbuild
   - rete

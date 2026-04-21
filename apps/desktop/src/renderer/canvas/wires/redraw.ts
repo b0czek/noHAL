@@ -11,8 +11,11 @@ import type {
   Selection,
 } from "../../state/store/selectionTypes";
 import { wire } from "../constants/wires";
+import { setCullBounds } from "../cullBounds";
+import { measureLabelBox } from "../measurements";
 import { isPrimaryScenePointerButton } from "../renderables/shared";
 import { clampRuntimePos } from "../scene/bounds";
+import { DEGREES_TO_RADIANS } from "../scene/geometry";
 import type { SceneRuntime } from "../scene/types";
 import type { SceneWireContextMenuTarget } from "../types";
 import { getLabelAnchorPoint } from "./anchors";
@@ -20,7 +23,6 @@ import {
   boundsFromPoints,
   getLabelAnchorCullPadding,
   getWaypointCullPadding,
-  setCullBounds,
 } from "./culling";
 import {
   getCursorPos,
@@ -35,6 +37,7 @@ import {
   drawWirePath,
   updateWirePathShape,
 } from "./paths";
+import { getRelatedLocalLabels } from "./selectionGuides";
 import type { SheetLookup } from "./types";
 
 const WAYPOINT_CULL_PADDING = getWaypointCullPadding({
@@ -338,6 +341,62 @@ function renderLabelAnchors(
   }
 }
 
+function labelGuidePoint(
+  runtime: SceneRuntime,
+  lookup: SheetLookup,
+  labelId: string,
+): XY | null {
+  const label = lookup.labelsById.get(labelId);
+  const pos = getLabelPosition(runtime, lookup, labelId);
+  if (!label || !pos) return null;
+
+  const { width } = measureLabelBox(label.scope, label.name);
+  const rotationRad = (label.rotation ?? 0) * DEGREES_TO_RADIANS;
+  const centerOffset = width / 2;
+  return {
+    x: pos.x + Math.cos(rotationRad) * centerOffset,
+    y: pos.y + Math.sin(rotationRad) * centerOffset,
+  };
+}
+
+function renderSelectedLocalLabelGuides(
+  runtime: SceneRuntime,
+  sheet: SheetDefinition,
+  lookup: SheetLookup,
+  selection: Selection,
+): void {
+  const relatedLabels = getRelatedLocalLabels(sheet, selection);
+  if (selection?.kind !== "label" || relatedLabels.length === 0) return;
+
+  const selectedPoint = labelGuidePoint(runtime, lookup, selection.id);
+  if (!selectedPoint) return;
+
+  for (const label of relatedLabels) {
+    const relatedPoint = labelGuidePoint(runtime, lookup, label.id);
+    if (!relatedPoint) continue;
+
+    const line = new Konva.Line({
+      points: [
+        selectedPoint.x,
+        selectedPoint.y,
+        relatedPoint.x,
+        relatedPoint.y,
+      ],
+      stroke: wire.labelSelectionGuide.stroke,
+      strokeWidth: wire.labelSelectionGuide.strokeWidth,
+      listening: false,
+    });
+    setCullBounds(
+      line,
+      boundsFromPoints(
+        [selectedPoint, relatedPoint],
+        wire.labelSelectionGuide.strokeWidth,
+      ),
+    );
+    runtime.view.wireWorld.add(line);
+  }
+}
+
 function drawPendingWire(args: {
   runtime: SceneRuntime;
   lookup: SheetLookup;
@@ -428,6 +487,7 @@ export function redraw(runtime: SceneRuntime): void {
     }
   }
 
+  renderSelectedLocalLabelGuides(runtime, sheet, lookup, state.selection);
   renderLabelAnchors(runtime, sheet, lookup, activeSelectedLabelAnchorId);
 
   if (pendingEndpoint) {

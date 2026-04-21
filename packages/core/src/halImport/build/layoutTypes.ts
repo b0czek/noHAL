@@ -1,20 +1,20 @@
 import type { HalImportNet, PinDirection, XY } from "../../types";
 
-export type ImportPreparedEndpoint = {
+export interface ImportPreparedEndpoint {
   nodeId: string;
   pinKey: string;
   pinRefKey: string;
   direction: PinDirection | undefined;
-};
+}
 
-export type ImportPreparedNet = {
+export interface ImportPreparedNet {
   net: HalImportNet;
   resolvedEndpoints: ImportPreparedEndpoint[];
   directConnectionEdges: Array<{
     a: ImportPreparedEndpoint;
     b: ImportPreparedEndpoint;
   }>;
-};
+}
 
 export type ImportedLabelPositionResolver = (
   nodeId: string,

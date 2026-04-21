@@ -1,4 +1,4 @@
-import type { ComponentDefinition, ComponentPinDefinition } from "./types";
+import type { ComponentDefinition, ComponentPinDefinition } from "../types";
 
 const COMPONENT_INDEX_WIDTH_THREE_DIGITS = 3;
 const COMPONENT_INDEX_WIDTH_TWO_DIGITS = 2;

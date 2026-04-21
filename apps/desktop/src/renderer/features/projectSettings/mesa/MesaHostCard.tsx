@@ -38,6 +38,11 @@ interface MesaHostCardProps {
     connectorKey: string,
     cardKind: ProjectMesaConnectorCardKind | undefined,
   ) => void;
+  onSetSmartSerialProcessDataMode: (
+    hostId: string,
+    target: ProjectMesaSmartSerialTarget,
+    processDataMode: number,
+  ) => void;
   onSetRawGpioPinDirection: (
     hostId: string,
     connectorKey: string,
@@ -90,14 +95,11 @@ export default function MesaHostCard(props: MesaHostCardProps) {
     new Map(
       (props.host.connectors ?? []).map((item) => [item.connectorKey, item]),
     );
-  const smartSerialMap = (connectorKey?: string) =>
+  const smartSerialAssignments = (connectorKey?: string) =>
     new Map(
       (props.host.smartSerial ?? [])
         .filter((item) => (item.connectorKey ?? "") === (connectorKey ?? ""))
-        .map((item) => [
-          `${item.portKey}:${item.channel}`,
-          item.cardKind ?? "",
-        ]),
+        .map((item) => [`${item.portKey}:${item.channel}`, item]),
     );
 
   return (
@@ -217,11 +219,14 @@ export default function MesaHostCard(props: MesaHostCardProps) {
                     <MesaSmartSerialSection
                       hostId={props.host.id}
                       ports={assignedCard()?.sserial.smartSerialPorts ?? []}
-                      smartSerialMap={smartSerialMap}
+                      smartSerialAssignments={smartSerialAssignments}
                       connectorKey={slot.key}
                       outerClass="ml-0 grid gap-3 rounded-xl border border-white/10 bg-black/20 p-3 lg:ml-[140px]"
                       titleClass="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
                       fieldLabelClass={props.fieldLabelClass}
+                      onSetProcessDataMode={
+                        props.onSetSmartSerialProcessDataMode
+                      }
                       onSetSmartSerialCard={props.onSetSmartSerialCard}
                     />
                   </Show>
@@ -236,9 +241,10 @@ export default function MesaHostCard(props: MesaHostCardProps) {
         <MesaSmartSerialSection
           hostId={props.host.id}
           ports={catalog()?.smartSerialPorts ?? []}
-          smartSerialMap={smartSerialMap}
+          smartSerialAssignments={smartSerialAssignments}
           outerClass="grid gap-3 rounded-2xl bg-white/[0.04] p-4 shadow-inner shadow-black/20"
           fieldLabelClass={props.fieldLabelClass}
+          onSetProcessDataMode={props.onSetSmartSerialProcessDataMode}
           onSetSmartSerialCard={props.onSetSmartSerialCard}
         />
       </Show>

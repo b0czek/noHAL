@@ -62,24 +62,7 @@ export function buildSheetQueueRows(
   const componentFunctionRows = (node: ComponentNode): SheetQueueRow[] => {
     const component = project.library.components[node.componentId];
     const functions = component?.functions ?? [];
-    if (functions.length === 0) {
-      const queueEntry = makeAddfQueueNodeEntry(node.id, defaultThreadOutputId);
-      const queueKey = addfQueueEntryKey(queueEntry) ?? `node:${node.id}`;
-      return [
-        {
-          rowKey: `node:${node.id}`,
-          queueKey,
-          queueEntry,
-          nodeId: node.id,
-          instanceName: node.instanceName,
-          kind: "component",
-          title: node.instanceName,
-          subtitle: component?.halComponentName ?? labels.missing,
-          sortName: node.instanceName,
-          sheetThreadOutputId: defaultThreadOutputId,
-        },
-      ];
-    }
+    if (functions.length === 0) return [];
 
     return functions.flatMap((fn) => {
       const covered = coveredFunctionKeysByNodeId.get(node.id);
@@ -268,9 +251,8 @@ export function buildSheetQueueRows(
   ): void => {
     if (node.kind === "component") {
       const component = project.library.components[node.componentId];
-      if ((component?.functions?.length ?? 0) > 0) {
-        coveredByNodeEntry.add(node.id);
-      }
+      if ((component?.functions?.length ?? 0) === 0) return;
+      coveredByNodeEntry.add(node.id);
     }
     if (node.kind === "sheet") {
       for (const row of subsheetOutputRows(

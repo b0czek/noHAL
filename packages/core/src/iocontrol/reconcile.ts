@@ -1,3 +1,4 @@
+import { isManagedBySystemManager } from "../component/system";
 import {
   createIocontrolSystemComponentDefinition,
   defaultPositionForIocontrol,
@@ -5,7 +6,6 @@ import {
   IOCONTROL_SYSTEM_FAMILY,
   IOCONTROL_SYSTEM_MANAGER,
 } from "../componentStore/catalog/system/iocontrol";
-import { isManagedBySystemManager } from "../componentSystem";
 import { reconcileSystemSingleton } from "../systemReconcile/singleton";
 import type { ComponentNode, NoHALProject } from "../types";
 

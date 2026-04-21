@@ -1,6 +1,6 @@
 import { sortBy, uniqueBy } from "remeda";
-import { isSystemComponent } from "../componentSystem";
-import type { ComponentDefinition } from "../types";
+import { resolveNodeInstancePath } from "../component/naming";
+import type { ComponentDefinition, ComponentNode } from "../types";
 import type { EndpointRecord, Hint } from "./context";
 
 export function joinInstancePath(parts: string[]): string {
@@ -9,11 +9,10 @@ export function joinInstancePath(parts: string[]): string {
 
 export function resolveExportedInstancePath(
   pathParts: string[],
-  instanceName: string,
+  node: Pick<ComponentNode, "instanceName" | "exportNamespace">,
   component: ComponentDefinition | undefined,
 ): string {
-  if (isSystemComponent(component)) return instanceName;
-  return joinInstancePath([...pathParts, instanceName]);
+  return resolveNodeInstancePath(pathParts, node, component);
 }
 
 export function chooseBoundarySignalName(

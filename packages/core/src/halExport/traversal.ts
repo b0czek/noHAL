@@ -1,5 +1,5 @@
-import { resolveComponentPinsForInstance } from "../componentInstance";
-import { isSystemComponent, resolveNodeExportStage } from "../componentSystem";
+import { resolveComponentPinsForInstance } from "../component/instance";
+import { isSystemComponent, resolveNodeExportStage } from "../component/system";
 import { getNodePins, getSheet, invertDirection } from "../graph";
 import { isValidHalName } from "../halNames";
 import type { NoHALProject, SheetDefinition } from "../types";
@@ -55,15 +55,14 @@ function createLocalEndpointIdMap(
       node.kind === "component" ? node.exportStage : undefined,
     );
     const pins = getNodePins(project, node);
+    const instancePath =
+      node.kind === "component"
+        ? resolveExportedInstancePath(pathParts, node, component)
+        : undefined;
     for (const pin of pins) {
       const localKey = `node:${node.id}:${pin.key}`;
       const id = endpointId(ctx, "ep");
       if (node.kind === "component") {
-        const instancePath = resolveExportedInstancePath(
-          pathParts,
-          node.instanceName,
-          component,
-        );
         registerEndpoint(ctx, {
           id,
           kind: "component-pin",
@@ -155,11 +154,7 @@ function collectComponentInstances(
       ctx.componentInstances.push({
         componentName: component.halComponentName,
         componentId: node.componentId,
-        instancePath: resolveExportedInstancePath(
-          pathParts,
-          node.instanceName,
-          component,
-        ),
+        instancePath: resolveExportedInstancePath(pathParts, node, component),
         ...(node.instanceConfigValues
           ? { instanceConfigValues: { ...node.instanceConfigValues } }
           : {}),

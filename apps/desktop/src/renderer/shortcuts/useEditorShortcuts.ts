@@ -3,7 +3,9 @@ import { useEditorStore } from "../state/EditorStoreProvider";
 import { useEditorUi } from "../state/EditorUiProvider";
 
 function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
+  if (typeof HTMLElement === "undefined" || !(target instanceof HTMLElement)) {
+    return false;
+  }
   const tag = target.tagName;
   return (
     target.isContentEditable ||
@@ -109,6 +111,20 @@ function handleEditorActionShortcut(
   return false;
 }
 
+export function handleRotateShortcut(
+  evt: KeyboardEvent,
+  actions: ReturnType<typeof useEditorStore>["actions"],
+): boolean {
+  const primaryModifier = evt.ctrlKey || evt.metaKey;
+  if (primaryModifier || evt.altKey) return false;
+  if (evt.key.toLowerCase() !== "r" || isEditableTarget(evt.target)) {
+    return false;
+  }
+  if (!actions.rotateSelectionClockwise()) return false;
+  evt.preventDefault();
+  return true;
+}
+
 export function useEditorShortcuts(): void {
   const { state, actions } = useEditorStore();
   const editorUi = useEditorUi();
@@ -117,6 +133,7 @@ export function useEditorShortcuts(): void {
     const onKeyDown = (evt: KeyboardEvent) => {
       if (handleEscapeShortcut(evt, editorUi, state, actions)) return;
       if (handleDeleteShortcut(evt, state, actions)) return;
+      if (handleRotateShortcut(evt, actions)) return;
       handlePrimaryModifierShortcut(evt, editorUi, actions);
     };
 

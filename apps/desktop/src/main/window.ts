@@ -3,6 +3,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { BrowserWindow, dialog } from "electron";
+import { IPC_CHANNELS } from "../shared/ipcChannels";
 import { appSettings } from "./appSettings";
 import { applyChangedAppSettings } from "./appSettingsEffects";
 
@@ -10,11 +11,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const windowDirtyState = new WeakMap<BrowserWindow, boolean>();
 type UnsavedChangesChoice = "save" | "discard" | "cancel";
 
-type PendingSaveBeforeCloseRequest = {
+interface PendingSaveBeforeCloseRequest {
   senderWebContentsId: number;
   resolve: (didSave: boolean) => void;
   timeout: ReturnType<typeof setTimeout>;
-};
+}
 
 const pendingSaveBeforeCloseRequests = new Map<
   number,
@@ -73,7 +74,10 @@ async function requestRendererSaveBeforeClose(
     });
   });
 
-  win.webContents.send("nohal:request-save-before-close", requestId);
+  win.webContents.send(
+    IPC_CHANNELS.mainToRenderer.requestSaveBeforeClose,
+    requestId,
+  );
   return resultPromise;
 }
 

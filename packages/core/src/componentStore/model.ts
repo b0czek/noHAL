@@ -8,12 +8,12 @@ import type {
   ImportedComponentDefinition,
 } from "../types";
 
-export type StoreSourceRefreshResult = {
+export interface StoreSourceRefreshResult {
   sourceId: string;
   entries: ComponentStoreEntry[];
   removedComponentIds: string[];
   errors: Array<{ filePath: string; error: string }>;
-};
+}
 
 export interface ComponentStoreApi {
   readComponentStoreFile(storeFilePath: string): Promise<ComponentStore>;

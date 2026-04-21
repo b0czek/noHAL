@@ -37,6 +37,7 @@ export interface HalExportAddfConfig {
 }
 
 export interface HalExportConfig {
+  halNameLen?: number;
   loadOrder?: string[];
   componentRules?: Record<string, HalExportComponentRule>;
   addf?: HalExportAddfConfig;

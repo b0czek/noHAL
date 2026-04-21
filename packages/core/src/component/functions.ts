@@ -1,4 +1,4 @@
-import type { ComponentFunctionDefinition } from "./types";
+import type { ComponentFunctionDefinition } from "../types";
 
 export function resolveAddfFunctionTarget(
   instancePath: string,

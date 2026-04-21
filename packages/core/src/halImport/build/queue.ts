@@ -4,7 +4,7 @@ import {
   makeAddfQueueNodeEntry,
   normalizeAddfQueueEntries,
 } from "../../addfQueue";
-import { resolveAddfFunctionTarget } from "../../componentFunctions";
+import { resolveAddfFunctionTarget } from "../../component/functions";
 import { createId } from "../../id";
 import { getSheetThreadOutputs } from "../../sheet";
 import type {

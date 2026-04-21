@@ -1,5 +1,6 @@
 import type { LinuxCncVersion } from "../../../linuxcncVersion";
 import type {
+  ComponentConstraintPolicy,
   ComponentDefinition,
   ComponentPinDefinition,
   ProjectMotmodConfig,
@@ -74,6 +75,10 @@ export function createMotmodSystemComponentDefinition(
           instanceConfig: motionInstanceConfigDefinition(linuxcncVersion),
         }
       : { kind: "unknown" };
+  const constraints: ComponentConstraintPolicy = {
+    exportNamespace: "global",
+    ...(family === "motion" ? { fixedInstanceName: "motion" } : {}),
+  };
 
   return {
     id: MOTMOD_SYSTEM_COMPONENT_IDS[family],
@@ -89,13 +94,7 @@ export function createMotmodSystemComponentDefinition(
       searchable: false,
       showInCustomComponents: false,
     },
-    ...(family === "motion"
-      ? {
-          constraints: {
-            fixedInstanceName: "motion",
-          },
-        }
-      : {}),
+    constraints,
     runtime,
     pins: systemPinsByFamily(family, linuxcncVersion),
     params: [],

@@ -17,7 +17,7 @@ import { Alert } from "./ui/alert";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
-const PORT_TYPE_OPTIONS: ReadonlyArray<StringSelectOption> = [
+const PORT_TYPE_OPTIONS: readonly StringSelectOption[] = [
   { value: "bit", label: "bit" },
   { value: "float", label: "float" },
   { value: "s32", label: "s32" },
@@ -33,11 +33,11 @@ export default function Inspector() {
   const { state, actions } = useEditorStore();
   const editorUi = useEditorUi();
   const currentSheet = () => getSheet(state.project, state.activeSheetId);
-  const labelScopeOptions: ReadonlyArray<StringSelectOption> = [
+  const labelScopeOptions: readonly StringSelectOption[] = [
     { value: "local", label: "local" },
     { value: "global", label: "global" },
   ];
-  const portDirectionOptions: ReadonlyArray<StringSelectOption> = [
+  const portDirectionOptions: readonly StringSelectOption[] = [
     { value: "in", label: "in" },
     { value: "out", label: "out" },
     { value: "io", label: "io" },

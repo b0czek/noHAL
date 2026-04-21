@@ -1,6 +1,7 @@
 export * from "./base";
 export * from "./componentStore";
 export * from "./components";
+export * from "./customComponentStore";
 export * from "./halImport";
 export * from "./ini";
 export * from "./io";
