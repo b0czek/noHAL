@@ -1,5 +1,6 @@
 import { type ChangeResult, type FailureLike, matchFailure } from "@nohal/core";
 import {
+  applyComponentDefinitionToProject,
   customComponentDefinitionEdits,
   findHalComponentNameConflict,
   nextHalComponentName,
@@ -13,7 +14,6 @@ import type {
 import { unwrap } from "solid-js/store";
 import type { TranslationKey } from "../../../i18n";
 import {
-  applyComponentStoreEntryToProject,
   cloneComponentStore,
   getComponentSourceDisplayLabel,
   pruneMissingStoredComponentsFromProject,
@@ -99,7 +99,11 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
     });
     deps.withProject(
       (project) => {
-        applyComponentStoreEntryToProject(project, entry);
+        applyComponentDefinitionToProject(
+          project,
+          entry.componentId,
+          entry.parsed,
+        );
       },
       { recordHistory: false },
     );

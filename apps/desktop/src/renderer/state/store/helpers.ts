@@ -11,7 +11,7 @@ import {
   isStoreEntryCompatibleWithLinuxCncVersion,
   listStoreEntriesForLinuxCncVersion,
 } from "@nohal/core/componentStore";
-import { reconcileComponentNodesForDefinition } from "@nohal/core/customComponent";
+import { applyComponentDefinitionToProject } from "@nohal/core/customComponent";
 import { STORE_CUSTOM_COMPONENT_ID_PREFIX } from "@nohal/core/customComponentStore";
 import { endpointKey } from "@nohal/core/graph";
 import {
@@ -23,7 +23,6 @@ import {
 } from "@nohal/core/sheet";
 import type {
   ComponentStore,
-  ComponentStoreEntry,
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
@@ -63,25 +62,8 @@ export function applyComponentStoreToProject(
     componentStore,
     project.target.linuxcncVersion,
   )) {
-    project.library.components[entry.componentId] = entry.parsed;
-    reconcileComponentNodesForDefinition(
-      project,
-      entry.componentId,
-      entry.parsed,
-    );
+    applyComponentDefinitionToProject(project, entry.componentId, entry.parsed);
   }
-}
-
-export function applyComponentStoreEntryToProject(
-  project: NoHALProject,
-  entry: ComponentStoreEntry,
-): void {
-  project.library.components[entry.componentId] = entry.parsed;
-  reconcileComponentNodesForDefinition(
-    project,
-    entry.componentId,
-    entry.parsed,
-  );
 }
 
 function projectUsesComponentDefinition(

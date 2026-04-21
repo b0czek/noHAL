@@ -6,6 +6,7 @@ import type {
 } from "@nohal/core";
 import { type FailureLike, matchFailure } from "@nohal/core";
 import {
+  applyComponentDefinitionToProject,
   customComponentEdits,
   findHalComponentNameConflict,
   nextHalComponentName,
@@ -26,11 +27,7 @@ import {
 import { type ProjectReadResult, projectEdits } from "@nohal/core/project";
 import { unwrap } from "solid-js/store";
 import type { TranslationKey } from "../../../i18n";
-import {
-  applyComponentStoreEntryToProject,
-  repointComponentDefinitionId,
-  toErrorMessage,
-} from "../helpers";
+import { repointComponentDefinitionId, toErrorMessage } from "../helpers";
 import type { EditorStoreActionContext } from "./types";
 
 interface ProjectTransition {
@@ -1001,7 +998,11 @@ export function createProjectActions(deps: EditorStoreActionContext) {
               componentId,
               entry.componentId,
             );
-            applyComponentStoreEntryToProject(project, entry);
+            applyComponentDefinitionToProject(
+              project,
+              entry.componentId,
+              entry.parsed,
+            );
             delete project.library.components[componentId];
           },
           { recordHistory: false, markDirty: true },

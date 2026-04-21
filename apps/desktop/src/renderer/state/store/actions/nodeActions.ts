@@ -1,5 +1,4 @@
-import { normalizeComponentPinOrder } from "@nohal/core";
-import { resolveComponentPinsForInstance } from "@nohal/core/componentInstance";
+import { applyComponentDefinitionToProject } from "@nohal/core/customComponent";
 import {
   collectDuplicateExportedInstancePaths,
   componentHasFixedExportNamespace,
@@ -305,7 +304,11 @@ export function createNodeActions(deps: EditorStoreActionContext) {
         });
         deps.withProject(
           (project) => {
-            applyComponentStoreEntryToProject(project, entry);
+            applyComponentDefinitionToProject(
+              project,
+              entry.componentId,
+              entry.parsed,
+            );
           },
           { recordHistory: false },
         );
