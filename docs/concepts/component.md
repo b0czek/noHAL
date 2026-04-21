@@ -1,40 +1,37 @@
 # Component
 
-A component in NoHAL is a placed instance of a HAL-capable building block.
-
-- the component definition in the library
-- the placed instance on a sheet
-- the exported HAL names produced from that instance
+A component node is a placed instance of a component definition from the project library.
 
 ## What You Are Actually Placing
 
-When you drop a component on a sheet, you are not placing a generic symbol. You are placing one HAL instance with:
+When you place a component on a sheet, the node stores instance-specific state:
 
 - an instance name
-- a component type
-- visible pins
-- optional parameters
-- optional realtime functions
-- optional instance configuration
+- a component definition reference (HAL component name, pins/params/functions metadata, runtime kind, constraints)
+- per-instance pin visibility and pin order
+- per-instance initial values for writable pins
+- per-instance parameter values
+- optional per-instance configuration values (from “Instance Configuration”, when the definition supports it)
+- export stage selection (Main HAL File vs Postgui HAL File), when allowed by the definition
+- export namespace selection (Global namespace vs sheet-prefixed), when allowed by the definition
 
-## How Components Look in NoHAL
+## Pins and Pin Paths
 
-In the editor, a component is a node with pins on its sides.
+Pins are the endpoints you can connect to wiring. During export, each connected pin becomes a HAL pin path:
 
-- Pins are connection points for nets.
-- Parameters are configuration values that export as `setp`.
-- Some components expose one function, some expose several, and some expose none.
-- Some components change shape depending on instance configuration.
+```text
+<exported instance path>.<pin name>
+```
+
+The exported instance path is derived from:
+
+- the sheet instance hierarchy (`sheet.instanceName` prefixes), unless the instance is exported in the global namespace
+- the node’s instance name
+- component definition constraints (for example, fixed instance names on system-managed components)
 
 ## Placement and Naming
 
-Instance names must be stable, HAL-safe names.
-
-For most ordinary components, the exported pin path is:
-
-```text
-<sheet path>.<instance name>.<pin name>
-```
+Instance names are used as part of exported paths and must be valid HAL names after path joining.
 
 Examples:
 
@@ -46,14 +43,30 @@ On the root sheet there is no sheet prefix, so a root component can export like:
 - `pid.command`
 - `and2.0.out`
 
-System-managed components are special. Their exported instance paths are bare instance names such as:
+## Export Namespace (Global vs Sheet-Prefixed)
+
+Each component instance has an export namespace setting:
+
+- **Global namespace**: the instance path omits sheet prefixes.
+- **Sheet-prefixed**: the instance path includes sheet instance names as prefixes.
+
+Some components lock this setting via definition/runtime constraints.
+
+## System-Managed Components
+
+Some component definitions are system-managed and not manually placeable. They are represented on the System sheet, and their exported instance paths are constrained by their system naming rules.
+
+Examples of exported instance paths that are fixed by system constraints:
 
 - `motion.command-handler-time`
 - `halui.machine.is-on`
 
 ## Pins, Params, and `setp`
 
-NoHAL lets you assign initial values to both parameters and writable pins on an instance.
+NoHAL exports per-instance initial values for:
+
+- writable pins (from “Pin Initial Values (setp)”)
+- parameters (from “Parameters”)
 
 At export time, those become `setp` lines:
 
@@ -62,43 +75,30 @@ setp debounce.0.delay 5
 setp pid.x.maxoutput 10
 ```
 
-Use this for values that are configuration, not live signal flow.
+`setp` export is split by export stage. Instances exported to the Postgui HAL File contribute their `setp` lines to the postgui output; everything else contributes to the main output.
 
 ## Customizable Components and Personality
 
-Some components are configurable at placement time and can change their exposed pins.
+Some definitions expose per-instance configuration fields that change the resolved pins for that instance. Pins are resolved from the component definition plus the instance configuration values stored on the node.
 
-The classic example is `debounce`:
+### Example: `debounce` (channels)
 
-- the component uses grouped canonical instances
-- each instance can declare how many channels it needs
-- NoHAL expands the visible pins from that configuration
+The built-in `debounce` definition is a manually modeled LinuxCNC component with grouped canonical instances (`debounce.0` … `debounce.7`) and a per-instance config field:
 
-Other LinuxCNC components use a `personality` or similar load-time option to change how many pins, params, or functions exist. NoHAL models those cases when the component metadata supports it.
+- `channels` (integer): the number of channels exported by that canonical instance
 
-## System Components
+Changing `channels` expands the pins for the instance using indexed templates. For example, with `channels = 2`, the instance exports pins like:
 
-Some components are managed by NoHAL as LinuxCNC system components rather than ordinary user-placed library parts.
+- `0.in`, `0.out`
+- `1.in`, `1.out`
 
-Examples include:
+## Realtime Functions and `addf`
 
-- `motion`
-- `halui`
-- `iocontrol`
-- `joint`
-- `spindle`
-- `ini`
+If a component definition includes realtime function metadata, those functions can appear in a sheet’s `addf Queue`. The queue determines ordering, and thread selection is derived from the local “Sheet Thread Outputs” and any parent/child mapping.
 
-On LinuxCNC 2.8 and newer, part of that system projection depends on your `motmod` configuration in `Project Settings`.
+## Current Limitations
 
-Change values such as:
-
-- `num_joints`
-- `num_dio`
-- `num_aio`
-- `num_spindles`
-
-and the system-side projection changes with it. Some system components are derived from machine-level settings rather than placed manually like ordinary library components.
+Component definitions can declare array pins (for example, pins containing `#`). Export currently does not expand array pins into concrete indexed pin paths, and export emits a warning when such pins are present on an instance.
 
 ## Component vs Component Definition
 
@@ -107,23 +107,11 @@ The library definition answers:
 - what this thing is
 - what pins and params it can expose
 - how it loads
-- whether naming is constrained
+- whether export stage / export namespace / instance naming are constrained
 
 The placed instance answers:
 
 - what this one is called
 - where it lives in sheet hierarchy
 - what values it starts with
-- which thread lane its functions run in
-
-## Capture In App
-
-Good screenshots for this page:
-
-- a normal component with pins visible and the inspector open on the Instance tab
-- a configurable component such as `debounce` with instance configuration visible
-- a component with pin initial values and parameter values visible in the inspector
-
-## Diagram
-
-![Component anatomy](/diagrams/component-anatomy.svg)
+- which local sheet thread output its functions are scheduled on (via the sheet’s queue)

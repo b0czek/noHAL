@@ -1,17 +1,10 @@
 # Sheet
 
-A sheet is a graph container, but in NoHAL it is more than a larger canvas.
-
-A sheet is also:
-
-- a naming scope
-- a wiring boundary
-- a scheduling scope
-- a reusable definition
+A sheet definition is a reusable graph. A sheet instance is a placed reference to that definition inside a parent sheet.
 
 ## The Three Sheet Roles You Need to Keep Straight
 
-There are three related but different things:
+Projects use three sheet roles:
 
 1. The root sheet
 2. The system sheet
@@ -21,24 +14,13 @@ There are three related but different things:
 
 Every project has exactly one root sheet.
 
-This is the top-level graph. It is the place where:
-
-- the machine structure is visible at the highest level
-- child sheets are instantiated
-- root thread outputs are finally bound to real HAL threads
-
-The root sheet is a definition, not a placed reference. Nothing contains it.
+The root sheet is the top-level definition and has no parent. It is also where top-level thread outputs can be bound to project HAL threads (see Threading).
 
 ## System Sheet
 
-NoHAL also keeps a dedicated system sheet for LinuxCNC-managed system components.
+NoHAL maintains a dedicated System sheet definition with role `system`. In the root sheet, it appears as a subsheet instance (the instance name is chosen to avoid collisions, typically `system`).
 
-Important detail:
-
-- the system sheet is represented in the root sheet as a sheet node, just like other subsheets
-- system-managed component instance paths themselves still export as bare names like `motion.*` or `halui.*`
-
-So the system sheet behaves like a structural container, not a renaming wrapper around those components.
+System-managed components are represented as nodes on the System sheet. Their exported instance paths are constrained by their component definitions (for example, fixed instance names like `motion` and `iocontrol`) rather than by the System sheet instance path.
 
 ## Sheet Definition vs Sheet Instance
 
@@ -50,26 +32,30 @@ A sheet instance is the node placed on a parent sheet that points to that defini
 
 If you place the same sheet definition twice, you do not get one shared object in two places. You get two instances of the same structure, each with its own place in the parent graph and its own exported path.
 
-## Why a Sheet Can Be Thought of as a Higher-Level Component
+## Singleton constraint
 
-A well-designed sheet behaves like a component because it has:
+Some sheets are required to be instantiated at most once in a project (“forced singleton”).
 
-- internal implementation
-- a public interface made of ports
-- local scheduling
-- a stable place in the parent hierarchy
+A sheet becomes forced-singleton if it contains any node that exports into the global namespace (i.e. a node whose exported instance path is not prefixed by the sheet instance path). The root sheet and the System sheet are also treated as singleton sheets.
 
-If a child sheet has no meaningful boundary and no coherent purpose, it is probably just hidden clutter rather than a real subsystem.
+Export validates this: if a forced-singleton sheet is reachable through more than one sheet instance path, export reports a fatal validation error and produces no HAL output.
 
 ## Ports Are the Sheet Interface
 
 Ports are how a sheet definition exposes itself to the outside world.
 
-Use them when a signal should cross a sheet boundary deliberately.
+Ports are the only endpoints that intentionally cross a sheet boundary.
 
-- `in` means the signal enters the sheet
-- `out` means the signal leaves the sheet
-- `io` means it is bidirectional
+When you place a sheet definition as a subsheet instance:
+
+- the subsheet node in the parent sheet exposes the child definition’s ports as pins
+- wiring to those pins connects into the child sheet through the matching port
+
+Each port has:
+
+- a name
+- a direction (`in`, `out`, `io`)
+- a type (`bit`, `float`, `s32`, etc.)
 
 ## Naming Through Sheet Hierarchy
 
@@ -77,17 +63,8 @@ For ordinary components, sheet hierarchy becomes part of the exported instance p
 
 A component inside a child sheet exports differently than the same component on the root sheet.
 
-The price is that sheet-instance names matter. A vague instance name like `part1` leaks directly into exported naming and becomes noise later.
+Exported instance paths are computed from:
 
-## Capture In App
-
-Good screenshots for this page:
-
-- the sidebar showing root, system, and at least one ordinary child sheet
-- the root sheet with a subsheet node selected
-- the child sheet definition opened, with its ports visible
-- the same sheet definition placed more than once, if available
-
-## Diagram
-
-![Sheet as higher-level component](/diagrams/sheet-structure.svg)
+- the sheet instance path (the chain of subsheet instance names from the root to the current sheet instance)
+- the node’s instance name
+- any component definition constraints (for example, system-managed fixed names)

@@ -1,25 +1,21 @@
 # Concepts
 
-This section is the theory layer of the manual.
-
-It explains how NoHAL maps HAL concepts into editor objects, sheet structure, scheduling, and exported files.
-
-Read these pages before starting to build anything in NoHAL. More advanced concepts will be added later.
+This section describes how NoHAL’s editor objects map to the exported HAL output.
 
 ## In This Section
 
-- [Component](/concepts/component): what a component instance is, how NoHAL names it, what can be configured per instance, and what changes at export.
-- [Sheet](/concepts/sheet): root sheet, system sheet, sheet definitions, sheet instances, and why a sheet can behave like a higher-level component.
-- [Wiring](/concepts/wiring): wires, HAL nets, ports, labels, anchors, and how signal names are derived during export.
-- [Threading](/concepts/threading): sheet thread outputs, root-thread binding, subsheet thread mapping, and how NoHAL expands `addf`.
-- [Component Store](/concepts/component-store): built-in LinuxCNC catalogs, imported `.comp` sources, and project-local custom components.
+- [Component](/concepts/component): component instances, exported instance paths, export namespace/stage, and `setp`.
+- [Sheet](/concepts/sheet): root/system sheets, sheet definitions vs instances, ports, and path scope.
+- [Wiring](/concepts/wiring): connections, labels, ports, and how `net` names are chosen during export.
+- [Threading](/concepts/threading): sheet thread outputs, root binding to project HAL threads, and `addf` expansion order.
+- [Component Store](/concepts/component-store): built-in library, manual sources, and custom component definitions.
 
 ## Mental Model
 
-NoHAL has five layers:
+Export is assembled from these parts:
 
-1. Components are the executable leaves. They become HAL instances, pins, params, and functions.
-2. Sheets are graph containers. They become structure, boundaries, and scheduling scopes.
-3. Wiring connects endpoints. It becomes HAL nets and `setp` lines.
-4. Threading decides when realtime functions run. It becomes exported `addf`.
-5. The Component Store decides what kinds of components are available to place in the project.
+1. Components produce exported instance paths and pin paths, plus optional `setp` and `addf`.
+2. Sheets provide hierarchy (path prefixes), boundaries (ports), and local scheduling (thread outputs + queue).
+3. Wiring produces `net` lines by grouping connected endpoints.
+4. Threading produces `addf` lines by expanding each sheet’s queue through subsheets.
+5. The Component Store provides the component definitions used by the project (built-in, imported, and custom).
