@@ -74,6 +74,10 @@ export interface EditorStoreActionContext {
     mutate: (project: NoHALProject) => T,
     options?: WithProjectOptions,
   ) => T;
+  withProjectChange: <T>(
+    mutate: (project: NoHALProject) => Change<T>,
+    options?: WithProjectOptions,
+  ) => Change<T>;
   withProjectResult: <T, E>(
     mutate: (project: NoHALProject) => Result<Change<T>, E>,
     options?: WithProjectOptions,

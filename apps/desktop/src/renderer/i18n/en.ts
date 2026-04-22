@@ -644,6 +644,8 @@ export const en = {
   "store.status.removedSheetThreadOutput": "Removed sheet thread output",
   "store.status.updatedSubsheetThreadMapping":
     "Updated subsheet thread mapping",
+  "store.status.subsheetThreadMappingTargetMissing":
+    "The selected subsheet or thread mapping target no longer exists",
   "store.status.addedHalThread": "Added HAL thread",
   "store.status.removedHalThread": "Removed HAL thread {name}",
   "store.status.updatedHalThreadName": "Updated HAL thread name to {name}",
@@ -773,6 +775,12 @@ export const en = {
     "Converted label to sheet port ({name})",
   "store.status.cannotConvertLabelToSheetPort":
     "Label must be attached to exactly one component pin to convert it to a port",
+  "store.status.cannotHideConnectedPin":
+    "Cannot hide a pin while it is still connected",
+  "store.status.componentNodeEditTargetMissing":
+    "The selected component node or field no longer exists",
+  "store.status.commentEditTargetMissing":
+    "The selected comment no longer exists",
   "store.status.updatedWireRoute": "Updated wire route",
   "store.status.removedLabelAnchor": "Removed label anchor",
   "store.warning.importError": "Import error {filePath}: {error}",

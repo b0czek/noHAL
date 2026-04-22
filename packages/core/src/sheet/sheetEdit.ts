@@ -1,9 +1,13 @@
 import { err, ok } from "neverthrow";
 import { addfQueueEntryNodeId, normalizeAddfQueueEntries } from "../addfQueue";
 import { ensureInstanceName } from "../component/naming";
-import { getConnectedSheetPortReferenceLocations, getSheet } from "../graph";
+import {
+  getConnectedSheetPortReferenceLocations,
+  getSheet,
+  resolveEndpointInSheet,
+} from "../graph";
 import { createId, nextUniqueName } from "../id";
-import { createSheet } from "../project";
+import { createSheet, createSheetPortDraft } from "../project";
 import type {
   ChangeResult,
   DuplicateNameFailure,
@@ -19,9 +23,12 @@ import type {
   SheetLabel,
   SheetNode,
   SheetNodeInstance,
+  SheetPort,
   SheetThreadOutputDefinition,
 } from "../types";
+import { itemModelEdits } from "./itemEdit";
 import { defaultNodePositionForIndex } from "./layout";
+import { nodeModelEdits } from "./nodeEdit";
 import { isSingletonReferenceBlocked } from "./singleton";
 import { moveItemsIntoSubsheet } from "./subsheetMove";
 import { isProtectedSystemNode, isProtectedSystemSheet } from "./system";
@@ -193,6 +200,72 @@ function updateSheetThreadOutputHalBinding(
   else delete target.halThreadId;
   sheet.hal.threadOutputs = current;
   return ok({ data: target, changed: true });
+}
+
+export type ConvertLabelToSheetPortResult = ChangeResult<
+  { labelId: string; port: SheetPort },
+  NotFoundFailure | InvalidInputFailure<"label-not-convertible">
+>;
+
+function convertLabelToSheetPort(
+  project: NoHALProject,
+  sheetId: string,
+  labelId: string,
+): ConvertLabelToSheetPortResult {
+  const sheet = project.sheets[sheetId];
+  if (!sheet) return err({ code: "not-found" });
+
+  const label = sheet.labels.find((entry) => entry.id === labelId);
+  if (!label) return err({ code: "not-found" });
+
+  const anchors = sheet.labelAnchors.filter(
+    (entry) => entry.labelId === labelId,
+  );
+  if (anchors.length !== 1) {
+    return err({ code: "invalid-input", detail: "label-not-convertible" });
+  }
+
+  const [anchor] = anchors;
+  if (anchor.endpoint.kind !== "node-pin") {
+    return err({ code: "invalid-input", detail: "label-not-convertible" });
+  }
+
+  let resolved: ReturnType<typeof resolveEndpointInSheet>;
+  try {
+    resolved = resolveEndpointInSheet(project, sheetId, anchor.endpoint);
+  } catch {
+    return err({ code: "not-found" });
+  }
+
+  const usedPortNames = new Set(sheet.ports.map((entry) => entry.name));
+  const portName = nextUniqueName(label.name, usedPortNames);
+  const port = createSheetPortDraft(
+    portName,
+    resolved.direction,
+    resolved.type,
+  );
+  port.name = portName;
+  port.position = { ...label.position };
+
+  sheet.ports.push(port);
+  sheet.directConnections.push({
+    id: createId("conn"),
+    a: {
+      kind: "node-pin",
+      nodeId: anchor.endpoint.nodeId,
+      pinKey: anchor.endpoint.pinKey,
+    },
+    b: { kind: "sheet-port", portId: port.id },
+  });
+  sheet.labelAnchors = sheet.labelAnchors.filter(
+    (entry) => entry.labelId !== labelId,
+  );
+  sheet.labels = sheet.labels.filter((entry) => entry.id !== labelId);
+
+  return ok({
+    data: { labelId, port },
+    changed: true,
+  });
 }
 
 export type RemoveSheetThreadOutputResult = ChangeResult<
@@ -912,6 +985,8 @@ function deleteSheetDefinition(
 }
 
 export const sheetModelEdits = {
+  node: nodeModelEdits,
+  item: itemModelEdits,
   port: {
     remove: removeSheetPort,
   },
@@ -927,6 +1002,9 @@ export const sheetModelEdits = {
   },
   addfQueue: {
     set: setSheetAddfQueue,
+  },
+  label: {
+    convertToPort: convertLabelToSheetPort,
   },
   definition: {
     create: createSheetDefinition,

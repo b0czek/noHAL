@@ -20,6 +20,20 @@ function createSystemComponent(id: string): ComponentDefinition {
   };
 }
 
+function createPortConversionComponent(id: string): ComponentDefinition {
+  return {
+    id,
+    name: "Port Conversion Component",
+    halComponentName: "port_conv",
+    source: "manual",
+    runtime: { kind: "rt" },
+    pins: [
+      { key: "value_out", name: "value-out", direction: "out", type: "float" },
+    ],
+    params: [],
+  };
+}
+
 describe("sheet model edit helpers", () => {
   it("manages sheet thread outputs and remaps dependent references", () => {
     const project = createEmptyProject("Thread Output Edit");
@@ -113,6 +127,116 @@ describe("sheet model edit helpers", () => {
     expect(second?.node.instanceName).toBe("sheet2");
     expect(project.sheets[first?.sheet.id ?? ""]).toBeTruthy();
     expect(project.sheets[second?.sheet.id ?? ""]).toBeTruthy();
+  });
+
+  it("converts a singly-anchored label into a sheet port", () => {
+    const project = createEmptyProject("Convert Label To Port");
+    const root = project.sheets[project.rootSheetId];
+    project.library.components["comp:port-conv"] =
+      createPortConversionComponent("comp:port-conv");
+
+    root.nodes.push({
+      id: "node_component",
+      kind: "component",
+      componentId: "comp:port-conv",
+      instanceName: "port_conv",
+      position: { x: 40, y: 60 },
+      paramValues: {},
+    });
+    root.labels.push({
+      id: "label_value_out",
+      name: "servo.out",
+      scope: "local",
+      position: { x: 180, y: 180 },
+      rotation: 0,
+    });
+    root.labelAnchors.push({
+      id: "anchor_value_out",
+      labelId: "label_value_out",
+      endpoint: {
+        kind: "node-pin",
+        nodeId: "node_component",
+        pinKey: "value_out",
+      },
+    });
+
+    const result = sheetModelEdits.label.convertToPort(
+      project,
+      root.id,
+      "label_value_out",
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) throw new Error("expected ok result");
+    expect(result.value.data.port).toEqual(
+      expect.objectContaining({
+        name: "servo.out",
+        direction: "out",
+        type: "float",
+        position: { x: 180, y: 180 },
+      }),
+    );
+    expect(root.labels).toEqual([]);
+    expect(root.labelAnchors).toEqual([]);
+    expect(root.directConnections).toContainEqual(
+      expect.objectContaining({
+        a: {
+          kind: "node-pin",
+          nodeId: "node_component",
+          pinKey: "value_out",
+        },
+        b: {
+          kind: "sheet-port",
+          portId: result.value.data.port.id,
+        },
+      }),
+    );
+  });
+
+  it("rejects converting labels that are not attached to exactly one component pin", () => {
+    const project = createEmptyProject("Convert Invalid Label");
+    const root = project.sheets[project.rootSheetId];
+    root.labels.push({
+      id: "label_shared",
+      name: "shared",
+      scope: "local",
+      position: { x: 160, y: 140 },
+      rotation: 0,
+    });
+    root.labelAnchors.push(
+      {
+        id: "anchor_shared_a",
+        labelId: "label_shared",
+        endpoint: {
+          kind: "sheet-port",
+          portId: "missing_port_a",
+        },
+      },
+      {
+        id: "anchor_shared_b",
+        labelId: "label_shared",
+        endpoint: {
+          kind: "sheet-port",
+          portId: "missing_port_b",
+        },
+      },
+    );
+
+    const result = sheetModelEdits.label.convertToPort(
+      project,
+      root.id,
+      "label_shared",
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) throw new Error("expected err result");
+    expect(result.error).toEqual({
+      code: "invalid-input",
+      detail: "label-not-convertible",
+    });
+    expect(root.labels).toHaveLength(1);
+    expect(root.labelAnchors).toHaveLength(2);
+    expect(root.ports).toHaveLength(0);
   });
 
   it("rejects invalid sheet item moves before mutating the project", () => {

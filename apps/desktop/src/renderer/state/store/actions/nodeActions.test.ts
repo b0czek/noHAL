@@ -85,6 +85,27 @@ describe("node actions", () => {
     );
   });
 
+  it("shows a status when trying to hide a connected pin", () => {
+    const { project } = createProjectFixture();
+    const store = createEditorStore(project, (key) => key);
+
+    store.actions.updateNodePinVisibility("node_component", "in0", false);
+
+    const rootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    const node = rootSheet.nodes.find((entry) => entry.id === "node_component");
+
+    expect(node).toEqual(
+      expect.objectContaining({
+        kind: "component",
+      }),
+    );
+    expect(
+      node?.kind === "component" ? node.hiddenPinKeys : undefined,
+    ).toBeUndefined();
+    expect(store.state.status).toBe("store.status.cannotHideConnectedPin");
+  });
+
   it("stores per-instance pin order overrides and clears them at default order", () => {
     const { project } = createProjectFixture();
     const store = createEditorStore(project, (key) => key);

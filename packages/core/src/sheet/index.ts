@@ -1,5 +1,7 @@
 export * from "./instances";
+export * from "./itemEdit";
 export * from "./layout";
+export * from "./nodeEdit";
 export * from "./sheetEdit";
 export * from "./singleton";
 export * from "./subsheetMove";
