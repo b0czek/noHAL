@@ -779,6 +779,8 @@ export const en = {
     "Cannot hide a pin while it is still connected",
   "store.status.componentNodeEditTargetMissing":
     "The selected component node or field no longer exists",
+  "store.status.wireEditTargetMissing":
+    "The selected wire or label anchor no longer exists",
   "store.status.commentEditTargetMissing":
     "The selected comment no longer exists",
   "store.status.instanceNameRequired": "Instance name is required",
