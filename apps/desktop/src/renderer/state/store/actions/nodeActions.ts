@@ -251,47 +251,55 @@ export function createNodeActions(deps: EditorStoreActionContext) {
     },
 
     moveNode(nodeId: string, x: number, y: number): void {
-      deps.withProjectResult((project) =>
-        itemModelEdits.node.move(
-          getSheet(project, deps.state.activeSheetId),
-          nodeId,
-          x,
-          y,
-        ),
-      );
+      deps
+        .withProjectResult((project) =>
+          itemModelEdits.node.move(
+            getSheet(project, deps.state.activeSheetId),
+            nodeId,
+            x,
+            y,
+          ),
+        )
+        .orTee(reportNodeActionFailure);
     },
 
     moveLabel(labelId: string, x: number, y: number): void {
-      deps.withProjectResult((project) =>
-        itemModelEdits.label.move(
-          getSheet(project, deps.state.activeSheetId),
-          labelId,
-          x,
-          y,
-        ),
-      );
+      deps
+        .withProjectResult((project) =>
+          itemModelEdits.label.move(
+            getSheet(project, deps.state.activeSheetId),
+            labelId,
+            x,
+            y,
+          ),
+        )
+        .orTee(reportNodeActionFailure);
     },
 
     moveComment(commentId: string, x: number, y: number): void {
-      deps.withProjectResult((project) =>
-        itemModelEdits.comment.move(
-          getSheet(project, deps.state.activeSheetId),
-          commentId,
-          x,
-          y,
-        ),
-      );
+      deps
+        .withProjectResult((project) =>
+          itemModelEdits.comment.move(
+            getSheet(project, deps.state.activeSheetId),
+            commentId,
+            x,
+            y,
+          ),
+        )
+        .orTee(reportNodeActionFailure);
     },
 
     moveSheetPort(portId: string, x: number, y: number): void {
-      deps.withProjectResult((project) =>
-        itemModelEdits.port.move(
-          getSheet(project, deps.state.activeSheetId),
-          portId,
-          x,
-          y,
-        ),
-      );
+      deps
+        .withProjectResult((project) =>
+          itemModelEdits.port.move(
+            getSheet(project, deps.state.activeSheetId),
+            portId,
+            x,
+            y,
+          ),
+        )
+        .orTee(reportNodeActionFailure);
     },
 
     moveSelectionGroup(updates: {
