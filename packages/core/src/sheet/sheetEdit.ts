@@ -452,6 +452,40 @@ export interface AddSheetReferenceResult {
   node: SheetNode;
 }
 
+function wouldCreateRecursiveSheetHierarchy(
+  project: NoHALProject,
+  parentSheetId: string,
+  targetSheetId: string,
+): boolean {
+  if (parentSheetId === targetSheetId) return true;
+
+  const visited = new Set<string>();
+  const stack: string[] = [targetSheetId];
+  while (stack.length > 0) {
+    const currentId = stack.pop();
+    if (!currentId) continue;
+    if (currentId === parentSheetId) return true;
+    if (visited.has(currentId)) continue;
+    visited.add(currentId);
+
+    const current = project.sheets[currentId];
+    if (!current) continue;
+    for (const node of current.nodes) {
+      if (node.kind !== "sheet") continue;
+      stack.push(node.sheetId);
+    }
+  }
+
+  return false;
+}
+
+export type AddSheetReferenceFailure =
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"sheet-definition">
+  | InvalidInputFailure<"sheet-reference", "self-reference">
+  | InvalidInputFailure<"sheet-reference", "recursive-hierarchy">
+  | ForbiddenFailure<"sheet-reference", "already-placed">;
+
 export type RenameSheetDefinitionResult = ChangeResult<
   SheetDefinition,
   | NotFoundFailure<"sheet-definition">
@@ -557,13 +591,31 @@ function addSheetReference(
   project: NoHALProject,
   parentSheetId: string,
   sheetId: string,
-): AddSheetReferenceResult | null {
+): ChangeResult<AddSheetReferenceResult, AddSheetReferenceFailure> {
   const parentSheet = project.sheets[parentSheetId];
   const sheet = project.sheets[sheetId];
-  if (!parentSheet) return null;
-  if (!sheet) return null;
+  if (!parentSheet) return err({ code: "not-found", cause: "sheet" });
+  if (!sheet) return err({ code: "not-found", cause: "sheet-definition" });
+  if (parentSheetId === sheetId) {
+    return err({
+      code: "invalid-input",
+      cause: "sheet-reference",
+      detail: "self-reference",
+    });
+  }
+  if (wouldCreateRecursiveSheetHierarchy(project, parentSheetId, sheetId)) {
+    return err({
+      code: "invalid-input",
+      cause: "sheet-reference",
+      detail: "recursive-hierarchy",
+    });
+  }
   if (isSingletonReferenceBlocked(project, parentSheetId, sheetId)) {
-    return null;
+    return err({
+      code: "forbidden",
+      cause: "sheet-reference",
+      detail: "already-placed",
+    });
   }
 
   const node: SheetNode = {
@@ -575,20 +627,26 @@ function addSheetReference(
   };
   parentSheet.nodes.push(node);
 
-  return { sheet, node };
+  return ok({ data: { sheet, node }, changed: true });
 }
 
 function addSheetDefinition(
   project: NoHALProject,
   parentSheetId: string,
-): AddSheetDefinitionResult | null {
+): ChangeResult<AddSheetDefinitionResult, NotFoundFailure<"sheet">> {
+  const parentSheet = project.sheets[parentSheetId];
+  if (!parentSheet) return err({ code: "not-found", cause: "sheet" });
+
   const sheet = createSheetDefinition(project);
   const placed = addSheetReference(project, parentSheetId, sheet.id);
-  if (!placed) {
+  if (placed.isErr()) {
     delete project.sheets[sheet.id];
-    return null;
+    return err({ code: "not-found", cause: "sheet" });
   }
-  return { name: sheet.name, sheet, node: placed.node };
+  return ok({
+    data: { name: sheet.name, sheet, node: placed.value.data.node },
+    changed: true,
+  });
 }
 
 function prepareSheetItemsMove(

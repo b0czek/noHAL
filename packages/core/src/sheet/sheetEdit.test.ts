@@ -115,15 +115,19 @@ describe("sheet model edit helpers", () => {
     const project = createEmptyProject("Sheet Definition Edit");
     const root = project.sheets[project.rootSheetId];
 
-    const first = sheetModelEdits.definition.add(project, root.id);
-    expect(first?.name).toBe("Sheet");
-    expect(first?.node.instanceName).toBe("sheet");
+    const first = expectOk(
+      sheetModelEdits.definition.add(project, root.id),
+    ).data;
+    expect(first.name).toBe("Sheet");
+    expect(first.node.instanceName).toBe("sheet");
 
-    const second = sheetModelEdits.definition.add(project, root.id);
-    expect(second?.name).toBe("Sheet2");
-    expect(second?.node.instanceName).toBe("sheet2");
-    expect(project.sheets[first?.sheet.id ?? ""]).toBeTruthy();
-    expect(project.sheets[second?.sheet.id ?? ""]).toBeTruthy();
+    const second = expectOk(
+      sheetModelEdits.definition.add(project, root.id),
+    ).data;
+    expect(second.name).toBe("Sheet2");
+    expect(second.node.instanceName).toBe("sheet2");
+    expect(project.sheets[first.sheet.id]).toBeTruthy();
+    expect(project.sheets[second.sheet.id]).toBeTruthy();
   });
 
   it("converts a singly-anchored label into a sheet port", () => {

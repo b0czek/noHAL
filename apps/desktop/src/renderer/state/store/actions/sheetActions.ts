@@ -31,6 +31,11 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       label: {
         "not-convertible": "store.status.cannotConvertLabelToSheetPort",
       },
+      "sheet-reference": {
+        "self-reference": "store.status.cannotPlaceSheetInsideItself",
+        "recursive-hierarchy":
+          "store.status.cannotCreateRecursiveSheetHierarchy",
+      },
       selection: {
         "no-movable-items": "store.status.cannotSubsheetEmptySelection",
         "only-ports": "store.status.cannotSubsheetOnlyPortsSelection",
@@ -55,6 +60,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       },
       "sheet-reference": {
         "protected-system-sheet": "store.status.cannotDeleteSystemSheet",
+        "already-placed": "store.status.sheetAlreadyPlaced",
       },
       "sheet-definition": {
         "root-sheet": "store.status.cannotDeleteRootSheet",
@@ -85,16 +91,6 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         portIds: new Set<string>(),
       }
     );
-  };
-
-  const commitProjectEdit = (
-    next: EditorStoreActionContext["state"]["project"],
-    activeSheetId = deps.state.activeSheetId,
-  ): void => {
-    syncProjectUi(next, activeSheetId);
-    deps.pushUndoSnapshot();
-    deps.setState("project", next);
-    deps.markProjectChanged();
   };
 
   const detachSheetReferenceAt = (
@@ -215,30 +211,31 @@ export function createSheetActions(deps: EditorStoreActionContext) {
     setActiveSheet,
 
     addSheetDefinition(position?: XY): void {
-      const next = cloneProject(deps.state.project);
-      const result = sheetModelEdits.definition.add(
-        next,
-        deps.state.activeSheetId,
-      );
-      if (!result) return;
-      if (position) result.node.position = { ...position };
-      commitProjectEdit(next);
-      deps.setStatusT("store.status.createdSubsheet", { name: result.name });
+      deps
+        .withProjectResult((project) =>
+          sheetModelEdits.definition.add(project, deps.state.activeSheetId),
+        )
+        .match(({ data }) => {
+          if (position) data.node.position = { ...position };
+          deps.setStatusT("store.status.createdSubsheet", { name: data.name });
+        }, reportSheetActionFailure);
     },
 
     addSheetReference(sheetId: string, position?: XY): void {
-      const next = cloneProject(deps.state.project);
-      const result = sheetModelEdits.reference.add(
-        next,
-        deps.state.activeSheetId,
-        sheetId,
-      );
-      if (!result) return;
-      if (position) result.node.position = { ...position };
-      commitProjectEdit(next);
-      deps.setStatusT("store.status.createdSubsheet", {
-        name: result.sheet.name,
-      });
+      deps
+        .withProjectResult((project) =>
+          sheetModelEdits.reference.add(
+            project,
+            deps.state.activeSheetId,
+            sheetId,
+          ),
+        )
+        .match(({ data }) => {
+          if (position) data.node.position = { ...position };
+          deps.setStatusT("store.status.createdSubsheet", {
+            name: data.sheet.name,
+          });
+        }, reportSheetActionFailure);
     },
 
     convertLabelToSheetPort(labelId: string): void {
