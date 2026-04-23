@@ -3,7 +3,7 @@ import { getSheet, getSheetReferenceLocations } from "@nohal/core/graph";
 import type { SheetItemIds } from "@nohal/core/sheet";
 import { sheetModelEdits } from "@nohal/core/sheet";
 import type { SheetAddfQueueStoredEntry, XY } from "@nohal/core/types";
-import { cloneProject, findNode, syncProjectUi } from "../helpers";
+import { findNode, syncProjectUi } from "../helpers";
 import { selectionIdBuckets } from "../selection";
 import {
   type ActionStatusUpdate,
@@ -311,14 +311,12 @@ export function createSheetActions(deps: EditorStoreActionContext) {
 
       deps
         .withProjectResult((nextProject) =>
-          sheetModelEdits.definition.remove(
-            nextProject,
-            sheetId,
-            deps.state.activeSheetId,
-          ).map((change) => {
-            syncProjectUi(nextProject, change.data.nextActiveSheetId);
-            return change;
-          }),
+          sheetModelEdits.definition
+            .remove(nextProject, sheetId, deps.state.activeSheetId)
+            .map((change) => {
+              syncProjectUi(nextProject, change.data.nextActiveSheetId);
+              return change;
+            }),
         )
         .match(({ data }) => {
           deps.setState("activeSheetId", data.nextActiveSheetId);

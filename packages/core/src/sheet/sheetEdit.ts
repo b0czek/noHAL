@@ -400,7 +400,10 @@ function setSheetAddfQueue(
 
   const changed =
     before.length !== normalized.length ||
-    before.some((entry, i) => addfQueueEntryKey(entry) !== addfQueueEntryKey(normalized[i]));
+    before.some(
+      (entry, i) =>
+        addfQueueEntryKey(entry) !== addfQueueEntryKey(normalized[i]),
+    );
 
   if (normalized.length > 0) {
     if (!sheet.hal) sheet.hal = {};
