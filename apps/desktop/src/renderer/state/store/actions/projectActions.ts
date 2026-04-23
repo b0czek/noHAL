@@ -272,15 +272,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         .withProjectResult((project) =>
           projectEdits.project.name.update(project, name),
         )
-        .match(
-          ({ data, changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedProjectName", {
-              name: data,
-            });
-          },
-          () => {},
-        );
+        .match(({ data, changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedProjectName", {
+            name: data,
+          });
+        }, reportProjectActionFailure);
     },
 
     updateProjectShutdown(shutdown: string): void {
@@ -288,13 +285,10 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         .withProjectResult((project) =>
           projectEdits.project.shutdown.update(project, shutdown),
         )
-        .match(
-          ({ changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedProjectShutdown");
-          },
-          () => {},
-        );
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedProjectShutdown");
+        }, reportProjectActionFailure);
     },
 
     updateProjectWireLayerPosition(position: ProjectWireLayerPosition): void {
@@ -302,15 +296,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         .withProjectResult((project) =>
           projectEdits.project.wire.visibility.update(project, position),
         )
-        .match(
-          ({ changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedProjectWireLayerPosition", {
-              position: wireVisibilityLabel(deps, position),
-            });
-          },
-          () => {},
-        );
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedProjectWireLayerPosition", {
+            position: wireVisibilityLabel(deps, position),
+          });
+        }, reportProjectActionFailure);
     },
 
     updateProjectWireStyle(style: ProjectWireStyle): void {
@@ -318,15 +309,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         .withProjectResult((project) =>
           projectEdits.project.wire.style.update(project, style),
         )
-        .match(
-          ({ changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedProjectWireStyle", {
-              style: wireStyleLabel(deps, style),
-            });
-          },
-          () => {},
-        );
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedProjectWireStyle", {
+            style: wireStyleLabel(deps, style),
+          });
+        }, reportProjectActionFailure);
     },
 
     updateProjectHalNameLen(halNameLen: number): void {
@@ -334,15 +322,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         .withProjectResult((project) =>
           projectEdits.project.halNameLen.update(project, halNameLen),
         )
-        .match(
-          ({ data, changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedProjectHalNameLen", {
-              value: data,
-            });
-          },
-          () => {},
-        );
+        .match(({ data, changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedProjectHalNameLen", {
+            value: data,
+          });
+        }, reportProjectActionFailure);
     },
 
     ensureMachineConfig(): void {
@@ -1047,15 +1032,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         .withProjectResult((project) =>
           halThreadEdits.periodNs.update(project, threadId, periodNs),
         )
-        .match(
-          ({ data, changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedHalThreadPeriod", {
-              name: data.name,
-            });
-          },
-          () => {},
-        );
+        .match(({ data, changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedHalThreadPeriod", {
+            name: data.name,
+          });
+        }, reportProjectActionFailure);
     },
 
     updateHalThreadFloatMode(threadId: string, floatMode: "fp" | "nofp"): void {
@@ -1086,36 +1068,28 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         .withProjectResult((project) =>
           motmodEdits.config.update(project, key, value),
         )
-        .match(
-          ({ changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedMotmodConfig");
-          },
-          () => {},
-        );
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedMotmodConfig");
+        }, reportProjectActionFailure);
     },
 
     syncMotmodManagedProjection(): void {
       deps
         .withProjectResult((project) => motmodEdits.projection.sync(project))
-        .match(
-          ({ data, changed }) => {
-            if (!changed) {
-              deps.setStatusT("store.status.motmodProjectionAlreadyInSync");
-              return;
-            }
-            deps.setStatusT("store.status.syncedMotmodProjection", {
-              added: data.addNodes.length,
-              removed: data.removeNodes.length,
-              adopted: data.adoptNodes.length,
-              ensured: data.ensureComponents.length,
-              updated: data.updateNodeConfigs.length,
-            });
-          },
-          () => {
+        .match(({ data, changed }) => {
+          if (!changed) {
             deps.setStatusT("store.status.motmodProjectionAlreadyInSync");
-          },
-        );
+            return;
+          }
+          deps.setStatusT("store.status.syncedMotmodProjection", {
+            added: data.addNodes.length,
+            removed: data.removeNodes.length,
+            adopted: data.adoptNodes.length,
+            ensured: data.ensureComponents.length,
+            updated: data.updateNodeConfigs.length,
+          });
+        }, reportProjectActionFailure);
     },
   };
 }

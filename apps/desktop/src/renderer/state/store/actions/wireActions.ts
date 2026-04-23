@@ -195,7 +195,7 @@ export function createWireActions(deps: EditorStoreActionContext) {
             signalName,
           );
         })
-        .match(() => {}, reportWireActionFailure);
+        .orTee(reportWireActionFailure);
     },
 
     removeLabelAnchor(anchorId: string): void {
