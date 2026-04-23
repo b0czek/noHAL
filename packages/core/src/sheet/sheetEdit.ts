@@ -9,6 +9,7 @@ import {
 import { createId, nextUniqueName } from "../id";
 import { createSheet, createSheetPortDraft } from "../project";
 import type {
+  Change,
   ChangeResult,
   DuplicateNameFailure,
   EmptyNameFailure,
@@ -828,40 +829,80 @@ function removeSheetItems(
   project: NoHALProject,
   sheetId: string,
   items: RemoveSheetItemsInput,
-): void {
+): Change<{
+  removedNodeCount: number;
+  removedLabelCount: number;
+  removedCommentCount: number;
+  removedPortCount: number;
+}> {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return;
+  if (!sheet) {
+    return {
+      data: {
+        removedNodeCount: 0,
+        removedLabelCount: 0,
+        removedCommentCount: 0,
+        removedPortCount: 0,
+      },
+      changed: false,
+    };
+  }
+
+  let removedNodeCount = 0;
+  let removedLabelCount = 0;
+  let removedCommentCount = 0;
+  let removedPortCount = 0;
 
   if (items.nodeIds.size > 0) {
     const removedNodeIds = new Set<string>();
     sheet.nodes = sheet.nodes.filter((node) => {
       if (!items.nodeIds.has(node.id)) return true;
       removedNodeIds.add(node.id);
+      removedNodeCount += 1;
       return false;
     });
     pruneSheetNodeReferences(sheet, removedNodeIds);
   }
 
   if (items.labelIds.size > 0) {
+    const beforeLabelCount = sheet.labels.length;
     sheet.labels = sheet.labels.filter(
       (label) => !items.labelIds.has(label.id),
     );
+    removedLabelCount = beforeLabelCount - sheet.labels.length;
     sheet.labelAnchors = sheet.labelAnchors.filter(
       (anchor) => !items.labelIds.has(anchor.labelId),
     );
   }
 
   if (items.commentIds.size > 0) {
+    const beforeCommentCount = sheet.comments.length;
     sheet.comments = sheet.comments.filter(
       (comment) => !items.commentIds.has(comment.id),
     );
+    removedCommentCount = beforeCommentCount - sheet.comments.length;
   }
 
   if (items.portIds.size > 0) {
     for (const portId of items.portIds) {
-      removeSheetPort(project, sheetId, portId);
+      const removed = removeSheetPort(project, sheetId, portId);
+      if (removed.isOk() && removed.value.changed) removedPortCount += 1;
     }
   }
+
+  return {
+    data: {
+      removedNodeCount,
+      removedLabelCount,
+      removedCommentCount,
+      removedPortCount,
+    },
+    changed:
+      removedNodeCount > 0 ||
+      removedLabelCount > 0 ||
+      removedCommentCount > 0 ||
+      removedPortCount > 0,
+  };
 }
 
 export type RemoveSheetReferenceResult = ChangeResult<

@@ -9,7 +9,6 @@ import {
 } from "@nohal/core/sheet";
 import type { XY } from "@nohal/core/types";
 import { createSelectionClipboard } from "../../../clipboard/selection";
-import { cloneProject, syncProjectUi } from "../helpers";
 import {
   extendSelection as mergeSelection,
   selectionIdBuckets,
@@ -93,16 +92,12 @@ export function createSelectionActions(
     );
     for (const nodeId of protectedNodeIds) selectedNodeIds.delete(nodeId);
 
-    const next = cloneProject(deps.state.project);
-    sheetModelEdits.items.remove(next, deps.state.activeSheetId, {
-      ...selectionIds,
-      nodeIds: selectedNodeIds,
-    });
-
-    syncProjectUi(next, deps.state.activeSheetId);
-    deps.pushUndoSnapshot();
-    deps.setState("project", next);
-    deps.markProjectChanged();
+    deps.withProjectChange((project) =>
+      sheetModelEdits.items.remove(project, deps.state.activeSheetId, {
+        ...selectionIds,
+        nodeIds: selectedNodeIds,
+      }),
+    );
     deps.clearSelectionAndPendingUi();
     if (protectedNodeIds.size > 0) {
       deps.setStatusT("store.status.removedSelectionSkippedSystemManaged", {
@@ -115,11 +110,12 @@ export function createSelectionActions(
 
   const removeSimpleSelection = (sel: NonNullable<EditorSelection>): void => {
     const activeSheetId = deps.state.activeSheetId;
-    deps.withProject((project) => {
-      const selectionIds = selectionIdBuckets(sel);
-      if (!selectionIds) return;
-      sheetModelEdits.items.remove(project, activeSheetId, selectionIds);
-    });
+    const selectionIds = selectionIdBuckets(sel);
+    if (selectionIds) {
+      deps.withProjectChange((project) =>
+        sheetModelEdits.items.remove(project, activeSheetId, selectionIds),
+      );
+    }
     deps.clearSelectionAndPendingUi();
     deps.setStatusT("store.status.removedSelection");
   };
