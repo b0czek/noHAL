@@ -1,6 +1,6 @@
 {
   "name": "@nohal/desktop",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Visual HAL IDE for LinuxCNC",
   "homepage": "https://github.com/b0czek/noHAL",
   "author": {

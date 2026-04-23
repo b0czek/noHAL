@@ -1,7 +1,7 @@
 {
   "name": "nohal-workspace",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "NoHAL monorepo",
   "scripts": {
     "dev": "pnpm --filter @nohal/desktop dev",
