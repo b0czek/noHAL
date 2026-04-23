@@ -293,17 +293,6 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       const target = project.sheets[sheetId];
       if (!target) return;
 
-      const next = cloneProject(project);
-      const result = sheetModelEdits.definition.remove(
-        next,
-        sheetId,
-        deps.state.activeSheetId,
-      );
-      if (result.isErr()) {
-        reportSheetActionFailure(result.error);
-        return;
-      }
-
       const referenceCount = getSheetReferenceLocations(
         project,
         sheetId,
@@ -320,19 +309,26 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         return;
       }
 
-      const { deletedSheetIds, deletedSheetName, nextActiveSheetId } =
-        result.value.data;
-      syncProjectUi(next, nextActiveSheetId);
-
-      deps.pushUndoSnapshot();
-      deps.setState("project", next);
-      deps.markProjectChanged();
-      deps.setState("activeSheetId", nextActiveSheetId);
-      deps.clearSelectionAndPendingUi();
-      deps.setStatusT("store.status.deletedSheet", {
-        name: deletedSheetName,
-        count: deletedSheetIds.length,
-      });
+      deps
+        .withProjectResult((nextProject) =>
+          sheetModelEdits.definition.remove(
+            nextProject,
+            sheetId,
+            deps.state.activeSheetId,
+          ).map((change) => {
+            syncProjectUi(nextProject, change.data.nextActiveSheetId);
+            return change;
+          }),
+        )
+        .match(({ data }) => {
+          deps.setState("activeSheetId", data.nextActiveSheetId);
+          deps.setProjectUiActiveSheetId(data.nextActiveSheetId);
+          deps.clearSelectionAndPendingUi();
+          deps.setStatusT("store.status.deletedSheet", {
+            name: data.deletedSheetName,
+            count: data.deletedSheetIds.length,
+          });
+        }, reportSheetActionFailure);
     },
 
     deleteSheetReference(nodeId: string): void {
