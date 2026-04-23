@@ -180,21 +180,18 @@ export function createMesaActions(deps: EditorStoreActionContext) {
     syncMesaManagedProjection(): void {
       deps
         .withProjectResult((project) => mesaEdits.projection.sync(project))
-        .match(
-          ({ data, changed }) => {
-            if (!changed) {
-              deps.setStatusT("store.status.mesaProjectionAlreadyInSync");
-              return;
-            }
-            deps.setStatusT("store.status.syncedMesaProjection", {
-              added: data.addNodes.length,
-              removed: data.removeNodes.length,
-              ensured: data.ensureComponents.length,
-              updated: data.updateNodes.length,
-            });
-          },
-          () => {},
-        );
+        .match(({ data, changed }) => {
+          if (!changed) {
+            deps.setStatusT("store.status.mesaProjectionAlreadyInSync");
+            return;
+          }
+          deps.setStatusT("store.status.syncedMesaProjection", {
+            added: data.addNodes.length,
+            removed: data.removeNodes.length,
+            ensured: data.ensureComponents.length,
+            updated: data.updateNodes.length,
+          });
+        }, reportMesaActionFailure);
     },
   };
 }
