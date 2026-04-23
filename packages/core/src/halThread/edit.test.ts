@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createId } from "../id";
 import { createEmptyProject, REQUIRED_HAL_THREAD_NAME } from "../project";
+import { expectErr, expectOk } from "../testUtils/result";
 import { removeHalThread } from "./edit";
 
 describe("halThread edits", () => {
@@ -26,10 +27,8 @@ describe("halThread edits", () => {
       root.hal.threadOutputs[0].halThreadId = threadId;
     }
 
-    const removed = removeHalThread(project, threadId);
-    expect(removed.isOk()).toBe(true);
-    if (removed.isErr()) throw new Error("expected ok result");
-    expect(removed.value.data.id).toBe(threadId);
+    const removed = expectOk(removeHalThread(project, threadId));
+    expect(removed.data.id).toBe(threadId);
     expect(root.hal?.threadOutputs?.[0]?.halThreadId).toBeUndefined();
 
     const requiredThreadId = project.halThreads?.find(
@@ -37,10 +36,8 @@ describe("halThread edits", () => {
     )?.id;
     expect(requiredThreadId).toBeDefined();
     if (requiredThreadId) {
-      const blocked = removeHalThread(project, requiredThreadId);
-      expect(blocked.isErr()).toBe(true);
-      if (blocked.isOk()) throw new Error("expected err result");
-      expect(blocked.error).toEqual({
+      const blocked = expectErr(removeHalThread(project, requiredThreadId));
+      expect(blocked).toEqual({
         code: "forbidden",
         cause: "hal-thread",
         detail: "required-thread",

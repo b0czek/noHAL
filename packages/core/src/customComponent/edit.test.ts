@@ -41,7 +41,8 @@ describe("custom component edits", () => {
       "pin",
     );
 
-    expect(expectOk(removed).data.pinName).toBe("pin");
+    const removedChange = expectOk(removed);
+    expect(removedChange.data.pinName).toBe("pin");
     expect(project.library.components[componentId]?.pins).toEqual([]);
     const updatedNode = root.nodes.find(
       (candidate) =>
@@ -141,7 +142,8 @@ describe("custom component edits", () => {
       addedChange.data.fn.key,
       "servo",
     );
-    expect(expectOk(updatedName).data.functionName).toBe("servo");
+    const updatedNameChange = expectOk(updatedName);
+    expect(updatedNameChange.data.functionName).toBe("servo");
     expect(project.library.components[componentId]?.functions).toMatchObject([
       {
         declaredName: "servo",
@@ -156,7 +158,8 @@ describe("custom component edits", () => {
       project.library.components[componentId]?.functions?.[0]?.key ?? "",
       "nofp",
     );
-    expect(expectOk(updatedFloatMode).data.functionName).toBe("servo");
+    const updatedFloatModeChange = expectOk(updatedFloatMode);
+    expect(updatedFloatModeChange.data.functionName).toBe("servo");
     expect(
       project.library.components[componentId]?.functions?.[0]?.floatMode,
     ).toBe("nofp");
@@ -166,7 +169,8 @@ describe("custom component edits", () => {
       componentId,
       project.library.components[componentId]?.functions?.[0]?.key ?? "",
     );
-    expect(expectOk(removed).data.functionName).toBe("servo");
+    const removedChange = expectOk(removed);
+    expect(removedChange.data.functionName).toBe("servo");
     expect(project.library.components[componentId]?.functions).toBeUndefined();
   });
 
@@ -186,12 +190,14 @@ describe("custom component edits", () => {
     const result = customComponentEdits.function.add(project, component.id);
     const definitionResult =
       customComponentDefinitionEdits.function.add(component);
-    expect(expectErr(definitionResult)).toEqual({
+    const definitionFailure = expectErr(definitionResult);
+    expect(definitionFailure).toEqual({
       code: "unsupported",
       cause: "function",
       detail: "invalid-runtime",
     });
-    expect(expectErr(result)).toEqual({
+    const projectFailure = expectErr(result);
+    expect(projectFailure).toEqual({
       code: "unsupported",
       cause: "function",
       detail: "invalid-runtime",

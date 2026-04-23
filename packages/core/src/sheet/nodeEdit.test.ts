@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyProject, createSheet } from "../project";
+import { expectErr, expectOk } from "../testUtils/result";
 import type { ComponentDefinition } from "../types";
 import { nodeModelEdits } from "./nodeEdit";
 
@@ -64,17 +65,15 @@ describe("node model edit helpers", () => {
       ],
     };
 
-    const result = nodeModelEdits.component.add(
-      project,
-      root.id,
-      "comp:plain",
-      { x: 120, y: 140 },
+    const result = expectOk(
+      nodeModelEdits.component.add(project, root.id, "comp:plain", {
+        x: 120,
+        y: 140,
+      }),
     );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) throw new Error("expected ok result");
-    expect(result.value.changed).toBe(true);
-    expect(result.value.data).toEqual(
+    expect(result.changed).toBe(true);
+    expect(result.data).toEqual(
       expect.objectContaining({
         kind: "component",
         componentId: "comp:plain",
@@ -84,7 +83,7 @@ describe("node model edit helpers", () => {
         instanceConfigValues: { count: "2" },
       }),
     );
-    expect(root.nodes).toContainEqual(result.value.data);
+    expect(root.nodes).toContainEqual(result.data);
   });
 
   it("renames sheet nodes and rejects duplicate sheet-local instance names", () => {
@@ -110,15 +109,15 @@ describe("node model edit helpers", () => {
       },
     );
 
-    const renamed = nodeModelEdits.instanceName.update(
-      project,
-      root.id,
-      "node_child_a",
-      " renamed_child ",
+    const renamed = expectOk(
+      nodeModelEdits.instanceName.update(
+        project,
+        root.id,
+        "node_child_a",
+        " renamed_child ",
+      ),
     );
-    expect(renamed.isOk()).toBe(true);
-    if (renamed.isErr()) throw new Error("expected ok result");
-    expect(renamed.value).toEqual({
+    expect(renamed).toEqual({
       changed: true,
       data: {
         sheetId: root.id,
@@ -130,15 +129,15 @@ describe("node model edit helpers", () => {
       root.nodes.find((node) => node.id === "node_child_a")?.instanceName,
     ).toBe("renamed_child");
 
-    const duplicate = nodeModelEdits.instanceName.update(
-      project,
-      root.id,
-      "node_child_a",
-      "child_b",
+    const duplicate = expectErr(
+      nodeModelEdits.instanceName.update(
+        project,
+        root.id,
+        "node_child_a",
+        "child_b",
+      ),
     );
-    expect(duplicate.isErr()).toBe(true);
-    if (duplicate.isOk()) throw new Error("expected err result");
-    expect(duplicate.error).toEqual({
+    expect(duplicate).toEqual({
       code: "conflict",
       cause: "instance-name",
       detail: "duplicate-name",
@@ -183,15 +182,15 @@ describe("node model edit helpers", () => {
       paramValues: {},
     });
 
-    const result = nodeModelEdits.instanceName.update(
-      project,
-      child.id,
-      "node_global_child",
-      "shared_name",
+    const result = expectErr(
+      nodeModelEdits.instanceName.update(
+        project,
+        child.id,
+        "node_global_child",
+        "shared_name",
+      ),
     );
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) throw new Error("expected err result");
-    expect(result.error).toEqual({
+    expect(result).toEqual({
       code: "conflict",
       cause: "exported-path",
       detail: "duplicate-exported-path",
@@ -217,15 +216,15 @@ describe("node model edit helpers", () => {
       paramValues: {},
     });
 
-    const result = nodeModelEdits.instanceName.update(
-      project,
-      root.id,
-      "node_locked",
-      "debounce.1",
+    const result = expectErr(
+      nodeModelEdits.instanceName.update(
+        project,
+        root.id,
+        "node_locked",
+        "debounce.1",
+      ),
     );
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) throw new Error("expected err result");
-    expect(result.error).toEqual({
+    expect(result).toEqual({
       code: "forbidden",
       cause: "instance-name",
       detail: "locked",
@@ -249,15 +248,15 @@ describe("node model edit helpers", () => {
       position: { x: 20, y: 30 },
     });
 
-    const result = nodeModelEdits.instanceName.updateSheet(
-      project,
-      child.id,
-      "renamed_child",
+    const result = expectOk(
+      nodeModelEdits.instanceName.updateSheet(
+        project,
+        child.id,
+        "renamed_child",
+      ),
     );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) throw new Error("expected ok result");
-    expect(result.value).toEqual({
+    expect(result).toEqual({
       changed: true,
       data: {
         sheetId: root.id,

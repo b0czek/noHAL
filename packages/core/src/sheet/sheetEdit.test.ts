@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeAddfQueueNodeEntry } from "../addfQueue";
 import { createEmptyProject, createSheet } from "../project";
+import { expectErr, expectOk } from "../testUtils/result";
 import type { ComponentDefinition } from "../types";
 import { sheetModelEdits } from "./sheetEdit";
 import { ensureSystemSheet } from "./system";
@@ -62,25 +63,21 @@ describe("sheet model edit helpers", () => {
       addfQueue: [makeAddfQueueNodeEntry("node_child", added.id)],
     };
 
-    const renamed = sheetModelEdits.threadOutput.name.update(
-      root,
-      added.id,
-      "fast",
+    const renamed = expectOk(
+      sheetModelEdits.threadOutput.name.update(root, added.id, "fast"),
     );
-    expect(renamed.isOk()).toBe(true);
-    if (renamed.isErr()) throw new Error("expected ok result");
-    expect(renamed.value).toEqual({
+    expect(renamed).toEqual({
       changed: true,
       data: expect.objectContaining({ id: added.id, name: "fast" }),
     });
-    const rebound = sheetModelEdits.threadOutput.halBinding.update(
-      root,
-      added.id,
-      "thread-servo",
+    const rebound = expectOk(
+      sheetModelEdits.threadOutput.halBinding.update(
+        root,
+        added.id,
+        "thread-servo",
+      ),
     );
-    expect(rebound.isOk()).toBe(true);
-    if (rebound.isErr()) throw new Error("expected ok result");
-    expect(rebound.value).toEqual({
+    expect(rebound).toEqual({
       changed: true,
       data: expect.objectContaining({
         id: added.id,
@@ -89,10 +86,10 @@ describe("sheet model edit helpers", () => {
       }),
     });
 
-    const removed = sheetModelEdits.threadOutput.remove(root, added.id);
-    expect(removed.isOk()).toBe(true);
-    if (removed.isErr()) throw new Error("expected ok result");
-    expect(removed.value).toEqual({
+    const removed = expectOk(
+      sheetModelEdits.threadOutput.remove(root, added.id),
+    );
+    expect(removed).toEqual({
       changed: true,
       data: {
         removedOutputId: added.id,
@@ -160,15 +157,11 @@ describe("sheet model edit helpers", () => {
       },
     });
 
-    const result = sheetModelEdits.label.convertToPort(
-      project,
-      root.id,
-      "label_value_out",
+    const result = expectOk(
+      sheetModelEdits.label.convertToPort(project, root.id, "label_value_out"),
     );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) throw new Error("expected ok result");
-    expect(result.value.data.port).toEqual(
+    expect(result.data.port).toEqual(
       expect.objectContaining({
         name: "servo.out",
         direction: "out",
@@ -187,7 +180,7 @@ describe("sheet model edit helpers", () => {
         },
         b: {
           kind: "sheet-port",
-          portId: result.value.data.port.id,
+          portId: result.data.port.id,
         },
       }),
     );
@@ -222,15 +215,11 @@ describe("sheet model edit helpers", () => {
       },
     );
 
-    const result = sheetModelEdits.label.convertToPort(
-      project,
-      root.id,
-      "label_shared",
+    const result = expectErr(
+      sheetModelEdits.label.convertToPort(project, root.id, "label_shared"),
     );
 
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) throw new Error("expected err result");
-    expect(result.error).toEqual({
+    expect(result).toEqual({
       code: "invalid-input",
       cause: "label",
       detail: "not-convertible",
@@ -266,37 +255,33 @@ describe("sheet model edit helpers", () => {
       },
     );
 
-    const blockedBySystem = sheetModelEdits.items.moveIntoNewSubsheet(
-      project,
-      root.id,
-      {
+    const blockedBySystem = expectErr(
+      sheetModelEdits.items.moveIntoNewSubsheet(project, root.id, {
         nodeIds: new Set(["node_system"]),
         labelIds: new Set(),
         portIds: new Set(),
-      },
+      }),
     );
-    expect(blockedBySystem.isErr()).toBe(true);
-    if (blockedBySystem.isOk()) throw new Error("expected err result");
-    expect(blockedBySystem.error).toEqual({
+    expect(blockedBySystem).toEqual({
       code: "forbidden",
       cause: "selection",
       detail: "protected-system-node",
     });
     expect(root.nodes.some((node) => node.id === "node_system")).toBe(true);
 
-    const blockedByTarget = sheetModelEdits.items.moveIntoExistingSubsheet(
-      project,
-      root.id,
-      "node_child",
-      {
-        nodeIds: new Set(["node_child"]),
-        labelIds: new Set(),
-        portIds: new Set(),
-      },
+    const blockedByTarget = expectErr(
+      sheetModelEdits.items.moveIntoExistingSubsheet(
+        project,
+        root.id,
+        "node_child",
+        {
+          nodeIds: new Set(["node_child"]),
+          labelIds: new Set(),
+          portIds: new Set(),
+        },
+      ),
     );
-    expect(blockedByTarget.isErr()).toBe(true);
-    if (blockedByTarget.isOk()) throw new Error("expected err result");
-    expect(blockedByTarget.error).toEqual({
+    expect(blockedByTarget).toEqual({
       code: "invalid-input",
       cause: "selection",
       detail: "target-in-items",
@@ -345,15 +330,11 @@ describe("sheet model edit helpers", () => {
       endpoint: { kind: "node-pin", nodeId: "node_child", pinKey: "pin-1" },
     });
 
-    const result = sheetModelEdits.definition.remove(
-      project,
-      child.id,
-      grandchild.id,
+    const result = expectOk(
+      sheetModelEdits.definition.remove(project, child.id, grandchild.id),
     );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) throw new Error("expected ok result");
-    expect(result.value).toEqual({
+    expect(result).toEqual({
       changed: true,
       data: {
         deletedSheetIds: [child.id],
@@ -412,14 +393,10 @@ describe("sheet model edit helpers", () => {
       },
     });
 
-    const removed = sheetModelEdits.port.remove(
-      project,
-      child.id,
-      "port_child_in",
+    const removed = expectOk(
+      sheetModelEdits.port.remove(project, child.id, "port_child_in"),
     );
-    expect(removed.isOk()).toBe(true);
-    if (removed.isErr()) throw new Error("expected ok result");
-    expect(removed.value).toEqual({
+    expect(removed).toEqual({
       changed: true,
       data: {
         removedPortId: "port_child_in",
@@ -452,23 +429,15 @@ describe("sheet model edit helpers", () => {
       position: { x: 20, y: 30 },
     });
 
-    const result = sheetModelEdits.reference.detach(
-      project,
-      root.id,
-      "node_child",
+    const result = expectOk(
+      sheetModelEdits.reference.detach(project, root.id, "node_child"),
     );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) throw new Error("expected detach to succeed");
-    expect(result.value.data.originalSheetId).toBe(child.id);
-    expect(result.value.data.detachedSheet.id).not.toBe(child.id);
-    expect(result.value.data.detachedSheet.name).toBe("Child Copy");
-    expect(result.value.data.node.sheetId).toBe(
-      result.value.data.detachedSheet.id,
-    );
-    expect(result.value.data.detachedSheet.nodes[0]?.id).not.toBe(
-      "node_component",
-    );
+    expect(result.data.originalSheetId).toBe(child.id);
+    expect(result.data.detachedSheet.id).not.toBe(child.id);
+    expect(result.data.detachedSheet.name).toBe("Child Copy");
+    expect(result.data.node.sheetId).toBe(result.data.detachedSheet.id);
+    expect(result.data.detachedSheet.nodes[0]?.id).not.toBe("node_component");
   });
 
   it("keeps protected system sheets immutable through sheet definition/reference edits", () => {
@@ -476,28 +445,28 @@ describe("sheet model edit helpers", () => {
     const { rootSheet, systemSheet, systemSheetNode } =
       ensureSystemSheet(project);
 
-    const blockedDefinition = sheetModelEdits.definition.remove(
-      project,
-      systemSheet.id,
-      project.rootSheetId,
+    const blockedDefinition = expectErr(
+      sheetModelEdits.definition.remove(
+        project,
+        systemSheet.id,
+        project.rootSheetId,
+      ),
     );
-    expect(blockedDefinition.isErr()).toBe(true);
-    if (blockedDefinition.isOk()) throw new Error("expected err result");
-    expect(blockedDefinition.error).toEqual({
+    expect(blockedDefinition).toEqual({
       code: "forbidden",
       cause: "sheet-definition",
       detail: "protected-system-sheet",
     });
     expect(project.sheets[systemSheet.id]).toBeDefined();
 
-    const blockedReferenceRemoval = sheetModelEdits.reference.remove(
-      project,
-      rootSheet.id,
-      systemSheetNode.id,
+    const blockedReferenceRemoval = expectErr(
+      sheetModelEdits.reference.remove(
+        project,
+        rootSheet.id,
+        systemSheetNode.id,
+      ),
     );
-    expect(blockedReferenceRemoval.isErr()).toBe(true);
-    if (blockedReferenceRemoval.isOk()) throw new Error("expected err result");
-    expect(blockedReferenceRemoval.error).toEqual({
+    expect(blockedReferenceRemoval).toEqual({
       code: "forbidden",
       cause: "sheet-reference",
       detail: "protected-system-sheet",
@@ -506,14 +475,14 @@ describe("sheet model edit helpers", () => {
       true,
     );
 
-    const blockedDetach = sheetModelEdits.reference.detach(
-      project,
-      rootSheet.id,
-      systemSheetNode.id,
+    const blockedDetach = expectErr(
+      sheetModelEdits.reference.detach(
+        project,
+        rootSheet.id,
+        systemSheetNode.id,
+      ),
     );
-    expect(blockedDetach.isErr()).toBe(true);
-    if (blockedDetach.isOk()) throw new Error("expected err result");
-    expect(blockedDetach.error).toEqual({
+    expect(blockedDetach).toEqual({
       code: "forbidden",
       cause: "sheet-reference",
       detail: "protected-system-sheet",

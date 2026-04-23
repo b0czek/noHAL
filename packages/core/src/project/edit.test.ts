@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { expectOk } from "../testUtils/result";
 import {
   addMachineIniField,
   addMachineIniSection,
@@ -24,21 +25,18 @@ describe("project edit helpers", () => {
   it("updates the project wire layer position", () => {
     const project = createEmptyProject("Wire Layer Edit");
 
-    const changed = updateProjectWireLayerPosition(project, "above-components");
-    expect(changed.isOk()).toBe(true);
-    if (changed.isErr()) throw new Error("expected ok result");
-    expect(changed.value).toEqual({
+    const changed = expectOk(
+      updateProjectWireLayerPosition(project, "above-components"),
+    );
+    expect(changed).toEqual({
       changed: true,
       data: "above-components",
     });
     expect(project.ui.wireLayerPosition).toBe("above-components");
-    const unchanged = updateProjectWireLayerPosition(
-      project,
-      "above-components",
+    const unchanged = expectOk(
+      updateProjectWireLayerPosition(project, "above-components"),
     );
-    expect(unchanged.isOk()).toBe(true);
-    if (unchanged.isErr()) throw new Error("expected ok result");
-    expect(unchanged.value).toEqual({
+    expect(unchanged).toEqual({
       changed: false,
       data: "above-components",
     });
@@ -47,18 +45,14 @@ describe("project edit helpers", () => {
   it("updates the project wire style", () => {
     const project = createEmptyProject("Wire Style Edit");
 
-    const changed = updateProjectWireStyle(project, "straight");
-    expect(changed.isOk()).toBe(true);
-    if (changed.isErr()) throw new Error("expected ok result");
-    expect(changed.value).toEqual({
+    const changed = expectOk(updateProjectWireStyle(project, "straight"));
+    expect(changed).toEqual({
       changed: true,
       data: "straight",
     });
     expect(project.ui.wireStyle).toBe("straight");
-    const unchanged = updateProjectWireStyle(project, "straight");
-    expect(unchanged.isOk()).toBe(true);
-    if (unchanged.isErr()) throw new Error("expected ok result");
-    expect(unchanged.value).toEqual({
+    const unchanged = expectOk(updateProjectWireStyle(project, "straight"));
+    expect(unchanged).toEqual({
       changed: false,
       data: "straight",
     });
@@ -67,18 +61,18 @@ describe("project edit helpers", () => {
   it("updates the project shutdown HAL text", () => {
     const project = createEmptyProject("Shutdown Edit");
 
-    const changed = updateProjectShutdown(project, "setp estop-clear true");
-    expect(changed.isOk()).toBe(true);
-    if (changed.isErr()) throw new Error("expected ok result");
-    expect(changed.value).toEqual({
+    const changed = expectOk(
+      updateProjectShutdown(project, "setp estop-clear true"),
+    );
+    expect(changed).toEqual({
       changed: true,
       data: "setp estop-clear true",
     });
     expect(project.shutdown).toBe("setp estop-clear true");
-    const unchanged = updateProjectShutdown(project, "setp estop-clear true");
-    expect(unchanged.isOk()).toBe(true);
-    if (unchanged.isErr()) throw new Error("expected ok result");
-    expect(unchanged.value).toEqual({
+    const unchanged = expectOk(
+      updateProjectShutdown(project, "setp estop-clear true"),
+    );
+    expect(unchanged).toEqual({
       changed: false,
       data: "setp estop-clear true",
     });
