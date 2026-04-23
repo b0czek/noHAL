@@ -146,6 +146,7 @@ describe("Mesa raw GPIO support", () => {
       ),
     ).toEqual({
       code: "invalid-input",
+      cause: "raw-gpio",
       detail: "pin-index",
     });
   });

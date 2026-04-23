@@ -14,20 +14,37 @@ import type {
 
 export type MesaHostFailure = NotFoundFailure<"mesa-host">;
 export type MesaConnectorNotFoundFailure = NotFoundFailure<"mesa-connector">;
-export type SmartSerialPortNotFoundFailure = NotFoundFailure<"smart-serial-port">;
+export type SmartSerialPortNotFoundFailure =
+  NotFoundFailure<"smart-serial-port">;
 export type SmartSerialAssignmentNotFoundFailure =
   NotFoundFailure<"smart-serial-assignment">;
 export type RawGpioAssignmentNotFoundFailure =
   NotFoundFailure<"raw-gpio-assignment">;
-export type FixedCardKindFailure = ForbiddenFailure<"fixed-card-kind">;
-export type ConnectorCardUnsupportedFailure =
-  UnsupportedFailure<"connector-card">;
-export type RawGpioUnsupportedFailure = UnsupportedFailure<"raw-gpio">;
-export type SmartSerialChannelFailure =
-  InvalidInputFailure<"smart-serial-channel">;
-export type ProcessDataModeFailure = InvalidInputFailure<"process-data-mode">;
-export type PinIndexFailure = InvalidInputFailure<"pin-index">;
-export type SmartSerialCardFailure = InvalidInputFailure<"smart-serial-card">;
+export type FixedCardKindFailure = ForbiddenFailure<
+  "smart-serial-target",
+  "fixed-card-kind"
+>;
+export type ConnectorCardUnsupportedFailure = UnsupportedFailure<
+  "mesa-connector",
+  "connector-card"
+>;
+export type RawGpioUnsupportedFailure = UnsupportedFailure<
+  "mesa-connector",
+  "raw-gpio"
+>;
+export type SmartSerialChannelFailure = InvalidInputFailure<
+  "smart-serial-target",
+  "smart-serial-channel"
+>;
+export type ProcessDataModeFailure = InvalidInputFailure<
+  "smart-serial-target",
+  "process-data-mode"
+>;
+export type PinIndexFailure = InvalidInputFailure<"raw-gpio", "pin-index">;
+export type SmartSerialCardFailure = InvalidInputFailure<
+  "smart-serial-target",
+  "smart-serial-card"
+>;
 
 export type MesaSmartSerialPortFailure =
   | SmartSerialPortNotFoundFailure

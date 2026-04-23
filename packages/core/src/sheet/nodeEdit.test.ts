@@ -140,7 +140,11 @@ describe("node model edit helpers", () => {
     if (duplicate.isOk()) throw new Error("expected err result");
     expect(duplicate.error).toEqual({
       code: "conflict",
+      cause: "instance-name",
       detail: "duplicate-name",
+      meta: {
+        name: "child_b",
+      },
     });
   });
 
@@ -189,7 +193,11 @@ describe("node model edit helpers", () => {
     if (result.isOk()) throw new Error("expected err result");
     expect(result.error).toEqual({
       code: "conflict",
-      detail: "duplicate-exported-instance-path",
+      cause: "exported-path",
+      detail: "duplicate-exported-path",
+      meta: {
+        name: "shared_name",
+      },
     });
     expect(child.nodes[0]?.instanceName).toBe("other_name");
   });
@@ -219,7 +227,8 @@ describe("node model edit helpers", () => {
     if (result.isOk()) throw new Error("expected err result");
     expect(result.error).toEqual({
       code: "forbidden",
-      detail: "fixed-instance-name",
+      cause: "instance-name",
+      detail: "locked",
     });
     expect(
       root.nodes.find((node) => node.id === "node_locked")?.instanceName,

@@ -1,10 +1,10 @@
-import { matchFailure } from "@nohal/core";
+import type { FailureMatcher } from "@nohal/core";
 import { applyComponentDefinitionToProject } from "@nohal/core/customComponent";
 import { getSheet } from "@nohal/core/graph";
 import {
   itemModelEdits,
   nodeModelEdits,
-  sheetModelEdits,
+  type sheetModelEdits,
 } from "@nohal/core/sheet";
 import type {
   HalValueType,
@@ -13,6 +13,11 @@ import type {
   XY,
 } from "@nohal/core/types";
 import { toErrorMessage } from "../helpers";
+import {
+  type ActionStatusUpdate,
+  createFailureReporter,
+  type ExtractActionFailuresDeep,
+} from "./actionFailureTypes";
 import type { EditorSelection, EditorStoreActionContext } from "./types";
 
 const ROTATION_STEP_DEGREES = 90;
@@ -46,6 +51,113 @@ function getRotatableSelectionIds(selection: EditorSelection): {
 }
 
 export function createNodeActions(deps: EditorStoreActionContext) {
+  type NodeActionFailure = ExtractActionFailuresDeep<
+    typeof nodeModelEdits | typeof itemModelEdits | typeof sheetModelEdits
+  >;
+
+  const nodeActionFailureMatcher: FailureMatcher<
+    NodeActionFailure,
+    ActionStatusUpdate
+  > = {
+    "not-found": {
+      sheet: {
+        _: "store.status.componentNodeEditTargetMissing",
+      },
+      node: {
+        _: "store.status.componentNodeEditTargetMissing",
+      },
+      component: {
+        _: "store.status.componentNodeEditTargetMissing",
+      },
+      "instance-config": {
+        _: "store.status.componentNodeEditTargetMissing",
+      },
+      label: {
+        _: "store.status.componentNodeEditTargetMissing",
+      },
+      comment: {
+        _: "store.status.commentEditTargetMissing",
+      },
+      "sheet-port": {
+        _: "store.status.componentNodeEditTargetMissing",
+      },
+    },
+    "invalid-input": {
+      "instance-name": {
+        "empty-name": "store.status.instanceNameRequired",
+        "invalid-name": (failure) => [
+          "store.status.invalidHalInstanceName",
+          { name: failure.meta.name },
+        ],
+      },
+      label: {
+        "invalid-name": "store.status.invalidHalSignalName",
+      },
+      "sheet-port": {
+        "invalid-name": (failure) => [
+          "store.status.invalidHalPortName",
+          { name: failure.meta.name },
+        ],
+      },
+    },
+    forbidden: {
+      component: {
+        "placement-disabled": (failure) => [
+          "store.status.componentPlacementDisabled",
+          { componentName: failure.meta.componentName },
+        ],
+      },
+      "instance-name": {
+        locked: "componentDialog.instanceNameLocked",
+      },
+      pin: {
+        "connected-pin": "store.status.cannotHideConnectedPin",
+      },
+      "export-namespace": {
+        locked: (failure) => [
+          "store.status.exportNamespaceFixedForComponent",
+          { componentName: failure.meta.componentName },
+        ],
+      },
+    },
+    conflict: {
+      "instance-name": {
+        "instance-name-exhausted": (failure) => [
+          "store.status.instanceNameExhaustedForComponent",
+          { componentName: failure.meta.componentName },
+        ],
+        "duplicate-name": (failure) => [
+          "store.status.duplicateInstanceName",
+          { name: failure.meta.name },
+        ],
+      },
+      "exported-path": {
+        "duplicate-exported-path": (failure) => {
+          if ("instancePath" in failure.meta) {
+            return [
+              "store.status.exportNamespaceChangeWouldCollide",
+              { instancePath: failure.meta.instancePath },
+            ];
+          }
+          return [
+            "store.status.instanceNameCollidesInExportedNamespace",
+            { name: failure.meta.name },
+          ];
+        },
+      },
+      "sheet-port": {
+        "duplicate-name": (failure) => [
+          "store.status.duplicateSheetPortName",
+          { name: failure.meta.name },
+        ],
+      },
+    },
+  };
+  const reportNodeActionFailure = createFailureReporter(
+    deps,
+    nodeActionFailureMatcher,
+  );
+
   return {
     async refreshComponentInStore(componentId: string): Promise<void> {
       const current = deps.state.project.library.components[componentId];
@@ -93,32 +205,11 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             position,
           ),
         )
-        .match(
-          () => {
-            deps.setStatusT("store.status.placedComponent", {
-              componentName,
-            });
-          },
-          (error) => {
-            matchFailure(error, {
-              forbidden: {
-                "component-placement-disabled": (failure) => {
-                  deps.setStatusT("store.status.componentPlacementDisabled", {
-                    componentName: failure.componentName,
-                  });
-                },
-              },
-              conflict: {
-                "no-available-instance-name": (failure) => {
-                  deps.setState(
-                    "status",
-                    `No available export-safe instance names left for component '${failure.componentName}'`,
-                  );
-                },
-              },
-            });
-          },
-        );
+        .match(() => {
+          deps.setStatusT("store.status.placedComponent", {
+            componentName,
+          });
+        }, reportNodeActionFailure);
     },
 
     addLabel(scope: LabelScope, position?: XY): void {
@@ -236,41 +327,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             instanceName,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              "invalid-input": {
-                "empty-name": () => {},
-                "invalid-hal-name": () => {
-                  deps.setState(
-                    "status",
-                    `Invalid HAL instance name: ${instanceName.trim()}`,
-                  );
-                },
-              },
-              forbidden: {
-                "fixed-instance-name": () => {
-                  deps.setStatusT("componentDialog.instanceNameLocked");
-                },
-              },
-              conflict: {
-                "duplicate-name": () => {
-                  deps.setState(
-                    "status",
-                    `Instance name already exists: ${instanceName.trim()}`,
-                  );
-                },
-                "duplicate-exported-instance-path": () => {
-                  deps.setState(
-                    "status",
-                    `Instance name collides in exported HAL namespace: ${instanceName.trim()}`,
-                  );
-                },
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     renameSheetReference(
@@ -287,41 +344,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             instanceName,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              "invalid-input": {
-                "empty-name": () => {},
-                "invalid-hal-name": () => {
-                  deps.setState(
-                    "status",
-                    `Invalid HAL instance name: ${instanceName.trim()}`,
-                  );
-                },
-              },
-              forbidden: {
-                "fixed-instance-name": () => {
-                  deps.setStatusT("componentDialog.instanceNameLocked");
-                },
-              },
-              conflict: {
-                "duplicate-name": () => {
-                  deps.setState(
-                    "status",
-                    `Instance name already exists: ${instanceName.trim()}`,
-                  );
-                },
-                "duplicate-exported-instance-path": () => {
-                  deps.setState(
-                    "status",
-                    `Instance name collides in exported HAL namespace: ${instanceName.trim()}`,
-                  );
-                },
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     renameSheetInstance(sheetId: string, instanceName: string): void {
@@ -333,41 +356,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             instanceName,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              "invalid-input": {
-                "empty-name": () => {},
-                "invalid-hal-name": () => {
-                  deps.setState(
-                    "status",
-                    `Invalid HAL instance name: ${instanceName.trim()}`,
-                  );
-                },
-              },
-              forbidden: {
-                "fixed-instance-name": () => {
-                  deps.setStatusT("componentDialog.instanceNameLocked");
-                },
-              },
-              conflict: {
-                "duplicate-name": () => {
-                  deps.setState(
-                    "status",
-                    `Instance name already exists: ${instanceName.trim()}`,
-                  );
-                },
-                "duplicate-exported-instance-path": () => {
-                  deps.setState(
-                    "status",
-                    `Instance name collides in exported HAL namespace: ${instanceName.trim()}`,
-                  );
-                },
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     updateSheetNodeThreadMap(
@@ -386,21 +375,10 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             parentThreadOutputId,
           ),
         )
-        .match(
-          ({ changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedSubsheetThreadMapping");
-          },
-          (error) => {
-            matchFailure(error, {
-              "not-found": () => {
-                deps.setStatusT(
-                  "store.status.subsheetThreadMappingTargetMissing",
-                );
-              },
-            });
-          },
-        );
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedSubsheetThreadMapping");
+        }, reportNodeActionFailure);
     },
 
     updateNodeParam(nodeId: string, paramKey: string, value: string): void {
@@ -414,16 +392,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             value,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              "not-found": () => {
-                deps.setStatusT("store.status.componentNodeEditTargetMissing");
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     updateNodeInstanceConfigValue(
@@ -441,16 +410,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             value,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              "not-found": () => {
-                deps.setStatusT("store.status.componentNodeEditTargetMissing");
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     updateNodePinInitialValue(
@@ -468,16 +428,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             value,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              "not-found": () => {
-                deps.setStatusT("store.status.componentNodeEditTargetMissing");
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     updateNodePinVisibility(
@@ -495,28 +446,17 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             visible,
           ),
         )
-        .match(
-          ({ changed }) => {
-            if (
-              changed &&
-              !visible &&
-              deps.state.pendingEndpoint?.kind === "node-pin" &&
-              deps.state.pendingEndpoint.nodeId === nodeId &&
-              deps.state.pendingEndpoint.pinKey === pinKey
-            ) {
-              deps.clearPendingConnectionUi();
-            }
-          },
-          (error) => {
-            matchFailure(error, {
-              forbidden: {
-                "connected-pin": () => {
-                  deps.setStatusT("store.status.cannotHideConnectedPin");
-                },
-              },
-            });
-          },
-        );
+        .match(({ changed }) => {
+          if (
+            changed &&
+            !visible &&
+            deps.state.pendingEndpoint?.kind === "node-pin" &&
+            deps.state.pendingEndpoint.nodeId === nodeId &&
+            deps.state.pendingEndpoint.pinKey === pinKey
+          ) {
+            deps.clearPendingConnectionUi();
+          }
+        }, reportNodeActionFailure);
     },
 
     updateNodePinOrder(nodeId: string, pinOrder: readonly string[]): void {
@@ -529,16 +469,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             pinOrder,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              "not-found": () => {
-                deps.setStatusT("store.status.componentNodeEditTargetMissing");
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     updateNodeExportStage(nodeId: string, stage: "main" | "postgui"): void {
@@ -551,16 +482,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             stage,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              "not-found": () => {
-                deps.setStatusT("store.status.componentNodeEditTargetMissing");
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     updateNodeGlobalNamespace(nodeId: string, global: boolean): void {
@@ -573,29 +495,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             global,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              forbidden: {
-                "fixed-export-namespace": (failure) => {
-                  deps.setState(
-                    "status",
-                    `Export namespace is fixed for component '${failure.componentName}'`,
-                  );
-                },
-              },
-              conflict: {
-                "duplicate-exported-instance-path": (failure) => {
-                  deps.setState(
-                    "status",
-                    `Export namespace change would collide at '${failure.instancePath}'`,
-                  );
-                },
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     updateLabel(
@@ -611,49 +511,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             patch,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              "invalid-input": {
-                "invalid-name": () => {
-                  deps.setState("status", "Invalid HAL signal name");
-                },
-              },
-            });
-          },
-        );
-    },
-
-    convertLabelToSheetPort(labelId: string): void {
-      deps
-        .withProjectResult((project) =>
-          sheetModelEdits.label.convertToPort(
-            project,
-            deps.state.activeSheetId,
-            labelId,
-          ),
-        )
-        .match(
-          ({ data }) => {
-            deps.setState("selection", {
-              kind: "sheet-port",
-              id: data.port.id,
-            });
-            deps.setStatusT("store.status.convertedLabelToSheetPort", {
-              name: data.port.name,
-            });
-          },
-          (error) => {
-            matchFailure(error, {
-              "invalid-input": {
-                "label-not-convertible": () => {
-                  deps.setStatusT("store.status.cannotConvertLabelToSheetPort");
-                },
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     updateComment(
@@ -668,16 +526,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             patch,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              "not-found": () => {
-                deps.setStatusT("store.status.commentEditTargetMissing");
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     updateSheetPort(
@@ -690,8 +539,6 @@ export function createNodeActions(deps: EditorStoreActionContext) {
       },
     ): void {
       const activeSheetId = deps.state.activeSheetId;
-      const normalizedName =
-        patch.name !== undefined ? patch.name.trim() : undefined;
       deps
         .withProjectResult((project) =>
           itemModelEdits.port.update(
@@ -700,29 +547,7 @@ export function createNodeActions(deps: EditorStoreActionContext) {
             patch,
           ),
         )
-        .match(
-          () => {},
-          (error) => {
-            matchFailure(error, {
-              "invalid-input": {
-                "invalid-name": () => {
-                  deps.setState(
-                    "status",
-                    `Invalid HAL port name: ${normalizedName ?? ""}`,
-                  );
-                },
-              },
-              conflict: {
-                "duplicate-name": () => {
-                  deps.setState(
-                    "status",
-                    `Sheet port name already exists: ${normalizedName ?? ""}`,
-                  );
-                },
-              },
-            });
-          },
-        );
+        .orTee(reportNodeActionFailure);
     },
 
     rotateSelectionClockwise(

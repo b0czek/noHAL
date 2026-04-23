@@ -1,10 +1,10 @@
 import type {
+  FailureMatcher,
   HalValueType,
   NoHALProject,
   ProjectWireLayerPosition,
   ProjectWireStyle,
 } from "@nohal/core";
-import { type FailureLike, matchFailure } from "@nohal/core";
 import {
   applyComponentDefinitionToProject,
   customComponentEdits,
@@ -12,22 +12,18 @@ import {
   nextHalComponentName,
 } from "@nohal/core/customComponent";
 import { CUSTOM_COMPONENT_STORE_SOURCE_ID } from "@nohal/core/customComponentStore";
-import {
-  addHalThread,
-  removeHalThread,
-  updateHalThreadFloatMode,
-  updateHalThreadName,
-  updateHalThreadPeriodNs,
-} from "@nohal/core/halThread";
+import { halThreadEdits } from "@nohal/core/halThread";
 import type { LinuxCncVersion } from "@nohal/core/linuxcncVersion";
-import {
-  syncMotmodManagedProjection,
-  updateMotmodNumericConfig,
-} from "@nohal/core/motmod";
+import { motmodEdits } from "@nohal/core/motmod";
 import { type ProjectReadResult, projectEdits } from "@nohal/core/project";
 import { unwrap } from "solid-js/store";
 import type { TranslationKey } from "../../../i18n";
 import { repointComponentDefinitionId, toErrorMessage } from "../helpers";
+import {
+  type ActionStatusUpdate,
+  createFailureReporter,
+  type ExtractActionFailuresDeep,
+} from "./actionFailureTypes";
 import type { EditorStoreActionContext } from "./types";
 
 interface ProjectTransition {
@@ -98,42 +94,96 @@ async function runProjectTransition(
 }
 
 export function createProjectActions(deps: EditorStoreActionContext) {
-  const halThreadName = (threadId: string): string | null =>
-    deps.state.project.halThreads?.find((thread) => thread.id === threadId)
-      ?.name ?? null;
+  const projectActionEdits = {
+    customComponentEdits,
+    halThreadEdits,
+    motmodEdits,
+    projectEdits: projectEdits.project,
+  } as const;
 
-  const setSelectedComponentNotCustomStatus = (): void => {
-    deps.setStatusT("store.status.selectedComponentNotCustom");
-  };
+  type ProjectActionFailure = ExtractActionFailuresDeep<
+    typeof projectActionEdits
+  >;
 
-  const reportCustomComponentEditFailure = (error: FailureLike): void => {
-    matchFailure(error, {
-      "not-found": {
-        "custom-component": () => {
-          setSelectedComponentNotCustomStatus();
-        },
-        pin: () => {
-          deps.setStatusT("store.status.customComponentMemberNotFound");
-        },
-        param: () => {
-          deps.setStatusT("store.status.customComponentMemberNotFound");
-        },
-        function: () => {
-          deps.setStatusT("store.status.customComponentMemberNotFound");
-        },
+  const projectActionFailureMatcher: FailureMatcher<
+    ProjectActionFailure,
+    ActionStatusUpdate
+  > = {
+    "not-found": {
+      "custom-component": {
+        _: "store.status.selectedComponentNotCustom",
       },
-      "invalid-input": {
-        "empty-name": () => {
-          deps.setStatusT("store.status.customComponentNameRequired");
-        },
+      pin: {
+        _: "store.status.customComponentMemberNotFound",
       },
-      unsupported: {
-        "invalid-runtime": () => {
-          deps.setStatusT("store.status.customComponentFunctionRequiresRt");
-        },
+      param: {
+        _: "store.status.customComponentMemberNotFound",
       },
-    });
+      function: {
+        _: "store.status.customComponentMemberNotFound",
+      },
+    },
+    "invalid-input": {
+      "hal-component-name": {
+        "empty-name": "store.status.customComponentNameRequired",
+      },
+    },
+    conflict: {
+      "hal-component-name": {
+        "duplicate-name": (failure) => [
+          "store.status.duplicateHalComponentName",
+          { componentName: failure.meta.name },
+        ],
+      },
+      "hal-thread-name": {
+        "duplicate-name": (failure) => [
+          "store.status.duplicateHalThreadName",
+          { name: failure.meta.name },
+        ],
+      },
+    },
+    forbidden: {
+      "hal-thread": {
+        "last-thread": "store.status.cannotRemoveLastHalThread",
+        "required-thread": (failure) => [
+          "store.status.cannotRemoveRequiredHalThread",
+          { name: failure.meta.name },
+        ],
+      },
+      "hal-thread-name": {
+        "required-thread": (failure) => [
+          "store.status.cannotRenameRequiredHalThread",
+          { name: failure.meta.name },
+        ],
+      },
+      "hal-thread-float-mode": {
+        "forced-fp": (failure) => [
+          "store.status.requiredHalThreadForcedFp",
+          { name: failure.meta.name },
+        ],
+      },
+    },
+    unsupported: {
+      function: {
+        "invalid-runtime": "store.status.customComponentFunctionRequiresRt",
+      },
+    },
+    "in-use": {
+      "custom-component": {
+        "placed-component": (failure) => [
+          "store.status.cannotRemoveCustomComponentInUse",
+          {
+            componentName: failure.componentName,
+            count: failure.usageCount,
+          },
+        ],
+      },
+    },
   };
+  const reportProjectActionFailure = createFailureReporter(
+    deps,
+    projectActionFailureMatcher,
+  );
 
   const ensureHalComponentNameAvailable = (
     halComponentName: string,
@@ -441,33 +491,11 @@ export function createProjectActions(deps: EditorStoreActionContext) {
         .withProjectResult((project) =>
           customComponentEdits.remove(project, componentId),
         )
-        .match(
-          ({ data }) => {
-            deps.setStatusT("store.status.removedCustomComponent", {
-              componentName: data.componentName,
-            });
-          },
-          (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  deps.setStatusT("store.status.selectedComponentNotCustom");
-                },
-              },
-              "in-use": {
-                "placed-component": (failure) => {
-                  deps.setStatusT(
-                    "store.status.cannotRemoveCustomComponentInUse",
-                    {
-                      componentName: failure.componentName,
-                      count: failure.usageCount,
-                    },
-                  );
-                },
-              },
-            });
-          },
-        );
+        .match(({ data }) => {
+          deps.setStatusT("store.status.removedCustomComponent", {
+            componentName: data.componentName,
+          });
+        }, reportProjectActionFailure);
     },
 
     updateCustomComponentHalComponentName(
@@ -483,35 +511,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             { componentStore: deps.state.componentStore },
           ),
         )
-        .match(
-          ({ data, changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedCustomComponent", {
-              componentName: data.halComponentName,
-            });
-          },
-          (error) => {
-            matchFailure(error, {
-              "not-found": {
-                "custom-component": () => {
-                  setSelectedComponentNotCustomStatus();
-                },
-              },
-              conflict: {
-                "duplicate-name": () => {
-                  deps.setStatusT("store.status.duplicateHalComponentName", {
-                    componentName: halComponentName.trim(),
-                  });
-                },
-              },
-              "invalid-input": {
-                "empty-name": () => {
-                  deps.setStatusT("store.status.customComponentNameRequired");
-                },
-              },
-            });
-          },
-        );
+        .match(({ data, changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedCustomComponent", {
+            componentName: data.halComponentName,
+          });
+        }, reportProjectActionFailure);
     },
 
     updateCustomComponentRuntimeKind(
@@ -526,17 +531,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             runtimeKind,
           ),
         )
-        .match(
-          ({ data, changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedCustomComponent", {
-              componentName: data.halComponentName,
-            });
-          },
-          (error) => {
-            reportCustomComponentEditFailure(error);
-          },
-        );
+        .match(({ data, changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedCustomComponent", {
+            componentName: data.halComponentName,
+          });
+        }, reportProjectActionFailure);
     },
 
     updateCustomComponentLoadCommand(
@@ -551,17 +551,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             loadCommand,
           ),
         )
-        .match(
-          ({ data, changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedCustomComponentLoad", {
-              componentName: data.halComponentName,
-            });
-          },
-          (error) => {
-            reportCustomComponentEditFailure(error);
-          },
-        );
+        .match(({ data, changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedCustomComponentLoad", {
+            componentName: data.halComponentName,
+          });
+        }, reportProjectActionFailure);
     },
 
     updateCustomComponentMaxInstances(
@@ -576,17 +571,12 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             maxInstances,
           ),
         )
-        .match(
-          ({ data, changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedCustomComponent", {
-              componentName: data.halComponentName,
-            });
-          },
-          (error) => {
-            reportCustomComponentEditFailure(error);
-          },
-        );
+        .match(({ data, changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedCustomComponent", {
+            componentName: data.halComponentName,
+          });
+        }, reportProjectActionFailure);
     },
 
     addCustomComponentPin(componentId: string): void {
@@ -601,7 +591,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -619,7 +609,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -647,7 +637,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -675,7 +665,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -704,7 +694,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -721,7 +711,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -739,7 +729,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -767,7 +757,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -795,7 +785,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -823,7 +813,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -851,7 +841,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -868,7 +858,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -893,7 +883,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -921,7 +911,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -949,7 +939,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
             });
           },
           (error) => {
-            reportCustomComponentEditFailure(error);
+            reportProjectActionFailure(error);
           },
         );
     },
@@ -1022,80 +1012,40 @@ export function createProjectActions(deps: EditorStoreActionContext) {
 
     addHalThread(): void {
       deps.withProject((project) => {
-        addHalThread(project);
+        halThreadEdits.add(project);
       });
       deps.setStatusT("store.status.addedHalThread");
     },
 
     removeHalThread(threadId: string): void {
       deps
-        .withProjectResult((project) => removeHalThread(project, threadId))
-        .match(
-          ({ data }) => {
-            deps.setStatusT("store.status.removedHalThread", {
-              name: data.name,
-            });
-          },
-          (error) => {
-            matchFailure(error, {
-              forbidden: {
-                "last-thread": () => {
-                  deps.setStatusT("store.status.cannotRemoveLastHalThread");
-                },
-                "required-thread": () => {
-                  deps.setStatusT(
-                    "store.status.cannotRemoveRequiredHalThread",
-                    {
-                      name: halThreadName(threadId) ?? threadId,
-                    },
-                  );
-                },
-              },
-            });
-          },
-        );
+        .withProjectResult((project) =>
+          halThreadEdits.remove(project, threadId),
+        )
+        .match(({ data }) => {
+          deps.setStatusT("store.status.removedHalThread", {
+            name: data.name,
+          });
+        }, reportProjectActionFailure);
     },
 
     updateHalThreadName(threadId: string, name: string): void {
       deps
         .withProjectResult((project) =>
-          updateHalThreadName(project, threadId, name),
+          halThreadEdits.name.update(project, threadId, name),
         )
-        .match(
-          ({ data, changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedHalThreadName", {
-              name: data.name,
-            });
-          },
-          (error) => {
-            matchFailure(error, {
-              forbidden: {
-                "required-thread": () => {
-                  deps.setStatusT(
-                    "store.status.cannotRenameRequiredHalThread",
-                    {
-                      name: halThreadName(threadId) ?? threadId,
-                    },
-                  );
-                },
-              },
-              conflict: {
-                "duplicate-name": () => {
-                  deps.setStatusT("store.status.duplicateHalThreadName", {
-                    name: name.trim(),
-                  });
-                },
-              },
-            });
-          },
-        );
+        .match(({ data, changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedHalThreadName", {
+            name: data.name,
+          });
+        }, reportProjectActionFailure);
     },
 
     updateHalThreadPeriodNs(threadId: string, periodNs: number): void {
       deps
         .withProjectResult((project) =>
-          updateHalThreadPeriodNs(project, threadId, periodNs),
+          halThreadEdits.periodNs.update(project, threadId, periodNs),
         )
         .match(
           ({ data, changed }) => {
@@ -1111,28 +1061,15 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     updateHalThreadFloatMode(threadId: string, floatMode: "fp" | "nofp"): void {
       deps
         .withProjectResult((project) =>
-          updateHalThreadFloatMode(project, threadId, floatMode),
+          halThreadEdits.floatMode.update(project, threadId, floatMode),
         )
-        .match(
-          ({ data, changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedHalThreadFloatMode", {
-              name: data.name,
-              mode: floatMode,
-            });
-          },
-          (error) => {
-            matchFailure(error, {
-              forbidden: {
-                "forced-fp": () => {
-                  deps.setStatusT("store.status.requiredHalThreadForcedFp", {
-                    name: halThreadName(threadId) ?? threadId,
-                  });
-                },
-              },
-            });
-          },
-        );
+        .match(({ data, changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedHalThreadFloatMode", {
+            name: data.name,
+            mode: floatMode,
+          });
+        }, reportProjectActionFailure);
     },
 
     updateMotmodNumericConfig(
@@ -1147,7 +1084,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
     ): void {
       deps
         .withProjectResult((project) =>
-          updateMotmodNumericConfig(project, key, value),
+          motmodEdits.config.update(project, key, value),
         )
         .match(
           ({ changed }) => {
@@ -1160,7 +1097,7 @@ export function createProjectActions(deps: EditorStoreActionContext) {
 
     syncMotmodManagedProjection(): void {
       deps
-        .withProjectResult((project) => syncMotmodManagedProjection(project))
+        .withProjectResult((project) => motmodEdits.projection.sync(project))
         .match(
           ({ data, changed }) => {
             if (!changed) {

@@ -1,4 +1,4 @@
-import { type ChangeResult, type FailureLike, matchFailure } from "@nohal/core";
+import type { ChangeResult, FailureMatcher } from "@nohal/core";
 import {
   applyComponentDefinitionToProject,
   customComponentDefinitionEdits,
@@ -19,6 +19,11 @@ import {
   pruneMissingStoredComponentsFromProject,
   toErrorMessage,
 } from "../helpers";
+import {
+  type ActionStatusUpdate,
+  createFailureReporter,
+  type ExtractActionFailuresDeep,
+} from "./actionFailureTypes";
 import type { EditorStoreActionContext } from "./types";
 
 interface ImportError {
@@ -57,6 +62,41 @@ function defaultStoreCustomStatusParams(
 }
 
 export function createComponentStoreActions(deps: EditorStoreActionContext) {
+  type ComponentStoreActionFailure = ExtractActionFailuresDeep<
+    typeof customComponentDefinitionEdits
+  >;
+
+  const componentStoreActionFailureMatcher: FailureMatcher<
+    ComponentStoreActionFailure,
+    ActionStatusUpdate
+  > = {
+    "not-found": {
+      pin: {
+        _: "store.status.customComponentMemberNotFound",
+      },
+      param: {
+        _: "store.status.customComponentMemberNotFound",
+      },
+      function: {
+        _: "store.status.customComponentMemberNotFound",
+      },
+    },
+    "invalid-input": {
+      "hal-component-name": {
+        "empty-name": "store.status.customComponentNameRequired",
+      },
+    },
+    unsupported: {
+      function: {
+        "invalid-runtime": "store.status.customComponentFunctionRequiresRt",
+      },
+    },
+  };
+  const reportComponentStoreActionFailure = createFailureReporter(
+    deps,
+    componentStoreActionFailureMatcher,
+  );
+
   const findManualStoreEntry = (
     componentId: string,
   ): ComponentStoreEntry | null => {
@@ -151,7 +191,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
     componentId: string,
     mutate: (
       component: ImportedComponentDefinition,
-    ) => ChangeResult<unknown, FailureLike>,
+    ) => ChangeResult<unknown, ComponentStoreActionFailure>,
     statusKey: TranslationKey,
     params: (
       component: ImportedComponentDefinition,
@@ -166,29 +206,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
     const nextComponent = structuredClone(unwrap(entry.parsed));
     const result = mutate(nextComponent);
     if (result.isErr()) {
-      matchFailure(result.error, {
-        "invalid-input": {
-          "empty-name": () => {
-            deps.setStatusT("store.status.customComponentNameRequired");
-          },
-        },
-        "not-found": {
-          pin: () => {
-            deps.setStatusT("store.status.customComponentMemberNotFound");
-          },
-          param: () => {
-            deps.setStatusT("store.status.customComponentMemberNotFound");
-          },
-          function: () => {
-            deps.setStatusT("store.status.customComponentMemberNotFound");
-          },
-        },
-        unsupported: {
-          "invalid-runtime": () => {
-            deps.setStatusT("store.status.customComponentFunctionRequiresRt");
-          },
-        },
-      });
+      reportComponentStoreActionFailure(result.error);
       return false;
     }
     if (!result.value.changed) return false;

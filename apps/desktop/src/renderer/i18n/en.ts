@@ -781,6 +781,21 @@ export const en = {
     "The selected component node or field no longer exists",
   "store.status.commentEditTargetMissing":
     "The selected comment no longer exists",
+  "store.status.instanceNameRequired": "Instance name is required",
+  "store.status.invalidHalInstanceName": "Invalid HAL instance name: {name}",
+  "store.status.invalidHalSignalName": "Invalid HAL signal name",
+  "store.status.invalidHalPortName": "Invalid HAL port name: {name}",
+  "store.status.exportNamespaceFixedForComponent":
+    "Export namespace is fixed for component '{componentName}'",
+  "store.status.instanceNameExhaustedForComponent":
+    "No available export-safe instance names left for component '{componentName}'",
+  "store.status.duplicateInstanceName": "Instance name already exists: {name}",
+  "store.status.exportNamespaceChangeWouldCollide":
+    "Export namespace change would collide at '{instancePath}'",
+  "store.status.instanceNameCollidesInExportedNamespace":
+    "Instance name collides in exported HAL namespace: {name}",
+  "store.status.duplicateSheetPortName":
+    "Sheet port name already exists: {name}",
   "store.status.updatedWireRoute": "Updated wire route",
   "store.status.removedLabelAnchor": "Removed label anchor",
   "store.warning.importError": "Import error {filePath}: {error}",

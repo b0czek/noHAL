@@ -65,6 +65,7 @@ describe("Mesa smart-serial HAL projection", () => {
       ),
     ).toEqual({
       code: "invalid-input",
+      cause: "smart-serial-target",
       detail: "smart-serial-channel",
     });
   });

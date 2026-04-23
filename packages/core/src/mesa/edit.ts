@@ -55,7 +55,7 @@ function requireMesaHost(
   hostId: string,
 ): Result<ProjectMesaHostConfig, MesaHostFailure> {
   const host = findMesaHost(project, hostId);
-  if (!host) return err({ code: "not-found", detail: "mesa-host" });
+  if (!host) return err({ code: "not-found", cause: "mesa-host" });
   return ok(host);
 }
 
@@ -81,7 +81,11 @@ function validateMesaSmartSerialTarget(
   const channels = connectorPort?.channels ?? hostPort?.channels;
 
   if (connectorPort?.fixedCardKind) {
-    return err({ code: "forbidden", detail: "fixed-card-kind" });
+    return err({
+      code: "forbidden",
+      cause: "smart-serial-target",
+      detail: "fixed-card-kind",
+    });
   }
   if (
     target.connectorKey &&
@@ -91,10 +95,10 @@ function validateMesaSmartSerialTarget(
         Boolean(getMesaDb25CardCatalogEntry(item.cardKind ?? "")),
     )
   ) {
-    return err({ code: "not-found", detail: "smart-serial-port" });
+    return err({ code: "not-found", cause: "smart-serial-port" });
   }
   if (!connectorPort && !hostPort) {
-    return err({ code: "not-found", detail: "smart-serial-port" });
+    return err({ code: "not-found", cause: "smart-serial-port" });
   }
   if (
     !Number.isInteger(target.channel) ||
@@ -102,7 +106,11 @@ function validateMesaSmartSerialTarget(
     !channels ||
     target.channel >= channels
   ) {
-    return err({ code: "invalid-input", detail: "smart-serial-channel" });
+    return err({
+      code: "invalid-input",
+      cause: "smart-serial-target",
+      detail: "smart-serial-channel",
+    });
   }
 
   return ok(undefined);
@@ -144,7 +152,11 @@ function applyMesaSmartSerialCard(
 
   const card = getMesaSmartSerialCatalogEntry(cardKind);
   if (!card) {
-    return err({ code: "invalid-input", detail: "smart-serial-card" });
+    return err({
+      code: "invalid-input",
+      cause: "smart-serial-target",
+      detail: "smart-serial-card",
+    });
   }
 
   const next = {
@@ -180,7 +192,7 @@ function applyMesaConnectorCard(
   );
 
   if (!connector) {
-    return err({ code: "not-found", detail: "mesa-connector" });
+    return err({ code: "not-found", cause: "mesa-connector" });
   }
 
   if (!cardKind) {
@@ -213,13 +225,21 @@ function applyMesaConnectorCard(
   }
 
   if (cardKind === MESA_RAW_GPIO_CARD_KIND && !connector.rawGpio) {
-    return err({ code: "unsupported", detail: "raw-gpio" });
+    return err({
+      code: "unsupported",
+      cause: "mesa-connector",
+      detail: "raw-gpio",
+    });
   }
   if (
     cardKind !== MESA_RAW_GPIO_CARD_KIND &&
     !isMesaConnectorCardCompatible(host.kind, connectorKey, cardKind)
   ) {
-    return err({ code: "unsupported", detail: "connector-card" });
+    return err({
+      code: "unsupported",
+      cause: "mesa-connector",
+      detail: "connector-card",
+    });
   }
 
   const nextAssignment: ProjectMesaDb25CardAssignment =
@@ -260,10 +280,14 @@ function applyMesaSmartSerialProcessDataMode(
   const card = cardKind ? getMesaSmartSerialCatalogEntry(cardKind) : undefined;
 
   if (!assignment || !card) {
-    return err({ code: "not-found", detail: "smart-serial-assignment" });
+    return err({ code: "not-found", cause: "smart-serial-assignment" });
   }
   if (!card.processDataModes?.some((mode) => mode.mode === processDataMode)) {
-    return err({ code: "invalid-input", detail: "process-data-mode" });
+    return err({
+      code: "invalid-input",
+      cause: "smart-serial-target",
+      detail: "process-data-mode",
+    });
   }
   if (assignment.processDataMode === processDataMode) {
     return ok({ data: processDataMode, changed: false });
@@ -291,10 +315,14 @@ function applyMesaRawGpioPinDirection(
       item.cardKind === MESA_RAW_GPIO_CARD_KIND,
   );
   if (!assignment) {
-    return err({ code: "not-found", detail: "raw-gpio-assignment" });
+    return err({ code: "not-found", cause: "raw-gpio-assignment" });
   }
   if (!connector?.rawGpio || pinIndex >= connector.rawGpio.count) {
-    return err({ code: "invalid-input", detail: "pin-index" });
+    return err({
+      code: "invalid-input",
+      cause: "raw-gpio",
+      detail: "pin-index",
+    });
   }
 
   const outputPins = new Set(assignment.rawGpio?.outputPins ?? []);
@@ -338,7 +366,7 @@ export function removeMesaHost(
 ): ChangeResult<string, MesaHostFailure> {
   const mesa = ensureProjectMesa(project);
   const index = mesa.hosts.findIndex((host) => host.id === hostId);
-  if (index < 0) return err({ code: "not-found", detail: "mesa-host" });
+  if (index < 0) return err({ code: "not-found", cause: "mesa-host" });
   mesa.hosts.splice(index, 1);
   renormalizeMesa(project);
   return ok({ data: hostId, changed: true });
@@ -388,7 +416,11 @@ export function setMesaSmartSerialProcessDataMode(
   processDataMode: number,
 ): SetMesaSmartSerialProcessDataModeResult {
   if (!Number.isInteger(processDataMode) || processDataMode < 0) {
-    return err({ code: "invalid-input", detail: "process-data-mode" });
+    return err({
+      code: "invalid-input",
+      cause: "smart-serial-target",
+      detail: "process-data-mode",
+    });
   }
 
   return requireMesaHost(project, hostId).andThen((host) =>
@@ -404,7 +436,11 @@ export function setMesaRawGpioPinDirection(
   direction: ProjectMesaGpioDirection,
 ): SetMesaRawGpioPinDirectionResult {
   if (!Number.isInteger(pinIndex) || pinIndex < 0) {
-    return err({ code: "invalid-input", detail: "pin-index" });
+    return err({
+      code: "invalid-input",
+      cause: "raw-gpio",
+      detail: "pin-index",
+    });
   }
 
   return requireMesaHost(project, hostId).andThen((host) =>
@@ -430,6 +466,40 @@ export function setMesaSmartSerialCard(
     ),
   );
 }
+
+export const mesaEdits = {
+  host: {
+    add: addMesaHost,
+    remove: removeMesaHost,
+    kind: {
+      update: updateMesaHostKind,
+    },
+    ip: {
+      update: updateMesaHostIp,
+    },
+  },
+  connector: {
+    card: {
+      set: setMesaConnectorCard,
+    },
+  },
+  smartSerial: {
+    processDataMode: {
+      set: setMesaSmartSerialProcessDataMode,
+    },
+    card: {
+      set: setMesaSmartSerialCard,
+    },
+  },
+  rawGpio: {
+    pinDirection: {
+      set: setMesaRawGpioPinDirection,
+    },
+  },
+  projection: {
+    sync: syncMesaManagedProjection,
+  },
+};
 
 export function syncMesaManagedProjection(
   project: NoHALProject,

@@ -151,7 +151,9 @@ function addSheetThreadOutput(
 
 export type UpdateSheetThreadOutputNameResult = ChangeResult<
   SheetThreadOutputDefinition,
-  NotFoundFailure | EmptyNameFailure | DuplicateNameFailure
+  | NotFoundFailure<"sheet-thread-output">
+  | EmptyNameFailure<"sheet-thread-output-name">
+  | DuplicateNameFailure<"sheet-thread-output-name", { name: string }>
 >;
 
 function updateSheetThreadOutputName(
@@ -160,17 +162,30 @@ function updateSheetThreadOutputName(
   name: string,
 ): UpdateSheetThreadOutputNameResult {
   const trimmed = name.trim();
-  if (!trimmed) return err({ code: "invalid-input", detail: "empty-name" });
+  if (!trimmed) {
+    return err({
+      code: "invalid-input",
+      cause: "sheet-thread-output-name",
+      detail: "empty-name",
+    });
+  }
   if (!sheet.hal) sheet.hal = {};
   const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
   const target = current.find((item) => item.id === outputId);
-  if (!target) return err({ code: "not-found" });
+  if (!target) {
+    return err({ code: "not-found", cause: "sheet-thread-output" });
+  }
   if (target.name === trimmed) {
     sheet.hal.threadOutputs = current;
     return ok({ data: target, changed: false });
   }
   if (current.some((item) => item.id !== outputId && item.name === trimmed)) {
-    return err({ code: "conflict", detail: "duplicate-name" });
+    return err({
+      code: "conflict",
+      cause: "sheet-thread-output-name",
+      detail: "duplicate-name",
+      meta: { name: trimmed },
+    });
   }
   target.name = trimmed;
   sheet.hal.threadOutputs = current;
@@ -179,7 +194,7 @@ function updateSheetThreadOutputName(
 
 export type UpdateSheetThreadOutputHalBindingResult = ChangeResult<
   SheetThreadOutputDefinition,
-  NotFoundFailure
+  NotFoundFailure<"sheet-thread-output">
 >;
 
 function updateSheetThreadOutputHalBinding(
@@ -190,7 +205,9 @@ function updateSheetThreadOutputHalBinding(
   if (!sheet.hal) sheet.hal = {};
   const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
   const target = current.find((item) => item.id === outputId);
-  if (!target) return err({ code: "not-found" });
+  if (!target) {
+    return err({ code: "not-found", cause: "sheet-thread-output" });
+  }
   const normalizedHalThreadId = halThreadId?.trim() || undefined;
   if (target.halThreadId === normalizedHalThreadId) {
     sheet.hal.threadOutputs = current;
@@ -202,9 +219,14 @@ function updateSheetThreadOutputHalBinding(
   return ok({ data: target, changed: true });
 }
 
+export type ConvertLabelToSheetPortFailure =
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"label">
+  | InvalidInputFailure<"label", "not-convertible">;
+
 export type ConvertLabelToSheetPortResult = ChangeResult<
   { labelId: string; port: SheetPort },
-  NotFoundFailure | InvalidInputFailure<"label-not-convertible">
+  ConvertLabelToSheetPortFailure
 >;
 
 function convertLabelToSheetPort(
@@ -213,28 +235,49 @@ function convertLabelToSheetPort(
   labelId: string,
 ): ConvertLabelToSheetPortResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
 
   const label = sheet.labels.find((entry) => entry.id === labelId);
-  if (!label) return err({ code: "not-found" });
+  if (!label) {
+    return err({
+      code: "not-found",
+      cause: "label",
+    });
+  }
 
   const anchors = sheet.labelAnchors.filter(
     (entry) => entry.labelId === labelId,
   );
   if (anchors.length !== 1) {
-    return err({ code: "invalid-input", detail: "label-not-convertible" });
+    return err({
+      code: "invalid-input",
+      cause: "label",
+      detail: "not-convertible",
+    });
   }
 
   const [anchor] = anchors;
   if (anchor.endpoint.kind !== "node-pin") {
-    return err({ code: "invalid-input", detail: "label-not-convertible" });
+    return err({
+      code: "invalid-input",
+      cause: "label",
+      detail: "not-convertible",
+    });
   }
 
   let resolved: ReturnType<typeof resolveEndpointInSheet>;
   try {
     resolved = resolveEndpointInSheet(project, sheetId, anchor.endpoint);
   } catch {
-    return err({ code: "not-found" });
+    return err({
+      code: "not-found",
+      cause: "label",
+    });
   }
 
   const usedPortNames = new Set(sheet.ports.map((entry) => entry.name));
@@ -274,7 +317,8 @@ export type RemoveSheetThreadOutputResult = ChangeResult<
     fallbackOutputId: string;
     threadOutputs: SheetThreadOutputDefinition[];
   },
-  NotFoundFailure | ForbiddenFailure<"last-output">
+  | NotFoundFailure<"sheet-thread-output">
+  | ForbiddenFailure<"sheet-thread-output", "last-output">
 >;
 
 function removeSheetThreadOutput(
@@ -284,16 +328,24 @@ function removeSheetThreadOutput(
   if (!sheet.hal) sheet.hal = {};
   const current = normalizeSheetThreadOutputs(sheet.hal.threadOutputs);
   if (current.length <= 1) {
-    return err({ code: "forbidden", detail: "last-output" });
+    return err({
+      code: "forbidden",
+      cause: "sheet-thread-output",
+      detail: "last-output",
+    });
   }
   if (!current.some((item) => item.id === outputId)) {
-    return err({ code: "not-found" });
+    return err({ code: "not-found", cause: "sheet-thread-output" });
   }
 
   const next = current.filter((item) => item.id !== outputId);
   const fallbackOutputId = next[0]?.id;
   if (!fallbackOutputId) {
-    return err({ code: "forbidden", detail: "last-output" });
+    return err({
+      code: "forbidden",
+      cause: "sheet-thread-output",
+      detail: "last-output",
+    });
   }
 
   sheet.hal.threadOutputs = next;
@@ -352,7 +404,7 @@ export type RemoveSheetPortResult = ChangeResult<
     removedPortId: string;
     removedReferenceInstanceCount: number;
   },
-  NotFoundFailure
+  NotFoundFailure<"sheet" | "sheet-port">
 >;
 
 function removeSheetPort(
@@ -361,9 +413,9 @@ function removeSheetPort(
   portId: string,
 ): RemoveSheetPortResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) return err({ code: "not-found", cause: "sheet" });
   if (!sheet.ports.some((port) => port.id === portId)) {
-    return err({ code: "not-found" });
+    return err({ code: "not-found", cause: "sheet-port" });
   }
 
   const referenceLocations = getConnectedSheetPortReferenceLocations(
@@ -402,7 +454,9 @@ export interface AddSheetReferenceResult {
 
 export type RenameSheetDefinitionResult = ChangeResult<
   SheetDefinition,
-  NotFoundFailure | EmptyNameFailure | DuplicateNameFailure
+  | NotFoundFailure<"sheet-definition">
+  | EmptyNameFailure<"sheet-definition-name">
+  | DuplicateNameFailure<"sheet-definition-name", { name: string }>
 >;
 
 export interface SheetItemIds {
@@ -437,11 +491,12 @@ export interface MoveSheetItemsSuccess {
 
 export type MoveSheetItemsResult = ChangeResult<
   MoveSheetItemsSuccess,
-  | NotFoundFailure
-  | InvalidInputFailure<"no-movable-items">
-  | InvalidInputFailure<"only-ports">
-  | InvalidInputFailure<"target-in-items">
-  | ForbiddenFailure<"protected-system-node">
+  | NotFoundFailure<"sheet" | "sheet-node" | "sheet-definition">
+  | InvalidInputFailure<
+      "selection",
+      "no-movable-items" | "only-ports" | "target-in-items"
+    >
+  | ForbiddenFailure<"selection", "protected-system-node">
 >;
 
 export interface RemoveSheetItemsInput {
@@ -470,17 +525,28 @@ function renameSheetDefinition(
   name: string,
 ): RenameSheetDefinitionResult {
   const target = project.sheets[sheetId];
-  if (!target) return err({ code: "not-found" });
+  if (!target) return err({ code: "not-found", cause: "sheet-definition" });
 
   const trimmed = name.trim();
-  if (!trimmed) return err({ code: "invalid-input", detail: "empty-name" });
+  if (!trimmed) {
+    return err({
+      code: "invalid-input",
+      cause: "sheet-definition-name",
+      detail: "empty-name",
+    });
+  }
   if (target.name === trimmed) return ok({ data: target, changed: false });
   if (
     Object.values(project.sheets).some(
       (sheet) => sheet.id !== sheetId && sheet.name === trimmed,
     )
   ) {
-    return err({ code: "conflict", detail: "duplicate-name" });
+    return err({
+      code: "conflict",
+      cause: "sheet-definition-name",
+      detail: "duplicate-name",
+      meta: { name: trimmed },
+    });
   }
 
   target.name = trimmed;
@@ -588,11 +654,21 @@ function moveItemsIntoNewSubsheet(
 ): MoveSheetItemsResult {
   const prepared = prepareSheetItemsMove(project, parentSheetId, items);
   if ("reason" in prepared) {
-    if (prepared.reason === "not-found") return err({ code: "not-found" });
-    if (prepared.reason === "protected-system-node") {
-      return err({ code: "forbidden", detail: "protected-system-node" });
+    if (prepared.reason === "not-found") {
+      return err({ code: "not-found", cause: "sheet" });
     }
-    return err({ code: "invalid-input", detail: prepared.reason });
+    if (prepared.reason === "protected-system-node") {
+      return err({
+        code: "forbidden",
+        cause: "selection",
+        detail: "protected-system-node",
+      });
+    }
+    return err({
+      code: "invalid-input",
+      cause: "selection",
+      detail: prepared.reason,
+    });
   }
 
   const sheet = createSheetDefinition(project);
@@ -635,23 +711,39 @@ function moveItemsIntoExistingSubsheet(
 ): MoveSheetItemsResult {
   const prepared = prepareSheetItemsMove(project, parentSheetId, items);
   if ("reason" in prepared) {
-    if (prepared.reason === "not-found") return err({ code: "not-found" });
-    if (prepared.reason === "protected-system-node") {
-      return err({ code: "forbidden", detail: "protected-system-node" });
+    if (prepared.reason === "not-found") {
+      return err({ code: "not-found", cause: "sheet" });
     }
-    return err({ code: "invalid-input", detail: prepared.reason });
+    if (prepared.reason === "protected-system-node") {
+      return err({
+        code: "forbidden",
+        cause: "selection",
+        detail: "protected-system-node",
+      });
+    }
+    return err({
+      code: "invalid-input",
+      cause: "selection",
+      detail: prepared.reason,
+    });
   }
   if (items.nodeIds.has(subsheetNodeId)) {
-    return err({ code: "invalid-input", detail: "target-in-items" });
+    return err({
+      code: "invalid-input",
+      cause: "selection",
+      detail: "target-in-items",
+    });
   }
 
   const subsheetNode = prepared.parentSheet.nodes.find(
     (node): node is SheetNode =>
       node.kind === "sheet" && node.id === subsheetNodeId,
   );
-  if (!subsheetNode) return err({ code: "not-found" });
+  if (!subsheetNode) return err({ code: "not-found", cause: "sheet-node" });
   const childSheet = project.sheets[subsheetNode.sheetId];
-  if (!childSheet) return err({ code: "not-found" });
+  if (!childSheet) {
+    return err({ code: "not-found", cause: "sheet-definition" });
+  }
 
   const moveResult = moveItemsIntoSubsheet(project, {
     parentSheetId,
@@ -716,7 +808,8 @@ function removeSheetItems(
 
 export type RemoveSheetReferenceResult = ChangeResult<
   { removedNodeId: string },
-  NotFoundFailure | ForbiddenFailure<"protected-system-sheet">
+  | NotFoundFailure<"sheet" | "sheet-node">
+  | ForbiddenFailure<"sheet-reference", "protected-system-sheet">
 >;
 
 function removeSheetReference(
@@ -725,13 +818,17 @@ function removeSheetReference(
   nodeId: string,
 ): RemoveSheetReferenceResult {
   const parentSheet = project.sheets[parentSheetId];
-  if (!parentSheet) return err({ code: "not-found" });
+  if (!parentSheet) return err({ code: "not-found", cause: "sheet" });
   const target = parentSheet.nodes.find(
     (node): node is SheetNode => node.kind === "sheet" && node.id === nodeId,
   );
-  if (!target) return err({ code: "not-found" });
+  if (!target) return err({ code: "not-found", cause: "sheet-node" });
   if (isProtectedSystemSheet(project, target.sheetId)) {
-    return err({ code: "forbidden", detail: "protected-system-sheet" });
+    return err({
+      code: "forbidden",
+      cause: "sheet-reference",
+      detail: "protected-system-sheet",
+    });
   }
   const removedNodeIds = new Set<string>();
   const nextNodes = parentSheet.nodes.filter((node) => {
@@ -895,7 +992,8 @@ export interface DetachSheetReferenceResult {
 
 export type DetachSheetReferenceEditResult = ChangeResult<
   DetachSheetReferenceResult,
-  NotFoundFailure | ForbiddenFailure<"protected-system-sheet">
+  | NotFoundFailure<"sheet" | "sheet-node" | "sheet-definition">
+  | ForbiddenFailure<"sheet-reference", "protected-system-sheet">
 >;
 
 function detachSheetReference(
@@ -904,17 +1002,21 @@ function detachSheetReference(
   nodeId: string,
 ): DetachSheetReferenceEditResult {
   const parentSheet = project.sheets[parentSheetId];
-  if (!parentSheet) return err({ code: "not-found" });
+  if (!parentSheet) return err({ code: "not-found", cause: "sheet" });
   const node = parentSheet.nodes.find(
     (entry): entry is SheetNode =>
       entry.kind === "sheet" && entry.id === nodeId,
   );
-  if (!node) return err({ code: "not-found" });
+  if (!node) return err({ code: "not-found", cause: "sheet-node" });
   if (isProtectedSystemSheet(project, node.sheetId)) {
-    return err({ code: "forbidden", detail: "protected-system-sheet" });
+    return err({
+      code: "forbidden",
+      cause: "sheet-reference",
+      detail: "protected-system-sheet",
+    });
   }
   const source = project.sheets[node.sheetId];
-  if (!source) return err({ code: "not-found" });
+  if (!source) return err({ code: "not-found", cause: "sheet-definition" });
 
   const detachedName = nextUniqueName(
     `${source.name} Copy`,
@@ -936,9 +1038,11 @@ export type DeleteSheetDefinitionResult = ChangeResult<
     deletedSheetName: string;
     nextActiveSheetId: string;
   },
-  | NotFoundFailure
-  | ForbiddenFailure<"root-sheet">
-  | ForbiddenFailure<"protected-system-sheet">
+  | NotFoundFailure<"sheet-definition">
+  | ForbiddenFailure<
+      "sheet-definition",
+      "root-sheet" | "protected-system-sheet"
+    >
 >;
 
 function deleteSheetDefinition(
@@ -947,12 +1051,20 @@ function deleteSheetDefinition(
   activeSheetId: string,
 ): DeleteSheetDefinitionResult {
   const target = project.sheets[sheetId];
-  if (!target) return err({ code: "not-found" });
+  if (!target) return err({ code: "not-found", cause: "sheet-definition" });
   if (sheetId === project.rootSheetId) {
-    return err({ code: "forbidden", detail: "root-sheet" });
+    return err({
+      code: "forbidden",
+      cause: "sheet-definition",
+      detail: "root-sheet",
+    });
   }
   if (isProtectedSystemSheet(project, sheetId)) {
-    return err({ code: "forbidden", detail: "protected-system-sheet" });
+    return err({
+      code: "forbidden",
+      cause: "sheet-definition",
+      detail: "protected-system-sheet",
+    });
   }
 
   const referenceParentSheetIds = new Set<string>();

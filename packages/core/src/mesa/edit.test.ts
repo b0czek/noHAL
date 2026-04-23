@@ -12,7 +12,7 @@ describe("Mesa edit validation", () => {
       expectErr(setMesaConnectorCard(project, hostId, "p3", "7i77")),
     ).toEqual({
       code: "not-found",
-      detail: "mesa-connector",
+      cause: "mesa-connector",
     });
     expect(project.mesa?.hosts[0]?.connectors ?? []).toEqual([]);
   });

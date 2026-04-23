@@ -42,7 +42,9 @@ describe("halThread edits", () => {
       if (blocked.isOk()) throw new Error("expected err result");
       expect(blocked.error).toEqual({
         code: "forbidden",
+        cause: "hal-thread",
         detail: "required-thread",
+        meta: { name: "servo-thread" },
       });
     }
   });

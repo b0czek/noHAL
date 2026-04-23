@@ -16,70 +16,187 @@ export type FailureCode =
   | "in-use"
   | "other";
 
+type FailureBase<
+  Code extends FailureCode,
+  Cause extends string,
+  Detail extends string,
+> = [Detail] extends [never]
+  ? { code: Code; cause: Cause }
+  : { code: Code; cause: Cause; detail: Detail };
+
+export type EmptyMeta = Record<never, never>;
+
 export type Failure<
-  C extends FailureCode = FailureCode,
-  D extends string = never,
-> = [D] extends [never] ? { code: C } : { code: C; detail: D };
+  Code extends FailureCode = FailureCode,
+  Cause extends string = string,
+  Detail extends string = never,
+  Meta extends object = EmptyMeta,
+> = keyof Meta extends never
+  ? FailureBase<Code, Cause, Detail>
+  : FailureBase<Code, Cause, Detail> & {
+      meta: Meta;
+    };
 
-export type NotFoundFailure<D extends string = never> = Failure<"not-found", D>;
-export type InvalidInputFailure<D extends string = never> = Failure<
-  "invalid-input",
-  D
->;
-export type ConflictFailure<D extends string = never> = Failure<"conflict", D>;
-export type ForbiddenFailure<D extends string = never> = Failure<
-  "forbidden",
-  D
->;
-export type UnsupportedFailure<D extends string = never> = Failure<
-  "unsupported",
-  D
->;
-export type InUseFailure<D extends string = never> = Failure<"in-use", D>;
+export type NotFoundFailure<
+  Cause extends string = string,
+  Detail extends string = never,
+  Meta extends object = EmptyMeta,
+> = Failure<"not-found", Cause, Detail, Meta>;
+export type InvalidInputFailure<
+  Cause extends string = string,
+  Detail extends string = never,
+  Meta extends object = EmptyMeta,
+> = Failure<"invalid-input", Cause, Detail, Meta>;
+export type ConflictFailure<
+  Cause extends string = string,
+  Detail extends string = never,
+  Meta extends object = EmptyMeta,
+> = Failure<"conflict", Cause, Detail, Meta>;
+export type ForbiddenFailure<
+  Cause extends string = string,
+  Detail extends string = never,
+  Meta extends object = EmptyMeta,
+> = Failure<"forbidden", Cause, Detail, Meta>;
+export type UnsupportedFailure<
+  Cause extends string = string,
+  Detail extends string = never,
+  Meta extends object = EmptyMeta,
+> = Failure<"unsupported", Cause, Detail, Meta>;
+export type InUseFailure<
+  Cause extends string = string,
+  Detail extends string = never,
+  Meta extends object = EmptyMeta,
+> = Failure<"in-use", Cause, Detail, Meta>;
 
-export type EmptyNameFailure = InvalidInputFailure<"empty-name">;
-export type DuplicateNameFailure = ConflictFailure<"duplicate-name">;
+export type EmptyNameFailure<
+  Cause extends string = string,
+  Meta extends object = EmptyMeta,
+> = InvalidInputFailure<Cause, "empty-name", Meta>;
+export type DuplicateNameFailure<
+  Cause extends string = string,
+  Meta extends object = EmptyMeta,
+> = ConflictFailure<Cause, "duplicate-name", Meta>;
 
 export interface FailureLike {
   code: FailureCode;
+  cause: string;
   detail?: string;
+  meta?: object;
 }
 
-type FailureMatcherByDetail<
-  E extends FailureLike,
-  C extends E["code"],
-  R,
-> = Partial<Record<string | "_", (error: Extract<E, { code: C }>) => R>>;
+type FailureMatcherLeaf<E extends FailureLike, R> = ((error: E) => R) | R;
 
-type FailureMatcherEntry<E extends FailureLike, C extends E["code"], R> =
-  | ((error: Extract<E, { code: C }>) => R)
-  | FailureMatcherByDetail<E, C, R>;
+function resolveFailureMatcherLeaf<E extends FailureLike, R>(
+  entry: FailureMatcherLeaf<E, R>,
+  error: E,
+): R {
+  return typeof entry === "function"
+    ? (entry as (currentError: E) => R)(error)
+    : entry;
+}
 
-export type FailureMatcher<E extends FailureLike, R> = Partial<{
-  [C in E["code"]]: FailureMatcherEntry<E, C, R>;
+type FailureMatcherByDetail<Error extends FailureLike, R> = Partial<
+  {
+    [Detail in Extract<Error["detail"], string>]: FailureMatcherLeaf<
+      Extract<Error, { detail: Detail }>,
+      R
+    >;
+  } & {
+    _: FailureMatcherLeaf<Error, R>;
+  }
+>;
+
+type FailureMatcherByCause<Error extends FailureLike, R> = Partial<
+  {
+    [Cause in Extract<Error["cause"], string>]: FailureMatcherByDetail<
+      Extract<Error, { cause: Cause }>,
+      R
+    >;
+  } & {
+    _: FailureMatcherLeaf<Error, R>;
+  }
+>;
+
+export type FailureMatcher<Error extends FailureLike, R> = Partial<{
+  [Code in Error["code"]]: FailureMatcherByCause<
+    Extract<Error, { code: Code }>,
+    R
+  >;
 }> & {
-  _?: (error: E) => R;
+  _?: FailureMatcherLeaf<Error, R>;
+};
+
+type StrictFailureMatcherByDetail<Error extends FailureLike, R> = Partial<
+  {
+    [Detail in Extract<Error["detail"], string>]: (
+      error: Extract<Error, { detail: Detail }>,
+    ) => R;
+  } & {
+    _: (error: Error) => R;
+  }
+>;
+
+type StrictFailureMatcherByCause<Error extends FailureLike, R> = Partial<
+  {
+    [Cause in Extract<Error["cause"], string>]: StrictFailureMatcherByDetail<
+      Extract<Error, { cause: Cause }>,
+      R
+    >;
+  } & {
+    _: (error: Error) => R;
+  }
+>;
+
+type StrictFailureMatcher<Error extends FailureLike, R> = Partial<{
+  [Code in Error["code"]]: StrictFailureMatcherByCause<
+    Extract<Error, { code: Code }>,
+    R
+  >;
+}> & {
+  _?: (error: Error) => R;
 };
 
 export function matchFailure<E extends FailureLike, R>(
   error: E,
+  matcher: StrictFailureMatcher<E, R>,
+): R | undefined;
+export function matchFailure<E extends FailureLike, R>(
+  error: E,
+  matcher: FailureMatcher<E, R>,
+): R | undefined;
+export function matchFailure<E extends FailureLike, R>(
+  error: E,
   matcher: FailureMatcher<E, R>,
 ): R | undefined {
-  const entry = matcher[error.code as E["code"]];
-  if (typeof entry === "function") {
-    return (entry as (error: E) => R)(error);
-  }
-  if (entry) {
-    const handlers = entry as Record<string, (error: E) => R>;
-    if (error.detail) {
-      const detailHandler = handlers[error.detail];
-      if (detailHandler) {
-        return detailHandler(error);
+  const codeEntry = matcher[error.code as E["code"]];
+  if (codeEntry) {
+    const causeEntry = (codeEntry as Record<string, unknown>)[error.cause];
+    if (causeEntry) {
+      const detailEntry =
+        error.detail !== undefined
+          ? (causeEntry as Record<string, unknown>)[error.detail]
+          : undefined;
+      if (detailEntry !== undefined) {
+        return resolveFailureMatcherLeaf(
+          detailEntry as FailureMatcherLeaf<E, R>,
+          error,
+        );
+      }
+      if ((causeEntry as Record<string, unknown>)._ !== undefined) {
+        return resolveFailureMatcherLeaf(
+          (causeEntry as Record<string, unknown>)._ as FailureMatcherLeaf<E, R>,
+          error,
+        );
       }
     }
-    if (handlers._) {
-      return handlers._(error);
+    if ((codeEntry as Record<string, unknown>)._ !== undefined) {
+      return resolveFailureMatcherLeaf(
+        (codeEntry as Record<string, unknown>)._ as FailureMatcherLeaf<E, R>,
+        error,
+      );
     }
   }
-  return matcher._?.(error);
+  return matcher._ === undefined
+    ? undefined
+    : resolveFailureMatcherLeaf(matcher._, error);
 }

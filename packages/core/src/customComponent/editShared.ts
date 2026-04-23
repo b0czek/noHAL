@@ -13,14 +13,17 @@ export type CustomComponentFailure = NotFoundFailure<"custom-component">;
 export type PinFailure = NotFoundFailure<"pin">;
 export type ParamFailure = NotFoundFailure<"param">;
 export type FunctionFailure = NotFoundFailure<"function">;
-export type InvalidRuntimeFailure = UnsupportedFailure<"invalid-runtime">;
+export type InvalidRuntimeFailure = UnsupportedFailure<
+  "function",
+  "invalid-runtime"
+>;
 
 export function requireCustomComponent(
   project: NoHALProject,
   componentId: string,
 ): Result<ComponentDefinition, CustomComponentFailure> {
   const component = findManualComponent(project, componentId);
-  if (!component) return err({ code: "not-found", detail: "custom-component" });
+  if (!component) return err({ code: "not-found", cause: "custom-component" });
   return ok(component);
 }
 
@@ -29,7 +32,7 @@ export function requirePin(
   pinKey: string,
 ): Result<ComponentPinDefinition, PinFailure> {
   const pin = component.pins.find((candidate) => candidate.key === pinKey);
-  if (!pin) return err({ code: "not-found", detail: "pin" });
+  if (!pin) return err({ code: "not-found", cause: "pin" });
   return ok(pin);
 }
 
@@ -40,7 +43,7 @@ export function requireParam(
   const param = component.params.find(
     (candidate) => candidate.key === paramKey,
   );
-  if (!param) return err({ code: "not-found", detail: "param" });
+  if (!param) return err({ code: "not-found", cause: "param" });
   return ok(param);
 }
 
@@ -51,6 +54,6 @@ export function requireFunction(
   const fn = component.functions?.find(
     (candidate) => candidate.key === functionKey,
   );
-  if (!fn) return err({ code: "not-found", detail: "function" });
+  if (!fn) return err({ code: "not-found", cause: "function" });
   return ok(fn);
 }

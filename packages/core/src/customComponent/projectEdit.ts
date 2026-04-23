@@ -56,7 +56,7 @@ function add(
 
 export type RemoveCustomComponentFailure =
   | CustomComponentFailure
-  | (InUseFailure<"placed-component"> & {
+  | (InUseFailure<"custom-component", "placed-component"> & {
       componentName: string;
       usageCount: number;
     });
@@ -77,6 +77,7 @@ function remove(
   if (usageCount > 0) {
     return err({
       code: "in-use",
+      cause: "custom-component",
       detail: "placed-component",
       componentName: component.halComponentName,
       usageCount,
@@ -104,8 +105,8 @@ function updateProjectCustomComponent(
 
 export type UpdateHalComponentNameFailure =
   | CustomComponentFailure
-  | EmptyNameFailure
-  | DuplicateNameFailure;
+  | EmptyNameFailure<"hal-component-name">
+  | DuplicateNameFailure<"hal-component-name", { name: string }>;
 
 function updateHalComponentName(
   project: NoHALProject,
@@ -114,7 +115,8 @@ function updateHalComponentName(
   options?: { componentStore?: ComponentStore },
 ): CustomComponentChangeResult<
   ComponentDefinition,
-  EmptyNameFailure | DuplicateNameFailure
+  | EmptyNameFailure<"hal-component-name">
+  | DuplicateNameFailure<"hal-component-name", { name: string }>
 > {
   const componentResult = requireCustomComponent(project, componentId);
   if (componentResult.isErr()) return err(componentResult.error);
@@ -122,7 +124,11 @@ function updateHalComponentName(
 
   const normalized = halComponentName.trim();
   if (!normalized) {
-    return err({ code: "invalid-input", detail: "empty-name" });
+    return err({
+      code: "invalid-input",
+      cause: "hal-component-name",
+      detail: "empty-name",
+    });
   }
   if (component.halComponentName === normalized)
     return ok({ data: component, changed: false });
@@ -133,7 +139,14 @@ function updateHalComponentName(
     componentStore: options?.componentStore,
     excludeComponentIds: [componentId],
   });
-  if (conflict) return err({ code: "conflict", detail: "duplicate-name" });
+  if (conflict) {
+    return err({
+      code: "conflict",
+      cause: "hal-component-name",
+      detail: "duplicate-name",
+      meta: { name: normalized },
+    });
+  }
 
   const updateResult = customComponentDefinitionEdits.halComponentName.update(
     component,
@@ -251,7 +264,7 @@ function updatePinName(
   pinName: string,
 ): CustomComponentChangeResult<
   { component: ComponentDefinition; pinName: string },
-  PinFailure | EmptyNameFailure
+  PinFailure | EmptyNameFailure<"pin-name">
 > {
   const componentResult = requireCustomComponent(project, componentId);
   if (componentResult.isErr()) return err(componentResult.error);
@@ -382,7 +395,7 @@ function updateFunctionName(
   functionName: string,
 ): CustomComponentChangeResult<
   { component: ComponentDefinition; functionName: string },
-  FunctionFailure | EmptyNameFailure
+  FunctionFailure | EmptyNameFailure<"function-name">
 > {
   const componentResult = requireCustomComponent(project, componentId);
   if (componentResult.isErr()) return err(componentResult.error);
@@ -460,7 +473,7 @@ function updateParamName(
   paramName: string,
 ): CustomComponentChangeResult<
   { component: ComponentDefinition; paramName: string },
-  ParamFailure | EmptyNameFailure
+  ParamFailure | EmptyNameFailure<"param-name">
 > {
   const componentResult = requireCustomComponent(project, componentId);
   if (componentResult.isErr()) return err(componentResult.error);

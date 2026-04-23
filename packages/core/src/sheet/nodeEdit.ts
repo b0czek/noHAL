@@ -112,13 +112,18 @@ function setNodeExportNamespace(
 }
 
 export type AddComponentNodeFailure =
-  | NotFoundFailure
-  | (ForbiddenFailure<"component-placement-disabled"> & {
-      componentName: string;
-    })
-  | (ConflictFailure<"no-available-instance-name"> & {
-      componentName: string;
-    });
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"component">
+  | ForbiddenFailure<
+      "component",
+      "placement-disabled",
+      { componentName: string }
+    >
+  | ConflictFailure<
+      "instance-name",
+      "instance-name-exhausted",
+      { componentName: string }
+    >;
 
 export type AddComponentNodeResult = ChangeResult<
   ComponentNode,
@@ -132,15 +137,26 @@ function addComponentNode(
   position?: XY,
 ): AddComponentNodeResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
 
   const component = project.library.components[componentId];
-  if (!component) return err({ code: "not-found" });
+  if (!component) {
+    return err({
+      code: "not-found",
+      cause: "component",
+    });
+  }
   if (!isComponentPlaceable(component)) {
     return err({
       code: "forbidden",
-      detail: "component-placement-disabled",
-      componentName: component.halComponentName,
+      cause: "component",
+      detail: "placement-disabled",
+      meta: { componentName: component.halComponentName },
     });
   }
 
@@ -148,8 +164,9 @@ function addComponentNode(
   if (!instanceName) {
     return err({
       code: "conflict",
-      detail: "no-available-instance-name",
-      componentName: component.halComponentName,
+      cause: "instance-name",
+      detail: "instance-name-exhausted",
+      meta: { componentName: component.halComponentName },
     });
   }
 
@@ -181,12 +198,22 @@ function addComponentNode(
   return ok({ data: node, changed: true });
 }
 
+export type UpdateNodeInstanceNameFailure =
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"node">
+  | InvalidInputFailure<"instance-name", "empty-name">
+  | InvalidInputFailure<"instance-name", "invalid-name", { name: string }>
+  | ConflictFailure<"instance-name", "duplicate-name", { name: string }>
+  | ConflictFailure<
+      "exported-path",
+      "duplicate-exported-path",
+      { name: string }
+    >
+  | ForbiddenFailure<"instance-name", "locked">;
+
 export type UpdateNodeInstanceNameResult = ChangeResult<
   { sheetId: string; nodeId: string; instanceName: string },
-  | NotFoundFailure
-  | InvalidInputFailure<"empty-name" | "invalid-hal-name">
-  | ConflictFailure<"duplicate-name" | "duplicate-exported-instance-path">
-  | ForbiddenFailure<"fixed-instance-name">
+  UpdateNodeInstanceNameFailure
 >;
 
 function updateNodeInstanceName(
@@ -196,15 +223,36 @@ function updateNodeInstanceName(
   instanceName: string,
 ): UpdateNodeInstanceNameResult {
   const trimmed = instanceName.trim();
-  if (!trimmed) return err({ code: "invalid-input", detail: "empty-name" });
+  if (!trimmed) {
+    return err({
+      code: "invalid-input",
+      cause: "instance-name",
+      detail: "empty-name",
+    });
+  }
   if (!isValidHalName(trimmed)) {
-    return err({ code: "invalid-input", detail: "invalid-hal-name" });
+    return err({
+      code: "invalid-input",
+      cause: "instance-name",
+      detail: "invalid-name",
+      meta: { name: trimmed },
+    });
   }
 
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
   const node = sheet.nodes.find((entry) => entry.id === nodeId);
-  if (!node) return err({ code: "not-found" });
+  if (!node) {
+    return err({
+      code: "not-found",
+      cause: "node",
+    });
+  }
   if (node.instanceName === trimmed) {
     return ok({
       data: { sheetId, nodeId, instanceName: node.instanceName },
@@ -218,7 +266,11 @@ function updateNodeInstanceName(
       fixedInstanceNameForComponent(component) ||
       componentUsesLockedCanonicalInstanceNames(component)
     ) {
-      return err({ code: "forbidden", detail: "fixed-instance-name" });
+      return err({
+        code: "forbidden",
+        cause: "instance-name",
+        detail: "locked",
+      });
     }
 
     if (
@@ -235,7 +287,9 @@ function updateNodeInstanceName(
     ) {
       return err({
         code: "conflict",
-        detail: "duplicate-exported-instance-path",
+        cause: "exported-path",
+        detail: "duplicate-exported-path",
+        meta: { name: trimmed },
       });
     }
   } else if (
@@ -243,7 +297,12 @@ function updateNodeInstanceName(
       (entry) => entry.id !== nodeId && entry.instanceName === trimmed,
     )
   ) {
-    return err({ code: "conflict", detail: "duplicate-name" });
+    return err({
+      code: "conflict",
+      cause: "instance-name",
+      detail: "duplicate-name",
+      meta: { name: trimmed },
+    });
   }
 
   node.instanceName = trimmed;
@@ -259,7 +318,12 @@ function updateSheetInstanceName(
   instanceName: string,
 ): UpdateNodeInstanceNameResult {
   const [reference] = getSheetReferenceLocations(project, sheetId);
-  if (!reference) return err({ code: "not-found" });
+  if (!reference) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
 
   return updateNodeInstanceName(
     project,
@@ -269,6 +333,10 @@ function updateSheetInstanceName(
   );
 }
 
+export type UpdateSheetNodeThreadMapFailure =
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"node">;
+
 export type UpdateSheetNodeThreadMapResult = ChangeResult<
   {
     sheetId: string;
@@ -276,7 +344,7 @@ export type UpdateSheetNodeThreadMapResult = ChangeResult<
     childThreadOutputId: string;
     parentThreadOutputId: string | null;
   },
-  NotFoundFailure
+  UpdateSheetNodeThreadMapFailure
 >;
 
 function updateSheetNodeThreadMap(
@@ -287,12 +355,22 @@ function updateSheetNodeThreadMap(
   parentThreadOutputId: string | null,
 ): UpdateSheetNodeThreadMapResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
   const node = sheet.nodes.find(
     (entry): entry is SheetNode =>
       entry.id === nodeId && entry.kind === "sheet",
   );
-  if (!node) return err({ code: "not-found" });
+  if (!node) {
+    return err({
+      code: "not-found",
+      cause: "node",
+    });
+  }
 
   const normalizedParentThreadOutputId = parentThreadOutputId?.trim() || null;
   const currentParentThreadOutputId =
@@ -330,9 +408,13 @@ function updateSheetNodeThreadMap(
   });
 }
 
+export type UpdateComponentNodeParamFailure =
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"node">;
+
 export type UpdateComponentNodeParamResult = ChangeResult<
   { sheetId: string; nodeId: string; paramKey: string; value: string },
-  NotFoundFailure
+  UpdateComponentNodeParamFailure
 >;
 
 function updateComponentNodeParam(
@@ -343,12 +425,22 @@ function updateComponentNodeParam(
   value: string,
 ): UpdateComponentNodeParamResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
   const node = sheet.nodes.find(
     (entry): entry is SheetNodeInstance & { kind: "component" } =>
       entry.id === nodeId && entry.kind === "component",
   );
-  if (!node) return err({ code: "not-found" });
+  if (!node) {
+    return err({
+      code: "not-found",
+      cause: "node",
+    });
+  }
 
   const currentValue = node.paramValues[paramKey];
   if (currentValue === value) {
@@ -365,6 +457,12 @@ function updateComponentNodeParam(
   });
 }
 
+export type UpdateComponentNodeInstanceConfigFailure =
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"node">
+  | NotFoundFailure<"component">
+  | NotFoundFailure<"instance-config">;
+
 export type UpdateComponentNodeInstanceConfigResult = ChangeResult<
   {
     sheetId: string;
@@ -372,7 +470,7 @@ export type UpdateComponentNodeInstanceConfigResult = ChangeResult<
     configKey: string;
     value: string | null;
   },
-  NotFoundFailure
+  UpdateComponentNodeInstanceConfigFailure
 >;
 
 function updateComponentNodeInstanceConfig(
@@ -383,19 +481,39 @@ function updateComponentNodeInstanceConfig(
   value: string,
 ): UpdateComponentNodeInstanceConfigResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
   const node = sheet.nodes.find(
     (entry): entry is SheetNodeInstance & { kind: "component" } =>
       entry.id === nodeId && entry.kind === "component",
   );
-  if (!node) return err({ code: "not-found" });
+  if (!node) {
+    return err({
+      code: "not-found",
+      cause: "node",
+    });
+  }
 
   const component = project.library.components[node.componentId];
-  if (!component) return err({ code: "not-found" });
+  if (!component) {
+    return err({
+      code: "not-found",
+      cause: "component",
+    });
+  }
   const field = component.runtime?.instanceConfig?.fields.find(
     (item) => item.key === configKey,
   );
-  if (!field) return err({ code: "not-found" });
+  if (!field) {
+    return err({
+      code: "not-found",
+      cause: "instance-config",
+    });
+  }
 
   const before = JSON.stringify({
     instanceConfigValues: node.instanceConfigValues ?? null,
@@ -438,6 +556,10 @@ function updateComponentNodeInstanceConfig(
   });
 }
 
+export type UpdateComponentNodePinInitialValueFailure =
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"node">;
+
 export type UpdateComponentNodePinInitialValueResult = ChangeResult<
   {
     sheetId: string;
@@ -445,7 +567,7 @@ export type UpdateComponentNodePinInitialValueResult = ChangeResult<
     pinKey: string;
     value: string | null;
   },
-  NotFoundFailure
+  UpdateComponentNodePinInitialValueFailure
 >;
 
 function updateComponentNodePinInitialValue(
@@ -456,12 +578,22 @@ function updateComponentNodePinInitialValue(
   value: string,
 ): UpdateComponentNodePinInitialValueResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
   const node = sheet.nodes.find(
     (entry): entry is SheetNodeInstance & { kind: "component" } =>
       entry.id === nodeId && entry.kind === "component",
   );
-  if (!node) return err({ code: "not-found" });
+  if (!node) {
+    return err({
+      code: "not-found",
+      cause: "node",
+    });
+  }
 
   const currentValue = node.pinInitialValues?.[pinKey] ?? null;
   const nextValue = value.trim() ? value : null;
@@ -484,6 +616,11 @@ function updateComponentNodePinInitialValue(
   });
 }
 
+export type UpdateComponentNodePinVisibilityFailure =
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"node">
+  | ForbiddenFailure<"pin", "connected-pin">;
+
 export type UpdateComponentNodePinVisibilityResult = ChangeResult<
   {
     sheetId: string;
@@ -491,7 +628,7 @@ export type UpdateComponentNodePinVisibilityResult = ChangeResult<
     pinKey: string;
     visible: boolean;
   },
-  NotFoundFailure | ForbiddenFailure<"connected-pin">
+  UpdateComponentNodePinVisibilityFailure
 >;
 
 function updateComponentNodePinVisibility(
@@ -502,14 +639,28 @@ function updateComponentNodePinVisibility(
   visible: boolean,
 ): UpdateComponentNodePinVisibilityResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
   const node = sheet.nodes.find(
     (entry): entry is SheetNodeInstance & { kind: "component" } =>
       entry.id === nodeId && entry.kind === "component",
   );
-  if (!node) return err({ code: "not-found" });
+  if (!node) {
+    return err({
+      code: "not-found",
+      cause: "node",
+    });
+  }
   if (!visible && isNodePinConnected(sheet, nodeId, pinKey)) {
-    return err({ code: "forbidden", detail: "connected-pin" });
+    return err({
+      code: "forbidden",
+      cause: "pin",
+      detail: "connected-pin",
+    });
   }
 
   const isCurrentlyVisible = !node.hiddenPinKeys?.includes(pinKey);
@@ -536,9 +687,14 @@ function updateComponentNodePinVisibility(
   });
 }
 
+export type UpdateComponentNodePinOrderFailure =
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"node">
+  | NotFoundFailure<"component">;
+
 export type UpdateComponentNodePinOrderResult = ChangeResult<
   { sheetId: string; nodeId: string; pinOrder: string[] | null },
-  NotFoundFailure
+  UpdateComponentNodePinOrderFailure
 >;
 
 function updateComponentNodePinOrder(
@@ -548,15 +704,30 @@ function updateComponentNodePinOrder(
   pinOrder: readonly string[],
 ): UpdateComponentNodePinOrderResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
   const node = sheet.nodes.find(
     (entry): entry is SheetNodeInstance & { kind: "component" } =>
       entry.id === nodeId && entry.kind === "component",
   );
-  if (!node) return err({ code: "not-found" });
+  if (!node) {
+    return err({
+      code: "not-found",
+      cause: "node",
+    });
+  }
 
   const component = project.library.components[node.componentId];
-  if (!component) return err({ code: "not-found" });
+  if (!component) {
+    return err({
+      code: "not-found",
+      cause: "component",
+    });
+  }
   const validPinKeys = resolveComponentPinsForInstance(
     component,
     node.instanceConfigValues,
@@ -596,13 +767,18 @@ function updateComponentNodePinOrder(
   });
 }
 
+export type UpdateComponentNodeExportStageFailure =
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"node">
+  | NotFoundFailure<"component">;
+
 export type UpdateComponentNodeExportStageResult = ChangeResult<
   {
     sheetId: string;
     nodeId: string;
     exportStage: "main" | "postgui" | null;
   },
-  NotFoundFailure
+  UpdateComponentNodeExportStageFailure
 >;
 
 function updateComponentNodeExportStage(
@@ -612,15 +788,30 @@ function updateComponentNodeExportStage(
   stage: "main" | "postgui",
 ): UpdateComponentNodeExportStageResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
   const node = sheet.nodes.find(
     (entry): entry is SheetNodeInstance & { kind: "component" } =>
       entry.id === nodeId && entry.kind === "component",
   );
-  if (!node) return err({ code: "not-found" });
+  if (!node) {
+    return err({
+      code: "not-found",
+      cause: "node",
+    });
+  }
 
   const component = project.library.components[node.componentId];
-  if (!component) return err({ code: "not-found" });
+  if (!component) {
+    return err({
+      code: "not-found",
+      cause: "component",
+    });
+  }
   const nextExportStage =
     fixedExportStageForComponent(component) ??
     (stage === "postgui" ? "postgui" : null);
@@ -645,13 +836,15 @@ function updateComponentNodeExportStage(
 }
 
 export type UpdateComponentNodeExportNamespaceFailure =
-  | NotFoundFailure
-  | (ForbiddenFailure<"fixed-export-namespace"> & {
-      componentName: string;
-    })
-  | (ConflictFailure<"duplicate-exported-instance-path"> & {
-      instancePath: string;
-    });
+  | NotFoundFailure<"sheet">
+  | NotFoundFailure<"node">
+  | NotFoundFailure<"component">
+  | ForbiddenFailure<"export-namespace", "locked", { componentName: string }>
+  | ConflictFailure<
+      "exported-path",
+      "duplicate-exported-path",
+      { instancePath: string }
+    >;
 
 export type UpdateComponentNodeExportNamespaceResult = ChangeResult<
   {
@@ -669,20 +862,36 @@ function updateComponentNodeExportNamespace(
   global: boolean,
 ): UpdateComponentNodeExportNamespaceResult {
   const sheet = project.sheets[sheetId];
-  if (!sheet) return err({ code: "not-found" });
+  if (!sheet) {
+    return err({
+      code: "not-found",
+      cause: "sheet",
+    });
+  }
   const node = sheet.nodes.find(
     (entry): entry is SheetNodeInstance & { kind: "component" } =>
       entry.id === nodeId && entry.kind === "component",
   );
-  if (!node) return err({ code: "not-found" });
+  if (!node) {
+    return err({
+      code: "not-found",
+      cause: "node",
+    });
+  }
 
   const component = project.library.components[node.componentId];
-  if (!component) return err({ code: "not-found" });
+  if (!component) {
+    return err({
+      code: "not-found",
+      cause: "component",
+    });
+  }
   if (componentHasFixedExportNamespace(component)) {
     return err({
       code: "forbidden",
-      detail: "fixed-export-namespace",
-      componentName: component.halComponentName,
+      cause: "export-namespace",
+      detail: "locked",
+      meta: { componentName: component.halComponentName },
     });
   }
 
@@ -702,7 +911,12 @@ function updateComponentNodeExportNamespace(
     (entry): entry is SheetNodeInstance & { kind: "component" } =>
       entry.id === nodeId && entry.kind === "component",
   );
-  if (!nextNode) return err({ code: "not-found" });
+  if (!nextNode) {
+    return err({
+      code: "not-found",
+      cause: "node",
+    });
+  }
   setNodeExportNamespace(nextNode, global);
   const introducedDuplicate = collectDuplicateExportedInstancePaths(
     nextProject,
@@ -711,8 +925,9 @@ function updateComponentNodeExportNamespace(
   if (introducedDuplicate) {
     return err({
       code: "conflict",
-      detail: "duplicate-exported-instance-path",
-      instancePath: introducedDuplicate,
+      cause: "exported-path",
+      detail: "duplicate-exported-path",
+      meta: { instancePath: introducedDuplicate },
     });
   }
 

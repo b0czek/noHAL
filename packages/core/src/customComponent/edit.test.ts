@@ -188,10 +188,12 @@ describe("custom component edits", () => {
       customComponentDefinitionEdits.function.add(component);
     expect(expectErr(definitionResult)).toEqual({
       code: "unsupported",
+      cause: "function",
       detail: "invalid-runtime",
     });
     expect(expectErr(result)).toEqual({
       code: "unsupported",
+      cause: "function",
       detail: "invalid-runtime",
     });
     expect(component.functions).toBeUndefined();

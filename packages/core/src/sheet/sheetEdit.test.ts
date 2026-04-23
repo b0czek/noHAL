@@ -232,7 +232,8 @@ describe("sheet model edit helpers", () => {
     if (result.isOk()) throw new Error("expected err result");
     expect(result.error).toEqual({
       code: "invalid-input",
-      detail: "label-not-convertible",
+      cause: "label",
+      detail: "not-convertible",
     });
     expect(root.labels).toHaveLength(1);
     expect(root.labelAnchors).toHaveLength(2);
@@ -278,6 +279,7 @@ describe("sheet model edit helpers", () => {
     if (blockedBySystem.isOk()) throw new Error("expected err result");
     expect(blockedBySystem.error).toEqual({
       code: "forbidden",
+      cause: "selection",
       detail: "protected-system-node",
     });
     expect(root.nodes.some((node) => node.id === "node_system")).toBe(true);
@@ -296,6 +298,7 @@ describe("sheet model edit helpers", () => {
     if (blockedByTarget.isOk()) throw new Error("expected err result");
     expect(blockedByTarget.error).toEqual({
       code: "invalid-input",
+      cause: "selection",
       detail: "target-in-items",
     });
     expect(child.nodes).toHaveLength(0);
@@ -482,6 +485,7 @@ describe("sheet model edit helpers", () => {
     if (blockedDefinition.isOk()) throw new Error("expected err result");
     expect(blockedDefinition.error).toEqual({
       code: "forbidden",
+      cause: "sheet-definition",
       detail: "protected-system-sheet",
     });
     expect(project.sheets[systemSheet.id]).toBeDefined();
@@ -495,6 +499,7 @@ describe("sheet model edit helpers", () => {
     if (blockedReferenceRemoval.isOk()) throw new Error("expected err result");
     expect(blockedReferenceRemoval.error).toEqual({
       code: "forbidden",
+      cause: "sheet-reference",
       detail: "protected-system-sheet",
     });
     expect(rootSheet.nodes.some((node) => node.id === systemSheetNode.id)).toBe(
@@ -510,6 +515,7 @@ describe("sheet model edit helpers", () => {
     if (blockedDetach.isOk()) throw new Error("expected err result");
     expect(blockedDetach.error).toEqual({
       code: "forbidden",
+      cause: "sheet-reference",
       detail: "protected-system-sheet",
     });
     expect(systemSheetNode.sheetId).toBe(systemSheet.id);

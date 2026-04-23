@@ -1,14 +1,72 @@
-import type { FailureCode } from "@nohal/core";
-import { matchFailure } from "@nohal/core";
+import type { FailureMatcher } from "@nohal/core";
 import { getSheet, getSheetReferenceLocations } from "@nohal/core/graph";
 import type { SheetItemIds } from "@nohal/core/sheet";
 import { sheetModelEdits } from "@nohal/core/sheet";
 import type { SheetAddfQueueStoredEntry, XY } from "@nohal/core/types";
 import { cloneProject, findNode, syncProjectUi } from "../helpers";
 import { selectionIdBuckets } from "../selection";
+import {
+  type ActionStatusUpdate,
+  createFailureReporter,
+  type ExtractActionFailuresDeep,
+} from "./actionFailureTypes";
 import type { EditorSelection, EditorStoreActionContext } from "./types";
 
 export function createSheetActions(deps: EditorStoreActionContext) {
+  type SheetActionFailure = ExtractActionFailuresDeep<typeof sheetModelEdits>;
+
+  const sheetActionFailureMatcher: FailureMatcher<
+    SheetActionFailure,
+    ActionStatusUpdate
+  > = {
+    "not-found": {
+      sheet: {
+        _: "store.status.componentNodeEditTargetMissing",
+      },
+      label: {
+        _: "store.status.componentNodeEditTargetMissing",
+      },
+    },
+    "invalid-input": {
+      label: {
+        "not-convertible": "store.status.cannotConvertLabelToSheetPort",
+      },
+      selection: {
+        "no-movable-items": "store.status.cannotSubsheetEmptySelection",
+        "only-ports": "store.status.cannotSubsheetOnlyPortsSelection",
+        "target-in-items": "store.status.cannotMoveSelectionIntoSameSubsheet",
+      },
+      "sheet-definition-name": {
+        "empty-name": "store.status.sheetDefinitionNameRequired",
+      },
+    },
+    conflict: {
+      "sheet-definition-name": {
+        "duplicate-name": (failure) => [
+          "store.status.duplicateSheetDefinitionName",
+          { name: failure.meta.name },
+        ],
+      },
+    },
+    forbidden: {
+      selection: {
+        "protected-system-node":
+          "store.status.cannotSubsheetSystemManagedComponent",
+      },
+      "sheet-reference": {
+        "protected-system-sheet": "store.status.cannotDeleteSystemSheet",
+      },
+      "sheet-definition": {
+        "root-sheet": "store.status.cannotDeleteRootSheet",
+        "protected-system-sheet": "store.status.cannotDeleteSystemSheet",
+      },
+    },
+  };
+  const reportSheetActionFailure = createFailureReporter(
+    deps,
+    sheetActionFailureMatcher,
+  );
+
   const setActiveSheet = (sheetId: string): void => {
     if (!deps.state.project.sheets[sheetId]) return;
     deps.setState("activeSheetId", sheetId);
@@ -27,30 +85,6 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         portIds: new Set<string>(),
       }
     );
-  };
-
-  const setSelectionMoveFailureStatus = (error: {
-    code: FailureCode;
-    detail?: string;
-  }): void => {
-    matchFailure(error, {
-      "invalid-input": {
-        "no-movable-items": () => {
-          deps.setStatusT("store.status.cannotSubsheetEmptySelection");
-        },
-        "only-ports": () => {
-          deps.setStatusT("store.status.cannotSubsheetOnlyPortsSelection");
-        },
-        "target-in-items": () => {
-          deps.setStatusT("store.status.cannotMoveSelectionIntoSameSubsheet");
-        },
-      },
-      forbidden: {
-        "protected-system-node": () => {
-          deps.setStatusT("store.status.cannotSubsheetSystemManagedComponent");
-        },
-      },
-    });
   };
 
   const commitProjectEdit = (
@@ -73,23 +107,12 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       .withProjectResult((project) =>
         sheetModelEdits.reference.detach(project, parentSheetId, nodeId),
       )
-      .match(
-        ({ data }) => {
-          detachedSheetId = data.detachedSheet.id;
-          deps.setStatusT("store.status.detachedSheetReference", {
-            name: data.detachedSheet.name,
-          });
-        },
-        (error) => {
-          matchFailure(error, {
-            forbidden: {
-              "protected-system-sheet": () => {
-                deps.setStatusT("store.status.cannotDeleteSystemSheet");
-              },
-            },
-          });
-        },
-      );
+      .match(({ data }) => {
+        detachedSheetId = data.detachedSheet.id;
+        deps.setStatusT("store.status.detachedSheetReference", {
+          name: data.detachedSheet.name,
+        });
+      }, reportSheetActionFailure);
 
     return detachedSheetId;
   };
@@ -100,30 +123,12 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         .withProjectResult((project) =>
           sheetModelEdits.definition.rename(project, sheetId, name),
         )
-        .match(
-          ({ data, changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedSheetDefinitionName", {
-              name: data.name,
-            });
-          },
-          (error) => {
-            matchFailure(error, {
-              "invalid-input": {
-                "empty-name": () => {
-                  deps.setStatusT("store.status.sheetDefinitionNameRequired");
-                },
-              },
-              conflict: {
-                "duplicate-name": () => {
-                  deps.setStatusT("store.status.duplicateSheetDefinitionName", {
-                    name: name.trim(),
-                  });
-                },
-              },
-            });
-          },
-        );
+        .match(({ data, changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedSheetDefinitionName", {
+            name: data.name,
+          });
+        }, reportSheetActionFailure);
     },
 
     addSheetThreadOutput(sheetId: string): void {
@@ -236,6 +241,26 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       });
     },
 
+    convertLabelToSheetPort(labelId: string): void {
+      deps
+        .withProjectResult((project) =>
+          sheetModelEdits.label.convertToPort(
+            project,
+            deps.state.activeSheetId,
+            labelId,
+          ),
+        )
+        .match(({ data }) => {
+          deps.setState("selection", {
+            kind: "sheet-port",
+            id: data.port.id,
+          });
+          deps.setStatusT("store.status.convertedLabelToSheetPort", {
+            name: data.port.name,
+          });
+        }, reportSheetActionFailure);
+    },
+
     putSelectionIntoSubsheet(): void {
       deps
         .withProjectResult((project) =>
@@ -245,19 +270,14 @@ export function createSheetActions(deps: EditorStoreActionContext) {
             resolveSheetMoveSelection(deps.state.selection),
           ),
         )
-        .match(
-          ({ data }) => {
-            deps.setState("selection", { kind: "node", id: data.node.id });
-            deps.clearPendingConnectionUi();
-            deps.setStatusT("store.status.putSelectionIntoSubsheet", {
-              name: data.name,
-              ports: data.createdPortCount,
-            });
-          },
-          (error) => {
-            setSelectionMoveFailureStatus(error);
-          },
-        );
+        .match(({ data }) => {
+          deps.setState("selection", { kind: "node", id: data.node.id });
+          deps.clearPendingConnectionUi();
+          deps.setStatusT("store.status.putSelectionIntoSubsheet", {
+            name: data.name,
+            ports: data.createdPortCount,
+          });
+        }, reportSheetActionFailure);
     },
 
     moveSelectionIntoSubsheetNode(subsheetNodeId: string): void {
@@ -270,19 +290,14 @@ export function createSheetActions(deps: EditorStoreActionContext) {
             resolveSheetMoveSelection(deps.state.selection),
           ),
         )
-        .match(
-          ({ data }) => {
-            deps.setState("selection", { kind: "node", id: data.node.id });
-            deps.clearPendingConnectionUi();
-            deps.setStatusT("store.status.movedSelectionIntoSubsheet", {
-              name: data.name,
-              ports: data.createdPortCount,
-            });
-          },
-          (error) => {
-            setSelectionMoveFailureStatus(error);
-          },
-        );
+        .match(({ data }) => {
+          deps.setState("selection", { kind: "node", id: data.node.id });
+          deps.clearPendingConnectionUi();
+          deps.setStatusT("store.status.movedSelectionIntoSubsheet", {
+            name: data.name,
+            ports: data.createdPortCount,
+          });
+        }, reportSheetActionFailure);
     },
 
     deleteSheetDefinition(sheetId: string): void {
@@ -297,16 +312,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
         deps.state.activeSheetId,
       );
       if (result.isErr()) {
-        matchFailure(result.error, {
-          forbidden: {
-            "root-sheet": () => {
-              deps.setStatusT("store.status.cannotDeleteRootSheet");
-            },
-            "protected-system-sheet": () => {
-              deps.setStatusT("store.status.cannotDeleteSystemSheet");
-            },
-          },
-        });
+        reportSheetActionFailure(result.error);
         return;
       }
 
@@ -350,21 +356,10 @@ export function createSheetActions(deps: EditorStoreActionContext) {
             nodeId,
           ),
         )
-        .match(
-          () => {
-            deps.clearSelectionAndPendingUi();
-            deps.setStatusT("store.status.removedSelection");
-          },
-          (error) => {
-            matchFailure(error, {
-              forbidden: {
-                "protected-system-sheet": () => {
-                  deps.setStatusT("store.status.cannotDeleteSystemSheet");
-                },
-              },
-            });
-          },
-        );
+        .match(() => {
+          deps.clearSelectionAndPendingUi();
+          deps.setStatusT("store.status.removedSelection");
+        }, reportSheetActionFailure);
     },
 
     detachSheetReferenceAt,

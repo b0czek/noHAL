@@ -35,10 +35,14 @@ function normalizeMaxInstances(
 function updateHalComponentName(
   component: ComponentDefinition,
   halComponentName: string,
-): ChangeResult<ComponentDefinition, EmptyNameFailure> {
+): ChangeResult<ComponentDefinition, EmptyNameFailure<"hal-component-name">> {
   const normalized = halComponentName.trim();
   if (!normalized) {
-    return err({ code: "invalid-input", detail: "empty-name" });
+    return err({
+      code: "invalid-input",
+      cause: "hal-component-name",
+      detail: "empty-name",
+    });
   }
   if (component.halComponentName === normalized) {
     return ok({ data: component, changed: false });
@@ -129,13 +133,20 @@ function updatePinName(
   component: ComponentDefinition,
   pinKey: string,
   pinName: string,
-): ChangeResult<ComponentPinDefinition, PinFailure | EmptyNameFailure> {
+): ChangeResult<
+  ComponentPinDefinition,
+  PinFailure | EmptyNameFailure<"pin-name">
+> {
   const pinResult = requirePin(component, pinKey);
   if (pinResult.isErr()) return err(pinResult.error);
   const pin = pinResult.value;
   const normalized = pinName.trim();
   if (!normalized) {
-    return err({ code: "invalid-input", detail: "empty-name" });
+    return err({
+      code: "invalid-input",
+      cause: "pin-name",
+      detail: "empty-name",
+    });
   }
   if (pin.name === normalized) {
     return ok({ data: pin, changed: false });
@@ -186,7 +197,11 @@ function addFunction(
   component: ComponentDefinition,
 ): ChangeResult<ComponentFunctionDefinition, InvalidRuntimeFailure> {
   if (component.runtime?.kind !== "rt") {
-    return err({ code: "unsupported", detail: "invalid-runtime" });
+    return err({
+      code: "unsupported",
+      cause: "function",
+      detail: "invalid-runtime",
+    });
   }
   const fn = createCustomComponentFunction(component);
   component.functions ??= [];
@@ -216,14 +231,18 @@ function updateFunctionName(
   functionName: string,
 ): ChangeResult<
   ComponentFunctionDefinition,
-  FunctionFailure | EmptyNameFailure
+  FunctionFailure | EmptyNameFailure<"function-name">
 > {
   const fnResult = requireFunction(component, functionKey);
   if (fnResult.isErr()) return err(fnResult.error);
   const fn = fnResult.value;
   const normalized = functionName.trim();
   if (!normalized) {
-    return err({ code: "invalid-input", detail: "empty-name" });
+    return err({
+      code: "invalid-input",
+      cause: "function-name",
+      detail: "empty-name",
+    });
   }
   if (fn.declaredName === normalized) {
     return ok({ data: fn, changed: false });
@@ -272,13 +291,20 @@ function updateParamName(
   component: ComponentDefinition,
   paramKey: string,
   paramName: string,
-): ChangeResult<ComponentParamDefinition, ParamFailure | EmptyNameFailure> {
+): ChangeResult<
+  ComponentParamDefinition,
+  ParamFailure | EmptyNameFailure<"param-name">
+> {
   const paramResult = requireParam(component, paramKey);
   if (paramResult.isErr()) return err(paramResult.error);
   const param = paramResult.value;
   const normalized = paramName.trim();
   if (!normalized) {
-    return err({ code: "invalid-input", detail: "empty-name" });
+    return err({
+      code: "invalid-input",
+      cause: "param-name",
+      detail: "empty-name",
+    });
   }
   if (param.name === normalized) {
     return ok({ data: param, changed: false });

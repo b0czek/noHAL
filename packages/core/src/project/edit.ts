@@ -21,9 +21,15 @@ function nextUniqueIniLabel(base: string, existing: readonly string[]): string {
 export function updateProjectName(
   project: NoHALProject,
   name: string,
-): ChangeResult<string, EmptyNameFailure> {
+): ChangeResult<string, EmptyNameFailure<"project-name">> {
   const normalized = name.trim();
-  if (!normalized) return err({ code: "invalid-input", detail: "empty-name" });
+  if (!normalized) {
+    return err({
+      code: "invalid-input",
+      cause: "project-name",
+      detail: "empty-name",
+    });
+  }
   if (normalized === project.name)
     return ok({ data: project.name, changed: false });
   project.name = normalized;

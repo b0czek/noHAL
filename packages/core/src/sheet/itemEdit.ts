@@ -177,16 +177,16 @@ function addSheetPort(
   return { data: port, changed: true };
 }
 
-type PositionResult = ChangeResult<XY, NotFoundFailure>;
+type PositionResult<C extends string> = ChangeResult<XY, NotFoundFailure<C>>;
 
 function moveNode(
   sheet: SheetDefinition,
   nodeId: string,
   x: number,
   y: number,
-): PositionResult {
+): PositionResult<"node"> {
   const node = sheet.nodes.find((entry) => entry.id === nodeId);
-  if (!node) return err({ code: "not-found" });
+  if (!node) return err({ code: "not-found", cause: "node" });
   if (node.position.x === x && node.position.y === y) {
     return ok({ data: node.position, changed: false });
   }
@@ -199,9 +199,9 @@ function moveLabel(
   labelId: string,
   x: number,
   y: number,
-): PositionResult {
+): PositionResult<"label"> {
   const label = sheet.labels.find((entry) => entry.id === labelId);
-  if (!label) return err({ code: "not-found" });
+  if (!label) return err({ code: "not-found", cause: "label" });
   if (label.position.x === x && label.position.y === y) {
     return ok({ data: label.position, changed: false });
   }
@@ -214,9 +214,9 @@ function moveComment(
   commentId: string,
   x: number,
   y: number,
-): PositionResult {
+): PositionResult<"comment"> {
   const comment = sheet.comments.find((entry) => entry.id === commentId);
-  if (!comment) return err({ code: "not-found" });
+  if (!comment) return err({ code: "not-found", cause: "comment" });
   if (comment.position.x === x && comment.position.y === y) {
     return ok({ data: comment.position, changed: false });
   }
@@ -229,9 +229,9 @@ function movePort(
   portId: string,
   x: number,
   y: number,
-): PositionResult {
+): PositionResult<"sheet-port"> {
   const port = sheet.ports.find((entry) => entry.id === portId);
-  if (!port) return err({ code: "not-found" });
+  if (!port) return err({ code: "not-found", cause: "sheet-port" });
   if (port.position.x === x && port.position.y === y) {
     return ok({ data: port.position, changed: false });
   }
@@ -322,10 +322,11 @@ function moveSelectionGroup(
   };
 }
 
-export type UpdateLabelResult = ChangeResult<
-  SheetLabel,
-  NotFoundFailure | InvalidInputFailure<"invalid-name">
->;
+export type UpdateLabelFailure =
+  | NotFoundFailure<"label">
+  | InvalidInputFailure<"label", "invalid-name">;
+
+export type UpdateLabelResult = ChangeResult<SheetLabel, UpdateLabelFailure>;
 
 function updateLabel(
   sheet: SheetDefinition,
@@ -333,13 +334,22 @@ function updateLabel(
   patch: { name?: string; scope?: LabelScope; rotation?: number },
 ): UpdateLabelResult {
   const label = sheet.labels.find((entry) => entry.id === labelId);
-  if (!label) return err({ code: "not-found" });
+  if (!label) {
+    return err({
+      code: "not-found",
+      cause: "label",
+    });
+  }
 
   const normalizedName =
     patch.name !== undefined ? patch.name.trim() : undefined;
   if (normalizedName !== undefined && normalizedName.length > 0) {
     if (!isValidHalName(normalizedName)) {
-      return err({ code: "invalid-input", detail: "invalid-name" });
+      return err({
+        code: "invalid-input",
+        cause: "label",
+        detail: "invalid-name",
+      });
     }
   }
 
@@ -355,7 +365,12 @@ function updateLabel(
   return ok({ data: label, changed: JSON.stringify(label) !== before });
 }
 
-export type UpdateCommentResult = ChangeResult<SheetComment, NotFoundFailure>;
+export type UpdateCommentFailure = NotFoundFailure<"comment">;
+
+export type UpdateCommentResult = ChangeResult<
+  SheetComment,
+  UpdateCommentFailure
+>;
 
 function updateComment(
   sheet: SheetDefinition,
@@ -363,7 +378,12 @@ function updateComment(
   patch: { text?: string; rotation?: number },
 ): UpdateCommentResult {
   const comment = sheet.comments.find((entry) => entry.id === commentId);
-  if (!comment) return err({ code: "not-found" });
+  if (!comment) {
+    return err({
+      code: "not-found",
+      cause: "comment",
+    });
+  }
   const before = JSON.stringify(comment);
   if (patch.text !== undefined) comment.text = patch.text;
   if (patch.rotation !== undefined) {
@@ -372,11 +392,14 @@ function updateComment(
   return ok({ data: comment, changed: JSON.stringify(comment) !== before });
 }
 
+export type UpdateSheetPortFailure =
+  | NotFoundFailure<"sheet-port">
+  | InvalidInputFailure<"sheet-port", "invalid-name", { name: string }>
+  | ConflictFailure<"sheet-port", "duplicate-name", { name: string }>;
+
 export type UpdateSheetPortResult = ChangeResult<
   SheetPort,
-  | NotFoundFailure
-  | InvalidInputFailure<"invalid-name">
-  | ConflictFailure<"duplicate-name">
+  UpdateSheetPortFailure
 >;
 
 function updateSheetPort(
@@ -390,19 +413,36 @@ function updateSheetPort(
   },
 ): UpdateSheetPortResult {
   const port = sheet.ports.find((entry) => entry.id === portId);
-  if (!port) return err({ code: "not-found" });
+  if (!port) {
+    return err({
+      code: "not-found",
+      cause: "sheet-port",
+    });
+  }
 
   const normalizedName =
     patch.name !== undefined ? patch.name.trim() : undefined;
   if (normalizedName !== undefined && normalizedName.length > 0) {
     if (!isValidHalName(normalizedName)) {
-      return err({ code: "invalid-input", detail: "invalid-name" });
+      return err({
+        code: "invalid-input",
+        cause: "sheet-port",
+        detail: "invalid-name",
+        meta: { name: normalizedName },
+      });
     }
     const duplicate = sheet.ports.some(
       (candidate) =>
         candidate.id !== portId && candidate.name === normalizedName,
     );
-    if (duplicate) return err({ code: "conflict", detail: "duplicate-name" });
+    if (duplicate) {
+      return err({
+        code: "conflict",
+        cause: "sheet-port",
+        detail: "duplicate-name",
+        meta: { name: normalizedName },
+      });
+    }
   }
 
   const before = JSON.stringify(port);

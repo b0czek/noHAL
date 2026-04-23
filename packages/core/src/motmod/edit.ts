@@ -18,9 +18,13 @@ export function updateMotmodNumericConfig(
   project: NoHALProject,
   key: keyof ProjectMotmodConfig,
   value: number,
-): ChangeResult<number, InvalidInputFailure<"invalid-value">> {
+): ChangeResult<number, InvalidInputFailure<"motmod-config", "invalid-value">> {
   if (!Number.isFinite(value)) {
-    return err({ code: "invalid-input", detail: "invalid-value" });
+    return err({
+      code: "invalid-input",
+      cause: "motmod-config",
+      detail: "invalid-value",
+    });
   }
   const rounded = Math.round(value);
   const normalized =
@@ -42,3 +46,12 @@ export function syncMotmodManagedProjection(
   reconcileMotmodManagedNodes(project);
   return ok({ data: plan, changed: true });
 }
+
+export const motmodEdits = {
+  config: {
+    update: updateMotmodNumericConfig,
+  },
+  projection: {
+    sync: syncMotmodManagedProjection,
+  },
+};

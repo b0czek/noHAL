@@ -241,7 +241,7 @@ describe("node actions", () => {
       node?.kind === "component" ? node.exportNamespace : undefined,
     ).toBeUndefined();
     expect(store.state.status).toBe(
-      "Export namespace change would collide at 'and2.0'",
+      "store.status.exportNamespaceChangeWouldCollide",
     );
   });
 
@@ -276,7 +276,7 @@ describe("node actions", () => {
       exportNamespace: "global",
     });
     expect(store.state.status).toBe(
-      "Export namespace is fixed for component 'and2'",
+      "store.status.exportNamespaceFixedForComponent",
     );
   });
 
