@@ -78,7 +78,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Linux artifacts for ${{ matrix.arch }}
-        run: pnpm --filter @nohal/desktop exec electron-builder --linux AppImage deb --${{ matrix.arch }}
+        run: pnpm --filter @nohal/desktop run dist:linux -- --${{ matrix.arch }}
 
       - name: Upload Linux artifacts for ${{ matrix.arch }}
         uses: actions/upload-artifact@v7
