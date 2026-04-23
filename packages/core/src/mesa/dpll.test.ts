@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { exportProjectToHal } from "../halExport";
 import { createEmptyProject, reconcileProject } from "../project";
+import { expectOk } from "../testUtils/result";
 import { addMesaHost, updateMesaHostIp } from "./edit";
 
 describe("Mesa DPLL support", () => {
   it("projects host DPLL pins onto the Mesa host component", () => {
     const project = createEmptyProject("Mesa DPLL");
-    const hostId = addMesaHost(project, "7i92t");
+    const hostId = expectOk(addMesaHost(project, "7i92t")).data;
 
-    updateMesaHostIp(project, hostId, "192.168.1.121");
+    expectOk(updateMesaHostIp(project, hostId, "192.168.1.121"));
     reconcileProject(project);
 
     const hostComponent = Object.values(project.library.components).find(
@@ -74,9 +75,9 @@ describe("Mesa DPLL support", () => {
 
   it("requests the HostMot2 DPLL module in the runtime config", () => {
     const project = createEmptyProject("Mesa DPLL Export");
-    const hostId = addMesaHost(project, "7i92t");
+    const hostId = expectOk(addMesaHost(project, "7i92t")).data;
 
-    updateMesaHostIp(project, hostId, "192.168.1.121");
+    expectOk(updateMesaHostIp(project, hostId, "192.168.1.121"));
 
     const { text } = exportProjectToHal(project);
 

@@ -1,19 +1,42 @@
+import { err, ok, type Result } from "neverthrow";
 import { createId } from "../id";
+import type {
+  Change,
+  ChangeResult,
+  DuplicateNameFailure,
+  EmptyNameFailure,
+  InUseFailure,
+} from "../result";
 import type {
   ComponentDefinition,
   ComponentFunctionDefinition,
   ComponentNode,
   ComponentParamDefinition,
   ComponentPinDefinition,
+  ComponentStore,
+  HalValueType,
   NoHALProject,
 } from "../types";
 import { customComponentDefinitionEdits } from "./definitionEdit";
+import {
+  type CustomComponentFailure,
+  type FunctionFailure,
+  type InvalidRuntimeFailure,
+  type ParamFailure,
+  type PinFailure,
+  requireCustomComponent,
+} from "./editShared";
 import { reconcileComponentNodesForDefinition } from "./reconcile";
 import {
   createCustomComponentDefinition,
-  findManualComponent,
   projectUsesComponentDefinition,
 } from "./shared";
+import { findHalComponentNameConflict } from "./validation";
+
+type CustomComponentChangeResult<T, E = never> = ChangeResult<
+  T,
+  CustomComponentFailure | E
+>;
 
 function add(
   project: NoHALProject,
@@ -31,93 +54,155 @@ function add(
   return component;
 }
 
-export type RemoveCustomComponentResult =
-  | { ok: true; componentName: string }
-  | { ok: false; reason: "not-custom" }
-  | { ok: false; reason: "in-use"; componentName: string; usageCount: number };
+export type RemoveCustomComponentFailure =
+  | CustomComponentFailure
+  | (InUseFailure<"custom-component", "placed-component"> & {
+      componentName: string;
+      usageCount: number;
+    });
+
+export type RemoveCustomComponentResult = Result<
+  Change<{ componentName: string }>,
+  RemoveCustomComponentFailure
+>;
 
 function remove(
   project: NoHALProject,
   componentId: string,
 ): RemoveCustomComponentResult {
-  const component = findManualComponent(project, componentId);
-  if (!component) return { ok: false, reason: "not-custom" };
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
   const usageCount = projectUsesComponentDefinition(project, componentId);
   if (usageCount > 0) {
-    return {
-      ok: false,
-      reason: "in-use",
+    return err({
+      code: "in-use",
+      cause: "custom-component",
+      detail: "placed-component",
       componentName: component.halComponentName,
       usageCount,
-    };
+    });
   }
   delete project.library.components[componentId];
-  return { ok: true, componentName: component.halComponentName };
+  return ok({
+    data: { componentName: component.halComponentName },
+    changed: true,
+  });
 }
 
 function updateProjectCustomComponent(
   project: NoHALProject,
   componentId: string,
-  mutate: (component: ComponentDefinition) => void,
-): ComponentDefinition | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  mutate(component);
-  return component;
+  mutate: (component: ComponentDefinition) => ChangeResult<unknown>,
+): CustomComponentChangeResult<ComponentDefinition> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const mutateResult = mutate(component);
+  if (mutateResult.isErr()) throw new Error("unreachable");
+  return ok({ data: component, changed: mutateResult.value.changed });
 }
+
+export type UpdateHalComponentNameFailure =
+  | CustomComponentFailure
+  | EmptyNameFailure<"hal-component-name">
+  | DuplicateNameFailure<"hal-component-name", { name: string }>;
 
 function updateHalComponentName(
   project: NoHALProject,
   componentId: string,
   halComponentName: string,
-): ComponentDefinition | null {
-  return updateProjectCustomComponent(project, componentId, (component) => {
-    customComponentDefinitionEdits.halComponentName.update(
-      component,
-      halComponentName,
-    );
+  options?: { componentStore?: ComponentStore },
+): CustomComponentChangeResult<
+  ComponentDefinition,
+  | EmptyNameFailure<"hal-component-name">
+  | DuplicateNameFailure<"hal-component-name", { name: string }>
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+
+  const normalized = halComponentName.trim();
+  if (!normalized) {
+    return err({
+      code: "invalid-input",
+      cause: "hal-component-name",
+      detail: "empty-name",
+    });
+  }
+  if (component.halComponentName === normalized)
+    return ok({ data: component, changed: false });
+
+  const conflict = findHalComponentNameConflict({
+    halComponentName: normalized,
+    project,
+    componentStore: options?.componentStore,
+    excludeComponentIds: [componentId],
   });
+  if (conflict) {
+    return err({
+      code: "conflict",
+      cause: "hal-component-name",
+      detail: "duplicate-name",
+      meta: { name: normalized },
+    });
+  }
+
+  const updateResult = customComponentDefinitionEdits.halComponentName.update(
+    component,
+    normalized,
+  );
+  if (updateResult.isErr()) return err(updateResult.error);
+  return ok({ data: component, changed: updateResult.value.changed });
 }
 
 function updateRuntimeKind(
   project: NoHALProject,
   componentId: string,
   runtimeKind: "rt" | "userspace" | "unknown",
-): ComponentDefinition | null {
-  return updateProjectCustomComponent(project, componentId, (component) => {
-    customComponentDefinitionEdits.runtimeKind.update(component, runtimeKind);
-  });
+): CustomComponentChangeResult<ComponentDefinition> {
+  return updateProjectCustomComponent(project, componentId, (component) =>
+    customComponentDefinitionEdits.runtimeKind.update(component, runtimeKind),
+  );
 }
 
 function updateLoadCommand(
   project: NoHALProject,
   componentId: string,
   loadCommand: string,
-): ComponentDefinition | null {
-  return updateProjectCustomComponent(project, componentId, (component) => {
-    customComponentDefinitionEdits.loadCommand.update(component, loadCommand);
-  });
+): CustomComponentChangeResult<ComponentDefinition> {
+  return updateProjectCustomComponent(project, componentId, (component) =>
+    customComponentDefinitionEdits.loadCommand.update(component, loadCommand),
+  );
 }
 
 function updateMaxInstances(
   project: NoHALProject,
   componentId: string,
   maxInstances: number | undefined,
-): ComponentDefinition | null {
-  return updateProjectCustomComponent(project, componentId, (component) => {
-    customComponentDefinitionEdits.maxInstances.update(component, maxInstances);
-  });
+): CustomComponentChangeResult<ComponentDefinition> {
+  return updateProjectCustomComponent(project, componentId, (component) =>
+    customComponentDefinitionEdits.maxInstances.update(component, maxInstances),
+  );
 }
 
 function addPin(
   project: NoHALProject,
   componentId: string,
-): { component: ComponentDefinition; pin: ComponentPinDefinition } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const pin = customComponentDefinitionEdits.pin.add(component);
+): CustomComponentChangeResult<{
+  component: ComponentDefinition;
+  pin: ComponentPinDefinition;
+}> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const pinResult = customComponentDefinitionEdits.pin.add(component);
+  if (pinResult.isErr()) throw new Error("unreachable");
   reconcileComponentNodesForDefinition(project, componentId, component);
-  return { component, pin };
+  return ok({
+    data: { component, pin: pinResult.value.data },
+    changed: pinResult.value.changed,
+  });
 }
 
 function removePinStateFromNode(node: ComponentNode, pinKey: string): void {
@@ -145,11 +230,19 @@ function removePin(
   project: NoHALProject,
   componentId: string,
   pinKey: string,
-): { component: ComponentDefinition; pinName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const pin = customComponentDefinitionEdits.pin.remove(component, pinKey);
-  if (!pin) return null;
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; pinName: string },
+  PinFailure
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const pinResult = customComponentDefinitionEdits.pin.remove(
+    component,
+    pinKey,
+  );
+  if (pinResult.isErr()) return err(pinResult.error);
+  const pin = pinResult.value.data;
   for (const sheet of Object.values(project.sheets)) {
     for (const node of sheet.nodes) {
       if (node.kind !== "component" || node.componentId !== componentId)
@@ -158,7 +251,10 @@ function removePin(
     }
   }
   reconcileComponentNodesForDefinition(project, componentId, component);
-  return { component, pinName: pin.name };
+  return ok({
+    data: { component, pinName: pin.name },
+    changed: pinResult.value.changed,
+  });
 }
 
 function updatePinName(
@@ -166,33 +262,47 @@ function updatePinName(
   componentId: string,
   pinKey: string,
   pinName: string,
-): { component: ComponentDefinition; pinName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const pin = customComponentDefinitionEdits.pin.name.update(
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; pinName: string },
+  PinFailure | EmptyNameFailure<"pin-name">
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const pinResult = customComponentDefinitionEdits.pin.name.update(
     component,
     pinKey,
     pinName,
   );
-  if (!pin) return null;
-  return { component, pinName: pin.name };
+  if (pinResult.isErr()) return err(pinResult.error);
+  return ok({
+    data: { component, pinName: pinResult.value.data.name },
+    changed: pinResult.value.changed,
+  });
 }
 
 function updatePinType(
   project: NoHALProject,
   componentId: string,
   pinKey: string,
-  pinType: ComponentPinDefinition["type"],
-): { component: ComponentDefinition; pinName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const pin = customComponentDefinitionEdits.pin.type.update(
+  pinType: HalValueType,
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; pinName: string },
+  PinFailure
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const pinResult = customComponentDefinitionEdits.pin.type.update(
     component,
     pinKey,
     pinType,
   );
-  if (!pin) return null;
-  return { component, pinName: pin.name };
+  if (pinResult.isErr()) return err(pinResult.error);
+  return ok({
+    data: { component, pinName: pinResult.value.data.name },
+    changed: pinResult.value.changed,
+  });
 }
 
 function updatePinDirection(
@@ -200,53 +310,82 @@ function updatePinDirection(
   componentId: string,
   pinKey: string,
   direction: ComponentPinDefinition["direction"],
-): { component: ComponentDefinition; pinName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const pin = customComponentDefinitionEdits.pin.direction.update(
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; pinName: string },
+  PinFailure
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const pinResult = customComponentDefinitionEdits.pin.direction.update(
     component,
     pinKey,
     direction,
   );
-  if (!pin) return null;
-  return { component, pinName: pin.name };
+  if (pinResult.isErr()) return err(pinResult.error);
+  return ok({
+    data: { component, pinName: pinResult.value.data.name },
+    changed: pinResult.value.changed,
+  });
 }
 
 function addParam(
   project: NoHALProject,
   componentId: string,
-): { component: ComponentDefinition; param: ComponentParamDefinition } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const param = customComponentDefinitionEdits.param.add(component);
+): CustomComponentChangeResult<{
+  component: ComponentDefinition;
+  param: ComponentParamDefinition;
+}> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const paramResult = customComponentDefinitionEdits.param.add(component);
+  if (paramResult.isErr()) throw new Error("unreachable");
   reconcileComponentNodesForDefinition(project, componentId, component);
-  return { component, param };
+  return ok({
+    data: { component, param: paramResult.value.data },
+    changed: paramResult.value.changed,
+  });
 }
 
 function addFunction(
   project: NoHALProject,
   componentId: string,
-): { component: ComponentDefinition; fn: ComponentFunctionDefinition } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const fn = customComponentDefinitionEdits.function.add(component);
-  if (!fn) return null;
-  return { component, fn };
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; fn: ComponentFunctionDefinition },
+  InvalidRuntimeFailure
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const fnResult = customComponentDefinitionEdits.function.add(component);
+  if (fnResult.isErr()) return err(fnResult.error);
+  return ok({
+    data: { component, fn: fnResult.value.data },
+    changed: fnResult.value.changed,
+  });
 }
 
 function removeFunction(
   project: NoHALProject,
   componentId: string,
   functionKey: string,
-): { component: ComponentDefinition; functionName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const fn = customComponentDefinitionEdits.function.remove(
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; functionName: string },
+  FunctionFailure
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const fnResult = customComponentDefinitionEdits.function.remove(
     component,
     functionKey,
   );
-  if (!fn) return null;
-  return { component, functionName: fn.declaredName };
+  if (fnResult.isErr()) return err(fnResult.error);
+  return ok({
+    data: { component, functionName: fnResult.value.data.declaredName },
+    changed: fnResult.value.changed,
+  });
 }
 
 function updateFunctionName(
@@ -254,16 +393,23 @@ function updateFunctionName(
   componentId: string,
   functionKey: string,
   functionName: string,
-): { component: ComponentDefinition; functionName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const fn = customComponentDefinitionEdits.function.name.update(
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; functionName: string },
+  FunctionFailure | EmptyNameFailure<"function-name">
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const fnResult = customComponentDefinitionEdits.function.name.update(
     component,
     functionKey,
     functionName,
   );
-  if (!fn) return null;
-  return { component, functionName: fn.declaredName };
+  if (fnResult.isErr()) return err(fnResult.error);
+  return ok({
+    data: { component, functionName: fnResult.value.data.declaredName },
+    changed: fnResult.value.changed,
+  });
 }
 
 function updateFunctionFloatMode(
@@ -271,30 +417,41 @@ function updateFunctionFloatMode(
   componentId: string,
   functionKey: string,
   floatMode: ComponentFunctionDefinition["floatMode"],
-): { component: ComponentDefinition; functionName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const fn = customComponentDefinitionEdits.function.floatMode.update(
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; functionName: string },
+  FunctionFailure
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const fnResult = customComponentDefinitionEdits.function.floatMode.update(
     component,
     functionKey,
     floatMode,
   );
-  if (!fn) return null;
-  return { component, functionName: fn.declaredName };
+  if (fnResult.isErr()) return err(fnResult.error);
+  return ok({
+    data: { component, functionName: fnResult.value.data.declaredName },
+    changed: fnResult.value.changed,
+  });
 }
 
 function removeParam(
   project: NoHALProject,
   componentId: string,
   paramKey: string,
-): { component: ComponentDefinition; paramName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const param = customComponentDefinitionEdits.param.remove(
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; paramName: string },
+  ParamFailure
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const paramResult = customComponentDefinitionEdits.param.remove(
     component,
     paramKey,
   );
-  if (!param) return null;
+  if (paramResult.isErr()) return err(paramResult.error);
   for (const sheet of Object.values(project.sheets)) {
     for (const node of sheet.nodes) {
       if (node.kind !== "component" || node.componentId !== componentId)
@@ -303,7 +460,10 @@ function removeParam(
     }
   }
   reconcileComponentNodesForDefinition(project, componentId, component);
-  return { component, paramName: param.name };
+  return ok({
+    data: { component, paramName: paramResult.value.data.name },
+    changed: paramResult.value.changed,
+  });
 }
 
 function updateParamName(
@@ -311,16 +471,23 @@ function updateParamName(
   componentId: string,
   paramKey: string,
   paramName: string,
-): { component: ComponentDefinition; paramName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const param = customComponentDefinitionEdits.param.name.update(
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; paramName: string },
+  ParamFailure | EmptyNameFailure<"param-name">
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const paramResult = customComponentDefinitionEdits.param.name.update(
     component,
     paramKey,
     paramName,
   );
-  if (!param) return null;
-  return { component, paramName: param.name };
+  if (paramResult.isErr()) return err(paramResult.error);
+  return ok({
+    data: { component, paramName: paramResult.value.data.name },
+    changed: paramResult.value.changed,
+  });
 }
 
 function updateParamType(
@@ -328,16 +495,23 @@ function updateParamType(
   componentId: string,
   paramKey: string,
   paramType: ComponentParamDefinition["type"],
-): { component: ComponentDefinition; paramName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const param = customComponentDefinitionEdits.param.type.update(
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; paramName: string },
+  ParamFailure
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const paramResult = customComponentDefinitionEdits.param.type.update(
     component,
     paramKey,
     paramType,
   );
-  if (!param) return null;
-  return { component, paramName: param.name };
+  if (paramResult.isErr()) return err(paramResult.error);
+  return ok({
+    data: { component, paramName: paramResult.value.data.name },
+    changed: paramResult.value.changed,
+  });
 }
 
 function updateParamDirection(
@@ -345,16 +519,23 @@ function updateParamDirection(
   componentId: string,
   paramKey: string,
   paramDirection: ComponentParamDefinition["direction"],
-): { component: ComponentDefinition; paramName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const param = customComponentDefinitionEdits.param.direction.update(
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; paramName: string },
+  ParamFailure
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const paramResult = customComponentDefinitionEdits.param.direction.update(
     component,
     paramKey,
     paramDirection,
   );
-  if (!param) return null;
-  return { component, paramName: param.name };
+  if (paramResult.isErr()) return err(paramResult.error);
+  return ok({
+    data: { component, paramName: paramResult.value.data.name },
+    changed: paramResult.value.changed,
+  });
 }
 
 function updateParamDefaultValue(
@@ -362,17 +543,24 @@ function updateParamDefaultValue(
   componentId: string,
   paramKey: string,
   defaultValue: string,
-): { component: ComponentDefinition; paramName: string } | null {
-  const component = findManualComponent(project, componentId);
-  if (!component) return null;
-  const param = customComponentDefinitionEdits.param.defaultValue.update(
+): CustomComponentChangeResult<
+  { component: ComponentDefinition; paramName: string },
+  ParamFailure
+> {
+  const componentResult = requireCustomComponent(project, componentId);
+  if (componentResult.isErr()) return err(componentResult.error);
+  const component = componentResult.value;
+  const paramResult = customComponentDefinitionEdits.param.defaultValue.update(
     component,
     paramKey,
     defaultValue,
   );
-  if (!param) return null;
+  if (paramResult.isErr()) return err(paramResult.error);
   reconcileComponentNodesForDefinition(project, componentId, component);
-  return { component, paramName: param.name };
+  return ok({
+    data: { component, paramName: paramResult.value.data.name },
+    changed: paramResult.value.changed,
+  });
 }
 
 export const customComponentEdits = {

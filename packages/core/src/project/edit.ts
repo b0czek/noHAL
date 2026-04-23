@@ -1,4 +1,6 @@
+import { err, ok } from "neverthrow";
 import { normalizeHalNameLen } from "../halNames";
+import type { ChangeResult, EmptyNameFailure } from "../result";
 import type {
   LinuxCncIniEntry,
   LinuxCncIniSection,
@@ -19,51 +21,65 @@ function nextUniqueIniLabel(base: string, existing: readonly string[]): string {
 export function updateProjectName(
   project: NoHALProject,
   name: string,
-): boolean {
+): ChangeResult<string, EmptyNameFailure<"project-name">> {
   const normalized = name.trim();
-  if (!normalized || normalized === project.name) return false;
+  if (!normalized) {
+    return err({
+      code: "invalid-input",
+      cause: "project-name",
+      detail: "empty-name",
+    });
+  }
+  if (normalized === project.name)
+    return ok({ data: project.name, changed: false });
   project.name = normalized;
-  return true;
+  return ok({ data: project.name, changed: true });
 }
 
 export function updateProjectShutdown(
   project: NoHALProject,
   shutdown: string,
-): boolean {
-  if (project.shutdown === shutdown) return false;
+): ChangeResult<string> {
+  if (project.shutdown === shutdown)
+    return ok({ data: project.shutdown, changed: false });
   project.shutdown = shutdown;
-  return true;
+  return ok({ data: project.shutdown, changed: true });
 }
 
 export function updateProjectWireLayerPosition(
   project: NoHALProject,
   position: ProjectWireLayerPosition,
-): boolean {
-  if (project.ui.wireLayerPosition === position) return false;
+): ChangeResult<ProjectWireLayerPosition> {
+  if (project.ui.wireLayerPosition === position) {
+    return ok({ data: project.ui.wireLayerPosition, changed: false });
+  }
   project.ui.wireLayerPosition = position;
-  return true;
+  return ok({ data: project.ui.wireLayerPosition, changed: true });
 }
 
 export function updateProjectWireStyle(
   project: NoHALProject,
   style: ProjectWireStyle,
-): boolean {
-  if (project.ui.wireStyle === style) return false;
+): ChangeResult<ProjectWireStyle> {
+  if (project.ui.wireStyle === style)
+    return ok({ data: project.ui.wireStyle, changed: false });
   project.ui.wireStyle = style;
-  return true;
+  return ok({ data: project.ui.wireStyle, changed: true });
 }
 
 export function updateProjectHalNameLen(
   project: NoHALProject,
   halNameLen: number,
-): boolean {
+): ChangeResult<number> {
   const normalized = normalizeHalNameLen(halNameLen);
-  if (project.halExport?.halNameLen === normalized) return false;
+  if (project.halExport?.halNameLen === normalized) {
+    return ok({ data: normalized, changed: false });
+  }
   project.halExport = {
     ...(project.halExport ?? {}),
     halNameLen: normalized,
   };
-  return true;
+  return ok({ data: normalized, changed: true });
 }
 
 export function ensureMachineConfig(project: NoHALProject): {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeAddfQueueNodeEntry } from "../addfQueue";
 import { createEmptyProject, createSheet } from "../project";
+import { expectErr, expectOk } from "../testUtils/result";
 import type { ComponentDefinition } from "../types";
 import { sheetModelEdits } from "./sheetEdit";
 import { ensureSystemSheet } from "./system";
@@ -17,6 +18,20 @@ function createSystemComponent(id: string): ComponentDefinition {
       manager: "test",
       family: "test",
     },
+  };
+}
+
+function createPortConversionComponent(id: string): ComponentDefinition {
+  return {
+    id,
+    name: "Port Conversion Component",
+    halComponentName: "port_conv",
+    source: "manual",
+    runtime: { kind: "rt" },
+    pins: [
+      { key: "value_out", name: "value-out", direction: "out", type: "float" },
+    ],
+    params: [],
   };
 }
 
@@ -48,35 +63,39 @@ describe("sheet model edit helpers", () => {
       addfQueue: [makeAddfQueueNodeEntry("node_child", added.id)],
     };
 
-    expect(
+    const renamed = expectOk(
       sheetModelEdits.threadOutput.name.update(root, added.id, "fast"),
-    ).toEqual({
-      ok: true,
+    );
+    expect(renamed).toEqual({
       changed: true,
-      output: expect.objectContaining({ id: added.id, name: "fast" }),
+      data: expect.objectContaining({ id: added.id, name: "fast" }),
     });
-    expect(
+    const rebound = expectOk(
       sheetModelEdits.threadOutput.halBinding.update(
         root,
         added.id,
         "thread-servo",
       ),
-    ).toEqual({
-      ok: true,
+    );
+    expect(rebound).toEqual({
       changed: true,
-      output: expect.objectContaining({
+      data: expect.objectContaining({
         id: added.id,
         name: "fast",
         halThreadId: "thread-servo",
       }),
     });
 
-    const removed = sheetModelEdits.threadOutput.remove(root, added.id);
+    const removed = expectOk(
+      sheetModelEdits.threadOutput.remove(root, added.id),
+    );
     expect(removed).toEqual({
-      ok: true,
-      removedOutputId: added.id,
-      fallbackOutputId: root.hal?.threadOutputs?.[0]?.id,
-      threadOutputs: root.hal?.threadOutputs,
+      changed: true,
+      data: {
+        removedOutputId: added.id,
+        fallbackOutputId: root.hal?.threadOutputs?.[0]?.id,
+        threadOutputs: root.hal?.threadOutputs,
+      },
     });
     expect(root.hal?.addfQueue).toEqual([
       expect.objectContaining({
@@ -96,15 +115,122 @@ describe("sheet model edit helpers", () => {
     const project = createEmptyProject("Sheet Definition Edit");
     const root = project.sheets[project.rootSheetId];
 
-    const first = sheetModelEdits.definition.add(project, root.id);
-    expect(first?.name).toBe("Sheet");
-    expect(first?.node.instanceName).toBe("sheet");
+    const first = expectOk(
+      sheetModelEdits.definition.add(project, root.id),
+    ).data;
+    expect(first.name).toBe("Sheet");
+    expect(first.node.instanceName).toBe("sheet");
 
-    const second = sheetModelEdits.definition.add(project, root.id);
-    expect(second?.name).toBe("Sheet2");
-    expect(second?.node.instanceName).toBe("sheet2");
-    expect(project.sheets[first?.sheet.id ?? ""]).toBeTruthy();
-    expect(project.sheets[second?.sheet.id ?? ""]).toBeTruthy();
+    const second = expectOk(
+      sheetModelEdits.definition.add(project, root.id),
+    ).data;
+    expect(second.name).toBe("Sheet2");
+    expect(second.node.instanceName).toBe("sheet2");
+    expect(project.sheets[first.sheet.id]).toBeTruthy();
+    expect(project.sheets[second.sheet.id]).toBeTruthy();
+  });
+
+  it("converts a singly-anchored label into a sheet port", () => {
+    const project = createEmptyProject("Convert Label To Port");
+    const root = project.sheets[project.rootSheetId];
+    project.library.components["comp:port-conv"] =
+      createPortConversionComponent("comp:port-conv");
+
+    root.nodes.push({
+      id: "node_component",
+      kind: "component",
+      componentId: "comp:port-conv",
+      instanceName: "port_conv",
+      position: { x: 40, y: 60 },
+      paramValues: {},
+    });
+    root.labels.push({
+      id: "label_value_out",
+      name: "servo.out",
+      scope: "local",
+      position: { x: 180, y: 180 },
+      rotation: 0,
+    });
+    root.labelAnchors.push({
+      id: "anchor_value_out",
+      labelId: "label_value_out",
+      endpoint: {
+        kind: "node-pin",
+        nodeId: "node_component",
+        pinKey: "value_out",
+      },
+    });
+
+    const result = expectOk(
+      sheetModelEdits.label.convertToPort(project, root.id, "label_value_out"),
+    );
+
+    expect(result.data.port).toEqual(
+      expect.objectContaining({
+        name: "servo.out",
+        direction: "out",
+        type: "float",
+        position: { x: 180, y: 180 },
+      }),
+    );
+    expect(root.labels).toEqual([]);
+    expect(root.labelAnchors).toEqual([]);
+    expect(root.directConnections).toContainEqual(
+      expect.objectContaining({
+        a: {
+          kind: "node-pin",
+          nodeId: "node_component",
+          pinKey: "value_out",
+        },
+        b: {
+          kind: "sheet-port",
+          portId: result.data.port.id,
+        },
+      }),
+    );
+  });
+
+  it("rejects converting labels that are not attached to exactly one component pin", () => {
+    const project = createEmptyProject("Convert Invalid Label");
+    const root = project.sheets[project.rootSheetId];
+    root.labels.push({
+      id: "label_shared",
+      name: "shared",
+      scope: "local",
+      position: { x: 160, y: 140 },
+      rotation: 0,
+    });
+    root.labelAnchors.push(
+      {
+        id: "anchor_shared_a",
+        labelId: "label_shared",
+        endpoint: {
+          kind: "sheet-port",
+          portId: "missing_port_a",
+        },
+      },
+      {
+        id: "anchor_shared_b",
+        labelId: "label_shared",
+        endpoint: {
+          kind: "sheet-port",
+          portId: "missing_port_b",
+        },
+      },
+    );
+
+    const result = expectErr(
+      sheetModelEdits.label.convertToPort(project, root.id, "label_shared"),
+    );
+
+    expect(result).toEqual({
+      code: "invalid-input",
+      cause: "label",
+      detail: "not-convertible",
+    });
+    expect(root.labels).toHaveLength(1);
+    expect(root.labelAnchors).toHaveLength(2);
+    expect(root.ports).toHaveLength(0);
   });
 
   it("rejects invalid sheet item moves before mutating the project", () => {
@@ -133,16 +259,21 @@ describe("sheet model edit helpers", () => {
       },
     );
 
-    expect(
+    const blockedBySystem = expectErr(
       sheetModelEdits.items.moveIntoNewSubsheet(project, root.id, {
         nodeIds: new Set(["node_system"]),
         labelIds: new Set(),
         portIds: new Set(),
       }),
-    ).toEqual({ ok: false, reason: "protected-system-node" });
+    );
+    expect(blockedBySystem).toEqual({
+      code: "forbidden",
+      cause: "selection",
+      detail: "protected-system-node",
+    });
     expect(root.nodes.some((node) => node.id === "node_system")).toBe(true);
 
-    expect(
+    const blockedByTarget = expectErr(
       sheetModelEdits.items.moveIntoExistingSubsheet(
         project,
         root.id,
@@ -153,7 +284,12 @@ describe("sheet model edit helpers", () => {
           portIds: new Set(),
         },
       ),
-    ).toEqual({ ok: false, reason: "target-in-items" });
+    );
+    expect(blockedByTarget).toEqual({
+      code: "invalid-input",
+      cause: "selection",
+      detail: "target-in-items",
+    });
     expect(child.nodes).toHaveLength(0);
   });
 
@@ -198,17 +334,17 @@ describe("sheet model edit helpers", () => {
       endpoint: { kind: "node-pin", nodeId: "node_child", pinKey: "pin-1" },
     });
 
-    const result = sheetModelEdits.definition.remove(
-      project,
-      child.id,
-      grandchild.id,
+    const result = expectOk(
+      sheetModelEdits.definition.remove(project, child.id, grandchild.id),
     );
 
     expect(result).toEqual({
-      ok: true,
-      deletedSheetIds: [child.id],
-      deletedSheetName: "Child",
-      nextActiveSheetId: grandchild.id,
+      changed: true,
+      data: {
+        deletedSheetIds: [child.id],
+        deletedSheetName: "Child",
+        nextActiveSheetId: grandchild.id,
+      },
     });
     expect(project.sheets[child.id]).toBeUndefined();
     expect(project.sheets[grandchild.id]).toBeDefined();
@@ -261,12 +397,15 @@ describe("sheet model edit helpers", () => {
       },
     });
 
-    expect(
+    const removed = expectOk(
       sheetModelEdits.port.remove(project, child.id, "port_child_in"),
-    ).toEqual({
-      ok: true,
-      removedPortId: "port_child_in",
-      removedReferenceInstanceCount: 1,
+    );
+    expect(removed).toEqual({
+      changed: true,
+      data: {
+        removedPortId: "port_child_in",
+        removedReferenceInstanceCount: 1,
+      },
     });
     expect(child.ports).toHaveLength(0);
     expect(root.directConnections).toHaveLength(0);
@@ -294,19 +433,15 @@ describe("sheet model edit helpers", () => {
       position: { x: 20, y: 30 },
     });
 
-    const result = sheetModelEdits.reference.detach(
-      project,
-      root.id,
-      "node_child",
+    const result = expectOk(
+      sheetModelEdits.reference.detach(project, root.id, "node_child"),
     );
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error("expected detach to succeed");
-    expect(result.originalSheetId).toBe(child.id);
-    expect(result.detachedSheet.id).not.toBe(child.id);
-    expect(result.detachedSheet.name).toBe("Child Copy");
-    expect(result.node.sheetId).toBe(result.detachedSheet.id);
-    expect(result.detachedSheet.nodes[0]?.id).not.toBe("node_component");
+    expect(result.data.originalSheetId).toBe(child.id);
+    expect(result.data.detachedSheet.id).not.toBe(child.id);
+    expect(result.data.detachedSheet.name).toBe("Child Copy");
+    expect(result.data.node.sheetId).toBe(result.data.detachedSheet.id);
+    expect(result.data.detachedSheet.nodes[0]?.id).not.toBe("node_component");
   });
 
   it("keeps protected system sheets immutable through sheet definition/reference edits", () => {
@@ -314,33 +449,48 @@ describe("sheet model edit helpers", () => {
     const { rootSheet, systemSheet, systemSheetNode } =
       ensureSystemSheet(project);
 
-    expect(
+    const blockedDefinition = expectErr(
       sheetModelEdits.definition.remove(
         project,
         systemSheet.id,
         project.rootSheetId,
       ),
-    ).toEqual({ ok: false, reason: "protected-system-sheet" });
+    );
+    expect(blockedDefinition).toEqual({
+      code: "forbidden",
+      cause: "sheet-definition",
+      detail: "protected-system-sheet",
+    });
     expect(project.sheets[systemSheet.id]).toBeDefined();
 
-    expect(
+    const blockedReferenceRemoval = expectErr(
       sheetModelEdits.reference.remove(
         project,
         rootSheet.id,
         systemSheetNode.id,
       ),
-    ).toEqual({ ok: false, reason: "protected-system-sheet" });
+    );
+    expect(blockedReferenceRemoval).toEqual({
+      code: "forbidden",
+      cause: "sheet-reference",
+      detail: "protected-system-sheet",
+    });
     expect(rootSheet.nodes.some((node) => node.id === systemSheetNode.id)).toBe(
       true,
     );
 
-    expect(
+    const blockedDetach = expectErr(
       sheetModelEdits.reference.detach(
         project,
         rootSheet.id,
         systemSheetNode.id,
       ),
-    ).toEqual({ ok: false, reason: "protected-system-sheet" });
+    );
+    expect(blockedDetach).toEqual({
+      code: "forbidden",
+      cause: "sheet-reference",
+      detail: "protected-system-sheet",
+    });
     expect(systemSheetNode.sheetId).toBe(systemSheet.id);
   });
 });

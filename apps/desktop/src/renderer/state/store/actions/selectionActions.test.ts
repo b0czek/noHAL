@@ -612,4 +612,47 @@ describe("selection actions", () => {
       Object.keys(project.sheets).length,
     );
   });
+
+  it("does not paste sheet references that would create a recursive sheet hierarchy", () => {
+    const { project } = createProjectFixture();
+    const clipboard = installClipboardMock();
+    const rootSheet = project.sheets[project.rootSheetId];
+    const childSheet = createSheet("Recursive Child");
+    project.sheets[childSheet.id] = childSheet;
+
+    // Make the child sheet contain the root sheet already (cycle exists in fixture).
+    childSheet.nodes.push({
+      id: "node_child_ref_root",
+      kind: "sheet",
+      sheetId: rootSheet.id,
+      instanceName: "root_ref",
+      position: { x: 0, y: 0 },
+    });
+
+    // Attempt to copy-paste a reference to that child into the root.
+    rootSheet.nodes.push({
+      id: "node_root_ref_child",
+      kind: "sheet",
+      sheetId: childSheet.id,
+      instanceName: "child_ref",
+      position: { x: 180, y: 80 },
+    });
+
+    const store = createEditorStore(project, (key) => key);
+    store.actions.select({ kind: "node", id: "node_root_ref_child" });
+
+    expect(store.actions.copySelection()).toBe(true);
+    expect(clipboard.read()).toContain("__NOHAL_SELECTION_V1__");
+    expect(store.actions.pasteClipboard()).toBe(false);
+    expect(store.state.status).toBe(
+      "store.status.nothingToPasteInSelectionClipboard",
+    );
+
+    const nextRootSheet =
+      store.state.project.sheets[store.state.project.rootSheetId];
+    const childRefs = nextRootSheet.nodes.filter(
+      (node) => node.kind === "sheet" && node.sheetId === childSheet.id,
+    );
+    expect(childRefs).toHaveLength(1);
+  });
 });

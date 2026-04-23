@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEmptyProject, reconcileProject } from "../project";
+import { expectOk } from "../testUtils/result";
 import { addMesaHost, setMesaConnectorCard, updateMesaHostIp } from "./edit";
 
 const EXPECTED_ENCODER_PSEUDO_COMPONENT_COUNT = 6;
@@ -7,10 +8,10 @@ const EXPECTED_ENCODER_PSEUDO_COMPONENT_COUNT = 6;
 describe("Mesa encoder HAL projection", () => {
   it("projects host-facing encoders onto dedicated per-encoder pseudo-components", () => {
     const project = createEmptyProject("Mesa Encoders");
-    const hostId = addMesaHost(project, "7i92t");
+    const hostId = expectOk(addMesaHost(project, "7i92t")).data;
 
-    updateMesaHostIp(project, hostId, "192.168.1.121");
-    setMesaConnectorCard(project, hostId, "p1", "7i77");
+    expectOk(updateMesaHostIp(project, hostId, "192.168.1.121"));
+    expectOk(setMesaConnectorCard(project, hostId, "p1", "7i77"));
 
     reconcileProject(project);
 

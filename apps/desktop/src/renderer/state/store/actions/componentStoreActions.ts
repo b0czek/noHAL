@@ -1,4 +1,6 @@
+import type { ChangeResult, FailureMatcher } from "@nohal/core";
 import {
+  applyComponentDefinitionToProject,
   customComponentDefinitionEdits,
   findHalComponentNameConflict,
   nextHalComponentName,
@@ -12,12 +14,16 @@ import type {
 import { unwrap } from "solid-js/store";
 import type { TranslationKey } from "../../../i18n";
 import {
-  applyComponentStoreEntryToProject,
   cloneComponentStore,
   getComponentSourceDisplayLabel,
   pruneMissingStoredComponentsFromProject,
   toErrorMessage,
 } from "../helpers";
+import {
+  type ActionStatusUpdate,
+  createFailureReporter,
+  type ExtractActionFailuresDeep,
+} from "./actionFailureTypes";
 import type { EditorStoreActionContext } from "./types";
 
 interface ImportError {
@@ -56,6 +62,41 @@ function defaultStoreCustomStatusParams(
 }
 
 export function createComponentStoreActions(deps: EditorStoreActionContext) {
+  type ComponentStoreActionFailure = ExtractActionFailuresDeep<
+    typeof customComponentDefinitionEdits
+  >;
+
+  const componentStoreActionFailureMatcher: FailureMatcher<
+    ComponentStoreActionFailure,
+    ActionStatusUpdate
+  > = {
+    "not-found": {
+      pin: {
+        _: "store.status.customComponentMemberNotFound",
+      },
+      param: {
+        _: "store.status.customComponentMemberNotFound",
+      },
+      function: {
+        _: "store.status.customComponentMemberNotFound",
+      },
+    },
+    "invalid-input": {
+      "hal-component-name": {
+        "empty-name": "store.status.customComponentNameRequired",
+      },
+    },
+    unsupported: {
+      function: {
+        "invalid-runtime": "store.status.customComponentFunctionRequiresRt",
+      },
+    },
+  };
+  const reportComponentStoreActionFailure = createFailureReporter(
+    deps,
+    componentStoreActionFailureMatcher,
+  );
+
   const findManualStoreEntry = (
     componentId: string,
   ): ComponentStoreEntry | null => {
@@ -98,7 +139,11 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
     });
     deps.withProject(
       (project) => {
-        applyComponentStoreEntryToProject(project, entry);
+        applyComponentDefinitionToProject(
+          project,
+          entry.componentId,
+          entry.parsed,
+        );
       },
       { recordHistory: false },
     );
@@ -144,7 +189,9 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
 
   const mutateManualStoreComponent = async (
     componentId: string,
-    mutate: (component: ImportedComponentDefinition) => boolean,
+    mutate: (
+      component: ImportedComponentDefinition,
+    ) => ChangeResult<unknown, ComponentStoreActionFailure>,
     statusKey: TranslationKey,
     params: (
       component: ImportedComponentDefinition,
@@ -157,7 +204,12 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
     }
 
     const nextComponent = structuredClone(unwrap(entry.parsed));
-    if (!mutate(nextComponent)) return false;
+    const result = mutate(nextComponent);
+    if (result.isErr()) {
+      reportComponentStoreActionFailure(result.error);
+      return false;
+    }
+    if (!result.value.changed) return false;
     return persistUpdatedManualComponent(
       componentId,
       nextComponent,
@@ -300,10 +352,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
     async addStoreCustomComponentPin(componentId: string): Promise<void> {
       await mutateManualStoreComponent(
         componentId,
-        (component) => {
-          customComponentDefinitionEdits.pin.add(component);
-          return true;
-        },
+        (component) => customComponentDefinitionEdits.pin.add(component),
         "store.status.addedCustomComponentPin",
         defaultStoreCustomStatusParams,
       );
@@ -320,7 +369,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.pin.remove(component, pinKey),
+          customComponentDefinitionEdits.pin.remove(component, pinKey),
         "store.status.removedCustomComponentPin",
         (component) => ({
           componentName: component.halComponentName,
@@ -340,7 +389,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.pin.name.update(
+          customComponentDefinitionEdits.pin.name.update(
             component,
             pinKey,
             normalized,
@@ -363,7 +412,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.pin.type.update(
+          customComponentDefinitionEdits.pin.type.update(
             component,
             pinKey,
             pinType,
@@ -385,7 +434,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.pin.direction.update(
+          customComponentDefinitionEdits.pin.direction.update(
             component,
             pinKey,
             direction,
@@ -403,10 +452,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
     async addStoreCustomComponentParam(componentId: string): Promise<void> {
       await mutateManualStoreComponent(
         componentId,
-        (component) => {
-          customComponentDefinitionEdits.param.add(component);
-          return true;
-        },
+        (component) => customComponentDefinitionEdits.param.add(component),
         "store.status.addedCustomComponentParam",
         defaultStoreCustomStatusParams,
       );
@@ -423,7 +469,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.param.remove(component, paramKey),
+          customComponentDefinitionEdits.param.remove(component, paramKey),
         "store.status.removedCustomComponentParam",
         (component) => ({
           componentName: component.halComponentName,
@@ -443,7 +489,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.param.name.update(
+          customComponentDefinitionEdits.param.name.update(
             component,
             paramKey,
             normalized,
@@ -466,7 +512,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.param.type.update(
+          customComponentDefinitionEdits.param.type.update(
             component,
             paramKey,
             paramType,
@@ -489,7 +535,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.param.direction.update(
+          customComponentDefinitionEdits.param.direction.update(
             component,
             paramKey,
             paramDirection,
@@ -512,7 +558,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.param.defaultValue.update(
+          customComponentDefinitionEdits.param.defaultValue.update(
             component,
             paramKey,
             defaultValue,
@@ -530,7 +576,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
     async addStoreCustomComponentFunction(componentId: string): Promise<void> {
       await mutateManualStoreComponent(
         componentId,
-        (component) => !!customComponentDefinitionEdits.function.add(component),
+        (component) => customComponentDefinitionEdits.function.add(component),
         "store.status.addedCustomComponentFunction",
         defaultStoreCustomStatusParams,
       );
@@ -547,7 +593,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.function.remove(
+          customComponentDefinitionEdits.function.remove(
             component,
             functionKey,
           ),
@@ -570,7 +616,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.function.name.update(
+          customComponentDefinitionEdits.function.name.update(
             component,
             functionKey,
             normalized,
@@ -593,7 +639,7 @@ export function createComponentStoreActions(deps: EditorStoreActionContext) {
       await mutateManualStoreComponent(
         componentId,
         (component) =>
-          !!customComponentDefinitionEdits.function.floatMode.update(
+          customComponentDefinitionEdits.function.floatMode.update(
             component,
             functionKey,
             floatMode,

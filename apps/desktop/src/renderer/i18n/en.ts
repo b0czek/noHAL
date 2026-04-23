@@ -631,6 +631,11 @@ export const en = {
     "Updated function {functionName} on custom component {componentName}",
   "store.status.duplicateHalComponentName":
     "HAL component name already exists: {componentName}",
+  "store.status.customComponentNameRequired": "HAL component name is required",
+  "store.status.customComponentMemberNotFound":
+    "That pin, parameter, or function was not found on the custom component",
+  "store.status.customComponentFunctionRequiresRt":
+    "Realtime functions require the component runtime to be set to realtime",
   "store.status.addedSheetThreadOutput": "Added sheet thread output",
   "store.status.updatedSheetThreadOutputName":
     "Updated sheet thread output name",
@@ -639,6 +644,8 @@ export const en = {
   "store.status.removedSheetThreadOutput": "Removed sheet thread output",
   "store.status.updatedSubsheetThreadMapping":
     "Updated subsheet thread mapping",
+  "store.status.subsheetThreadMappingTargetMissing":
+    "The selected subsheet or thread mapping target no longer exists",
   "store.status.addedHalThread": "Added HAL thread",
   "store.status.removedHalThread": "Removed HAL thread {name}",
   "store.status.updatedHalThreadName": "Updated HAL thread name to {name}",
@@ -658,6 +665,21 @@ export const en = {
   "store.status.updatedMesaProcessDataMode": "Updated Mesa process data mode",
   "store.status.updatedMesaRawGpio": "Updated Mesa raw GPIO direction",
   "store.status.updatedMesaSmartSerial": "Updated Mesa smart-serial assignment",
+  "store.status.mesaHostMissing": "Mesa host no longer exists",
+  "store.status.mesaConnectorUnavailable":
+    "Selected Mesa connector is not available on this host",
+  "store.status.mesaRawGpioUnavailable":
+    "Raw GPIO is not enabled on this connector",
+  "store.status.mesaInvalidRawGpioPin":
+    "Selected Mesa raw GPIO pin is not valid for this connector",
+  "store.status.mesaSmartSerialTargetUnavailable":
+    "Selected Mesa smart-serial target is not available",
+  "store.status.mesaSmartSerialTargetFixed":
+    "This Mesa smart-serial target has a fixed card assignment",
+  "store.status.mesaInvalidSmartSerialChannel":
+    "Selected Mesa smart-serial channel is not valid for this port",
+  "store.status.mesaInvalidProcessDataMode":
+    "Selected Mesa process data mode is not valid for this card",
   "store.status.mesaProjectionAlreadyInSync":
     "Mesa system projection is already in sync",
   "store.status.syncedMesaProjection":
@@ -753,6 +775,29 @@ export const en = {
     "Converted label to sheet port ({name})",
   "store.status.cannotConvertLabelToSheetPort":
     "Label must be attached to exactly one component pin to convert it to a port",
+  "store.status.cannotHideConnectedPin":
+    "Cannot hide a pin while it is still connected",
+  "store.status.componentNodeEditTargetMissing":
+    "The selected component node or field no longer exists",
+  "store.status.wireEditTargetMissing":
+    "The selected wire or label anchor no longer exists",
+  "store.status.commentEditTargetMissing":
+    "The selected comment no longer exists",
+  "store.status.instanceNameRequired": "Instance name is required",
+  "store.status.invalidHalInstanceName": "Invalid HAL instance name: {name}",
+  "store.status.invalidHalSignalName": "Invalid HAL signal name",
+  "store.status.invalidHalPortName": "Invalid HAL port name: {name}",
+  "store.status.exportNamespaceFixedForComponent":
+    "Export namespace is fixed for component '{componentName}'",
+  "store.status.instanceNameExhaustedForComponent":
+    "No available export-safe instance names left for component '{componentName}'",
+  "store.status.duplicateInstanceName": "Instance name already exists: {name}",
+  "store.status.exportNamespaceChangeWouldCollide":
+    "Export namespace change would collide at '{instancePath}'",
+  "store.status.instanceNameCollidesInExportedNamespace":
+    "Instance name collides in exported HAL namespace: {name}",
+  "store.status.duplicateSheetPortName":
+    "Sheet port name already exists: {name}",
   "store.status.updatedWireRoute": "Updated wire route",
   "store.status.removedLabelAnchor": "Removed label anchor",
   "store.warning.importError": "Import error {filePath}: {error}",

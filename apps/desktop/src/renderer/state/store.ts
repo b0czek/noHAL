@@ -1,11 +1,13 @@
-import { getSheet } from "@nohal/core/graph";
 import type {
+  Change,
   ComponentStore,
   NoHALProject,
   SheetDefinition,
   SheetEndpointRef,
   XY,
-} from "@nohal/core/types";
+} from "@nohal/core";
+import { getSheet } from "@nohal/core/graph";
+import type { Result } from "neverthrow";
 import { createStore, reconcile, unwrap } from "solid-js/store";
 import type { CameraState } from "../canvas";
 import { clearTextMeasurementCache } from "../canvas/measurements";
@@ -156,18 +158,47 @@ export function createEditorStore(
     syncHistoryAvailability();
   };
 
-  const withProject = <T>(
-    mutate: (project: NoHALProject) => T,
+  const commitProjectMutation = (
+    next: NoHALProject,
     options?: { recordHistory?: boolean; markDirty?: boolean },
-  ): T => {
-    const next = cloneProject(state.project);
-    const result = mutate(next);
+  ): void => {
     syncProjectUi(next, state.activeSheetId);
     if (options?.recordHistory !== false) pushUndoSnapshot();
     setState("project", next);
     const shouldMarkDirty =
       options?.markDirty ?? options?.recordHistory !== false;
     if (shouldMarkDirty) markProjectChanged();
+  };
+
+  const withProject = <T>(
+    mutate: (project: NoHALProject) => T,
+    options?: { recordHistory?: boolean; markDirty?: boolean },
+  ): T => {
+    const next = cloneProject(state.project);
+    const result = mutate(next);
+    commitProjectMutation(next, options);
+    return result;
+  };
+
+  const withProjectChange = <T>(
+    mutate: (project: NoHALProject) => Change<T>,
+    options?: { recordHistory?: boolean; markDirty?: boolean },
+  ): Change<T> => {
+    const next = cloneProject(state.project);
+    const result = mutate(next);
+    if (!result.changed) return result;
+    commitProjectMutation(next, options);
+    return result;
+  };
+
+  const withProjectResult = <T, E>(
+    mutate: (project: NoHALProject) => Result<Change<T>, E>,
+    options?: { recordHistory?: boolean; markDirty?: boolean },
+  ): Result<Change<T>, E> => {
+    const next = cloneProject(state.project);
+    const result = mutate(next);
+    if (result.isErr() || !result.value.changed) return result;
+    commitProjectMutation(next, options);
     return result;
   };
 
@@ -325,6 +356,8 @@ export function createEditorStore(
     clearHistory,
     withComponentStore,
     withProject,
+    withProjectChange,
+    withProjectResult,
     setProjectUiActiveSheetId,
     clearSelectionIfWireConnection,
     clearPendingConnectionUi,

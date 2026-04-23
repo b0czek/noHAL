@@ -118,3 +118,12 @@ export function reconcileComponentNodesForDefinition(
     }
   }
 }
+
+export function applyComponentDefinitionToProject(
+  project: NoHALProject,
+  componentId: string,
+  component: ComponentDefinition,
+): void {
+  project.library.components[componentId] = component;
+  reconcileComponentNodesForDefinition(project, componentId, component);
+}

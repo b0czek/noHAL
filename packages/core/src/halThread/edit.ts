@@ -1,5 +1,13 @@
+import { err, ok } from "neverthrow";
 import { createId } from "../id";
 import { isRequiredHalThreadName } from "../project";
+import type {
+  ChangeResult,
+  DuplicateNameFailure,
+  ForbiddenFailure,
+  InvalidInputFailure,
+  NotFoundFailure,
+} from "../result";
 import type { HalThreadDefinition, NoHALProject } from "../types";
 
 function nextUniqueThreadName(
@@ -29,23 +37,35 @@ export function addHalThread(project: NoHALProject): HalThreadDefinition {
   return thread;
 }
 
-export type RemoveHalThreadResult =
-  | { ok: true; thread: HalThreadDefinition }
-  | { ok: false; reason: "not-found" | "last-thread" }
-  | { ok: false; reason: "required-thread"; thread: HalThreadDefinition };
+export type RemoveHalThreadResult = ChangeResult<
+  HalThreadDefinition,
+  | NotFoundFailure<"hal-thread">
+  | ForbiddenFailure<"hal-thread", "last-thread">
+  | ForbiddenFailure<"hal-thread", "required-thread", { name: string }>
+>;
 
 export function removeHalThread(
   project: NoHALProject,
   threadId: string,
 ): RemoveHalThreadResult {
   const threads = project.halThreads ?? [];
-  if (threads.length <= 1) return { ok: false, reason: "last-thread" };
-  const index = threads.findIndex((thread) => thread.id === threadId);
-  if (index < 0) return { ok: false, reason: "not-found" };
-  const thread = threads[index];
-  if (isRequiredHalThreadName(thread.name)) {
-    return { ok: false, reason: "required-thread", thread };
+  if (threads.length <= 1) {
+    return err({
+      code: "forbidden",
+      cause: "hal-thread",
+      detail: "last-thread",
+    });
   }
+  const index = threads.findIndex((thread) => thread.id === threadId);
+  if (index < 0) return err({ code: "not-found", cause: "hal-thread" });
+  const thread = threads[index];
+  if (isRequiredHalThreadName(thread.name))
+    return err({
+      code: "forbidden",
+      cause: "hal-thread",
+      detail: "required-thread",
+      meta: { name: thread.name },
+    });
   threads.splice(index, 1);
   for (const sheet of Object.values(project.sheets)) {
     const outputs = sheet.hal?.threadOutputs;
@@ -54,16 +74,15 @@ export function removeHalThread(
       if (output.halThreadId === threadId) delete output.halThreadId;
     }
   }
-  return { ok: true, thread };
+  return ok({ data: thread, changed: true });
 }
 
-export type UpdateHalThreadNameResult =
-  | { ok: true; thread: HalThreadDefinition; changed: boolean }
-  | {
-      ok: false;
-      reason: "not-found" | "required-thread" | "duplicate-name";
-      thread?: HalThreadDefinition;
-    };
+export type UpdateHalThreadNameResult = ChangeResult<
+  HalThreadDefinition,
+  | NotFoundFailure<"hal-thread">
+  | ForbiddenFailure<"hal-thread-name", "required-thread", { name: string }>
+  | DuplicateNameFailure<"hal-thread-name", { name: string }>
+>;
 
 export function updateHalThreadName(
   project: NoHALProject,
@@ -74,48 +93,64 @@ export function updateHalThreadName(
   const thread = project.halThreads?.find(
     (candidate) => candidate.id === threadId,
   );
-  if (!thread) return { ok: false, reason: "not-found" };
-  if (isRequiredHalThreadName(thread.name) && trimmed !== thread.name) {
-    return { ok: false, reason: "required-thread", thread };
-  }
-  if (!trimmed || trimmed === thread.name) {
-    return { ok: true, thread, changed: false };
-  }
+  if (!thread) return err({ code: "not-found", cause: "hal-thread" });
+  if (isRequiredHalThreadName(thread.name) && trimmed !== thread.name)
+    return err({
+      code: "forbidden",
+      cause: "hal-thread-name",
+      detail: "required-thread",
+      meta: { name: thread.name },
+    });
+  if (!trimmed || trimmed === thread.name)
+    return ok({ data: thread, changed: false });
   if (
     project.halThreads?.some(
       (candidate) => candidate.id !== threadId && candidate.name === trimmed,
     )
   ) {
-    return { ok: false, reason: "duplicate-name", thread };
+    return err({
+      code: "conflict",
+      cause: "hal-thread-name",
+      detail: "duplicate-name",
+      meta: { name: trimmed },
+    });
   }
   thread.name = trimmed;
-  return { ok: true, thread, changed: true };
+  return ok({ data: thread, changed: true });
 }
-
-export type UpdateHalThreadFloatModeResult =
-  | { ok: true; thread: HalThreadDefinition; changed: boolean }
-  | { ok: false; reason: "not-found" }
-  | {
-      ok: false;
-      reason: "required-thread-forced-fp";
-      thread: HalThreadDefinition;
-    };
 
 export function updateHalThreadPeriodNs(
   project: NoHALProject,
   threadId: string,
   periodNs: number,
-): { thread: HalThreadDefinition; changed: boolean } | null {
-  if (!Number.isFinite(periodNs)) return null;
+): ChangeResult<
+  HalThreadDefinition,
+  | InvalidInputFailure<"hal-thread-period", "invalid-period">
+  | NotFoundFailure<"hal-thread">
+> {
+  if (!Number.isFinite(periodNs)) {
+    return err({
+      code: "invalid-input",
+      cause: "hal-thread-period",
+      detail: "invalid-period",
+    });
+  }
   const normalized = Math.max(1, Math.round(periodNs));
   const thread = project.halThreads?.find(
     (candidate) => candidate.id === threadId,
   );
-  if (!thread) return null;
-  if (thread.periodNs === normalized) return { thread, changed: false };
+  if (!thread) return err({ code: "not-found", cause: "hal-thread" });
+  if (thread.periodNs === normalized)
+    return ok({ data: thread, changed: false });
   thread.periodNs = normalized;
-  return { thread, changed: true };
+  return ok({ data: thread, changed: true });
 }
+
+export type UpdateHalThreadFloatModeResult = ChangeResult<
+  HalThreadDefinition,
+  | NotFoundFailure<"hal-thread">
+  | ForbiddenFailure<"hal-thread-float-mode", "forced-fp", { name: string }>
+>;
 
 export function updateHalThreadFloatMode(
   project: NoHALProject,
@@ -125,14 +160,30 @@ export function updateHalThreadFloatMode(
   const thread = project.halThreads?.find(
     (candidate) => candidate.id === threadId,
   );
-  if (!thread) return { ok: false, reason: "not-found" };
-  if (isRequiredHalThreadName(thread.name) && floatMode === "nofp") {
-    thread.floatMode = "fp";
-    return { ok: false, reason: "required-thread-forced-fp", thread };
-  }
-  if ((thread.floatMode ?? "fp") === floatMode) {
-    return { ok: true, thread, changed: false };
-  }
+  if (!thread) return err({ code: "not-found", cause: "hal-thread" });
+  if (isRequiredHalThreadName(thread.name) && floatMode === "nofp")
+    return err({
+      code: "forbidden",
+      cause: "hal-thread-float-mode",
+      detail: "forced-fp",
+      meta: { name: thread.name },
+    });
+  if ((thread.floatMode ?? "fp") === floatMode)
+    return ok({ data: thread, changed: false });
   thread.floatMode = floatMode;
-  return { ok: true, thread, changed: true };
+  return ok({ data: thread, changed: true });
 }
+
+export const halThreadEdits = {
+  add: addHalThread,
+  remove: removeHalThread,
+  name: {
+    update: updateHalThreadName,
+  },
+  periodNs: {
+    update: updateHalThreadPeriodNs,
+  },
+  floatMode: {
+    update: updateHalThreadFloatMode,
+  },
+};

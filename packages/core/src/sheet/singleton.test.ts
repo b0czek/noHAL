@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { exportProjectToHal } from "../halExport";
 import { createEmptyProject } from "../project";
+import { expectErr } from "../testUtils/result";
 import type { ComponentDefinition, SheetDefinition } from "../types";
 import { sheetModelEdits } from "./sheetEdit";
 import {
@@ -246,9 +247,14 @@ describe("sheet singletonity", () => {
     expect(
       isSingletonReferenceBlocked(project, rootSheet.id, parentSheet.id),
     ).toBe(true);
-    expect(
+    const failure = expectErr(
       sheetModelEdits.reference.add(project, rootSheet.id, parentSheet.id),
-    ).toBeNull();
+    );
+    expect(failure).toEqual({
+      code: "forbidden",
+      cause: "sheet-reference",
+      detail: "already-placed",
+    });
   });
 
   it("allows singleton-forcing components in a single-instanced sheet", () => {
@@ -282,8 +288,13 @@ describe("sheet singletonity", () => {
     expect(warnings.some((warning) => warning.includes("Export aborted"))).toBe(
       false,
     );
-    expect(
+    const failure = expectErr(
       sheetModelEdits.reference.add(project, rootSheet.id, childSheet.id),
-    ).toBeNull();
+    );
+    expect(failure).toEqual({
+      code: "forbidden",
+      cause: "sheet-reference",
+      detail: "already-placed",
+    });
   });
 });

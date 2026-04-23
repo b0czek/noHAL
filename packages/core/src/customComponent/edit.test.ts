@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createId } from "../id";
 import { createEmptyProject } from "../project";
+import { expectErr, expectOk } from "../testUtils/result";
 import type { ComponentDefinition, ComponentNode } from "../types";
 import { customComponentDefinitionEdits, customComponentEdits } from "./edit";
 
@@ -40,7 +41,8 @@ describe("custom component edits", () => {
       "pin",
     );
 
-    expect(removed?.pinName).toBe("pin");
+    const removedChange = expectOk(removed);
+    expect(removedChange.data.pinName).toBe("pin");
     expect(project.library.components[componentId]?.pins).toEqual([]);
     const updatedNode = root.nodes.find(
       (candidate) =>
@@ -53,8 +55,9 @@ describe("custom component edits", () => {
     }
 
     const added = customComponentEdits.pin.add(project, componentId);
-    expect(added?.pin.name).toBe("pin");
-    expect(added?.pin.key).toBe("pin");
+    const addedChange = expectOk(added);
+    expect(addedChange.data.pin.name).toBe("pin");
+    expect(addedChange.data.pin.key).toBe("pin");
   });
 
   it("edits standalone component definitions for import flows", () => {
@@ -69,21 +72,33 @@ describe("custom component edits", () => {
       params: [{ key: "param", name: "param", direction: "rw", type: "float" }],
     };
 
-    customComponentDefinitionEdits.halComponentName.update(
+    const renamed = customComponentDefinitionEdits.halComponentName.update(
       component,
       " imported_comp ",
     );
-    customComponentDefinitionEdits.runtimeKind.update(component, "rt");
-    customComponentDefinitionEdits.maxInstances.update(
+    const runtimeUpdated = customComponentDefinitionEdits.runtimeKind.update(
       component,
-      UPDATED_MAX_INSTANCES,
+      "rt",
     );
-    customComponentDefinitionEdits.loadCommand.update(
-      component,
-      "loadrt imported_comp count=%{count}",
-    );
+    const maxInstancesUpdated =
+      customComponentDefinitionEdits.maxInstances.update(
+        component,
+        UPDATED_MAX_INSTANCES,
+      );
+    const loadCommandUpdated =
+      customComponentDefinitionEdits.loadCommand.update(
+        component,
+        "loadrt imported_comp count=%{count}",
+      );
     const addedPin = customComponentDefinitionEdits.pin.add(component);
     const addedParam = customComponentDefinitionEdits.param.add(component);
+
+    expectOk(renamed);
+    expectOk(runtimeUpdated);
+    expectOk(maxInstancesUpdated);
+    expectOk(loadCommandUpdated);
+    const addedPinChange = expectOk(addedPin);
+    const addedParamChange = expectOk(addedParam);
 
     expect(component.halComponentName).toBe("imported_comp");
     expect(component.name).toBe("imported_comp");
@@ -95,10 +110,10 @@ describe("custom component edits", () => {
       },
     });
     expect(component.loadCommand).toBe("loadrt imported_comp count=%{count}");
-    expect(addedPin.name).toBe("pin_2");
-    expect(addedPin.key).toBe("pin_2");
-    expect(addedParam.name).toBe("param_2");
-    expect(addedParam.key).toBe("param_2");
+    expect(addedPinChange.data.name).toBe("pin_2");
+    expect(addedPinChange.data.key).toBe("pin_2");
+    expect(addedParamChange.data.name).toBe("param_2");
+    expect(addedParamChange.data.key).toBe("param_2");
   });
 
   it("edits realtime functions on custom components", () => {
@@ -116,17 +131,19 @@ describe("custom component edits", () => {
     };
 
     const added = customComponentEdits.function.add(project, componentId);
-    expect(added?.fn.declaredName).toBe("function");
-    expect(added?.fn.halSuffix).toBe("function");
-    expect(added?.fn.floatMode).toBe("fp");
+    const addedChange = expectOk(added);
+    expect(addedChange.data.fn.declaredName).toBe("function");
+    expect(addedChange.data.fn.halSuffix).toBe("function");
+    expect(addedChange.data.fn.floatMode).toBe("fp");
 
     const updatedName = customComponentEdits.function.name.update(
       project,
       componentId,
-      added?.fn.key ?? "",
+      addedChange.data.fn.key,
       "servo",
     );
-    expect(updatedName?.functionName).toBe("servo");
+    const updatedNameChange = expectOk(updatedName);
+    expect(updatedNameChange.data.functionName).toBe("servo");
     expect(project.library.components[componentId]?.functions).toMatchObject([
       {
         declaredName: "servo",
@@ -141,7 +158,8 @@ describe("custom component edits", () => {
       project.library.components[componentId]?.functions?.[0]?.key ?? "",
       "nofp",
     );
-    expect(updatedFloatMode?.functionName).toBe("servo");
+    const updatedFloatModeChange = expectOk(updatedFloatMode);
+    expect(updatedFloatModeChange.data.functionName).toBe("servo");
     expect(
       project.library.components[componentId]?.functions?.[0]?.floatMode,
     ).toBe("nofp");
@@ -151,11 +169,13 @@ describe("custom component edits", () => {
       componentId,
       project.library.components[componentId]?.functions?.[0]?.key ?? "",
     );
-    expect(removed?.functionName).toBe("servo");
+    const removedChange = expectOk(removed);
+    expect(removedChange.data.functionName).toBe("servo");
     expect(project.library.components[componentId]?.functions).toBeUndefined();
   });
 
   it("does not add custom realtime functions unless the runtime is rt", () => {
+    const project = createEmptyProject("Custom Component Invalid Runtime");
     const component: ComponentDefinition = {
       id: "manual:test",
       name: "test",
@@ -165,8 +185,23 @@ describe("custom component edits", () => {
       pins: [],
       params: [],
     };
+    project.library.components[component.id] = component;
 
-    expect(customComponentDefinitionEdits.function.add(component)).toBeNull();
+    const result = customComponentEdits.function.add(project, component.id);
+    const definitionResult =
+      customComponentDefinitionEdits.function.add(component);
+    const definitionFailure = expectErr(definitionResult);
+    expect(definitionFailure).toEqual({
+      code: "unsupported",
+      cause: "function",
+      detail: "invalid-runtime",
+    });
+    const projectFailure = expectErr(result);
+    expect(projectFailure).toEqual({
+      code: "unsupported",
+      cause: "function",
+      detail: "invalid-runtime",
+    });
     expect(component.functions).toBeUndefined();
   });
 });

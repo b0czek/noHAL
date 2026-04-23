@@ -1,22 +1,23 @@
+import { err, ok } from "neverthrow";
+import { isValidHalName } from "../halNames";
 import { createId } from "../id";
-import type { SheetDefinition, SheetEndpointRef, XY } from "../types";
+import type {
+  ChangeResult,
+  InvalidInputFailure,
+  NotFoundFailure,
+} from "../result";
+import type {
+  DirectConnection,
+  LabelAnchor,
+  SheetDefinition,
+  SheetEndpointRef,
+  XY,
+} from "../types";
 import { defaultSplitConnectionLabelPositionsForIndex } from "./layout";
 
 export interface SplitConnectionLabelPositions {
   firstLabelPosition: XY;
   secondLabelPosition: XY;
-}
-
-export interface AddDirectConnectionInput {
-  a: SheetEndpointRef;
-  b: SheetEndpointRef;
-  signalName?: string;
-  waypoints?: XY[];
-}
-
-export interface SplitDirectConnectionIntoLabelsResult {
-  labelName: string;
-  labelIds: [string, string];
 }
 
 function cloneEndpoint(endpoint: SheetEndpointRef): SheetEndpointRef {
@@ -62,111 +63,214 @@ function fallbackLabelPositions(
   return defaultSplitConnectionLabelPositionsForIndex(sheet.labels.length);
 }
 
+function clonePoint(point: XY): XY {
+  return { x: point.x, y: point.y };
+}
+
+function cloneWaypoints(waypoints: XY[]): XY[] {
+  return waypoints.map(clonePoint);
+}
+
+function waypointsEqual(
+  a: readonly XY[] | undefined,
+  b: readonly XY[],
+): boolean {
+  if ((a?.length ?? 0) !== b.length) return false;
+  return b.every((point, index) => {
+    const current = a?.[index];
+    return current?.x === point.x && current.y === point.y;
+  });
+}
+
+function createLabelAnchor(
+  labelId: string,
+  endpoint: SheetEndpointRef,
+): LabelAnchor {
+  return {
+    id: createId("anchor"),
+    labelId,
+    endpoint: cloneEndpoint(endpoint),
+  };
+}
+
+export interface AddDirectConnectionInput {
+  a: SheetEndpointRef;
+  b: SheetEndpointRef;
+  signalName?: string;
+  waypoints?: XY[];
+}
+
+export type DirectConnectionSignalNameFailure = InvalidInputFailure<
+  "direct-connection-signal-name",
+  "invalid-name",
+  { name: string }
+>;
+
+export type AddDirectConnectionResult = ChangeResult<
+  DirectConnection,
+  DirectConnectionSignalNameFailure
+>;
+
 function addDirectConnection(
   sheet: SheetDefinition,
   input: AddDirectConnectionInput,
-): SheetDefinition["directConnections"][number] {
+): AddDirectConnectionResult {
+  const signalName = input.signalName?.trim();
+  if (signalName && !isValidHalName(signalName)) {
+    return err({
+      code: "invalid-input",
+      cause: "direct-connection-signal-name",
+      detail: "invalid-name",
+      meta: { name: signalName },
+    });
+  }
+
   const connection = {
     id: createId("conn"),
     a: cloneEndpoint(input.a),
     b: cloneEndpoint(input.b),
-    ...(input.signalName?.trim()
-      ? { signalName: input.signalName.trim() }
-      : {}),
+    ...(signalName ? { signalName } : {}),
     ...(input.waypoints && input.waypoints.length > 0
-      ? {
-          waypoints: input.waypoints.map((point) => ({
-            x: point.x,
-            y: point.y,
-          })),
-        }
+      ? { waypoints: cloneWaypoints(input.waypoints) }
       : {}),
   };
   sheet.directConnections.push(connection);
-  return connection;
+  return ok({ data: connection, changed: true });
 }
+
+export type RemoveDirectConnectionResult = ChangeResult<
+  DirectConnection,
+  NotFoundFailure<"direct-connection">
+>;
 
 function removeDirectConnection(
   sheet: SheetDefinition,
   connectionId: string,
-): boolean {
-  const next = sheet.directConnections.filter(
-    (item) => item.id !== connectionId,
+): RemoveDirectConnectionResult {
+  const index = sheet.directConnections.findIndex(
+    (item) => item.id === connectionId,
   );
-  if (next.length === sheet.directConnections.length) return false;
-  sheet.directConnections = next;
-  return true;
+  if (index < 0) return err({ code: "not-found", cause: "direct-connection" });
+  const [removed] = sheet.directConnections.splice(index, 1);
+  return ok({ data: removed, changed: true });
 }
+
+export type UpdateDirectConnectionWaypointsResult = ChangeResult<
+  DirectConnection,
+  NotFoundFailure<"direct-connection">
+>;
 
 function updateDirectConnectionWaypoints(
   sheet: SheetDefinition,
   connectionId: string,
   waypoints: XY[],
-): boolean {
+): UpdateDirectConnectionWaypointsResult {
   const connection = sheet.directConnections.find(
     (item) => item.id === connectionId,
   );
-  if (!connection) return false;
-  if (waypoints.length === 0) delete connection.waypoints;
-  else {
-    connection.waypoints = waypoints.map((point) => ({
-      x: point.x,
-      y: point.y,
-    }));
+  if (!connection) {
+    return err({ code: "not-found", cause: "direct-connection" });
   }
-  return true;
+  if (waypointsEqual(connection.waypoints, waypoints)) {
+    return ok({ data: connection, changed: false });
+  }
+  if (waypoints.length === 0) delete connection.waypoints;
+  else connection.waypoints = cloneWaypoints(waypoints);
+  return ok({ data: connection, changed: true });
 }
+
+export type UpdateDirectConnectionSignalNameResult = ChangeResult<
+  DirectConnection,
+  NotFoundFailure<"direct-connection"> | DirectConnectionSignalNameFailure
+>;
 
 function updateDirectConnectionSignalName(
   sheet: SheetDefinition,
   connectionId: string,
   signalName: string,
-): boolean {
+): UpdateDirectConnectionSignalNameResult {
   const connection = sheet.directConnections.find(
     (item) => item.id === connectionId,
   );
-  if (!connection) return false;
+  if (!connection) {
+    return err({ code: "not-found", cause: "direct-connection" });
+  }
   const normalized = signalName.trim();
-  if ((connection.signalName ?? "") === normalized) return false;
+  if (normalized.length > 0 && !isValidHalName(normalized)) {
+    return err({
+      code: "invalid-input",
+      cause: "direct-connection-signal-name",
+      detail: "invalid-name",
+      meta: { name: normalized },
+    });
+  }
+  if ((connection.signalName ?? "") === normalized) {
+    return ok({ data: connection, changed: false });
+  }
   if (normalized.length > 0) connection.signalName = normalized;
   else delete connection.signalName;
-  return true;
+  return ok({ data: connection, changed: true });
 }
+
+export type AddLabelAnchorResult = ChangeResult<
+  LabelAnchor,
+  NotFoundFailure<"label">
+>;
 
 function addLabelAnchor(
   sheet: SheetDefinition,
   labelId: string,
   endpoint: SheetEndpointRef,
-): boolean {
-  const exists = sheet.labelAnchors.some(
+): AddLabelAnchorResult {
+  if (!sheet.labels.some((label) => label.id === labelId)) {
+    return err({ code: "not-found", cause: "label" });
+  }
+  const existing = sheet.labelAnchors.find(
     (anchor) =>
       anchor.labelId === labelId && endpointEquals(anchor.endpoint, endpoint),
   );
-  if (exists) return false;
-  sheet.labelAnchors.push({
-    id: createId("anchor"),
-    labelId,
-    endpoint: cloneEndpoint(endpoint),
-  });
-  return true;
+  if (existing) return ok({ data: existing, changed: false });
+  const anchor = createLabelAnchor(labelId, endpoint);
+  sheet.labelAnchors.push(anchor);
+  return ok({ data: anchor, changed: true });
 }
 
-function removeLabelAnchor(sheet: SheetDefinition, anchorId: string): boolean {
-  const next = sheet.labelAnchors.filter((item) => item.id !== anchorId);
-  if (next.length === sheet.labelAnchors.length) return false;
-  sheet.labelAnchors = next;
-  return true;
+export type RemoveLabelAnchorResult = ChangeResult<
+  LabelAnchor,
+  NotFoundFailure<"label-anchor">
+>;
+
+function removeLabelAnchor(
+  sheet: SheetDefinition,
+  anchorId: string,
+): RemoveLabelAnchorResult {
+  const index = sheet.labelAnchors.findIndex((item) => item.id === anchorId);
+  if (index < 0) return err({ code: "not-found", cause: "label-anchor" });
+  const [removed] = sheet.labelAnchors.splice(index, 1);
+  return ok({ data: removed, changed: true });
 }
+
+export interface SplitDirectConnectionIntoLabelsResult {
+  labelName: string;
+  labelIds: [string, string];
+}
+
+export type SplitDirectConnectionIntoLabelsEditResult = ChangeResult<
+  SplitDirectConnectionIntoLabelsResult,
+  NotFoundFailure<"direct-connection">
+>;
 
 function splitDirectConnectionIntoLabels(
   sheet: SheetDefinition,
   connectionId: string,
   labelPositions?: SplitConnectionLabelPositions,
-): SplitDirectConnectionIntoLabelsResult | null {
+): SplitDirectConnectionIntoLabelsEditResult {
   const connection = sheet.directConnections.find(
     (item) => item.id === connectionId,
   );
-  if (!connection) return null;
+  if (!connection) {
+    return err({ code: "not-found", cause: "direct-connection" });
+  }
 
   const labelName = chooseLabelName(sheet, connection.signalName);
   const positions = labelPositions ?? fallbackLabelPositions(sheet);
@@ -196,14 +300,19 @@ function splitDirectConnectionIntoLabels(
     },
   );
 
-  addLabelAnchor(sheet, firstLabelId, connection.a);
-  addLabelAnchor(sheet, secondLabelId, connection.b);
+  sheet.labelAnchors.push(
+    createLabelAnchor(firstLabelId, connection.a),
+    createLabelAnchor(secondLabelId, connection.b),
+  );
   removeDirectConnection(sheet, connectionId);
 
-  return {
-    labelName,
-    labelIds: [firstLabelId, secondLabelId],
-  };
+  return ok({
+    data: {
+      labelName,
+      labelIds: [firstLabelId, secondLabelId],
+    },
+    changed: true,
+  });
 }
 
 export const sheetEdits = {

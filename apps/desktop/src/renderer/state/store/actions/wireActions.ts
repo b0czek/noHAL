@@ -1,11 +1,44 @@
+import type { FailureMatcher } from "@nohal/core";
 import { getSheet, resolveEndpointInSheet } from "@nohal/core/graph";
-import { isValidHalName } from "@nohal/core/halNames";
 import { sheetEdits } from "@nohal/core/sheet";
 import type { SheetEndpointRef, XY } from "@nohal/core/types";
 import { validateDirectConnection } from "@nohal/core/validation";
+import {
+  type ActionStatusUpdate,
+  createFailureReporter,
+  type ExtractActionFailuresDeep,
+} from "./actionFailureTypes";
 import type { EditorStoreActionContext } from "./types";
 
 export function createWireActions(deps: EditorStoreActionContext) {
+  type WireActionFailure = ExtractActionFailuresDeep<typeof sheetEdits>;
+
+  const wireActionFailureMatcher: FailureMatcher<
+    WireActionFailure,
+    ActionStatusUpdate
+  > = {
+    "not-found": {
+      "direct-connection": {
+        _: "store.status.wireEditTargetMissing",
+      },
+      "label-anchor": {
+        _: "store.status.wireEditTargetMissing",
+      },
+      label: {
+        _: "store.status.wireEditTargetMissing",
+      },
+    },
+    "invalid-input": {
+      "direct-connection-signal-name": {
+        "invalid-name": "store.status.invalidHalSignalName",
+      },
+    },
+  };
+  const reportWireActionFailure = createFailureReporter(
+    deps,
+    wireActionFailureMatcher,
+  );
+
   const selectPendingEndpoint = (endpoint: SheetEndpointRef): void => {
     deps.setState("pendingEndpoint", endpoint);
     deps.setState("pendingWirePoints", []);
@@ -58,41 +91,49 @@ export function createWireActions(deps: EditorStoreActionContext) {
       }
 
       const pendingWirePoints = deps.state.pendingWirePoints;
-      deps.withProject((nextProject) => {
-        const sheet = getSheet(nextProject, activeSheetId);
-        sheetEdits.connection.add(sheet, {
-          a: pending,
-          b: endpoint,
-          ...(pendingWirePoints.length > 0
-            ? { waypoints: [...pendingWirePoints] }
-            : {}),
-        });
-      });
-      clearPendingEndpoint();
-      deps.setStatusT("store.status.connectedEndpoints");
+      deps
+        .withProjectResult((nextProject) => {
+          const sheet = getSheet(nextProject, activeSheetId);
+          return sheetEdits.connection.add(sheet, {
+            a: pending,
+            b: endpoint,
+            ...(pendingWirePoints.length > 0
+              ? { waypoints: [...pendingWirePoints] }
+              : {}),
+          });
+        })
+        .match(() => {
+          clearPendingEndpoint();
+          deps.setStatusT("store.status.connectedEndpoints");
+        }, reportWireActionFailure);
     },
 
     anchorPendingToLabel(labelId: string): void {
       const pending = deps.state.pendingEndpoint;
       if (!pending) return;
       const activeSheetId = deps.state.activeSheetId;
-      deps.withProject((project) => {
-        const sheet = getSheet(project, activeSheetId);
-        sheetEdits.labelAnchor.add(sheet, labelId, pending);
-      });
-      clearPendingEndpoint();
-      deps.setStatusT("store.status.attachedEndpointToLabel");
+      deps
+        .withProjectResult((project) => {
+          const sheet = getSheet(project, activeSheetId);
+          return sheetEdits.labelAnchor.add(sheet, labelId, pending);
+        })
+        .match(() => {
+          clearPendingEndpoint();
+          deps.setStatusT("store.status.attachedEndpointToLabel");
+        }, reportWireActionFailure);
     },
 
     removeDirectConnection(connectionId: string): void {
       const activeSheetId = deps.state.activeSheetId;
-      const removed = deps.withProject((project) => {
-        const sheet = getSheet(project, activeSheetId);
-        return sheetEdits.connection.remove(sheet, connectionId);
-      });
-      if (!removed) return;
-      deps.clearSelectionIfWireConnection(connectionId);
-      deps.setStatusT("store.status.removedConnection");
+      deps
+        .withProjectResult((project) => {
+          const sheet = getSheet(project, activeSheetId);
+          return sheetEdits.connection.remove(sheet, connectionId);
+        })
+        .match(() => {
+          deps.clearSelectionIfWireConnection(connectionId);
+          deps.setStatusT("store.status.removedConnection");
+        }, reportWireActionFailure);
     },
 
     splitDirectConnectionIntoLabels(
@@ -103,27 +144,21 @@ export function createWireActions(deps: EditorStoreActionContext) {
       },
     ): void {
       const activeSheetId = deps.state.activeSheetId;
-      const sheet = getSheet(deps.state.project, activeSheetId);
-      if (
-        !sheet.directConnections.some(
-          (connection) => connection.id === connectionId,
-        )
-      ) {
-        return;
-      }
 
-      const result = deps.withProject((project) =>
-        sheetEdits.connection.splitIntoLabels(
-          getSheet(project, activeSheetId),
-          connectionId,
-          labelPositions,
-        ),
-      );
-      if (!result) return;
-      deps.clearSelectionIfWireConnection(connectionId);
-      deps.setStatusT("store.status.splitConnectionIntoLabels", {
-        name: result.labelName,
-      });
+      deps
+        .withProjectResult((project) =>
+          sheetEdits.connection.splitIntoLabels(
+            getSheet(project, activeSheetId),
+            connectionId,
+            labelPositions,
+          ),
+        )
+        .match(({ data }) => {
+          deps.clearSelectionIfWireConnection(connectionId);
+          deps.setStatusT("store.status.splitConnectionIntoLabels", {
+            name: data.labelName,
+          });
+        }, reportWireActionFailure);
     },
 
     updateDirectConnectionWaypoints(
@@ -131,16 +166,19 @@ export function createWireActions(deps: EditorStoreActionContext) {
       waypoints: XY[],
     ): void {
       const activeSheetId = deps.state.activeSheetId;
-      const updated = deps.withProject((project) => {
-        const sheet = getSheet(project, activeSheetId);
-        return sheetEdits.connection.waypoints.update(
-          sheet,
-          connectionId,
-          waypoints,
-        );
-      });
-      if (!updated) return;
-      deps.setStatusT("store.status.updatedWireRoute");
+      deps
+        .withProjectResult((project) => {
+          const sheet = getSheet(project, activeSheetId);
+          return sheetEdits.connection.waypoints.update(
+            sheet,
+            connectionId,
+            waypoints,
+          );
+        })
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedWireRoute");
+        }, reportWireActionFailure);
     },
 
     updateDirectConnectionSignalName(
@@ -148,35 +186,34 @@ export function createWireActions(deps: EditorStoreActionContext) {
       signalName: string,
     ): void {
       const activeSheetId = deps.state.activeSheetId;
-      const normalized = signalName.trim();
-      if (normalized.length > 0 && !isValidHalName(normalized)) {
-        deps.setState("status", `Invalid HAL signal name: ${normalized}`);
-        return;
-      }
-      deps.withProject((project) => {
-        const sheet = getSheet(project, activeSheetId);
-        sheetEdits.connection.signalName.update(
-          sheet,
-          connectionId,
-          normalized,
-        );
-      });
+      deps
+        .withProjectResult((project) => {
+          const sheet = getSheet(project, activeSheetId);
+          return sheetEdits.connection.signalName.update(
+            sheet,
+            connectionId,
+            signalName,
+          );
+        })
+        .orTee(reportWireActionFailure);
     },
 
     removeLabelAnchor(anchorId: string): void {
       const activeSheetId = deps.state.activeSheetId;
-      const removed = deps.withProject((project) => {
-        const sheet = getSheet(project, activeSheetId);
-        return sheetEdits.labelAnchor.remove(sheet, anchorId);
-      });
-      if (!removed) return;
-      if (
-        deps.state.selection?.kind === "label-anchor" &&
-        deps.state.selection.id === anchorId
-      ) {
-        deps.setState("selection", null);
-      }
-      deps.setStatusT("store.status.removedLabelAnchor");
+      deps
+        .withProjectResult((project) => {
+          const sheet = getSheet(project, activeSheetId);
+          return sheetEdits.labelAnchor.remove(sheet, anchorId);
+        })
+        .match(() => {
+          if (
+            deps.state.selection?.kind === "label-anchor" &&
+            deps.state.selection.id === anchorId
+          ) {
+            deps.setState("selection", null);
+          }
+          deps.setStatusT("store.status.removedLabelAnchor");
+        }, reportWireActionFailure);
     },
   };
 }

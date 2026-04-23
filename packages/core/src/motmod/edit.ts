@@ -1,3 +1,5 @@
+import { err, ok } from "neverthrow";
+import type { ChangeResult, InvalidInputFailure } from "../result";
 import type { NoHALProject, ProjectMotmodConfig } from "../types";
 import { DEFAULT_MOTMOD_CONFIG } from "./config";
 import {
@@ -16,27 +18,40 @@ export function updateMotmodNumericConfig(
   project: NoHALProject,
   key: keyof ProjectMotmodConfig,
   value: number,
-): boolean {
-  if (!Number.isFinite(value)) return false;
+): ChangeResult<number, InvalidInputFailure<"motmod-config", "invalid-value">> {
+  if (!Number.isFinite(value)) {
+    return err({
+      code: "invalid-input",
+      cause: "motmod-config",
+      detail: "invalid-value",
+    });
+  }
   const rounded = Math.round(value);
   const normalized =
     key === "numJoints" || key === "numSpindles"
       ? Math.max(1, rounded)
       : Math.max(0, rounded);
   const motmod = ensureProjectMotmod(project);
-  if (motmod[key] === normalized) return false;
+  if (motmod[key] === normalized)
+    return ok({ data: normalized, changed: false });
   motmod[key] = normalized;
-  return true;
+  return ok({ data: normalized, changed: true });
 }
 
-export function syncMotmodManagedProjection(project: NoHALProject): {
-  changed: boolean;
-  plan: MotmodReconcilePlan;
-} {
+export function syncMotmodManagedProjection(
+  project: NoHALProject,
+): ChangeResult<MotmodReconcilePlan> {
   const plan = planMotmodReconcile(project);
-  if (plan.inSync) {
-    return { changed: false, plan };
-  }
+  if (plan.inSync) return ok({ data: plan, changed: false });
   reconcileMotmodManagedNodes(project);
-  return { changed: true, plan };
+  return ok({ data: plan, changed: true });
 }
+
+export const motmodEdits = {
+  config: {
+    update: updateMotmodNumericConfig,
+  },
+  projection: {
+    sync: syncMotmodManagedProjection,
+  },
+};

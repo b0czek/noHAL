@@ -17,6 +17,7 @@ import {
   ensureInstanceName,
   nextComponentInstanceName,
   nextName,
+  sheetContainsSheet,
   syncProjectUi,
 } from "../state/store/helpers";
 import {
@@ -177,6 +178,7 @@ function pasteNodes(args: {
     }
 
     if (isProtectedSystemSheet(next, node.sheetId)) continue;
+    if (sheetContainsSheet(next, node.sheetId, sheet.id)) continue;
     if (isSingletonReferenceBlocked(next, sheet.id, node.sheetId)) {
       continue;
     }

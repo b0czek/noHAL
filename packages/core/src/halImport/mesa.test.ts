@@ -9,24 +9,27 @@ import {
 import { MESA_RAW_GPIO_CARD_KIND } from "../mesa/types";
 import { createEmptyProject } from "../project";
 import { findSystemSheet } from "../sheet";
+import { expectOk } from "../testUtils/result";
 import { buildProjectFromHalImport } from "./build";
 import { detectMesaHalImport } from "./mesa";
 import { parseHalImportDraft } from "./parse";
 
 function buildMesaConfig() {
   const project = createEmptyProject("Mesa Import");
-  const hostId = addMesaHost(project, "7i92t");
-  updateMesaHostIp(project, hostId, "192.168.1.121");
-  setMesaConnectorCard(project, hostId, "p1", "7i77");
+  const hostId = expectOk(addMesaHost(project, "7i92t")).data;
+  expectOk(updateMesaHostIp(project, hostId, "192.168.1.121"));
+  expectOk(setMesaConnectorCard(project, hostId, "p1", "7i77"));
   return project.mesa ?? { hosts: [] };
 }
 
 function buildRawGpioMesaConfig() {
   const project = createEmptyProject("Mesa Raw GPIO Import");
-  const hostId = addMesaHost(project, "7i92t");
-  updateMesaHostIp(project, hostId, "192.168.1.121");
-  setMesaConnectorCard(project, hostId, "p2", MESA_RAW_GPIO_CARD_KIND);
-  setMesaRawGpioPinDirection(project, hostId, "p2", 1, "output");
+  const hostId = expectOk(addMesaHost(project, "7i92t")).data;
+  expectOk(updateMesaHostIp(project, hostId, "192.168.1.121"));
+  expectOk(
+    setMesaConnectorCard(project, hostId, "p2", MESA_RAW_GPIO_CARD_KIND),
+  );
+  expectOk(setMesaRawGpioPinDirection(project, hostId, "p2", 1, "output"));
   return project.mesa ?? { hosts: [] };
 }
 

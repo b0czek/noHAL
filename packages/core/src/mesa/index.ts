@@ -2,6 +2,7 @@ export * from "../componentStore/catalog/system/mesa";
 export * from "./catalog";
 export * from "./derive";
 export * from "./edit";
+export type * from "./editTypes";
 export * from "./export";
 export * from "./hostValidation";
 export * from "./reconcile";

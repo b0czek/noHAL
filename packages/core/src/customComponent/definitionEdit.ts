@@ -1,9 +1,22 @@
+import { err, ok } from "neverthrow";
+import type { ChangeResult, EmptyNameFailure } from "../result";
 import type {
   ComponentDefinition,
   ComponentFunctionDefinition,
   ComponentParamDefinition,
   ComponentPinDefinition,
+  HalValueType,
+  PinDirection,
 } from "../types";
+import {
+  type FunctionFailure,
+  type InvalidRuntimeFailure,
+  type ParamFailure,
+  type PinFailure,
+  requireFunction,
+  requireParam,
+  requirePin,
+} from "./editShared";
 import {
   createCustomComponentFunction,
   createCustomComponentParam,
@@ -22,50 +35,64 @@ function normalizeMaxInstances(
 function updateHalComponentName(
   component: ComponentDefinition,
   halComponentName: string,
-): boolean {
+): ChangeResult<ComponentDefinition, EmptyNameFailure<"hal-component-name">> {
   const normalized = halComponentName.trim();
-  if (!normalized || component.halComponentName === normalized) return false;
+  if (!normalized) {
+    return err({
+      code: "invalid-input",
+      cause: "hal-component-name",
+      detail: "empty-name",
+    });
+  }
+  if (component.halComponentName === normalized) {
+    return ok({ data: component, changed: false });
+  }
   component.halComponentName = normalized;
   component.name = normalized;
-  return true;
+  return ok({ data: component, changed: true });
 }
 
 function updateRuntimeKind(
   component: ComponentDefinition,
   runtimeKind: "rt" | "userspace" | "unknown",
-): boolean {
-  if ((component.runtime?.kind ?? "unknown") === runtimeKind) return false;
+): ChangeResult<ComponentDefinition> {
+  if ((component.runtime?.kind ?? "unknown") === runtimeKind) {
+    return ok({ data: component, changed: false });
+  }
   component.runtime = {
     ...(component.runtime ?? { kind: runtimeKind }),
     kind: runtimeKind,
   };
-  return true;
+  return ok({ data: component, changed: true });
 }
 
 function updateLoadCommand(
   component: ComponentDefinition,
   loadCommand: string,
-): boolean {
+): ChangeResult<ComponentDefinition> {
   const normalized = loadCommand.trim();
-  if ((component.loadCommand ?? "").trim() === normalized) return false;
+  if ((component.loadCommand ?? "").trim() === normalized) {
+    return ok({ data: component, changed: false });
+  }
   if (normalized) component.loadCommand = normalized;
   else delete component.loadCommand;
-  return true;
+  return ok({ data: component, changed: true });
 }
 
 function updateMaxInstances(
   component: ComponentDefinition,
   maxInstances: number | undefined,
-): boolean {
+): ChangeResult<ComponentDefinition> {
   const normalized = normalizeMaxInstances(maxInstances);
   const existing = component.runtime?.instanceNaming?.maxInstances;
 
-  if (existing === normalized) return false;
+  if (existing === normalized) {
+    return ok({ data: component, changed: false });
+  }
 
   component.runtime ??= { kind: "unknown" };
 
   if (normalized !== undefined) {
-    // Keep any existing naming mode and only apply the placement limit.
     component.runtime.instanceNaming = {
       ...(component.runtime.instanceNaming ?? { strategy: "free" }),
       maxInstances: normalized,
@@ -73,110 +100,153 @@ function updateMaxInstances(
   } else if (component.runtime.instanceNaming) {
     delete component.runtime.instanceNaming.maxInstances;
 
-    // Drop the helper object once it no longer carries any custom state.
     if (component.runtime.instanceNaming.strategy === "free") {
       delete component.runtime.instanceNaming;
     }
   }
 
-  return true;
+  return ok({ data: component, changed: true });
 }
 
-function addPin(component: ComponentDefinition): ComponentPinDefinition {
+function addPin(
+  component: ComponentDefinition,
+): ChangeResult<ComponentPinDefinition> {
   const pin = createCustomComponentPin(component);
   component.pins.push(pin);
-  return pin;
+  return ok({ data: pin, changed: true });
 }
 
 function removePin(
   component: ComponentDefinition,
   pinKey: string,
-): ComponentPinDefinition | null {
-  const pin = component.pins.find((candidate) => candidate.key === pinKey);
-  if (!pin) return null;
+): ChangeResult<ComponentPinDefinition, PinFailure> {
+  const pinResult = requirePin(component, pinKey);
+  if (pinResult.isErr()) return err(pinResult.error);
+  const pin = pinResult.value;
   component.pins = component.pins.filter(
     (candidate) => candidate.key !== pinKey,
   );
-  return pin;
+  return ok({ data: pin, changed: true });
 }
 
 function updatePinName(
   component: ComponentDefinition,
   pinKey: string,
   pinName: string,
-): ComponentPinDefinition | null {
-  const pin = component.pins.find((candidate) => candidate.key === pinKey);
+): ChangeResult<
+  ComponentPinDefinition,
+  PinFailure | EmptyNameFailure<"pin-name">
+> {
+  const pinResult = requirePin(component, pinKey);
+  if (pinResult.isErr()) return err(pinResult.error);
+  const pin = pinResult.value;
   const normalized = pinName.trim();
-  if (!pin || !normalized) return null;
+  if (!normalized) {
+    return err({
+      code: "invalid-input",
+      cause: "pin-name",
+      detail: "empty-name",
+    });
+  }
+  if (pin.name === normalized) {
+    return ok({ data: pin, changed: false });
+  }
   pin.name = normalized;
-  return pin;
+  return ok({ data: pin, changed: true });
 }
 
 function updatePinType(
   component: ComponentDefinition,
   pinKey: string,
-  pinType: ComponentPinDefinition["type"],
-): ComponentPinDefinition | null {
-  const pin = component.pins.find((candidate) => candidate.key === pinKey);
-  if (!pin) return null;
+  pinType: HalValueType,
+): ChangeResult<ComponentPinDefinition, PinFailure> {
+  const pinResult = requirePin(component, pinKey);
+  if (pinResult.isErr()) return err(pinResult.error);
+  const pin = pinResult.value;
+  if (pin.type === pinType) {
+    return ok({ data: pin, changed: false });
+  }
   pin.type = pinType;
-  return pin;
+  return ok({ data: pin, changed: true });
 }
 
 function updatePinDirection(
   component: ComponentDefinition,
   pinKey: string,
-  direction: ComponentPinDefinition["direction"],
-): ComponentPinDefinition | null {
-  const pin = component.pins.find((candidate) => candidate.key === pinKey);
-  if (!pin) return null;
+  direction: PinDirection,
+): ChangeResult<ComponentPinDefinition, PinFailure> {
+  const pinResult = requirePin(component, pinKey);
+  if (pinResult.isErr()) return err(pinResult.error);
+  const pin = pinResult.value;
+  if (pin.direction === direction) {
+    return ok({ data: pin, changed: false });
+  }
   pin.direction = direction;
-  return pin;
+  return ok({ data: pin, changed: true });
 }
 
-function addParam(component: ComponentDefinition): ComponentParamDefinition {
+function addParam(
+  component: ComponentDefinition,
+): ChangeResult<ComponentParamDefinition> {
   const param = createCustomComponentParam(component);
   component.params.push(param);
-  return param;
+  return ok({ data: param, changed: true });
 }
 
 function addFunction(
   component: ComponentDefinition,
-): ComponentFunctionDefinition | null {
-  if (component.runtime?.kind !== "rt") return null;
+): ChangeResult<ComponentFunctionDefinition, InvalidRuntimeFailure> {
+  if (component.runtime?.kind !== "rt") {
+    return err({
+      code: "unsupported",
+      cause: "function",
+      detail: "invalid-runtime",
+    });
+  }
   const fn = createCustomComponentFunction(component);
   component.functions ??= [];
   component.functions.push(fn);
-  return fn;
+  return ok({ data: fn, changed: true });
 }
 
 function removeFunction(
   component: ComponentDefinition,
   functionKey: string,
-): ComponentFunctionDefinition | null {
-  const fn = component.functions?.find(
-    (candidate) => candidate.key === functionKey,
-  );
-  if (!fn) return null;
+): ChangeResult<ComponentFunctionDefinition, FunctionFailure> {
+  const fnResult = requireFunction(component, functionKey);
+  if (fnResult.isErr()) return err(fnResult.error);
+  const fn = fnResult.value;
   component.functions = component.functions?.filter(
     (candidate) => candidate.key !== functionKey,
   );
   if (component.functions && component.functions.length === 0) {
     delete component.functions;
   }
-  return fn;
+  return ok({ data: fn, changed: true });
 }
 
 function updateFunctionName(
   component: ComponentDefinition,
   functionKey: string,
   functionName: string,
-): ComponentFunctionDefinition | null {
-  const fn = component.functions?.find(
-    (candidate) => candidate.key === functionKey,
-  );
+): ChangeResult<
+  ComponentFunctionDefinition,
+  FunctionFailure | EmptyNameFailure<"function-name">
+> {
+  const fnResult = requireFunction(component, functionKey);
+  if (fnResult.isErr()) return err(fnResult.error);
+  const fn = fnResult.value;
   const normalized = functionName.trim();
-  if (!fn || !normalized) return null;
+  if (!normalized) {
+    return err({
+      code: "invalid-input",
+      cause: "function-name",
+      detail: "empty-name",
+    });
+  }
+  if (fn.declaredName === normalized) {
+    return ok({ data: fn, changed: false });
+  }
   fn.declaredName = normalized;
   fn.halSuffix = normalized === "_" ? "" : normalized;
   fn.key = nextUniqueMemberKey(
@@ -186,88 +256,108 @@ function updateFunctionName(
       .map((candidate) => candidate.key),
     "function",
   );
-  return fn;
+  return ok({ data: fn, changed: true });
 }
 
 function updateFunctionFloatMode(
   component: ComponentDefinition,
   functionKey: string,
   floatMode: ComponentFunctionDefinition["floatMode"],
-): ComponentFunctionDefinition | null {
-  const fn = component.functions?.find(
-    (candidate) => candidate.key === functionKey,
-  );
-  if (!fn) return null;
+): ChangeResult<ComponentFunctionDefinition, FunctionFailure> {
+  const fnResult = requireFunction(component, functionKey);
+  if (fnResult.isErr()) return err(fnResult.error);
+  const fn = fnResult.value;
+  if (fn.floatMode === floatMode) {
+    return ok({ data: fn, changed: false });
+  }
   fn.floatMode = floatMode;
-  return fn;
+  return ok({ data: fn, changed: true });
 }
 
 function removeParam(
   component: ComponentDefinition,
   paramKey: string,
-): ComponentParamDefinition | null {
-  const param = component.params.find(
-    (candidate) => candidate.key === paramKey,
-  );
-  if (!param) return null;
+): ChangeResult<ComponentParamDefinition, ParamFailure> {
+  const paramResult = requireParam(component, paramKey);
+  if (paramResult.isErr()) return err(paramResult.error);
+  const param = paramResult.value;
   component.params = component.params.filter(
     (candidate) => candidate.key !== paramKey,
   );
-  return param;
+  return ok({ data: param, changed: true });
 }
 
 function updateParamName(
   component: ComponentDefinition,
   paramKey: string,
   paramName: string,
-): ComponentParamDefinition | null {
-  const param = component.params.find(
-    (candidate) => candidate.key === paramKey,
-  );
+): ChangeResult<
+  ComponentParamDefinition,
+  ParamFailure | EmptyNameFailure<"param-name">
+> {
+  const paramResult = requireParam(component, paramKey);
+  if (paramResult.isErr()) return err(paramResult.error);
+  const param = paramResult.value;
   const normalized = paramName.trim();
-  if (!param || !normalized) return null;
+  if (!normalized) {
+    return err({
+      code: "invalid-input",
+      cause: "param-name",
+      detail: "empty-name",
+    });
+  }
+  if (param.name === normalized) {
+    return ok({ data: param, changed: false });
+  }
   param.name = normalized;
-  return param;
+  return ok({ data: param, changed: true });
 }
 
 function updateParamType(
   component: ComponentDefinition,
   paramKey: string,
   paramType: ComponentParamDefinition["type"],
-): ComponentParamDefinition | null {
-  const param = component.params.find(
-    (candidate) => candidate.key === paramKey,
-  );
-  if (!param) return null;
+): ChangeResult<ComponentParamDefinition, ParamFailure> {
+  const paramResult = requireParam(component, paramKey);
+  if (paramResult.isErr()) return err(paramResult.error);
+  const param = paramResult.value;
+  if (param.type === paramType) {
+    return ok({ data: param, changed: false });
+  }
   param.type = paramType;
-  return param;
+  return ok({ data: param, changed: true });
 }
 
 function updateParamDirection(
   component: ComponentDefinition,
   paramKey: string,
   paramDirection: ComponentParamDefinition["direction"],
-): ComponentParamDefinition | null {
-  const param = component.params.find(
-    (candidate) => candidate.key === paramKey,
-  );
-  if (!param) return null;
+): ChangeResult<ComponentParamDefinition, ParamFailure> {
+  const paramResult = requireParam(component, paramKey);
+  if (paramResult.isErr()) return err(paramResult.error);
+  const param = paramResult.value;
+  if (param.direction === paramDirection) {
+    return ok({ data: param, changed: false });
+  }
   param.direction = paramDirection;
-  return param;
+  return ok({ data: param, changed: true });
 }
 
 function updateParamDefaultValue(
   component: ComponentDefinition,
   paramKey: string,
   defaultValue: string,
-): ComponentParamDefinition | null {
-  const param = component.params.find(
-    (candidate) => candidate.key === paramKey,
-  );
-  if (!param) return null;
+): ChangeResult<ComponentParamDefinition, ParamFailure> {
+  const paramResult = requireParam(component, paramKey);
+  if (paramResult.isErr()) return err(paramResult.error);
+  const param = paramResult.value;
+  const existingDefaultValue = param.defaultValue ?? "";
+  if (existingDefaultValue === defaultValue) {
+    return ok({ data: param, changed: false });
+  }
   if (defaultValue.trim()) param.defaultValue = defaultValue;
   else delete param.defaultValue;
-  return param;
+  return ok({ data: param, changed: true });
 }
 
 export const customComponentDefinitionEdits = {
