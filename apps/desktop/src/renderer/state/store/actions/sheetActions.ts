@@ -149,13 +149,10 @@ export function createSheetActions(deps: EditorStoreActionContext) {
             name,
           );
         })
-        .match(
-          ({ changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedSheetThreadOutputName");
-          },
-          () => {},
-        );
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedSheetThreadOutputName");
+        }, reportSheetActionFailure);
     },
 
     updateSheetThreadOutputHalBinding(
@@ -172,13 +169,10 @@ export function createSheetActions(deps: EditorStoreActionContext) {
             halThreadId,
           );
         })
-        .match(
-          ({ changed }) => {
-            if (!changed) return;
-            deps.setStatusT("store.status.updatedSheetThreadOutputHalBinding");
-          },
-          () => {},
-        );
+        .match(({ changed }) => {
+          if (!changed) return;
+          deps.setStatusT("store.status.updatedSheetThreadOutputHalBinding");
+        }, reportSheetActionFailure);
     },
 
     removeSheetThreadOutput(sheetId: string, outputId: string): void {
@@ -187,12 +181,9 @@ export function createSheetActions(deps: EditorStoreActionContext) {
           const sheet = getSheet(project, sheetId);
           return sheetModelEdits.threadOutput.remove(sheet, outputId);
         })
-        .match(
-          () => {
-            deps.setStatusT("store.status.removedSheetThreadOutput");
-          },
-          () => {},
-        );
+        .match(() => {
+          deps.setStatusT("store.status.removedSheetThreadOutput");
+        }, reportSheetActionFailure);
     },
 
     setSheetAddfQueue(
