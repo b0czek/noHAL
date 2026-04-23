@@ -1,5 +1,9 @@
 import { err, ok } from "neverthrow";
-import { addfQueueEntryNodeId, normalizeAddfQueueEntries } from "../addfQueue";
+import {
+  addfQueueEntryKey,
+  addfQueueEntryNodeId,
+  normalizeAddfQueueEntries,
+} from "../addfQueue";
 import { ensureInstanceName } from "../component/naming";
 import {
   getConnectedSheetPortReferenceLocations,
@@ -388,8 +392,16 @@ function removeSheetThreadOutput(
 function setSheetAddfQueue(
   sheet: SheetDefinition,
   nodeOrder: SheetAddfQueueStoredEntry[],
-): SheetAddfQueueStoredEntry[] {
+): Change<SheetAddfQueueStoredEntry[]> {
+  const before = sheet.hal?.addfQueue
+    ? normalizeAddfQueueEntries(sheet.hal.addfQueue)
+    : [];
   const normalized = normalizeAddfQueueEntries(nodeOrder);
+
+  const changed =
+    before.length !== normalized.length ||
+    before.some((entry, i) => addfQueueEntryKey(entry) !== addfQueueEntryKey(normalized[i]));
+
   if (normalized.length > 0) {
     if (!sheet.hal) sheet.hal = {};
     sheet.hal.addfQueue = normalized;
@@ -397,7 +409,7 @@ function setSheetAddfQueue(
     delete sheet.hal?.addfQueue;
     cleanupEmptyHal(sheet);
   }
-  return normalized;
+  return { data: normalized, changed };
 }
 
 export type RemoveSheetPortResult = ChangeResult<

@@ -190,7 +190,7 @@ export function createSheetActions(deps: EditorStoreActionContext) {
       sheetId: string,
       nodeOrder: SheetAddfQueueStoredEntry[],
     ): void {
-      const normalized = deps.withProject((project) => {
+      const { data: normalized } = deps.withProjectChange((project) => {
         const sheet = getSheet(project, sheetId);
         return sheetModelEdits.addfQueue.set(sheet, nodeOrder);
       });
