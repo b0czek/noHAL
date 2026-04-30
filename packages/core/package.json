@@ -57,6 +57,6 @@
   },
   "dependencies": {
     "neverthrow": "^8.2.0",
-    "remeda": "^2.33.7"
+    "remeda": "^2.34.0"
   }
 }
