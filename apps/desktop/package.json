@@ -25,22 +25,22 @@
     "typecheck": "tsc --noEmit -p tsconfig.renderer.json && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
-    "@codemirror/autocomplete": "^6.20.1",
+    "@codemirror/autocomplete": "^6.20.2",
     "@codemirror/commands": "^6.10.3",
     "@codemirror/language": "^6.12.3",
     "@codemirror/search": "^6.7.0",
     "@codemirror/state": "^6.6.0",
-    "@codemirror/view": "^6.41.1",
+    "@codemirror/view": "^6.42.1",
     "@kobalte/core": "^0.13.11",
     "@lezer/highlight": "^1.2.3",
     "@nohal/core": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "konva": "^10.2.5",
+    "konva": "^10.3.0",
     "neverthrow": "^8.2.0",
     "solid-icons": "^1.2.0",
     "solid-js": "^1.9.12",
-    "tailwind-merge": "^3.5.0",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
